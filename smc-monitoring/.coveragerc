@@ -1,0 +1,16 @@
+[run]
+omit = 
+
+[report]
+# Regexes for lines to exclude from consideration
+exclude_lines =
+
+    # Don't complain about missing debug-only code:
+    _get_field_schema
+    except ImportError
+    def __repr__
+    def __str__
+    __str__
+    pass
+    raise NotImplementedError
+    super

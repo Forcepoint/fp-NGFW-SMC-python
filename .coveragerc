@@ -1,0 +1,26 @@
+[run]
+omit = 
+	__init__.py
+	smc/actions
+
+[report]
+# Regexes for lines to exclude from consideration
+exclude_lines =
+
+    # Don't complain about missing debug-only code:
+    def __repr__
+    def __str__
+    __str__
+    pass
+    TypeError
+    raise NotImplementedError
+    except ImportError
+    if compat.PY3
+    if recursive and is_pkg
+    string_types
+    unicode = str 
+    unicode = unicode 
+    def deprecated
+    def memoize
+    continue
+

@@ -1,0 +1,185 @@
+$version 0.3.1
+Initial release leveraging contact addresses and locations with ability to support SMC 6.1
+Fix issue related to loading an engine when using the wrong engine name but still matching on non-engine type elements
+Management and Log Server objects with contact addresses
+Expose sub-interface view for physical interfaces
+
+$version 0.3.2
+Add VPNCertificate, Alias, Snapshot
+Exceptions around node and engine actions
+Moved engine/node/engines to smc.core.engine, smc.core.node, smc.core.engines
+Fix timeout on session constructor to backend requests
+
+$version 0.3.3
+Rewrote web api to simplify
+IPList implemented
+SMCRequest wrapper around CRUD operations
+Added unicode utf-8 decoding at the inbound SMC API border
+Factor out modify_attribute on specific classes and implement ModifiableMixin
+Change smc.actions.search.element_info_as_json to return list in case of multiple returns
+Node takes meta data
+Add permissions method on engine node for SMC API >= 6.1
+Doc fixes
+
+$version 0.3.4
+SMCElement parent class rewritten to support lazy loading of elements
+smc.elements.element.* classes use consistent create classmethod, allowing objects to be loaded in main constructor
+added search methods to find name based on href
+added methods for managing group members
+
+$version 0.3.5
+Add IPv6 support for creating Host, Network and Router objects
+Unicode mixin for classes that print via __str__
+Rewrite of policy classes and move to smc.policy
+URL List support
+
+$version 0.3.6
+Added support for OSPF routing in smc.routing module
+Support for IP Access Lists (ipv4 & ipv6)
+Support for IP Prefix Lists (ipv4 & ipv6)
+Expression elements
+
+$version 0.3.7
+Refactor smc.elements.element to: smc.elements.network, smc.elements.service, smc.elements.other
+Search functions to find element references (smc.actions.search.element_references, smc.actions.search.element_references_as_smcresult)
+SSL for SMC API connections (see smc.api.session.login)
+MasterEngine Cluster support
+All relevant classes now inherit from smc.base.model.Element which hold common settings and simplified methods for searching
+unittest code coverage 85%
+
+$version 0.3.8
+describe_xxxx methods can take a name=<str> as well as list describe_host(name='test')
+Fix some documentation referencing moved modules
+
+$version 0.3.9
+Remove ContactAddress class for function
+Fix packaging requirements
+First tag release
+
+$version 0.3.10
+return SMCResult from group.update_members
+Fix KeyboardInterrupt triggers uninitialized result var in _make_request()
+Add catch all for http methods, return unsupported method
+rewrite of configloader and changed .smcrc format to better support input from external sources
+
+$version 0.3.11
+python 3.4.3 and python 3.5.1 tested successfully
+misc compat fixes to support py3
+unittest's - coverage = 92%
+
+$version 0.4.0
+py 2,7, 3.4 and 3.5 support
+
+$version 0.4.1
+fix version check when provided as str
+minor doc fixes
+add docker bootstrap for unittest automation
+
+$version 0.4.2
+dynamic destination NAT and dynamic source NAT
+unittests - coverage = 93%
+
+$version 0.4.3
+element cache descriptor
+api client export
+locations are now directly searchable (SMC >= 6.1.1)
+unique VLANs on inline interfaces
+add 'used_on' field to NAT rules
+policy search_rule
+unittests - coverage = 97%
+
+$version 0.4.4
+rule rewritten to support introspection and modifications, property access on interfaces
+interface introspection and modifications, property access on rule elements
+
+$version 0.4.5
+validated smc 6.1.2
+Ethernet rules supported in smc 6.1.2 (prior versions cause 'Database problem' error)
+When aborting a policy upload and subsequently attempting to delete policy, you may get the error that there is a dependency on SMC API upload
+NAT rules were previously ignored by smc validation after adding; resolved in smc 6.1.2
+describe_vulnerability_type renamed to vulnerability_tag in SMC version 6.1.2
+Static source NAT works and requires SMC version 6.1.2 or greater
+All NAT operations should use SMC version 6.1.2
+Support adding additional IP's to node and single node interfaces
+
+$version 0.4.6
+AccessControlList, IPv6Rule, IPv6NATRule, Permissions, Antispoofing, Route, License
+Simplified read/write access to interface details
+All SMCResult actions are wrapped in exceptions
+Global metaclass registry
+
+$version 0.4.7
+move template, inspection policy to base policy
+element.from_href had etag, cache set backwards
+
+$version 0.4.8
+sidewinder proxy enable for layer3 firewall (version >= 6.1)
+new collections module
+
+$version 0.4.9
+describe() removed from Element. Cache access through data attribute instead
+factor Meta out of ancillary classes and only create in ElementBase
+remove load() function on Engine. Engines can be loaded dynamically by Engine('name') and are then lazy loaded
+If-Match header enforced in SMC 6.1.2, required for delete operations
+
+$version 0.4.10
+remove add_vlan_to_single_node_interface; use add_ipaddress_to_vlan_interface
+tunnel interface add methods collapsed
+routes are removed when a VLAN with interfaces or a physical interface with addresses is removed
+remove_vlan method of physical interface
+
+$version 0.4.11
+optimize interface.get(x) to only look at meta when finding interface id
+removed describe_xx collections in favor of smc.elements.resources collections
+new contact address implementation (now bound to engine level and interfaces)
+
+$version 0.4.12
+rule fixes, action and options input to set deep inspection, logging, etc
+documentation updates
+
+$version 0.5.0
+Full support for SMC 6.2
+MatchExpression added for rule source/destinations
+instance Cache re-implementation
+add_before/add_after for rule positioning
+find all references by element resource (referenced_by property of Element)
+location used_on field
+DNSRelayProfile
+smc.core.addon module with engine helpers for enabling/disabling engine level features
+remove support for SMC 5.10
+
+$version 0.5.1
+BGP support
+rename smc.core.addon to smc.core.properties
+EngineProperty for enabling/disabling engine level settings
+VPN GatewaySettings
+New collection classes for subelements
+Moved resource collection from smc.elements.resources to smc.base.collection module
+Admin Domains
+Static Netlink (smc.elements.netlink)
+domain login
+pep8
+
+$version 0.5.2
+kwargs to add_single_node_interface, add_node_interface, add_cluster_virtual_interface to pass in
+sub interface settings during create (versus modify after create)
+Admin Role (smc.administration.role.Role) for permission setting
+Inline modifications of interfaces - significant reduction in calls to SMC when making interface modifications
+PhysicalInterface methods to modify interface options, change VLANs, change interface IDs, etc. Changes handle engine type differences
+Element.get_or_create helper method
+All created element calls now return an instance of themselves versus just the href
+filter_key, first, last and exists options on search collection
+remove attr_by_name in favor of instance attributes
+config loading from environment variables
+
+$version 0.5.4
+Threaded task poller for upload and refresh operations
+VSS Containers
+Session reauthentication after timeout will occur if a previously session is detected
+Node waiters for monitoring status of an engine
+
+$version 0.5.5
+SMC version 6.2.1 validated
+minor fixes related to routing and antispoofing
+
+
