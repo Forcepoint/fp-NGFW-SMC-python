@@ -1,3 +1,5 @@
+|Python version|
+
 smc-python
 ==========
 
@@ -37,8 +39,7 @@ Python 3.5, 3.6
 
 Requests >= 2.12.0
 
-Security Management Center version 6.0, 6.1, 6.1.1, 6.1.2, 6.2, 6.2.1, 6.3.x, 6.4.x,
-                                   6.5.x, 6.6.x
+Security Management Center version 6.0, 6.1, 6.1.1, 6.1.2, 6.2, 6.2.1, 6.3.x, 6.4.x, 6.5.x, 6.6.x
 
 Getting Started
 ---------------
@@ -102,3 +103,6 @@ Available extensions:
 * `smc-python-monitoring <https://badge.fury.io/py/smc-python-monitoring>`__: Monitoring for SMC connections, blacklists, users, VPNs, alerts, etc. In addition this package provides the ability to 'subscribe' to administrative event modifications.
 
 Extensions are found in the base smc-python repository as namespace packages and each is housed in it's own sub-directory of this base package.
+
+.. |Python version| image:: https://img.shields.io/badge/python-2.7%20%7C%203.5%20%7C%203.6-blue
+    :target: https://pypi.python.org/pypi/fp-NGFW-SMC-python/

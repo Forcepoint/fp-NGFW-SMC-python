@@ -18,7 +18,7 @@ with open('HISTORY.rst', encoding='utf-8') as f:
     history = f.read()
 
     
-setup(name='smc-python',
+setup(name='fp-NGFW-SMC-python',
       version=about['__version__'],
       description=about['__description__'],
       long_description=readme + '\n\n' + history,
@@ -35,8 +35,8 @@ setup(name='smc-python',
         "Development Status :: 5 - Production/Stable",
         "Programming Language :: Python",
         "Programming Language :: Python :: 2.7",
-        "Programming Language :: Python :: 3.4",
         "Programming Language :: Python :: 3.5",
+        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: Apache Software License"
         ],

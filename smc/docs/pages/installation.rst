@@ -5,11 +5,11 @@ Install the package by using a package manager such as pip.
 
 .. code-block:: python
 
-   pip install smc-python
+   pip install fp-ngfw-smc-python
 
-Or optionally download the latest tarball (windows): smc-python_, unzip and run:
+Or optionally clone: smc-python_:
 
-.. _smc-python: https://github.com/Forcepoint/smc-python/archive/master.zip
+.. _smc-python: https://github.com/Forcepoint/fp-NGFW-SMC-python
 
 `python setup.py install`
 
@@ -18,7 +18,7 @@ Dependencies on this library are:
 * requests
 
 If installation is required on a non-internet facing machine, you will have to download
-the smc-python tarball and dependencies manually and install by running python setup install.
+smc-python and dependencies manually and install by running python setup install.
 
 Once the smc-python package has been installed, you can import the
 main packages into a python script:
@@ -33,6 +33,6 @@ main packages into a python script:
    
 To remove the package, simply run:
 
-`pip uninstall smc-python`
+`pip uninstall fp-NGFW-SMC-python`
 
 For more information on next steps, please see creating the session
