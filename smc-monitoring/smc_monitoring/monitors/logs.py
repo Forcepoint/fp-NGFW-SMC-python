@@ -1,6 +1,6 @@
 '''
-LogQuery provides an interface to the Log Server component of the SMC to
-retrieve data in real time or by batch. 
+LogQuery provides an interface to the SMC Log Viewer to retrieve data
+in real time or by batch.
 
 There are a variety of settings you can configure on a query such as whether
 to execute a real time query versus a stored log fetch, time frame for the
@@ -78,6 +78,7 @@ filtering for only HIGH alerts with a source address of 192.168.4.84::
     combine filters for a query.
 
 '''
+from smc.base.util import element_resolver
 from smc_monitoring.models.calendar import TimeFormat
 from smc_monitoring.models.query import Query
 from smc_monitoring.models.constants import LogField
@@ -86,12 +87,14 @@ from smc_monitoring.models.formatters import TableFormat
 
 class LogQuery(Query):
     """
-    Make a Log Query to the Log Server to fetch stored log data or monitor logs in
+    Make a Log Query to the SMC to fetch stored log data or monitor logs in
     real time.
     
+    .. versionadded: servers field to specify the LogServer or Management Server
+        to query against
+
     :ivar list field_ids: field IDs are the default fields for this entry type
         and are constants found in :class:`smc_monitoring.models.constants.LogField`
-    
     :param str fetch_type: 'stored' or 'current'
     :param int fetch_size: max number of logs to fetch
     :param bool backwards: by default records are returned from newest to oldest
@@ -101,6 +104,8 @@ class LogQuery(Query):
     :type format: format type from :py:mod:`smc_monitoring.models.formats`
         (default: TextFormat)
     :param TimeFormat time_range: time filter to add to query
+    :param list[str,Element] servers: A list of href or server elements for which
+        to query
     """
     location = '/monitoring/log/socket'
     field_ids = [
@@ -128,6 +133,9 @@ class LogQuery(Query):
         query = self.time_range.data
         query.update(type=fetch_type)
         
+        if 'servers' in kw:
+            query.update(servers=element_resolver(kw.pop('servers', [])))
+
         self.request.update(
             fetch=fetch,
             query=query)

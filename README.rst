@@ -90,7 +90,6 @@ Once a valid session is obtained, it will be re-used for each operation
 for the duration of the sessions validity, or until the program is
 exited.
 
-
 Extensions
 **********
 
@@ -103,6 +102,11 @@ Available extensions:
 * `smc-python-monitoring <https://badge.fury.io/py/smc-python-monitoring>`__: Monitoring for SMC connections, blacklists, users, VPNs, alerts, etc. In addition this package provides the ability to 'subscribe' to administrative event modifications.
 
 Extensions are found in the base smc-python repository as namespace packages and each is housed in it's own sub-directory of this base package.
+
+Documentation
+-------------
+
+`View Documentation on Read The Docs <http://fp-ngfw-smc-python.readthedocs.io/en/latest/?badge=latest>`__
 
 .. |Python version| image:: https://img.shields.io/badge/python-2.7%20%7C%203.5%20%7C%203.6-blue
     :target: https://pypi.python.org/pypi/fp-NGFW-SMC-python/
