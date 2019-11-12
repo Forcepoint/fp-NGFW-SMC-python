@@ -830,15 +830,25 @@ class MatchExpression(Element):
         ... 
         MatchExpression(name=MatchExpression _1491760686976_2) [Zone(name=Mail), Host(name=kali)]
 
-    .. note:: 
-        MatchExpression is currently only supported on source and destination fields.
+    Match expressions can also be used on service fields by providing values for service
+    and service ports as follows::
 
+        match = MatchExpression.create(name='mymatch', service=ApplicationSituation('FTP'), service_ports='TCPService('Any TCP Service')')
+
+    If the service match expression requires ANY ports, you can use the string of 'any' to provide
+    this logic::
+
+        match = MatchExpression.create(name='mymatch', service=ApplicationSituation('FTP'), service_ports='any')
+
+    Once the service match expression is created, you can use that in the policy rule::
+
+        policy.fw_ipv4_access_rules.create(name='myrule', sources='any', destinations='any', services=[match], action=['discard'])
     """
     typeof = 'match_expression'
 
     @classmethod
     def create(cls, name, user=None, network_element=None, domain_name=None,
-               zone=None, executable=None):
+               zone=None, executable=None, service=None, service_ports='any'):
         """
         Create a match expression
 
@@ -848,6 +858,9 @@ class MatchExpression(Element):
         :param DomainName domain_name: domain name network element
         :param Zone zone: zone to use
         :param str executable: name of executable or group
+        :param service: any service type, i.e. TCPService, UDPService, ApplicationSituation
+        :param str,Element service_ports: specify the service ports for the given service. Provide
+            'ANY' as the value if the match expression requires a service/application and ANY ports
         :raises ElementNotFound: specified object does not exist
         :return: instance with meta
         :rtype: MatchExpression
@@ -863,9 +876,17 @@ class MatchExpression(Element):
             ref_list.append(zone.href)
         if executable:
             pass
+        if service:
+            ref_list.append(service.href)
 
         json = {'name': name,
                 'ref': ref_list}
+
+        if service:
+            try:
+                json.setdefault('ref', []).append(service_ports.href) # Assume Element
+            except AttributeError:
+                json.update(service_port_selection='any')
 
         return ElementCreator(cls, json)
 

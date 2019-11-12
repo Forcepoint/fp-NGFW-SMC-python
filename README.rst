@@ -99,7 +99,7 @@ package requirements and simplify packaging.
 
 Available extensions:
 
-* `smc-python-monitoring <https://badge.fury.io/py/smc-python-monitoring>`__: Monitoring for SMC connections, blacklists, users, VPNs, alerts, etc. In addition this package provides the ability to 'subscribe' to administrative event modifications.
+* `smc-python-monitoring <https://badge.fury.io/py/fp-NGFW-SMC-python-monitoring>`__: Monitoring for SMC connections, blacklists, users, VPNs, alerts, etc. In addition this package provides the ability to 'subscribe' to administrative event modifications.
 
 Extensions are found in the base smc-python repository as namespace packages and each is housed in it's own sub-directory of this base package.
 

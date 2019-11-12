@@ -20,14 +20,14 @@ with open('HISTORY.rst', encoding='utf-8') as f:
     history = f.read()
     
 setup(
-    name='smc-python-monitoring',
+    name='fp-NGFW-SMC-python-monitoring',
     version=version,
     description='Forcepoint NGFW Management Center Monitoring',
     long_description=readme + '\n\n' + history,
     license='Apache License',
     author='Forcepoint',
     author_email='PSIRT@forcepoint.com',
-    url='https://github.com/Forcepoint/smc-python',
+    url='https://github.com/Forcepoint/fp-NGFW-SMC-python',
     #packages=['smc_monitoring'],
     packages=find_packages(),
     #namespace_packages=['smc_monitoring'],
@@ -35,8 +35,8 @@ setup(
         "Development Status :: 5 - Production/Stable",
         "Programming Language :: Python",
         "Programming Language :: Python :: 2.7",
-        "Programming Language :: Python :: 3.4",
         "Programming Language :: Python :: 3.5",
+        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: Apache Software License"
         ],

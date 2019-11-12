@@ -1,4 +1,4 @@
-|Documentation Status| |PyPI version|
+|PyPI version|
 
 Monitoring API for Forcepoint NGFW Security Management Center
 =============================================================
@@ -45,7 +45,7 @@ websocket-client
 Install
 =======
 
-``pip install smc-python-monitoring``
+``pip install fp-NGFW-SMC-python-monitoring``
 
 Usage
 =====
@@ -232,7 +232,5 @@ Return the events as instance of “Event” (optional). Otherwise raw json retu
 	Event(subscription_id=151,action=delete,element=https://xxxx/elements/host/1087)
 	Event(subscription_id=152,action=delete,element=https://xxxx/elements/layer2_policy/27)
 
-.. |Documentation Status| image:: https://readthedocs.org/projects/smc-python/badge/?version=latest
-   :target: http://smc-python.readthedocs.io/en/latest/?badge=latest
-.. |PyPI version| image:: https://badge.fury.io/py/smc-python-monitoring.svg
-   :target: https://badge.fury.io/py/smc-python-monitoring
+.. |PyPI version| image:: https://badge.fury.io/py/fp-NGFW-SMC-python-monitoring.svg
+   :target: https://badge.fury.io/py/fp-NGFW-SMC-python-monitoring
