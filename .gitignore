@@ -1,0 +1,3 @@
+# remove all intellij conf giles
+.idea
+.idea*/*

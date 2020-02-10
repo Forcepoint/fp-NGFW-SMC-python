@@ -16,7 +16,26 @@ from smc.base.decorators import cached_property
 from smc.api.exceptions import ConfigLoadError, SMCConnectionError,\
     UnsupportedEntryPoint, SessionManagerNotFound, SessionNotFound
 from smc.base.model import ElementFactory
+from requests.adapters import HTTPAdapter
+from urllib3 import Retry
 # requests.packages.urllib3.disable_warnings()
+
+MAX_RETRY = 5
+ERROR_CODES_SUPPORTING_AUTO_RETRY= [
+    503,  # to support db concurrent access from SMC
+    409,  # to support ETag conflict
+    429,  # to support too many requests
+    413   # to support entity too large
+]
+HTTP_METHODS_SUPPORTING_AUTO_RETRY= [
+    'HEAD',
+    'TRACE',
+    'GET',
+    'POST',     # to support creation and api services with possible db concurrency
+    'PUT',
+    'OPTIONS',
+    'DELETE'
+]
 
 logger = logging.getLogger(__name__)
 
@@ -559,7 +578,18 @@ class Session(object):
         :rtype: requests.Session
         """
         _session = requests.session()  # empty session
-        
+        retry = Retry(
+            total=MAX_RETRY,
+            read=MAX_RETRY,
+            connect=MAX_RETRY,
+            backoff_factor=0.3,
+            method_whitelist= HTTP_METHODS_SUPPORTING_AUTO_RETRY,
+            status_forcelist=ERROR_CODES_SUPPORTING_AUTO_RETRY,
+        )
+        adapter = HTTPAdapter(max_retries=retry)
+        _session.mount('http://', adapter)
+        _session.mount('https://', adapter)
+
         response = _session.post(**request)
         logger.info('Using SMC API version: %s', self.api_version)
         
