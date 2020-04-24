@@ -98,7 +98,7 @@ booleans indicating the operations performed::
 from smc.core.interfaces import TunnelInterface, \
    InterfaceEditor, Layer3PhysicalInterface,\
     ClusterPhysicalInterface, Layer2PhysicalInterface, VirtualPhysicalInterface,\
-    SwitchPhysicalInterface
+    SwitchPhysicalInterface, VPNBrokerInterface
 from smc.core.sub_interfaces import LoopbackClusterInterface, LoopbackInterface
 from smc.base.structs import BaseIterable
 from smc.api.exceptions import UnsupportedInterfaceType, InterfaceNotFound
@@ -482,6 +482,47 @@ class TunnelInterfaceCollection(InterfaceCollection):
             'zone_ref': zone_ref, 'comment': comment}
         tunnel_interface = TunnelInterface(**interface)
         self._engine.add_interface(tunnel_interface, **kw)
+
+
+class VPNBrokerInterfaceCollection(InterfaceCollection):
+    """VPNBrokerInterfaceCollection Collection provides an interface to
+    retrieving existing interfaces and helper methods to shortcut the
+    creation of an interface.
+    """
+    def __init__(self, engine):
+        super(VPNBrokerInterfaceCollection, self).__init__(
+            engine, 'vpn_broker_interface')
+
+    def add_layer3_interface(
+            self, interface_id, address=None, network_value=None,
+            zone_ref=None, comment=None, vpn_broker_domain_ref=None,
+            mac_address_postfix=None, retrieve_routes=None, adjust_antispoofing=None,
+            shared_secret=None, **kw):
+        """Creates a vpn broker interface with sub-type
+        single_node_interface. This is to be used for single layer 3
+        firewall instances.
+
+        """
+        interfaces = [{'nodes': [{'address': address,
+                                  'network_value': network_value}]}] \
+            if address and network_value else []
+
+        interface = {
+            'interface_id': interface_id,
+            'interfaces': interfaces,
+            'zone_ref': zone_ref,
+            'comment': comment,
+            'vpn_broker_domain_ref': vpn_broker_domain_ref,
+            'mac_address_postfix': mac_address_postfix,
+            'retrieve_routes': retrieve_routes,
+            'adjust_antispoofing': adjust_antispoofing,
+            'shared_secret': shared_secret
+        }
+
+        vpn_broker_interface = VPNBrokerInterface(**interface)
+        return self._engine.add_interface(vpn_broker_interface, **kw)
+
+
 
 
 class PhysicalInterfaceCollection(InterfaceCollection):

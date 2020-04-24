@@ -405,7 +405,7 @@ class ExternalEndpoint(SubElement):
         if ike_phase1_id_value:
             json.update(ike_phase1_id_value=ike_phase1_id_value)
         
-        if ike_phase1_id_type:
+        if not ike_phase1_id_type == None:
             json.update(ike_phase1_id_type=ike_phase1_id_type)
 
         json.update(connection_type_ref=element_resolver(connection_type_ref)) if connection_type_ref\
@@ -704,6 +704,60 @@ class VPNProfile(Element):
         :rtype: dict
         """
         return self.data.get('capabilities', {})
+
+
+class VPNBrokerDomain(Element):
+    """VPN Broker Domain element defines the virtual network that
+    contains the VPN Broker gateway and the VPN Broker members.
+    """
+    typeof = 'vpn_broker_domain'
+
+    @classmethod
+    def create(cls, name, mac_address_prefix, file_ref, comment=None, **kw):
+        """Create a VPN broker domain.
+
+            VPNBrokerDomain.create(
+                 name="vpn1", mac_address_prefix="06:02:02", file_ref=myfile.href
+            )
+
+        :param str name: name of vpn broker domain
+        :param str mac_address_prefix: unique identifier for the VPN
+                   Broker Domain in MAC address format. The length
+                   must be three octets.  The first octet must be
+                   even.  The address must be a unique unicast MAC
+                   address.
+        :param file_ref href or VPNBrokerConfigFile element
+
+        :raises CreateElementFailed: reason for failure
+        :rtype: VPNBrokerDomain
+
+        """
+        kw.update(name=name, comment=comment,
+                  mac_address_prefix=mac_address_prefix,
+                  file_ref=file_ref)
+        return ElementCreator(cls, json=kw)
+
+class VPNBrokerConfigFile(Element):
+    """
+    exported VPN Broker Domain element from the NGFW Manager
+    """
+    typeof = 'broker_config_file'
+
+    @classmethod
+    def create(cls, name, comment=None, **kw):
+        """
+        Create a VPN broker config file
+
+            VPNBrokerConfigFile.create(name="myfile")
+
+        :param str name: name of config file
+        :raises CreateElementFailed: reason for failure
+        :rtype: VPNBrokerConfigFile
+        """
+        kw.update(name=name, comment=comment)
+        return ElementCreator(cls, json=kw)
+
+
 
 
 class ConnectionType(Element):

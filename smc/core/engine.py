@@ -8,6 +8,7 @@ from smc.core.resource import Snapshot, PendingChanges
 from smc.core.interfaces import InterfaceOptions, PhysicalInterface
 from smc.core.collection import InterfaceCollection, LoopbackCollection,\
     PhysicalInterfaceCollection, TunnelInterfaceCollection,\
+    VPNBrokerInterfaceCollection,\
     VirtualPhysicalInterfaceCollection, SwitchInterfaceCollection
 from smc.administration.tasks import Task
 from smc.elements.other import prepare_blacklist
@@ -946,6 +947,16 @@ class Engine(Element):
         :rtype: TunnelInterfaceCollection
         """
         return TunnelInterfaceCollection(self)
+
+    @property
+    def vpn_broker_interface(self):
+        """
+        Get only vpn broker interfaces for this engine node.
+
+        :raises UnsupportedInterfaceType: supported on layer 3 engine only
+        :rtype: VPNBrokerInterfaceCollection
+        """
+        return VPNBrokerInterfaceCollection(self)
 
     @property
     def loopback_interface(self):

@@ -429,8 +429,9 @@ class Interface(SubElement):
     
     def save(self):
         self.update()
-        self._engine._del_cache()
-    
+        if self._engine:
+            self._engine._del_cache()
+
     @property
     def all_interfaces(self):
         """
@@ -941,7 +942,7 @@ class TunnelInterface(Interface):
              'zone_ref': 'foozone'}
     """
     typeof = 'tunnel_interface'
-    
+
     def __init__(self, engine=None, meta=None, **interface):
         if not meta:
             meta = {key: interface.pop(key)
@@ -950,7 +951,7 @@ class TunnelInterface(Interface):
         super(TunnelInterface, self).__init__(engine=engine, meta=meta)
         if interface:
             self._add_interface(**interface)
-    
+
     def _add_interface(self, interface_id, **kw):
         """
         Create a tunnel interface. Kw argument list is as follows
@@ -960,22 +961,22 @@ class TunnelInterface(Interface):
         base_interface.update(
             interface_id=str(interface_id),
             interfaces=[])
-        
+
         if 'zone_ref' in kw:
             zone_ref = kw.pop('zone_ref')
             base_interface.update(zone_ref=zone_helper(zone_ref) if zone_ref else None)
-                
+
         if 'comment' in kw:
             base_interface.update(comment=kw.pop('comment'))
-            
+
         self.data = base_interface
-                          
+
         interfaces = kw.pop('interfaces', [])
         if interfaces:
             for interface in interfaces:
                 if interface.get('cluster_virtual', None) or \
                     len(interface.get('nodes', [])) > 1:    # Cluster
-                    
+
                     kw.update(interface_id=interface_id, interfaces=interfaces)
                     cvi = ClusterPhysicalInterface(**kw)
                     cvi.data.pop('vlanInterfaces', None)
@@ -987,20 +988,101 @@ class TunnelInterface(Interface):
                         sni = SingleNodeInterface.create(interface_id, **node)
                         base_interface.setdefault('interfaces', []).append(
                             {sni.typeof: sni.data})
-    
+
     @property
     def qos(self):
         """
         The QoS settings for this tunnel interface
-        
+
         :rtype: QoS
         """
         return QoS(self)
-    
+
     @property
     def ndi_interfaces(self):
         return []
 
+
+
+class VPNBrokerInterface(Interface):
+    """This interface type represents a VPN broker interface. Not meant to
+    be used directly: instead use:
+
+    engine.vpn_broker_interface.add_layer3_interface to create a
+    VPNBrokerInterface
+
+    Usage:
+
+    itf ={'nodes': [{'address': u'10.88.0.12',
+                     'network_value': u'10.88.0.0/24',
+                     'nodeid': 1, "nicid": "VPN_0"
+          }]}
+
+    my_interface = VPNBrokerInterface(
+        zone_ref="Internal",
+        interface_id="VPN_0",
+        comment="testing vpn broker",
+        vpn_broker_domain_ref = brokdom.href,
+        mac_address_postfix="a3:b3:c3",
+        retrieve_routes=True,
+        shared_secret="blabla",
+        interfaces = [itf])
+
+    print(json.dumps(dict(my_interface.data)))
+
+    """
+    typeof = 'vpn_broker_interface'
+
+
+    def __init__(self, engine=None, meta=None, **interface):
+        if not meta:
+            meta = {key: interface.pop(key)
+                for key in ('href', 'type', 'name')
+                    if key in interface}
+
+        super(VPNBrokerInterface, self).__init__(engine=engine, meta=meta)
+        if interface:
+            self._add_interface(**interface)
+
+    def _add_interface(self, interface_id, **kw):
+        """
+        Create a vpn broker interface. Kw argument list is as follows
+        """
+        base_interface = ElementCache()
+
+        base_interface.update(
+            interface_id=str(interface_id),
+            interfaces=[])
+
+        if 'zone_ref' in kw:
+            zone_ref = kw.pop('zone_ref')
+            base_interface.update(zone_ref=zone_helper(zone_ref) \
+                                  if zone_ref else None)
+
+        for k in ('comment', 'vpn_broker_domain_ref', 'mac_address_postfix',
+                  'retrieve_routes', 'shared_secret', 'adjust_antispoofing'):
+            if k in kw:
+                base_interface[k]=kw.pop(k)
+
+        self.data = base_interface
+
+        interfaces = kw.pop('interfaces', [])
+        if interfaces:
+            for interface in interfaces:
+                if interface.get('cluster_virtual', None) or \
+                    len(interface.get('nodes', [])) > 1:    # Cluster
+
+                    kw.update(interface_id=interface_id, interfaces=interfaces)
+                    cvi = ClusterPhysicalInterface(**kw)
+                    cvi.data.pop('vlanInterfaces', None)
+                    self.data.update(cvi.data)
+                else:
+                    # Single interface engine
+                    for node in interface.get('nodes', []):
+                        node.update(nodeid=1)
+                        sni = SingleNodeInterface.create(interface_id, **node)
+                        base_interface.setdefault('interfaces', []).append(
+                            {sni.typeof: sni.data})
 
 class SwitchPhysicalInterface(Interface):
     """
