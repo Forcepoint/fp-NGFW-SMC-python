@@ -62,18 +62,18 @@ class DynamicRouting(object):
     """
     def __init__(self, engine):
         self.data = engine.data.get('dynamic_routing', {})
-        
+
     @property
     def antispoofing_networks(self):
         return [Element.from_href(network)
             for network in self.data.get('antispoofing_ne_ref', [])]
-    
+
     def update_antispoofing(self, networks=None):
         """
         Pass a list of networks to update antispoofing networks with.
         You can clear networks by providing an empty list. If networks
         are provided but already exist, no update is made.
-        
+
         :param list networks: networks, groups or hosts for antispoofing
         :rtype: bool
         """
@@ -90,16 +90,42 @@ class DynamicRouting(object):
     def bgp(self):
         """
         Reference to BGP configuration
-        
+
         :rtype: BGP
         """
         return BGP(self.data.get('bgp', {}))
-        
+
+    @property
+    def ecmp_count(self):
+        """
+        Equal cost multi path count
+        """
+        return self.data.get('path_count', None)
+
+    def update_ecmp(self, count=None):
+        """
+        Give count desired for ecmp count data, or disable ecmp count
+        if left as None.
+
+        :param int count: count value
+        :rtype: bool
+        """
+        current = self.data.get('path_count')
+        if count is None and len(current):
+            #reset to empty
+            self.data.update(path_count="")
+            return True
+        if current is None or count != int(current):
+            self.data.update(path_count=str(count))
+            return True
+        return False
+
+
     @property
     def ospf(self):
         """
         Reference to OSPF configuration
-        
+
         :rtype: OSPF
         """
         return OSPF(self.data.get('ospfv2', {}))

@@ -66,7 +66,6 @@ from smc.base.mixins import RequestAction, UnicodeMixin
 from smc.base.util import element_resolver
 from smc.compat import get_best_version
 
-
 @exception
 def prepared_request(*exception, **kwargs):  # @UnusedVariable
     """
@@ -456,7 +455,7 @@ class ElementBase(RequestAction, UnicodeMixin):
         """
         if self.data.get('system', False):
             raise ModificationFailed('Cannot modify system element: %s' % self.name)
-        
+
         if not exception:
             exception = UpdateElementFailed
         else:
@@ -464,15 +463,18 @@ class ElementBase(RequestAction, UnicodeMixin):
 
         params = {
             'href': self.href,
-            'etag': self.etag
         }
         params.update(params=kwargs.pop('params', {})) # URI strings
-        
+
         if 'href' in kwargs:
             params.update(href=kwargs.pop('href'))
 
         if 'etag' in kwargs:
-            params.update(etag=kwargs.pop('etag'))
+            etag = kwargs.pop('etag')
+            if etag:
+                params.update(etag=etag)
+        else:
+            params.update(etag=self.etag)
 
         json = kwargs.pop('json', self.data) #if 'json' in kwargs else self.data
         name = kwargs.get('name', json.get('name'))

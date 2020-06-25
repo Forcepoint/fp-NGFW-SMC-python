@@ -66,7 +66,7 @@ class UserMixin(object):
         :raises UpdateElementFailed: failed with reason
         :return: None
         """
-        self.update(href=self.get_relation('enable_disable'))
+        self.update(href=self.get_relation('enable_disable'), etag=None)
 
     def change_password(self, password):
         """

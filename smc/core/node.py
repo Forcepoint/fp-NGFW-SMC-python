@@ -646,9 +646,9 @@ ApplianceInfo.__new__.__defaults__ = (None,) * len(ApplianceInfo._fields)
 
 
 interface_status = collections.namedtuple('InterfaceStatus',
-    'aggregate_is_active capability flow_control interface_id mtu name port speed_duplex status')
+    'aggregate_is_active capability flow_control interface_id mtu name port speed_duplex status aggregate_mode aggregate_slaves aggregate_master aggregate_master_status')
+interface_status.__new__.func_defaults = (None,) * len(interface_status._fields)
 
-   
 class InterfaceStatus(SerializedIterable):
     """
     An iterable that provides a collections interface to interfaces
@@ -683,8 +683,10 @@ class InterfaceStatus(SerializedIterable):
 
 def item_status(item):
     for items in item.items:
-        for status in items.get('statuses'): 
-            yield Status(**status)
+        statuses = items.get('statuses')
+        if statuses:
+            for status in statuses:
+                yield Status(**status)
                 
 
 label = collections.namedtuple('Label', 'name items')
