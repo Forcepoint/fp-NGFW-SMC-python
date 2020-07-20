@@ -18,6 +18,9 @@ To load the configuration for system, do::
     UpdatePackage(name=Update Package 887)
 
 """
+import time
+import logging
+from datetime import datetime
 from smc.elements.other import prepare_blacklist
 from smc.base.model import SubElement, Element, ElementCreator
 from smc.administration.updates import EngineUpgrade, UpdatePackage
@@ -27,6 +30,8 @@ from smc.base.util import millis_to_utc
 from smc.base.collection import sub_collection
 from smc.api.common import fetch_entry_point
 from smc.api.exceptions import ResourceNotFound
+
+logger = logging.getLogger(__name__)
 
 
 class System(SubElement):
@@ -57,6 +62,16 @@ class System(SubElement):
         return millis_to_utc(
             int(self.make_request(
                 resource='smc_time').get('value')))
+
+    @property
+    def massive_license_bind(self):
+        """
+        Bind licenses on all unlicensed nodes
+
+        """
+        return self.make_request(
+                method='create',
+                resource='massive_license_bind').get('value')
 
     @property
     def last_activated_package(self):
@@ -310,12 +325,23 @@ class System(SubElement):
         :raises: ActionCommandFailed
         :return: None
         """
-        self.make_request(
+        import_follower= Task(self.make_request(
             method='create',
             resource='import_elements',
             files={
                 'import_file': open(import_file, 'rb')
-                })
+                }))
+        in_progress = import_follower.data.in_progress
+        progress = import_follower.progress
+        while in_progress is True:
+            time.sleep(1)
+            logger.info("[{}] XML Import task => {}%"
+                  .format('{:%H:%M:%S.%f}'.format(datetime.now())[:-3], progress))
+            in_progress = import_follower.update_status().data.in_progress
+            progress = import_follower.update_status().progress
+
+        logger.info("[{}] XML Import task finished"
+              .format('{:%H:%M:%S.%f}'.format(datetime.now())[:-3]))
     
     def force_unlock(self, element):
         return self.make_request(

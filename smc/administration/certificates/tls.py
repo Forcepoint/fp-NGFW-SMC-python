@@ -101,7 +101,7 @@ from smc.administration.certificates.tls_common import ImportExportCertificate, 
 from smc.api.exceptions import CertificateImportError, ActionCommandFailed
 from smc.base.util import datetime_from_ms, element_resolver
 from smc.base.structs import NestedDict
-    
+from smc.compat import get_best_version
 
 class TLSProfile(Element):
     """
@@ -323,8 +323,7 @@ class TLSServerCredential(ImportExportIntermediate, ImportPrivateKey,
         return ElementCreator(cls, json)
         
     @classmethod
-    def create_csr(cls, name, common_name, public_key_algorithm='rsa',
-               signature_algorithm='rsa_sha_512', key_length=4096):
+    def create_csr(cls, *args, **kwargs):
         """
         Create a certificate signing request. 
         
@@ -344,6 +343,14 @@ class TLSServerCredential(ImportExportIntermediate, ImportPrivateKey,
         :raises CreateElementFailed: failed to create CSR
         :rtype: TLSServerCredential
         """
+        versioned_method = get_best_version(
+            ('6.6', cls._create_csr_66),
+            ('6.7', cls._create_csr_67))
+        return versioned_method(*args, **kwargs)
+
+    @classmethod
+    def _create_csr_66(cls, name, common_name, public_key_algorithm='rsa',
+                signature_algorithm='rsa_sha_512', key_length=4096, **kw):
         json = {
             'name': name,
             'info': common_name,
@@ -352,8 +359,24 @@ class TLSServerCredential(ImportExportIntermediate, ImportPrivateKey,
             'key_length': key_length,
             'certificate_state': 'initial'
         }
+        json.update(kw)
         return ElementCreator(cls, json)
-    
+
+    @classmethod
+    def _create_csr_67(cls, name, common_name, public_key_algorithm='rsa',
+                signature_algorithm='rsa_sha_512', key_length=4096, **kw):
+        json = {
+            'name': name,
+            'subject_name': common_name,
+            'public_key_algorithm': public_key_algorithm,
+            'signature_algorithm': signature_algorithm,
+            'key_length': key_length,
+            'certificate_state': 'initial'
+        }
+        json.update(kw)
+        return ElementCreator(cls, json)
+
+
     @classmethod
     def create_self_signed(cls, name, common_name, public_key_algorithm='rsa',
             signature_algorithm='rsa_sha_512', key_length=4096):

@@ -211,7 +211,8 @@ class ActiveDirectoryServer(ContactAddressMixin, Element):
         if internet_auth_service_enabled:
             ias = {'auth_port': kwargs.pop('auth_port', 1812),
                    'auth_ipaddress': kwargs.pop('auth_ipaddress', ''),
-                   'shared_secret': kwargs.pop('shared_secret')}
+                   'shared_secret': kwargs.pop('shared_secret'),
+                   'retries': kwargs.pop('retries', 2)}
             json.update(ias)
         
         json.update(kwargs)

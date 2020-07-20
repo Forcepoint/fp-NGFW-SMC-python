@@ -56,6 +56,7 @@ Then create the multilink specifying the multilink members::
 """
 from smc.base.model import Element, ElementCreator, ElementCache, ElementRef,\
     ElementList
+from smc.vpn.elements import ConnectionType
 from smc.base.util import element_resolver
 from smc.core.general import RankedDNSAddress
 from smc.compat import is_version_less_than_or_equal
@@ -90,7 +91,7 @@ class StaticNetlink(Element):
                           ('6.6', 'network_ref'))
 
     @classmethod
-    def create(cls, name, gateway, network, input_speed=None,
+    def create(cls, name, gateway, network, connection_type=None, input_speed=None,
                output_speed=None, domain_server_address=None,
                provider_name=None, probe_address=None,
                standby_mode_period=3600, standby_mode_timeout=30,
@@ -102,8 +103,11 @@ class StaticNetlink(Element):
         :param gateway_ref: gateway to map this netlink to. This can be an element
             or str href.
         :type gateway_ref: Router,Engine
+        :param connection_type: default QoS connection type. By default, we put Active.
+        :type connection_type: ConnectionType
         :param list ref: network/s associated with this netlink.
         :type ref: list(str,Element)
+		:param connection_type: the mandatory connection type from v6.5
         :param int input_speed: input speed in Kbps, used for ratio-based
             load-balancing
         :param int output_speed: output speed in Kbps,  used for ratio-based
@@ -146,6 +150,11 @@ class StaticNetlink(Element):
             json.update(ref=element_resolver(network))
         else:
             json.update(network_ref=element_resolver(network))
+            if not connection_type:
+                # by default, Active is used
+                json.update(connection_type_ref=element_resolver(ConnectionType("Active")))
+            else:
+                json.update(connection_type_ref=element_resolver(connection_type))
 
         if domain_server_address:
             r = RankedDNSAddress([])
