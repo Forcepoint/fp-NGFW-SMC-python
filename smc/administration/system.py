@@ -283,7 +283,7 @@ class System(SubElement):
                 'value': element_href})
         return result
 
-    def export_elements(self, filename='export_elements.zip', typeof='all'):
+    def export_elements(self, filename='export_elements.zip', typeof='all', timeout=5, max_tries=36):
         """
         Export elements from SMC.
 
@@ -301,7 +301,7 @@ class System(SubElement):
         if typeof not in valid_types:
             typeof = 'all'
         
-        return Task.download(self, 'export_elements', filename,
+        return Task.download(self, 'export_elements', filename, timeout=timeout, max_tries=max_tries,
             params={'recursive': True, 'type': typeof})
 
     def active_alerts_ack_all(self):

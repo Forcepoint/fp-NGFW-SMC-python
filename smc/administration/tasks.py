@@ -184,7 +184,7 @@ class Task(SubElement):
             **kw)
 
     @staticmethod
-    def download(self, resource, filename, **kw):
+    def download(self, resource, filename,timeout=5, max_tries=36,  **kw):
         """
         Start and return a Download Task
         
@@ -198,7 +198,7 @@ class Task(SubElement):
             params=params)
 
         return DownloadTask(
-            filename=filename, task=task)
+            timeout=timeout, max_tries=max_tries, filename=filename, task=task)
 
 
 class TaskOperationPoller(object):
@@ -314,8 +314,8 @@ class DownloadTask(TaskOperationPoller):
     A download task handles tasks that have files associated, for example
     exporting an element to a specified file.
     """
-    def __init__(self, filename, task, **kw):
-        super(DownloadTask, self).__init__(task, wait_for_finish=True, **kw)
+    def __init__(self, filename, task, timeout=5, max_tries=36, **kw):
+        super(DownloadTask, self).__init__(task, timeout=timeout, max_tries=max_tries, wait_for_finish=True, **kw)
         self.type = 'download_task'
         self.filename = filename
 
