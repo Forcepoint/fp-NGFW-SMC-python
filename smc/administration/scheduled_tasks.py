@@ -440,6 +440,42 @@ class UploadPolicyTask(ScheduledTaskMixin, Element):
             
         return ElementCreator(cls, json)
 
+class RemoteUpgradeTask(ScheduledTaskMixin, Element):
+    """
+    An Remote Upgrade task will Upgrade Firewall to a specified version. 
+    If an engine specified
+    
+    """
+    typeof = 'remote_upgrade_task'
+        
+    @classmethod
+    def create(cls, name, engines, package, comment=None, **kwargs):
+        """
+        Create an upload policy task associated with specific
+        engines. A policy reassigns any policies that might be
+        assigned to a specified engine. 
+        
+        :param str name: name of this task
+        :param engines: list of Engines for the task
+        :type engines: list(Engine)
+        :param str package: Package to assign to the engine/s
+        :param str comment: optional comment
+        :raises ElementNotFound: engine or policy specified does not exist
+        :raises CreateElementFailed: failure to create the task
+        :return: the task
+        :rtype: RemoteUpgradeTask
+        """
+        nodeList = []
+        for engine in engines:
+            for node in engine.nodes:
+                nodeList.append(node.href)
+        json = {
+            'name': name,
+            'engine_upgrade_filename': package,
+            'resources': nodeList,
+            'comment': comment}
+            
+        return ElementCreator(cls, json)
 
 class ValidatePolicyTask(ScheduledTaskMixin, Element):
     """
