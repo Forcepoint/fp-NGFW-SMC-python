@@ -183,6 +183,20 @@ class Task(SubElement):
             wait_for_finish=wait_for_finish,
             **kw)
 
+    def GetTaskPoller(self, **kw):
+        """
+        return a TaskOperationPoller for the Task.
+        
+        :rtype: TaskOperationPoller
+        """
+        timeout = kw.pop('timeout', 5)
+        wait_for_finish = kw.pop('wait_for_finish', True)
+        
+        return TaskOperationPoller(
+            task=self.data, timeout=timeout,
+            wait_for_finish=wait_for_finish,
+            **kw)
+
     @staticmethod
     def download(self, resource, filename,timeout=5, max_tries=36,  **kw):
         """
