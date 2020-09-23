@@ -4,6 +4,7 @@ import json
 import select
 import logging
 import threading
+import time
 from pprint import pformat
 from smc import session
 
@@ -46,7 +47,7 @@ class SMCSocketProtocol(websocket.WebSocket):
     client and the SMC. It provides the interface to monitor the query
     results and yield them back to the caller as a context manager.
     """
-    def __init__(self, query, sock_timeout=3, **kw):
+    def __init__(self, query, query_timeout=None, sock_timeout=3, **kw):
         """
         Initialize the web socket.
         
@@ -106,7 +107,7 @@ class SMCSocketProtocol(websocket.WebSocket):
         self.max_recv = kw.pop('max_recv', 0)
         
         super(SMCSocketProtocol, self).__init__(sslopt=sslopt, **kw)
-        
+        self.query_timeout = query_timeout
         self.query = query
         self.fetch_id = None
         # Inner thread used to keep socket select alive
@@ -176,6 +177,8 @@ class SMCSocketProtocol(websocket.WebSocket):
         """
         try:
             itr = 0
+            if(self.connected and self.query_timeout):
+                start = time.time()
             while self.connected:
                 
                 r, w, e = select.select(
@@ -207,7 +210,12 @@ class SMCSocketProtocol(websocket.WebSocket):
                     
                     yield message
                     if self.max_recv and self.max_recv <= itr:
-                        break   
+                        break
+                
+                if(self.query_timeout):
+                    progress = time.time()
+                    if(self.query_timeout < int(progress - start)):
+                        break
 
         except (Exception, KeyboardInterrupt, SystemExit, FetchAborted) as e:
             logger.info('Caught exception in receive: %s -> %s', type(e), str(e))
