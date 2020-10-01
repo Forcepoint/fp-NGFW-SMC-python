@@ -6,7 +6,6 @@ from smc.api.exceptions import CreateEngineFailed, CreateElementFailed,\
     ElementNotFound
 from smc.base.model import ElementCreator
 
-    
 class Layer3Firewall(Engine):
     """
     .. versionchanged:: 0.7.0
@@ -38,7 +37,7 @@ class Layer3Firewall(Engine):
                    location_ref=None, default_nat=False,
                    enable_antivirus=False, enable_gti=False, sidewinder_proxy_enabled=False,
                    enable_ospf=False, ospf_profile=None, comment=None, snmp=None,
-                   extra_opts=None, **kw):
+                   extra_opts=None, engine_type=None, **kw):
         """
         Create a Layer 3 Firewall providing all of the interface configuration.
         This method provides a way to fully create the engine and all interfaces
@@ -142,7 +141,7 @@ class Layer3Firewall(Engine):
                 snmp_agent=snmp_agent if snmp else None,
                 comment=comment, **extra_opts if extra_opts else {})
 
-            return ElementCreator(cls, json=engine)
+            return ElementCreator( engine_type if engine_type else cls, json=engine)
         
         except (ElementNotFound, CreateElementFailed) as e:
             raise CreateEngineFailed(e)
@@ -158,7 +157,7 @@ class Layer3Firewall(Engine):
                location_ref=None, enable_ospf=False,
                sidewinder_proxy_enabled=False,
                ospf_profile=None, snmp=None, comment=None, 
-               extra_opts=None, **kw):
+               extra_opts=None, engine_type=None, node_type='firewall_node', **kw):
         """ 
         Create a single layer 3 firewall with management interface and DNS. 
         Provide the `interfaces` keyword argument if adding multiple additional interfaces.
@@ -211,7 +210,7 @@ class Layer3Firewall(Engine):
         
         return Layer3Firewall.create_bulk(
             name=name,
-            node_type='firewall_node',
+            node_type=node_type,
             interfaces=interfaces,
             primary_mgt=mgmt_interface,
             domain_server_address=domain_server_address,
@@ -223,7 +222,7 @@ class Layer3Firewall(Engine):
             location_ref=location_ref,
             enable_ospf=enable_ospf,
             ospf_profile=ospf_profile, snmp=snmp,
-            comment=comment, extra_opts=extra_opts)  
+            comment=comment, engine_type=engine_type, extra_opts=extra_opts)
       
     @classmethod
     def create_dynamic(cls, name, interface_id,
@@ -239,7 +238,8 @@ class Layer3Firewall(Engine):
                        enable_antivirus=False,
                        sidewinder_proxy_enabled=False,
                        default_nat=False, comment=None, 
-                       extra_opts=None, **kw):
+                       extra_opts=None, engine_type=None,
+                       node_type='firewall_node', **kw):
         """
         Create a single layer 3 firewall with only a single DHCP interface. Useful
         when creating virtualized engine's such as in Microsoft Azure.
@@ -281,7 +281,7 @@ class Layer3Firewall(Engine):
         
         return Layer3Firewall.create_bulk(
             name=name,
-            node_type='firewall_node',
+            node_type=node_type,
             primary_mgt=interface_id,
             interfaces=interfaces,
             loopback_ndi=[loopback.data],
@@ -292,9 +292,65 @@ class Layer3Firewall(Engine):
             sidewinder_proxy_enabled=sidewinder_proxy_enabled,
             default_nat=default_nat,
             location_ref=location_ref,
-            comment=comment, extra_opts=extra_opts)
+            comment=comment, engine_type=engine_type, extra_opts=extra_opts)
 
-        
+
+class CloudSGSingleFW(Layer3Firewall):
+    """
+    Creates a Cloud Firewall with a default dynamic interface
+    To instantiate and create, call 'create_dynamic' classmethod as follows::
+
+        engine = Layer2Firewall.create(name='myinline',
+                                       mgmt_ip='1.1.1.1',
+                                       mgmt_network='1.1.1.0/24')
+    """
+    typeof = 'cloud_single_fw'
+
+    @classmethod
+    def create_dynamic(cls, name, interface_id,
+                       dynamic_index=1,
+                       reverse_connection=True,
+                       automatic_default_route=True,
+                       domain_server_address=None,
+                       loopback_ndi='127.0.0.1',
+                       location_ref=None,
+                       log_server_ref=None,
+                       zone_ref=None,
+                       enable_gti=False,
+                       enable_antivirus=False,
+                       sidewinder_proxy_enabled=False,
+                       default_nat=False, comment=None,
+                       extra_opts=None, **kw):
+        Layer3Firewall.create_dynamic(name, interface_id,
+                       dynamic_index,
+                       reverse_connection,
+                       automatic_default_route,
+                       domain_server_address,
+                       loopback_ndi,
+                       location_ref,
+                       log_server_ref,
+                       zone_ref,
+                       enable_gti,
+                       enable_antivirus,
+                       sidewinder_proxy_enabled,
+                       default_nat, comment,
+                       extra_opts, cls, 'cloud_fw_node', **kw)
+
+    @classmethod
+    def create(cls, name, mgmt_ip, mgmt_network,
+               mgmt_interface=0,
+               log_server_ref=None,
+               default_nat=False,
+               reverse_connection=False,
+               domain_server_address=None, zone_ref=None,
+               enable_antivirus=False, enable_gti=False,
+               location_ref=None, enable_ospf=False,
+               sidewinder_proxy_enabled=False,
+               ospf_profile=None, snmp=None, comment=None,
+               extra_opts=None, engine_type=None, node_type='firewall_node', **kw):
+        raise Exception("create method not supported by " + str(cls) + " use create_dynamic instead !")
+
+
 class Layer2Firewall(Engine):
     """
     Creates a Layer 2 Firewall with a default inline interface pair
@@ -369,6 +425,8 @@ class Layer2Firewall(Engine):
         except CreateElementFailed as e:
             raise CreateEngineFailed(e)
 
+class Layer2Cluster(Layer2Firewall):
+    typeof = 'layer2_cluster'
 
 class IPS(Engine):
     """
@@ -436,6 +494,8 @@ class IPS(Engine):
         except CreateElementFailed as e:
             raise CreateEngineFailed(e)
 
+class VirtualIPS(IPS):
+    typeof = 'virtual_ips'
 
 class Layer3VirtualEngine(Engine):
     """ 

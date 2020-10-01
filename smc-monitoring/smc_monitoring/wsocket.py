@@ -4,6 +4,7 @@ import json
 import select
 import logging
 import threading
+import time
 from pprint import pformat
 from smc import session
 
@@ -46,11 +47,13 @@ class SMCSocketProtocol(websocket.WebSocket):
     client and the SMC. It provides the interface to monitor the query
     results and yield them back to the caller as a context manager.
     """
-    def __init__(self, query, sock_timeout=3, **kw):
+    def __init__(self, query, query_timeout=None, sock_timeout=3, **kw):
         """
         Initialize the web socket.
         
         :param Query query: Query type from `smc_monitoring.monitors`
+        :param int query_timeout: length of time to wait on recieving web
+            socket results.
         :param int sock_timeout: length of time to wait on a select call
             before trying to receive data. For LogQueries, this should be
             short, i.e. 1 second. For other queries the default is 3 sec.
@@ -106,7 +109,7 @@ class SMCSocketProtocol(websocket.WebSocket):
         self.max_recv = kw.pop('max_recv', 0)
         
         super(SMCSocketProtocol, self).__init__(sslopt=sslopt, **kw)
-        
+        self.query_timeout = query_timeout
         self.query = query
         self.fetch_id = None
         # Inner thread used to keep socket select alive
@@ -176,6 +179,8 @@ class SMCSocketProtocol(websocket.WebSocket):
         """
         try:
             itr = 0
+            if(self.connected and self.query_timeout):
+                start = time.time()
             while self.connected:
                 
                 r, w, e = select.select(
@@ -204,10 +209,16 @@ class SMCSocketProtocol(websocket.WebSocket):
                         logger.debug('Received end message: %s' % message['end'])
                         yield message
                         break
-                    
+
                     yield message
                     if self.max_recv and self.max_recv <= itr:
-                        break   
+                        break
+
+                if(self.query_timeout):
+                    progress = time.time()
+                    if(self.query_timeout < int(progress - start)):
+                        logger.info('Socket recieve timeout')
+                        break
 
         except (Exception, KeyboardInterrupt, SystemExit, FetchAborted) as e:
             logger.info('Caught exception in receive: %s -> %s', type(e), str(e))
@@ -224,6 +235,6 @@ class SMCSocketProtocol(websocket.WebSocket):
                 self.event.set()
                 while self.thread.isAlive():
                     self.event.wait(1)
-            
+
             logger.info('Closed web socket connection normally.')
 
