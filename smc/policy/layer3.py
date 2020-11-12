@@ -199,6 +199,19 @@ class FirewallSubPolicy(Policy):
             self.get_relation('fw_ipv4_access_rules'),
             IPv4Rule)
 
+class FirewallIPv6SubPolicy(FirewallSubPolicy):
+    typeof = 'sub_ipv6_fw_policy'
+
+    @property
+    def fw_ipv6_access_rules(self):
+        """
+        IPv6 rule entry point
+
+        :rtype: rule_collection(IPv4Rule)
+        """
+        return rule_collection(
+            self.get_relation('fw_ipv6_access_rules'),
+            IPv6Rule)
 
 class FirewallTemplatePolicy(FirewallPolicy):
     """
