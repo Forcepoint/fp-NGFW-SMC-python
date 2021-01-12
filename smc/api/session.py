@@ -14,7 +14,8 @@ from smc.api.configloader import load_from_file, load_from_environ
 from smc.api.common import SMCRequest
 from smc.base.decorators import cached_property
 from smc.api.exceptions import ConfigLoadError, SMCConnectionError,\
-    UnsupportedEntryPoint, SessionManagerNotFound, SessionNotFound
+    UnsupportedEntryPoint, SessionManagerNotFound, SessionNotFound, \
+    SMCOperationFailure
 from smc.base.model import ElementFactory
 from requests.adapters import HTTPAdapter
 from urllib3 import Retry
@@ -395,6 +396,12 @@ class Session(object):
                 return self.current_user.name
             except AttributeError: # TODO: Catch ConnectionError? No session
                 pass
+            except SMCOperationFailure:
+                # Related to recent SMC update. It can failed in case user
+                # does not have Manage Administrator defined in his role.
+                logging.error("Failed to get username, please make sure you "
+                              "can have 'Manage Administrator' in your role")
+
         return hash(self)
     
     @cached_property
@@ -833,12 +840,27 @@ def get_api_version(base_url, api_version=None, timeout=10, verify=True):
     :rtype: float
     """
     versions = available_api_versions(base_url, timeout, verify)
-    
-    newest_version = max([float(i) for i in versions])
-    if newest_version <= 6.5:
+
+    # search min and max versions
+    min_version = "99.99"
+    max_version = "0.0"
+    for i in versions:
+        major, minor = str(i).split(".")
+        major_max, minor_max = str(max_version).split(".")
+        major_min, minor_min = str(min_version).split(".")
+
+        if int(major) >= int(major_max) and int(minor) > int(minor_max):
+            max_version = major+"."+minor
+
+        if int(major) <= int(major_min) and int(minor) < int(minor_min):
+            min_version = major+"."+minor
+
+    newest_version = max_version
+    major_newest, minor_newest = str(newest_version).split(".")
+    if int(major_newest) <= 6 and int(minor_newest) <= 5:
         best_version = newest_version
     else:
-        best_version = min([float(i) for i in versions])
+        best_version = min_version
 
     if api_version is None:
         api_version = best_version
@@ -846,5 +868,5 @@ def get_api_version(base_url, api_version=None, timeout=10, verify=True):
         if api_version not in versions:
             api_version = best_version
     
-    return str(api_version)
+    return api_version
 

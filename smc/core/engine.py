@@ -208,6 +208,10 @@ class Engine(Element):
         :rtype: LogServer
         """
         return Element.from_href(self.log_server_ref)
+
+    @log_server.setter
+    def log_server(self, value):
+        self.data.update(log_server_ref=location_helper(value))
     
     @property
     def location(self):
@@ -650,7 +654,7 @@ class Engine(Element):
             for record in query.fetch_as_element(**kw):
                 yield record
     
-    def add_route(self, gateway, network):
+    def add_route(self, gateway, network, payload=None):
         """
         Add a route to engine. Specify gateway and network.
         If this is the default gateway, use a network address of
@@ -661,15 +665,29 @@ class Engine(Element):
 
         :param str gateway: gateway of an existing interface
         :param str network: network address in cidr format
+        :param href payload: the payload to add route with href of element
+           Example:
+               {"gateway_ip": X.Y.Z.Z, "network_ip": A.B.C.D}
+               OR
+               {"gateway_ref": href, "network_ref": href}
         :raises EngineCommandFailed: invalid route, possibly no network
         :return: None
         """
-        self.make_request(
-            EngineCommandFailed,
-            method='create',
-            resource='add_route',
-            params={'gateway': gateway,
-                    'network': network})
+        if payload:
+            self.make_request(
+                EngineCommandFailed,
+                method='create',
+                resource='add_route',
+                json=payload)
+        else:
+            # Doing simple add route
+            self.make_request(
+                EngineCommandFailed,
+                method='create',
+                resource='add_route',
+                params={'gateway': gateway,
+                        'network': network},
+                payload={})
 
     @property
     def policy_route(self):

@@ -357,13 +357,18 @@ class LogField:
     EVENTTYPE=703 #: Type of event
     EVENTUSER=704 #: User who executed the action
     EVENTADDRESS=705 #: Notification destination
+    NEIGHBORINTERFACE=733 #: Interface
+    NEIGHBORPROTOCOL=734 #: Protocol
+    NEIGHBORL3DATA=735 #: IP Address
+    NEIGHBORL2DATA=736 #: Mac address
+    NEIGHBORSTATE=737 #: State
     LOGSEVERITY = 805 #: Severity
     SSLVPNSESSIONTYPETYPE = 808 #: SSL VPN session client type
     SSLVPNSESSIONMONRECEIVED = 809 #: Node's local time when the SSL VPN session was created
     SSLVPNSESSIONMONTIMEOUT = 810 #: Node's local time when the SSL VPN session will time-out
     SSLVPNSESSIONMONID = 811 #: Id of the User Session
     RADIUSACCOUNTINGTYPE=851 #: Radius Accounting Type
-    
+
     SITUATION=1000 #: The identifier of the situation that caused sending this event.   
     HTTPREQUESTHOST = 1586 #: HTTP request host
     IKECOOKIE = 3000
@@ -395,6 +400,7 @@ class DataType:
     BLACKLIST_LOG = 35
     L2FW_LOGS = 36
     SSL_VPN_SESSION_MONITORING = 38
+    NEIGHBOR_MONITORING = 40
 
     
 class Actions:

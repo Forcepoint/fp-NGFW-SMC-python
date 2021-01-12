@@ -133,14 +133,16 @@ class Group(GroupMixin, Element):
     typeof = 'group'
 
     @classmethod
-    def create(cls, name, members=None, comment=None):
+    def create(cls, name, members=None, comment=None, is_monitored=False):
         """
         Create the group
 
         :param str name: Name of element
         :param list members: group members by element names
-        :type members: str,Element 
+        :type members: str,Element
         :param str comment: optional comment
+        :param bool is_monitored: optional option
+        Enable or not monitoring of the group. Default: False
         :raises CreateElementFailed: element creation failed with reason
         :return: instance with meta
         :rtype: Group
@@ -148,10 +150,8 @@ class Group(GroupMixin, Element):
         elements = [] if members is None else element_resolver(members)
         json = {'name': name,
                 'element': elements,
-                'comment': comment}
-
-        return ElementCreator(cls, json)
-
+                'comment': comment,
+                'is_monitored': is_monitored}
 
 class ServiceGroup(GroupMixin, Element):
     """ 

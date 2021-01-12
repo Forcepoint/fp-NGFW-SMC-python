@@ -132,7 +132,8 @@ Create a no-encryption GRE route based VPN between two managed NGFWs::
         remote_endpoint=remote_gateway)
 
 """
-from smc.base.model import Element, ElementCreator, ElementRef
+from smc.base.model import Element, ElementCreator, ElementRef, SubElement
+from smc.base.collection import sub_collection
 from smc.vpn.elements import VPNProfile
 from smc.api.exceptions import CreateElementFailed, CreateVPNFailed
 from smc.core.engine import InternalEndpoint
@@ -440,6 +441,20 @@ class RouteVPN(Element):
         """
         return self.data.get('tunnel_mode')
 
+    @property
+    def tunnels(self):
+        """
+        Return all tunnels for this RBVPN in case of Tunnel Type 'VPN'.
+        This provides access to enabling/disabling for the linked endpoints.
+        List all tunnel mappings for this route vpn::
+
+            for tunnel in rb_vpn.tunnels:
+                print(tunnel.enabled)
+
+        :rtype: SubElementCollection(EndpointTunnel)
+        """
+        return sub_collection(
+            self.get_relation('gateway_endpoint_tunnel'), EndpointTunnel)
 
 class TunnelMonitoringGroup(Element):
     """
@@ -579,3 +594,39 @@ class TunnelEndpoint(object):
         or No Encryption Mode configurations.
         """
         return self.ip_address
+
+class EndpointTunnel(SubElement):
+    """
+    An Endpoint tunnel represents the point to point connection
+    between two IPSEC endpoints in a RouteVPN configuration.
+    This provides access to see the point to point connections,
+    whether the link is enabled.
+    """
+
+    def enable_disable(self):
+        """
+        Enable or disable the tunnel link between endpoints.
+
+        :raises UpdateElementFailed: failed with reason
+        :return: None
+        """
+        if self.enabled:
+            self.update(enabled=False)
+        else:
+            self.update(enabled=True)
+
+    @property
+    def enabled(self):
+        """
+        Whether the VPN link between endpoints is enabled
+
+        :rtype: bool
+        """
+        return self.data.get('enabled', False)
+
+    def __str__(self):
+        return '{0}(name={1})'.format(
+            self.__class__.__name__, self.name)
+
+    def __repr__(self):
+        return str(self)
