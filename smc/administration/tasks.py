@@ -96,6 +96,24 @@ class Task(SubElement):
         return self.data.get('progress', 0)
 
     @property
+    def success(self):
+        """
+        the task has succeed
+
+        :rtype: boolean
+        """
+        return self.data.get('success', 0)
+
+    @property
+    def last_message(self):
+        """
+        the last message returned by the task
+
+        :rtype: string
+        """
+        return self.data.get('last_message', 0)
+
+    @property
     def start_time(self):
         """
         Task start time in UTC datetime format

@@ -29,7 +29,7 @@ from smc.administration.tasks import Task
 from smc.base.util import millis_to_utc
 from smc.base.collection import sub_collection
 from smc.api.common import fetch_entry_point
-from smc.api.exceptions import ResourceNotFound
+from smc.api.exceptions import ResourceNotFound, ActionCommandFailed
 
 logger = logging.getLogger(__name__)
 
@@ -339,10 +339,17 @@ class System(SubElement):
                   .format('{:%H:%M:%S.%f}'.format(datetime.now())[:-3], progress))
             in_progress = import_follower.update_status().data.in_progress
             progress = import_follower.update_status().progress
+            succeed = import_follower.update_status().success
+            last_message = import_follower.update_status().last_message
 
-        logger.info("[{}] XML Import task finished"
+        if not succeed:
+            logger.info("[{}] XML Import task failed:{}"
+                        .format('{:%H:%M:%S.%f}'.format(datetime.now())[:-3], last_message))
+            raise ActionCommandFailed(last_message)
+
+        logger.info("[{}] XML Import task succeed"
               .format('{:%H:%M:%S.%f}'.format(datetime.now())[:-3]))
-    
+
     def force_unlock(self, element):
         return self.make_request(
             method='create',

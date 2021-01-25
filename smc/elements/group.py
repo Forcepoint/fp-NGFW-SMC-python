@@ -153,6 +153,9 @@ class Group(GroupMixin, Element):
                 'comment': comment,
                 'is_monitored': is_monitored}
 
+        return ElementCreator(cls, json)
+
+
 class ServiceGroup(GroupMixin, Element):
     """ 
     Represents a service group in SMC. Used for grouping
