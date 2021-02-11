@@ -522,6 +522,53 @@ class VPNBrokerInterfaceCollection(InterfaceCollection):
         vpn_broker_interface = VPNBrokerInterface(**interface)
         return self._engine.add_interface(vpn_broker_interface, **kw)
 
+    def add_cluster_virtual_interface(
+            self, interface_id, cluster_virtual=None,
+            vpn_broker_domain_ref=None, mac_address_postfix=None,
+            shared_secret=None, network_value=None, nodes=None,
+            zone_ref=None, comment=None, retrieve_routes=None,
+            adjust_antispoofing=None, **kw):
+        """
+        Add a VPN Broker interface on a clustered engine. For VPN Broker interfaces
+        on a cluster, you can specify a CVI only, NDI interfaces, or both.
+        This interface type is only supported on layer 3 firewall engines.
+        ::
+
+            Add a VPN Broker CVI and NDI:
+
+            engine.vpn_broker_interface.add_cluster_virtual_interface(
+                interface_id_id=3000,
+                cluster_virtual='4.4.4.1',
+                network_value='4.4.4.0/24',
+                nodes=nodes)
+
+            Add VPN Broker NDI's only:
+
+            engine.vpn_broker_interface.add_cluster_virtual_interface(
+                interface_id=3000,
+                nodes=nodes)
+
+            Add VPN Broker CVI only:
+
+            engine.vpn_broker_interface.add_cluster_virtual_interface(
+                interface_id=3000,
+                cluster_virtual='31.31.31.31',
+                network_value='31.31.31.0/24',
+                zone_ref='myzone')
+        """
+
+        interfaces = [{'cluster_virtual': cluster_virtual, 'network_value': network_value,
+                       'nodes': nodes if nodes else []}]
+        interface = {'interface_id': interface_id, 'interfaces': interfaces,
+                     'zone_ref': zone_ref, 'comment': comment,
+                     'shared_secret': shared_secret,
+                     'vpn_broker_domain_ref': vpn_broker_domain_ref,
+                     'mac_address_postfix': mac_address_postfix,
+                     'retrieve_routes': retrieve_routes,
+                     'adjust_antispoofing': adjust_antispoofing
+                     }
+        broker_interface = VPNBrokerInterface(**interface)
+        self._engine.add_interface(broker_interface, **kw)
 
 
 
