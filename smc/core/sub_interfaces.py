@@ -511,24 +511,7 @@ class LoopbackClusterInterface(ClusterVirtualInterface):
              if loopback.get('address') != self.address]
             
         self._engine.update()
-    
-    def add_node_loopback(self, nodes, ospf_area=None):
-        """
-        Add loopback interfaces to a cluster. When adding a loopback on a
-        cluster, every cluster node must have a loopback defined or you
-        can optionally configure a loopback CVI address.
-        
-        Nodes should be in the format::
-        
-            {'address': '127.0.0.10', 'nodeid': 1,
-             'address': '127.0.0.11', 'nodeid': 2}
-             
-        :param dict nodes: nodes defintion for cluster nodes
-        :param str ospf_area: optional OSPF area for this loopback
-        :raises EngineCommandFailed: failed creating loopback
-        """
-        pass
-    
+
     def add_cvi_loopback(self, address, ospf_area=None, **kw):
         """
         Add a loopback interface as a cluster virtual loopback. This enables
@@ -542,10 +525,20 @@ class LoopbackClusterInterface(ClusterVirtualInterface):
         :return: None
         """
         lb = self.create(address, ospf_area, **kw)
-       
+
         if self.typeof in self._engine.data:
-            self._engine.data[self.typeof].append(lb.data)
+            # there are existing entries
+            lbs = self._engine.data[self.typeof]
+
+            last_rank = 1
+            for l in lbs:
+                if l['rank'] > last_rank:
+                    last_rank = l['rank']
+            lb['rank'] = last_rank + 1
+            lbs.append(lb.data)
         else:
+            # it is the first entry
+            lb['rank'] = 1
             self._engine.data[self.typeof] = [lb.data]
         
         self._engine.update()
@@ -572,13 +565,55 @@ class LoopbackInterface(NodeInterface):
     def create(cls, address, rank=1, nodeid=1, ospf_area=None, **kwargs):
         return super(LoopbackInterface, cls).create(
             interface_id='Loopback Interface',
-            #rank=rank,
+            rank=rank,
             address=address,
             network_value='{}/32'.format(address),
             nodeid=nodeid,
             ospfv2_area_ref=ospf_area,
             **kwargs)
-    
+
+    def add_node_loopback(self, addresses, **kwargs):
+        """
+        Add a node loopback interface to this engine.
+
+        :param dict addresses: {nodeid: {'address':'127.0.0.1', 'ospf_area':ospfArea}, ...}
+        :raises UpdateElementFailed: failure to create loopback address
+        :return: None
+        """
+        engine_to_update = False
+
+        for nodeid in addresses:
+            lb_settings = addresses[nodeid]
+            # retrieve the correct node
+            node = None
+            for n in self._engine.nodes:
+                if n.data["nodeid"] == nodeid:
+                    node = n
+                    break
+            if not(node):
+                raise UpdateElementFailed("The specified nodeid {} is linked to none node".format(str(nodeid)))
+            # compute the correct rank value
+            last_rank = 1
+            lbs = []
+
+            if self.typeof in node.data:
+                lbs = node.data[self.typeof]
+                for l in lbs:
+                    if l['rank'] > last_rank:
+                        last_rank = l['rank']
+            else:
+                node.data[self.typeof] = lbs
+
+            ospfArea= None
+            if 'ospf_area' in lb_settings:
+                ospfArea = lb_settings['ospf_area']
+            lb = self.create(lb_settings['address'], last_rank + 1, nodeid, ospfArea, **kwargs)
+            lbs.append(lb.data)
+            engine_to_update = True
+
+        if engine_to_update:
+            self._engine.update()
+
     def add_single(self, address, rank=1, nodeid=1, ospf_area=None, **kwargs):
         """
         Add a single loopback interface to this engine. This is used
@@ -590,9 +625,8 @@ class LoopbackInterface(NodeInterface):
         :raises UpdateElementFailed: failure to create loopback address
         :return: None
         """
-        lb = self.create(address, rank, nodeid, ospf_area, **kwargs)
-        self._engine.nodes[0].data[self.typeof].append(lb.data)
-        self._engine.update()
+        lb_settings={nodeid:{'address':address, 'ospf_area':ospf_area}}
+        self.add_node_loopback(addresses=lb_settings, **kwargs)
     
     def delete(self):
         """

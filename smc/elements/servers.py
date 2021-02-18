@@ -6,6 +6,7 @@ from smc.elements.helpers import location_helper
 from smc.elements.other import ContactAddress
 from smc.api.exceptions import CreateElementFailed
 from smc.base.util import element_resolver
+from smc.administration.certificates import tls
             
 
 class MultiContactAddress(SubElement):
@@ -474,6 +475,77 @@ class InspectedService(SubElement):
     :ivar int port: the port for this service 
     """
     pass
+
+class ElasticsearchCluster(ContactAddressMixin, Element):
+    """
+    An ElasticsearchCluster server type element.
+    """
+    typeof = 'elasticsearch_cluster'
+    location = ElementRef('location_ref')
+
+    @classmethod
+    def create(cls, name, address, secondary=None,
+               port=9200, es_retention_period=30, es_shard_number=0,
+               es_replica_number=0, enable_cluster_sniffer=False,
+               location=None, comment=None,
+               tls_profile=None, use_internal_credentials=True,
+               tls_credentials=None):
+        """
+        Create a Elasticsearch Cluster Server element.
+
+        :param str name: Name of Elasticsearch Cluster
+        :param list address: address of element. Can be a single FQDN or comma
+        separated,list of IP addresses
+        :param list secondary: list of secondary IP addresses
+        :param int port: Default port is 9200
+        :param int es_retention_period: How much time logs will be kept
+        30days default
+        :param int es_shard_number: Auto by default, number of shards
+        :param int es_replica_number : number of ES replicas
+        :param bool enable_cluster_sniffer : Enable cluster sniffer (False
+        default)
+        :param str location: Specifies the location for the server if there
+        is a NAT device between the server and other SMC components.
+        :param str comment: Comment for Elasticsearch cluster Server element
+        :param str tls_profile: tls profile name to use
+        :param bool use_internal_credentials: use internal credentials
+        :param str tls_credentials: tls credentials name to use
+
+        :raises CreateElementFailed: Failed to create with reason
+        :rtype: ElasticsearchCluster
+        """
+        json = {
+            'name': name,
+            'secondary': secondary or [],
+            'port': port,
+            'es_retention_period': es_retention_period,
+            'es_shard_number': es_shard_number,
+            'es_replica_number': es_replica_number,
+            'es_enable_cluster_sniffer': enable_cluster_sniffer,
+            'comment': comment
+        }
+
+        addresses = address.split(',')
+        json.update(ip_address=addresses)
+        if location:
+            location_href= Location(location).href
+            json.update(location_ref=element_resolver(location))
+            json.update(location_ref=location_href)
+        if tls_profile:
+            tls_profile_ref = tls.TLSProfile(tls_profile).href
+            json.update(tls_profile=tls_profile_ref)
+        if tls_credentials:
+            tls_credentials_ref = tls.TLSServerCredential(tls_credentials).href
+            json.update(es_tls_settings={'use_internal_credentials':
+                                             use_internal_credentials,
+                                         'tls_credentials':
+                                             tls_credentials_ref})
+        else:
+            json.update(es_tls_settings={'use_internal_credentials':
+                                             use_internal_credentials})
+
+        return ElementCreator(cls, json)
+
 
 #     @classmethod
 #     def create(cls, service_type, port, comment=None):

@@ -169,10 +169,10 @@ class LoopbackCollection(BaseIterable):
         # Dispatch to instance methods but only for adding interfaces.
         # Makes this work: engine.loopback_interface.add
         if key.startswith('add_'):
-            if 'fw_cluster' not in self._engine.type:
-                return getattr(LoopbackInterface(None, self._engine), key)
-            else: # Cluster
+            if key == 'add_cvi_loopback':
                 return getattr(LoopbackClusterInterface(None, self._engine), key)
+            else: # NDI Loopback
+                return getattr(LoopbackInterface(None, self._engine), key)
         raise AttributeError('Cannot proxy to given method: %s for the '
             'following engine type: %s' % (key, self._engine.type))
         

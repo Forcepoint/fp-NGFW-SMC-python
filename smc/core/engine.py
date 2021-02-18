@@ -1084,7 +1084,7 @@ class Engine(Element):
             params=params)
         self._del_cache()
         
-    def refresh(self, timeout=3, wait_for_finish=False, **kw):
+    def refresh(self, timeout=3, wait_for_finish=False, preserve_connections=True, generate_snapshot=True, **kw):
         """
         Refresh existing policy on specified device. This is an asynchronous
         call that will return a 'follower' link that can be queried to
@@ -1098,13 +1098,15 @@ class Engine(Element):
         
         :param int timeout: timeout between queries
         :param bool wait_for_finish: poll the task waiting for status
+        :param bool preserve_connections: flag to preserve connections (True by default)
+        :param bool generate_snapshot: flag to generate snapshot (True by default)
         :raises TaskRunFailed: refresh failed, possibly locked policy
         :rtype: TaskOperationPoller
         """
         return Task.execute(self, 'refresh',
             timeout=timeout, wait_for_finish=wait_for_finish, **kw)
         
-    def upload(self, policy=None, timeout=5, wait_for_finish=False, **kw):
+    def upload(self, policy=None, timeout=5, wait_for_finish=False, preserve_connections=True, generate_snapshot=True, **kw):
         """
         Upload policy to engine. This is used when a new policy is required
         for an engine, or this is the first time a policy is pushed to an
@@ -1123,10 +1125,12 @@ class Engine(Element):
             policy
         :param bool wait_for_finish: poll the task waiting for status
         :param int timeout: timeout between queries
+        :param bool preserve_connections: flag to preserve connections (True by default)
+        :param bool generate_snapshot: flag to generate snapshot (True by default)
         :raises TaskRunFailed: upload failed with reason
         :rtype: TaskOperationPoller
         """
-        return Task.execute(self, 'upload', params={'filter': policy},
+        return Task.execute(self, 'upload', params={'filter': policy, 'preserve_connections': preserve_connections, 'generate_snapshot': generate_snapshot},
             timeout=timeout, wait_for_finish=wait_for_finish, **kw)
 
     def generate_snapshot(self, filename='snapshot.zip'):

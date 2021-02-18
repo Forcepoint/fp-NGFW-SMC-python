@@ -383,7 +383,9 @@ class RefreshPolicyTask(ScheduledTaskMixin, Element):
             'resources': [engine.href for engine in engines],
             'name': name,
             'comment': comment}
-        
+        if 'preserve_connections' in kwargs or 'snapshot_creation' in kwargs:
+            json.update({'preserve_connections': kwargs.pop('preserve_connections')})
+            json.update({'snapshot_creation': kwargs.pop('snapshot_creation')})
         if validate_policy:
             json.update(policy_validation_settings(**kwargs))
         
@@ -434,7 +436,9 @@ class UploadPolicyTask(ScheduledTaskMixin, Element):
             'policy': policy.href,
             'resources': [eng.href for eng in engines],
             'comment': comment}
-        
+        if 'preserve_connections' in kwargs or 'snapshot_creation' in kwargs:
+            json.update({'preserve_connections': kwargs.pop('preserve_connections')})
+            json.update({'snapshot_creation': kwargs.pop('snapshot_creation')})
         if validate_policy:
             json.update(policy_validation_settings(**kwargs))
             
@@ -492,7 +496,7 @@ class RefreshMasterEnginePolicyTask(ScheduledTaskMixin, Element):
     typeof = 'refresh_master_and_virtual_policy_task'
     
     @classmethod
-    def create(cls, name, master_engines, comment=None):
+    def create(cls, name, master_engines, comment=None, **kwargs):
         """
         Create a refresh task for master engines. 
         
@@ -500,6 +504,7 @@ class RefreshMasterEnginePolicyTask(ScheduledTaskMixin, Element):
         :param master_engines: list of master engines for this task
         :type master_engines: list(MasterEngine)
         :param str comment: optional comment
+        :param kwargs: to support new attributes like preserve_connections, snapshot_creation.
         :raises CreateElementFailed: failed to create the task, i.e. no
             valid engines provided
         :return: the task
@@ -510,6 +515,8 @@ class RefreshMasterEnginePolicyTask(ScheduledTaskMixin, Element):
             'comment': comment,
             'resources': [eng.href for eng in master_engines
                           if isinstance(eng, MasterEngine)]}
+        for k, v in kwargs.items():
+            json.update({k: v})
         
         return ElementCreator(cls, json)
 

@@ -45,7 +45,7 @@ class Policy(Element):
     inspection_policy = ElementRef('inspection_policy')
     file_filtering_policy = ElementRef('file_filtering_policy')
     
-    def upload(self, engine, timeout=5, wait_for_finish=False, **kw):
+    def upload(self, engine, timeout=5, wait_for_finish=False, preserve_connections=True, generate_snapshot=True, **kw):
         """
         Upload policy to specific device. Using wait for finish
         returns a poller thread for monitoring progress::
@@ -58,10 +58,12 @@ class Policy(Element):
             print("Task finished: %s" % poller.message())
 
         :param str engine: name of device to upload policy to
+        :param bool preserve_connections: flag to preserve connections (True by default)
+        :param bool generate_snapshot: flag to generate snapshot (True by default)
         :raises: TaskRunFailed
         :return: TaskOperationPoller
         """
-        return Task.execute(self, 'upload', params={'filter': engine},
+        return Task.execute(self, 'upload', params={'filter': engine}, json={'preserve_connections': preserve_connections, 'snapshot_creation': generate_snapshot},
             timeout=timeout, wait_for_finish=wait_for_finish, **kw)
 
     def force_unlock(self):
