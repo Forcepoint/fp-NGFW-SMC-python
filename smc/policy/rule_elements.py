@@ -326,8 +326,22 @@ class Action(NestedDict):
  
     @dos_protection.setter 
     def dos_protection(self, value): 
-        self.update(dos_protection=value) 
- 
+        self.update(dos_protection=value)
+
+    @property
+    def antispam(self):
+        """
+        Enable or disable anti-spam
+
+        :param bool value: True, False, None (inherit from continue rule)
+        :rtype: bool
+        """
+        return self.get('antispam')
+
+    @antispam.setter
+    def antispam(self, value):
+        self.update(antispam=value)
+
     @property 
     def scan_detection(self): 
         """ 
