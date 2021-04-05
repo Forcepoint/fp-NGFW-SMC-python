@@ -1,6 +1,6 @@
 from smc.base.model import Element, ElementCreator
 from smc.base.structs import NestedDict
-from smc.api.exceptions import ElementNotFound
+from smc.api.exceptions import ElementNotFound, InvalidRuleValue
 from smc.base.util import element_resolver
 from smc.compat import is_version_less_than_or_equal
 
@@ -707,6 +707,76 @@ class LogOptions(NestedDict):
     def user_logging(self, value):
         if value in ('off', 'default', 'enforced'):
             self.update(user_logging=value)
+
+
+class SourceVpn(NestedDict):
+
+    type_list = ('normal', 'no_vpn', 'mobile_vpn')
+
+    """
+    This represents The Match VPN Options.
+    The rule matches traffic from specific VPNs.
+    A sub part of Firewall Access Rule used for matching the source VPN.
+    """
+    def __init__(self, rule=None):
+        if rule is None:
+            match_vpn_options = dict(
+                match_type="no_vpn",
+                match_vpns=[])
+        else:
+            match_vpn_options = rule.data.get('match_vpn_options', {})
+        super(SourceVpn, self).__init__(data=match_vpn_options)
+
+    def __eq__(self, other):
+        if isinstance(other, SourceVpn):
+            if self.match_type != other.match_type:
+                return False
+            for values in ('match_vpns'):
+                if set(self.data.get(values, [])) != \
+                        set(other.data.get(values, [])):
+                    return False
+            return True
+        return False
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __str__(self):
+        return '{}(match_type={} match_vpns={})'.format(
+            self.__class__.__name__, self.match_type, self.match_vpns)
+
+    @property
+    def match_vpns(self):
+        """
+        The possible list of match vpns in case of normal match.
+
+        :return: list value: vpns or None
+        """
+        vpns = self.get('match_vpns')
+        return [Element.from_href(vpn) for vpn in vpns] if vpns is not None else None
+
+    @match_vpns.setter
+    def match_vpns(self, value):
+        self.update(match_vpns=value)
+
+    @property
+    def match_type(self):
+        """
+        Matches traffic based on the source VPN:
+        normal: the rule only matches traffic from the specified VPNs.
+        no_vpn: the rule only matches non-VPN traffic.
+        mobile_vpn: the rule only matches traffic from IPsec VPN client.
+
+        :return: str
+        """
+        return self.get('match_type')
+
+    @match_type.setter
+    def match_type(self, value):
+        if value in self.type_list:
+            self.update(match_type=value)
+        else:
+            raise InvalidRuleValue('match_type attribute {} is invalid! Should be part of {}'.format(value, self.type_list))
 
 
 class AuthenticationOptions(NestedDict):

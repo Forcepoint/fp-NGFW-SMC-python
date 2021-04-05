@@ -1169,6 +1169,20 @@ class Engine(Element):
     def __unicode__(self):
         return u'{0}(name={1})'.format(lookup_class(self.type).__name__, self.name)
 
+    def ldap_replication(self, enable):
+        """
+        Enable or disable LDAP replication
+
+        :raises EngineCommandFailed: the LDAP replication is already enabled or disabled
+        :param boolean enable: True enable the LDAP replication False disable it
+        """
+
+        self.make_request(
+            EngineCommandFailed,
+            method='update',
+            resource='ldap_replication',
+            params={'enable': enable})
+
 
 class VPNMappingCollection(BaseIterable):
     def __init__(self, vpns):

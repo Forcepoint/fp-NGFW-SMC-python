@@ -3,7 +3,7 @@ Module that represents server based configurations
 """
 from smc.base.model import SubElement, ElementCreator, Element, ElementRef
 from smc.elements.helpers import location_helper
-from smc.elements.other import ContactAddress
+from smc.elements.other import ContactAddress, Location
 from smc.api.exceptions import CreateElementFailed
 from smc.base.util import element_resolver
 from smc.administration.certificates import tls
@@ -528,8 +528,7 @@ class ElasticsearchCluster(ContactAddressMixin, Element):
         addresses = address.split(',')
         json.update(ip_address=addresses)
         if location:
-            location_href= Location(location).href
-            json.update(location_ref=element_resolver(location))
+            location_href = Location(location).href
             json.update(location_ref=location_href)
         if tls_profile:
             tls_profile_ref = tls.TLSProfile(tls_profile).href

@@ -824,7 +824,7 @@ Node
 ++++
 
 .. automodule:: smc.core.node
-   :members: Node
+   :members: Node, MasterNode
    :exclude-members: update
    :show-inheritance:
 
@@ -838,6 +838,7 @@ Appliance Status
 ****************
 
 .. autoclass:: smc.core.node.ApplianceStatus
+	:members:
 	:show-inheritance:
 
 ApplianceSwitchModule
@@ -928,7 +929,7 @@ Engine Types
 .. automodule:: smc.core.engines
 
 IPS
-+++
+++++
 
 .. autoclass:: IPS
    :members:
@@ -968,6 +969,13 @@ MasterEngineCluster
 
 .. autoclass:: MasterEngineCluster
 	:members:
+
+CloudSGSingleFW
++++++++++++++++
+
+.. autoclass:: CloudSGSingleFW
+	:members: create_dynamic
+
 
 Dynamic Routing Elements
 ------------------------

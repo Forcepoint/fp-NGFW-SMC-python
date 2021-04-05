@@ -15,11 +15,11 @@ For example, to load an engine and run node level commands::
 """
 import collections
 from smc.base.util import save_to_file, b64encode
-from smc.base.model import SubElement
+from smc.base.model import SubElement, Element
 from smc.core.sub_interfaces import LoopbackInterface
 from smc.api.exceptions import LicenseError, NodeCommandFailed
-from smc.base.structs import SerializedIterable
-        
+from smc.base.structs import SerializedIterable, NestedDict
+
 
 class Node(SubElement):
     """
@@ -278,11 +278,10 @@ class Node(SubElement):
 
         :rtype: ApplianceStatus
         """
-        result = self.make_request(
+        appliance_status = self.make_request(
             NodeCommandFailed,
             resource='status')
-
-        return ApplianceStatus(**result)
+        return ApplianceStatus(appliance_status)
     
     def appliance_info(self):
         """
@@ -297,8 +296,8 @@ class Node(SubElement):
         """
         if 'appliance_info' in self.data:
             return ApplianceInfo(**self.data['appliance_info'])
-        raise NodeCommandFailed(
-            'Appliance information is not available on this engine')
+        else:
+            raise NodeCommandFailed('Appliance information is not available on this engine')
         
     def status(self):
         """
@@ -312,7 +311,7 @@ class Node(SubElement):
             NodeCommandFailed,
             resource='status')
         
-        return ApplianceStatus(**result)
+        return ApplianceStatus(result)
 
     def go_online(self, comment=None):
         """
@@ -569,50 +568,108 @@ class Node(SubElement):
             resource='certificate_info')
 
 
-ApplianceStatus = collections.namedtuple('ApplianceStatus', 
-    'configuration_status dyn_up installed_policy name platform state status version '
-    'engine_node_status monitoring_state monitoring_status')      
- 
-"""
-Appliance status attributes define specifics about the hardware platform
-itself, including version, dynamic package, current configuration status
-and installed policy.
-Retrieve appliance status for engine nodes::
+class ApplianceStatus(NestedDict):
+    """
+    Appliance status attributes define specifics about the hardware platform
+    itself, including version, dynamic package, current configuration status
+    and installed policy.
+    Retrieve appliance status for engine nodes::
 
-    for node in engine.nodes:
-        node.health
+        for node in engine.nodes:
+            node.health
 
-:ivar str dyn_up: Dynamic update package version
-:ivar str installed_policy: Installed policy by name
-:ivar str name: Name of engine
-:ivar str platform: Underlying platform, x86, etc
-:ivar str version: Version of software installed
-:ivar str configuration_status:
+    .. versionchanged:: 1.0.1
+        added master_node since SMC version >= 6.10 API6.10, 6.9, 6.8
+    """
+    def __init__(self, data):
+        super(ApplianceStatus, self).__init__(data=data)
 
-    Valid values:
-        * Initial (no initial configuration file is yet generated)
-        * Declared (initial configuration file is generated)
-        * Configured (initial configuration is done with the engine)
-        * Installed (policy is installed on the engine)
+    def __str__(self):
+        str = ""
+        for key in self:
+            str += "{} = {}; ".format(key, self[key])
+        return str
 
-:ivar str status:
+    @property
+    def dyn_up(self):
+        """
+        :return: str dyn_up: Dynamic update package version
+        """
+        return self.get('dyn_up')
 
-    Valid values:
-        Not Monitored/Unknown/Online/Going Online/Locked Online/
-        Going Locked Online/Offline/Going Offline/Locked Offline/
-        Going Locked Offline/Standby/Going Standby/No Policy Installed
+    @property
+    def name(self):
+        """
+        :return: str name: Name of engine
+        """
+        return self.get('name')
 
-:ivar str state:
+    @property
+    def platform(self):
+        """
+        :return: str platform: Underlying platform, x86, etc
+        """
+        return self.get("platform")
 
-    Valid values:
-        INITIAL/READY/ERROR/SERVER_ERROR/NO_STATUS/TIMEOUT/
-        DELETED/DUMMY
-        
-.. versionchanged:: 0.6.2
-    Attribute status changed to monitoring_status and state to monitoring_state
-    in SMC 6.5
-"""
-ApplianceStatus.__new__.__defaults__ = (None,) * len(ApplianceStatus._fields)
+    @property
+    def version(self):
+        """
+        :return: str version: Version of software installed
+        """
+        return self.get("version")
+
+    @property
+    def configuration_status(self):
+        """
+        Valid values:
+            * Initial (no initial configuration file is yet generated)
+            * Declared (initial configuration file is generated)
+            * Configured (initial configuration is done with the engine)
+            * Installed (policy is installed on the engine)
+
+        :return: str configuration_status: configuration status
+        """
+        return self.get("configuration_status")
+
+    @property
+    def status(self):
+        """
+        str status:
+
+        Valid values:
+            Not Monitored/Unknown/Online/Going Online/Locked Online/
+            Going Locked Online/Offline/Going Offline/Locked Offline/
+            Going Locked Offline/Standby/Going Standby/No Policy Installed
+
+        :return:
+        """
+        return self.get("status")
+
+    @property
+    def state(self):
+        """
+        Valid values:
+            INITIAL/READY/ERROR/SERVER_ERROR/NO_STATUS/TIMEOUT/
+            DELETED/DUMMY
+        :return: str state: state of the Node
+        """
+        return self.get("state")
+
+    @property
+    def installed_policy(self):
+        """
+        :return: str installed_policy: Installed policy by name
+        """
+        return self.get('installed_policy')
+
+    @property
+    def master_node(self):
+        """
+        The master engine node for a virtual engine
+
+        :return: MasterNode: the master node or None
+        """
+        return Element.from_href(self.get('master_node')) if self.get('master_node') is not None else None
 
 
 ApplianceInfo = collections.namedtuple('ApplianceInfo', 
@@ -645,9 +702,9 @@ has made initial contact and when initial policy upload was made.
 ApplianceInfo.__new__.__defaults__ = (None,) * len(ApplianceInfo._fields)
 
 
-interface_status = collections.namedtuple('InterfaceStatus',
+InternalInterfaceStatus = collections.namedtuple('InterfaceStatus',
     'aggregate_is_active capability flow_control interface_id mtu name port speed_duplex status aggregate_mode aggregate_slaves aggregate_master aggregate_master_status')
-interface_status.__new__.func_defaults = (None,) * len(interface_status._fields)
+InternalInterfaceStatus.__new__.__defaults__ = (None,) * len(InternalInterfaceStatus._fields)
 
 class InterfaceStatus(SerializedIterable):
     """
@@ -669,8 +726,8 @@ class InterfaceStatus(SerializedIterable):
     
     def __init__(self, status):
         data = status.get('interface_status')
-        super(InterfaceStatus, self).__init__(data, interface_status)
-    
+        super(InterfaceStatus, self).__init__(data, InternalInterfaceStatus)
+
     def get(self, interface_id):
         """
         Get a specific interface by the interface id
@@ -821,3 +878,11 @@ class Debug(object):
         keys = sorted(self.__dict__)
         items = ("{}={!r}".format(k, self.__dict__[k]) for k in keys)
         return "{}({})".format(type(self).__name__, ", ".join(items))  
+
+
+class MasterNode(Node):
+    """
+    This represents an individual Master NGFW Engine node in the Security Management Client,
+    representing a device that runs firewall software as part of a Master NGFW Engine.
+    """
+    typeof = "master_node"

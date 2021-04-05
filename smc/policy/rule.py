@@ -19,6 +19,7 @@ Rule module is a base class for all access control and NAT rules.
                                        services (smc.policy.rule_elements.Service)
                                        action (smc.policy.rule_elements.Action)
                                        authentication_options (smc.policy.rule_elements.AuthenticationOptions)
+                                       match_vpn_options (smc.policy.rule_elements.SourceVpn)
                                        is_disabled
                                        disable
                                        enable
@@ -75,11 +76,12 @@ from smc.base.model import Element, SubElement, ElementCreator
 from smc.elements.other import LogicalInterface
 from smc.api.exceptions import ElementNotFound, MissingRequiredInput,\
     CreateRuleFailed, PolicyCommandFailed
-from smc.policy.rule_elements import Action, LogOptions, Destination, Source,\
-    Service, AuthenticationOptions, TimeRange
+from smc.policy.rule_elements import Action, LogOptions, Destination, Source, \
+    Service, AuthenticationOptions, TimeRange, SourceVpn
 from smc.base.util import element_resolver
 from smc.base.decorators import cacheable_resource
 from smc.core.resource import History
+from smc.compat import get_best_version
 
 
 class Rule(object):
@@ -172,6 +174,15 @@ class Rule(object):
         :rtype: AuthenticationOptions
         """
         return AuthenticationOptions(self)
+
+    @cacheable_resource
+    def match_vpn_options(self):
+        """
+        Read only match vpn options field
+
+        :rtype: SourceVpn
+        """
+        return SourceVpn(self)
 
     @property
     def comment(self):
@@ -437,8 +448,14 @@ class RuleCommon(object):
                     'Cannot find Logical interface specified '
                     ': {}'.format(logical_interfaces))
         return e
-    
+
     def _get_action(self, action):
+        versioned_method = get_best_version(
+            ('6.5', self._get_action_6_5),
+            ('6.6', self._get_action_6_6))
+        return versioned_method(action)
+
+    def _get_action_6_6(self, action):
         """
         Get the action field for a rule. In SMC 6.6 actions have to be in list
         format whereas in SMC < 6.6 they were string.
@@ -451,7 +468,10 @@ class RuleCommon(object):
             rule_action = action
         else:
             rule_action = Action()
-            rule_action.action = action
+            if type(action) == str:
+                rule_action.action = [action]
+            else:
+                rule_action.action = action
         
         valid_action = False
         if isinstance(rule_action.action, list):
@@ -463,6 +483,37 @@ class RuleCommon(object):
             raise CreateRuleFailed('Action specified is not valid for this '
                 'rule type; action: {}'.format(rule_action.action))
         
+        return rule_action
+
+    def _get_action_6_5(self, action):
+        """
+        Get the action field for a rule. In SMC 6.6 actions have to be in list
+        format whereas in SMC < 6.6 they were string.
+
+        :param str,list action: provided action in create constructor
+        :rtype: Action
+        :raises CreateRuleFailed: invalid rule based on rule
+        """
+        if isinstance(action, Action):
+            rule_action = action
+        else:
+            rule_action = Action()
+            if type(action) == str:
+                rule_action.action = action
+            else:
+                raise CreateRuleFailed('Action specified should be a str '
+                                       'rule type; action: {}'.format(action))
+
+        valid_action = False
+        if isinstance(rule_action.action, list):
+            valid_action = all(_action in self._actions for _action in rule_action.action)
+        else:
+            valid_action = rule_action.action in self._actions
+
+        if not valid_action:
+            raise CreateRuleFailed('Action specified is not valid for this '
+                                   'rule type; action: {}'.format(rule_action.action))
+
         return rule_action
 
 
@@ -526,7 +577,7 @@ class IPv4Rule(RuleCommon, Rule, SubElement):
     
     def create(self, name, sources=None, destinations=None,
                services=None, action='allow', log_options=None,
-               authentication_options=None, connection_tracking=None,
+               authentication_options=None, match_vpn_options=None, connection_tracking=None,
                is_disabled=False, vpn_policy=None, mobile_vpn=False,
                add_pos=None, after=None, before=None,
                sub_policy=None, comment=None, validate=True, **kw):
@@ -550,6 +601,7 @@ class IPv4Rule(RuleCommon, Rule, SubElement):
         :param LogOptions log_options: LogOptions object
         :param ConnectionTracking connection_tracking: custom connection tracking settings
         :param AuthenticationOptions authentication_options: options for auth if any
+        :param SourceVpn match_vpn_options: rule matches traffic from specific VPNs
         :param PolicyVPN,str vpn_policy: policy element or str href; required for
             enforce_vpn, use_vpn and apply_vpn actions
         :param bool mobile_vpn: if using a vpn action, you can set mobile_vpn to True and
@@ -606,11 +658,15 @@ class IPv4Rule(RuleCommon, Rule, SubElement):
         auth_options = AuthenticationOptions() if not authentication_options \
             else authentication_options
 
+        match_vpn_data = None if not match_vpn_options \
+            else match_vpn_options.data
+
         rule_values.update(
             name=name, comment=comment,
             action=rule_action.data,
             options=log_options.data,
             authentication_options=auth_options.data,
+            match_vpn_options=match_vpn_data,
             is_disabled=is_disabled, **kw)
 
         params = {'validate': False} if not validate else {}

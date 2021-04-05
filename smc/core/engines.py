@@ -300,9 +300,9 @@ class CloudSGSingleFW(Layer3Firewall):
     Creates a Cloud Firewall with a default dynamic interface
     To instantiate and create, call 'create_dynamic' classmethod as follows::
 
-        engine = Layer2Firewall.create(name='myinline',
-                                       mgmt_ip='1.1.1.1',
-                                       mgmt_network='1.1.1.0/24')
+        engine = CloudSGSingleFW.create_dynamic(interface_id=0,
+                                                name='Cloud Single firewall 1')
+
     """
     typeof = 'cloud_single_fw'
 

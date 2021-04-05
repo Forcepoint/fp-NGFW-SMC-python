@@ -36,7 +36,7 @@ Example rule deletion::
         if rule.name == 'mynewrule':
             rule.delete()
 """
-from smc.base.model import ElementCreator
+from smc.base.model import ElementCreator, LoadElement
 from smc.api.exceptions import CreatePolicyFailed, ElementNotFound, LoadPolicyFailed,\
     CreateElementFailed
 from smc.policy.policy import Policy
@@ -153,6 +153,21 @@ class FirewallPolicy(FirewallRule, Policy):
         except CreateElementFailed as err:
             raise CreatePolicyFailed(err)
 
+    def update(self, cautious_update=True, **kwargs):
+        """
+        Update Firewall Policy. By default this will load the etag from the API.
+        This is to handle cases where a subelement has changed the etag of the
+        policy. If the policy is updated prior to these additions then
+        cautious_update can be turned off.
+
+        :cautious_update: True to load etag from API before updating.
+        """
+        if cautious_update and 'etag' not in kwargs:
+            etag = LoadElement(href=self.href, only_etag=True)
+            result = super(FirewallPolicy, self).update(etag=etag, **kwargs)
+        else:
+            result = super(FirewallPolicy, self).update(**kwargs)
+        return result
 
 class FirewallSubPolicy(Policy):
     """
