@@ -2,6 +2,7 @@
 Module that represents server based configurations
 """
 from smc.base.model import SubElement, ElementCreator, Element, ElementRef
+from smc.base.structs import NestedDict
 from smc.elements.helpers import location_helper
 from smc.elements.other import ContactAddress, Location
 from smc.api.exceptions import CreateElementFailed
@@ -200,6 +201,116 @@ class ManagementServer(ContactAddressMixin, Element):
     typeof = 'mgt_server'
 
 
+class DataContext(Element):
+    """
+    This represents the Data Context.
+    """
+    typeof = "data_context"
+
+    @property
+    def info_data_tag(self):
+        return self.data.get("info_data_tag")
+
+
+class NetflowCollector(NestedDict):
+    """
+    Represents a Netflow collector.
+    This is a sub part of Log Server entity.
+    Log Servers can be configured to forward log data to external hosts. You can define which type
+    of log data you want to forward and in which format. You can also use Filters to specify in detail
+    which log data is forwarded.
+    """
+
+    def __init__(self, data_context, host, netflow_collector_port,
+                 netflow_collector_service, netflow_collector_version, filter=None):
+        dc = dict(data_context=element_resolver(data_context),
+                  filter=element_resolver(filter),
+                  host=element_resolver(host),
+                  netflow_collector_port=netflow_collector_port,
+                  netflow_collector_service=netflow_collector_service,
+                  netflow_collector_version=netflow_collector_version
+                  )
+        super(NetflowCollector, self).__init__(data=dc)
+
+    def __str__(self):
+        str = ""
+        str += "data_context = {}; ".format(self.data_context)
+        str += "filter = {}; ".format(self.filter)
+        str += "host = {}; ".format(self.host)
+        str += "netflow_collector_port = {}; ".format(self.netflow_collector_port)
+        str += "netflow_collector_service = {}; ".format(self.netflow_collector_service)
+        str += "netflow_collector_version = {}; ".format(self.netflow_collector_version)
+        return str
+
+    @property
+    def data_context(self):
+        """
+        The type of log data that is forwarded.
+        :rtype: DataContext
+        """
+        return Element.from_href(self.get('data_context')) if self.get('data_context') is not None else None
+
+    @property
+    def filter(self):
+        """
+        An optional local filter that defines which log data is forwarded. The
+        local filter is only applied to the log data that matches the Log
+        Forwarding rule.
+        :rtype: FilterExpression
+        """
+        return Element.from_href(self.get('filter')) if self.get('filter') is not None else None
+
+    @property
+    def host(self):
+        """
+        The Host element that represents the target host to which the log
+        data is forwarded.
+        :rtype: Host
+        """
+        return Element.from_href(self.get('host')) if self.get('host') is not None else None
+
+    @property
+    def netflow_collector_port(self):
+        """
+        The Port that is used for log forwarding. The default port used by
+        IPFIX/NetFlow data collectors is 2055.<br/>
+        <b>Note!</b> If you have to define an Access rule that allows traffic to the
+        target host, make sure that the Port you select is also used as the
+        Port in the Access rule.
+        :rtype: int
+        """
+        return self.data['netflow_collector_port']
+
+    @property
+    def netflow_collector_service(self):
+        """
+        The network protocol for forwarding the log data (udp/tcp/tcp_with_tls).<br/>
+        <b>Note!</b> If you have to define an Access rule that allows traffic to the
+        target host, make sure that the Service you specify is also used as
+        the Service in the Access rule.
+        :rtype: str
+        """
+        return self.data['netflow_collector_service']
+
+    @property
+    def netflow_collector_version(self):
+        """
+        The format for forwarding the log data:
+        <ul>
+        <li><i>cef</i>: Logs are forwarded in CEF format.</li>
+        <li><i>csv</i>: Logs are forwarded in CSV format.</li>
+        <li><i>leef</i>: Logs are forwarded in LEEF format.</li>
+        <li><i>netflow_v11</i>: Logs are forwarded in NetFlow format. The supported version is NetFlow v16.</li>
+        <li><i>ipfix</i>: Logs are forwarded in IPFIX (NetFlow v16) format.</li>
+        <li><i>xml</i>: Logs are forwarded in XML format.</li>
+        <li><i>esm</i>: Logs are forwarded in McAfee ESM format.</li>
+        </ul>
+        <b> Only csv, xml and esm are supported for Audit Forwarding from Mgt Server</b>
+        :rtype: str
+        """
+        return self.data['netflow_collector_version']
+
+
 class LogServer(ContactAddressMixin, Element):
     """
     Log Server elements are used to receive log data from the security engines
@@ -214,7 +325,53 @@ class LogServer(ContactAddressMixin, Element):
     """
     typeof = 'log_server'
 
-    
+    @property
+    def netflow_collector(self):
+        """
+        A collection of NetflowCollector
+
+        :rtype: list(NetflowCollector)DomainController
+        """
+        return [NetflowCollector(**nc) for nc in self.data.get('netflow_collector', [])]
+
+    def add_netflow_collector(self, netflow_collectors):
+        """
+        Add netflow collector/s to this log server.
+
+        :param netflow_collectors: netflow_collector/s to add to log server
+        :type netflow_collectors: list(netflow_collectors)
+        :raises UpdateElementFailed: failed updating log server
+        :return: None
+        """
+        if 'netflow_collector' not in self.data:
+            self.data['netflow_collector'] = {'netflow_collector':[]}
+
+        for p in netflow_collectors:
+            self.data['netflow_collector'].append(p.data)
+        self.update()
+
+    def remove_netflow_collector(self, netflow_collector):
+        """
+        Remove a netflow collector from this log server.
+
+        :param NetflowCollector netflow_collector: element to remove
+        :return: remove element if it exists and return bool
+        :rtype: bool
+        """
+        _netflow_collector = []
+        changed = False
+        for nf in self.netflow_collector:
+            if nf != netflow_collector:
+                _netflow_collector.append(nf.data)
+            else:
+                changed = True
+
+        if changed:
+            self.data['netflow_collector'] = _netflow_collector
+            self.update()
+
+        return changed
+
 class HttpProxy(Element):
     """
     An HTTP Proxy based element. Used in various areas of the configuration
@@ -484,9 +641,8 @@ class ElasticsearchCluster(ContactAddressMixin, Element):
     location = ElementRef('location_ref')
 
     @classmethod
-    def create(cls, name, address, secondary=None,
-               port=9200, es_retention_period=30, es_shard_number=0,
-               es_replica_number=0, enable_cluster_sniffer=False,
+    def create(cls, name, addresses, port=9200, es_retention_period=30,
+               es_shard_number=0,es_replica_number=0, enable_cluster_sniffer=False,
                location=None, comment=None,
                tls_profile=None, use_internal_credentials=True,
                tls_credentials=None):
@@ -494,9 +650,7 @@ class ElasticsearchCluster(ContactAddressMixin, Element):
         Create a Elasticsearch Cluster Server element.
 
         :param str name: Name of Elasticsearch Cluster
-        :param list address: address of element. Can be a single FQDN or comma
-        separated,list of IP addresses
-        :param list secondary: list of secondary IP addresses
+        :param list addresses: comma-separated list of one or more FQDNs or IP addresses
         :param int port: Default port is 9200
         :param int es_retention_period: How much time logs will be kept
         30days default
@@ -516,7 +670,6 @@ class ElasticsearchCluster(ContactAddressMixin, Element):
         """
         json = {
             'name': name,
-            'secondary': secondary or [],
             'port': port,
             'es_retention_period': es_retention_period,
             'es_shard_number': es_shard_number,
@@ -525,8 +678,8 @@ class ElasticsearchCluster(ContactAddressMixin, Element):
             'comment': comment
         }
 
-        addresses = address.split(',')
-        json.update(ip_address=addresses)
+        addresses_lst = addresses.split(',')
+        json.update(addresses=addresses_lst)
         if location:
             location_href = Location(location).href
             json.update(location_ref=location_href)

@@ -38,14 +38,8 @@ def get_best_version(*versions):
     sorted_versions = sorted(versions, key=lambda t:LooseVersion(t[0]))
     best_value = sorted_versions[0][1]
 
-    try:
-        smc_version = smc.administration.system.System().smc_version
-        smc_version = '.'.join(smc_version.split()[0].split('.')[:2])
-    except:
-        smc_version = smc.session.smc_version
-
     for version, value in sorted_versions:
-        if LooseVersion(version) > LooseVersion(smc_version):
+        if LooseVersion(version) > LooseVersion(smc.session.api_version):
             break
         best_value = value
 

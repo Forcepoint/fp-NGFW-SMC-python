@@ -15,7 +15,8 @@ For example, to load an engine and run node level commands::
 """
 import collections
 from smc.base.util import save_to_file, b64encode
-from smc.base.model import SubElement, Element
+from smc.base.model import SubElement, Element, ElementList
+from smc.compat import get_best_version
 from smc.core.sub_interfaces import LoopbackInterface
 from smc.api.exceptions import LicenseError, NodeCommandFailed
 from smc.base.structs import SerializedIterable, NestedDict
@@ -738,16 +739,27 @@ class InterfaceStatus(SerializedIterable):
         return super(InterfaceStatus, self).get(interface_id=interface_id)
 
 
-def item_status(item):
+def item_status_6_6(item):
     for items in item.items:
         statuses = items.get('statuses')
         if statuses:
             for status in statuses:
-                yield Status(**status)
-                
+                yield Status_6_6(**status)
 
-label = collections.namedtuple('Label', 'name items')
-Status = collections.namedtuple('Status', 'label param status sub_system value')
+
+def item_status_6_7(item):
+    for items in item.items:
+        statuses = items.get('statuses')
+        item_status = items.get('status')
+        if statuses:
+            for status in statuses:
+                yield (item_status, Status_6_7(**status))
+
+
+label_6_7 = collections.namedtuple('Label', 'name status items')
+label_6_6 = collections.namedtuple('Label', 'name items')
+Status_6_7 = collections.namedtuple('Status', 'label param sub_system value')
+Status_6_6 = collections.namedtuple('Status', 'label param status sub_system value')
 
 """ 
 Status fields for hardware status. These fields have generic titles which
@@ -788,39 +800,105 @@ class HardwareStatus(SerializedIterable):
         Status(label=u'Swap', param=u'Usage', status=-1, sub_system=u'File Systems', value=u'0.0%')
         Status(label=u'Swap', param=u'Size', status=-1, sub_system=u'File Systems', value=u'1887 MB')
     
+        Since SMC-API >= v6.7
+        ('OK', Status(label='Swap', param='Size', sub_system='File Systems', value='494 MB'))
+        ('WARNING', Status(label='Tmp', param='Usage', sub_system='File Systems', value='96.7%'))
+        ('WARNING', Status(label='Tmp', param='Size', sub_system='File Systems', value='997 MB'))
+
+        >>> for stats in node.hardware_status.sandbox_subsystem:
+        ...   stats
+        ...
+        ('WARNING', Status(label='Cloud connection', param='status', sub_system='Sandbox', value='1'))
+
     """
-    def __init__(self, status): 
-        data = status.get('hardware_statuses') 
-        super(HardwareStatus, self).__init__(data, label)
-    
+    def __init__66(self, status):
+        data = status.get('hardware_statuses')
+        super(HardwareStatus, self).__init__(data, label_6_6)
+
+    def __init__67(self, status):
+        data = status.get('hardware_statuses')
+        super(HardwareStatus, self).__init__(data, label_6_7)
+
+    def __init__(cls, *args, **kwargs):
+        versioned_method = get_best_version(
+            ('6.6', cls.__init__66),
+            ('6.7', cls.__init__67))
+        versioned_method(*args, **kwargs)
+
     def __repr__(self):
         items = [item.name for item in self]
         return "%s(%s)" % (self.__class__.__name__, ','.join(items))
     
     @property 
-    def logging_subsystem(self):
+    def logging_subsystem(cls, *args, **kwargs):
         """
         A collection of logging subsystem statuses
         
         :rtype: Status
         """
+        versioned_method = get_best_version(
+            ('6.6', cls._logging_subsystem_6_6),
+            ('6.7', cls._logging_subsystem_6_7))
+        return versioned_method(*args, **kwargs)
+
+    def _logging_subsystem_6_6(self):
         for item in self:
             if item.name.startswith('Logging'):
-                for s in item_status(item):
+                for s in item_status_6_6(item):
+                    yield s
+    def _logging_subsystem_6_7(self):
+        for item in self:
+            if item.name.startswith('Logging'):
+                for s in item_status_6_7(item):
                     yield s
 
     @property
-    def filesystem(self):
+    def sandbox_subsystem(cls, *args, **kwargs):
         """
-        A collection of filesystem related statuses
-        
+        A collection of sandbox subsystem statuses
+
         :rtype: Status
         """
+        versioned_method = get_best_version(
+            ('6.6', cls._sandbox_subsystem_6_6),
+            ('6.7', cls._sandbox_subsystem_6_7))
+        return versioned_method(*args, **kwargs)
+
+    def _sandbox_subsystem_6_6(self):
         for item in self:
-            if item.name.startswith('File System'):
-                for s in item_status(item):
+            if item.name.startswith('Sandbox'):
+                for s in item_status_6_6(item):
                     yield s
 
+    def _sandbox_subsystem_6_7(self):
+        for item in self:
+            if item.name.startswith('Sandbox'):
+                for s in item_status_6_7(item):
+                    yield s
+
+    @property
+    def filesystem(cls, *args, **kwargs):
+        """
+        A collection of filesystem related statuses
+
+        :rtype: Status
+        """
+        versioned_method = get_best_version(
+            ('6.6', cls._filesystem_6_6),
+            ('6.7', cls._filesystem_6_7))
+        return versioned_method(*args, **kwargs)
+
+    def _filesystem_6_6(self):
+        for item in self:
+            if item.name.startswith('File System'):
+                for s in item_status_6_6(item):
+                    yield s
+
+    def _filesystem_6_7(self):
+        for item in self:
+            if item.name.startswith('File System'):
+                for s in item_status_6_7(item):
+                    yield s
 
 class Debug(object):
     """

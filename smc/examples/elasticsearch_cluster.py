@@ -6,7 +6,6 @@ Create an Elasticsearch Cluster
         :param str name: Name of Elasticsearch Cluster
         :param list address: address of element. Can be a single FQDN or comma
         separated,list of IP addresses
-        :param list secondary: list of secondary IP addresses
         :param int port: Default port is 9200
         :param int es_retention_period: How much time logs will be kept
         30days default
@@ -34,7 +33,7 @@ if __name__ == '__main__':
                   api_key='aAAaa')
 
     es_server = ElasticsearchCluster.create(name='ES7',
-                                            address='1.2.3.4',
+                                            addresses='1.2.3.4,demo.dns.net'
                                             enable_cluster_sniffer=True,
                                             es_replica_number=10,
                                             es_retention_period=-1,

@@ -14,7 +14,7 @@ if __name__ == '__main__':
     URLSMC='http://localhost:8082'
     APIKEYSMC='HuphG4Uwg4dN6TyvorTR0001'
     try:
-        session.login(url=URLSMC, api_key=APIKEYSMC, verify=False, timeout=120, api_version='6.10')
+        session.login(url=URLSMC, api_key=APIKEYSMC, verify=False, timeout=120, api_version='6.9')
     except BaseException as exception_retournee:
         sys.exit(-1)
 
@@ -23,6 +23,12 @@ if __name__ == '__main__':
 try:
     virtual_engine = Layer3VirtualEngine("Dubai Virtual 1")
     for node in virtual_engine.nodes:
+        for stats in node.hardware_status.filesystem:
+            print("hardware status.filesystem={}".format(stats))
+        for stats in node.hardware_status.logging_subsystem:
+            print("hardware status.logging_subsystem={}".format(stats))
+        for stats in node.hardware_status.sandbox_subsystem:
+            print("hardware status.sandbox_subsystem={}".format(stats))
         for stats in node.interface_status:
             print("interface status={}".format(stats))
         print("health=>Master Node={}".format(node.health.master_node))
