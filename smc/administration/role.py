@@ -37,13 +37,14 @@ attribute::
 
     >>> role = Role('newrole')
     >>> role.permissions
-    [{'alert_mgmt': False}, {'send_advanced_commands': False}, {'license_mgmt': False}, {'element_edit': False},
-     {'view_edit_report': False}, {'view_system_alerts': False}, {'view_logs': False}, {'vpn_mgmt': False},
-     {'log_pruning_mgmt': False}, {'updates_and_upgrades_mgmt': False}, {'auth_server_user_mgmt': False},
-     {'view_audit': False}, {'element_delete': False}, {'element_create': False}, {'upload_policy': False},
-     {'send_commands': False}, {'backup_mgmt': False}, {'element_view_content': True}, {'log_mgmt': False},
-     {'bookmark_manage': True}, {'admin_mgmt': False}, {'name': 'newrole'}, {'overview_manage': True},
-     {'internal_user_mgmt': False}, {'refresh_policy': False}]
+    [{'alert_mgmt': False}, {'send_advanced_commands': False}, {'license_mgmt': False},
+     {'element_edit': False}, {'view_edit_report': False}, {'view_system_alerts': False},
+     {'view_logs': False}, {'vpn_mgmt': False}, {'log_pruning_mgmt': False},
+     {'updates_and_upgrades_mgmt': False}, {'auth_server_user_mgmt': False}, {'view_audit': False},
+     {'element_delete': False}, {'element_create': False}, {'upload_policy': False},
+     {'send_commands': False}, {'backup_mgmt': False}, {'element_view_content': True},
+     {'log_mgmt': False}, {'bookmark_manage': True}, {'admin_mgmt': False}, {'name': 'newrole'},
+     {'overview_manage': True}, {'internal_user_mgmt': False}, {'refresh_policy': False}]
 
 Then enable specific roles by specifying the keys to enable::
 
@@ -52,12 +53,12 @@ Then enable specific roles by specifying the keys to enable::
 Also disable specific roles::
 
     >>> role.disable(['element_create', 'upload_policy'])
-    
+
 Once modification is complete, call update on the role::
 
     >>> role.update()
     'http://172.18.1.151:8082/6.4/elements/role/10'
-    
+
 """
 from smc.base.model import Element, ElementCreator
 
@@ -68,49 +69,50 @@ class Role(Element):
     be applied to specific elements (Engines, Policies or Access Control
     Lists).
     """
-    typeof = 'role'
-    _reserved = ('comment', 'key', 'link', 'name', 'read_only', 'system')
- 
+
+    typeof = "role"
+    _reserved = ("comment", "key", "link", "name", "read_only", "system")
+
     @classmethod
     def create(cls, name, comment=None):
         """
         Create a new role. The role will not have any permissions by default
         so it will be required to call enable on the role after creation.
-        
+
         :param str name: name of role
         :param str comment: comment for role
         :raises CreateElementFailed: failed to create role
         :rtype: Role
         """
-        json = {'name': name, 'comment': comment}
+        json = {"name": name, "comment": comment}
         return ElementCreator(cls, json)
-    
+
     def enable(self, values):
         """
         Enable specific permissions on this role. Use :py:attr:`~permissions` to
         view valid permission settings and current value/s. Change is committed
         immediately.
-        
+
         :param list values: list of values by allowed types
         :return: None
         """
         for value in values:
             if value in self.data:
                 self.data[value] = True
-    
+
     def disable(self, values):
         """
         Disable specific permissions on this role. Use :py:attr:`~permissions` to
         view valid permission settings and current value/s. Change is committed
         immediately.
-        
+
         :param list values: list of values by allowed types
         :return: None
         """
         for value in values:
             if value in self.data:
                 self.data[value] = False
-    
+
     @property
     def permissions(self):
         """
@@ -118,7 +120,7 @@ class Role(Element):
         returned as a list of dict items, {permission: state}. State for the
         permission is either True or False. Use :meth:`~enable` and
         :meth:`~disable` to toggle role settings.
-        
+
         :return: list of permission settings
         :rtype: list(dict)
         """
@@ -127,4 +129,3 @@ class Role(Element):
             if permission not in self._reserved:
                 permissions.append({permission: value})
         return permissions
-            

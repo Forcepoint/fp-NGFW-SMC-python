@@ -14,29 +14,30 @@ def datetime_to_ms(dt):
     be a UTC time. The SMC stores all times in UTC and will do the
     time conversions based on the local timezone.
     Example of converting a datetime to milliseconds::
-    
+
         utc_time = datetime.strptime("2018-06-04T00:00:00", "%Y-%m-%dT%H:%M:%S")
         datetime_to_ms(utc_time)
-    
+
     :param dt datetime: pass in python datetime object.
     :return: value representing the datetime in milliseconds
     :rtype: int
     """
     return int(time.mktime(dt.timetuple()) * 1000)
-    
+
 
 def datetime_from_ms(ms):
     """
     Convenience to return datetime from milliseconds. Return in
     UTC time.
-    
+
     :param int ms: milliseconds to convert into datetime object
     :return: datetime from ms
     :rtype: datetime
     """
     try:
-        return datetime.datetime.fromtimestamp(ms/1000.0)
-    except TypeError: # SMC version 6.2 returns in invalid format (2018-01-09T00:58:41Z)
+        return datetime.datetime.fromtimestamp(ms / 1000.0)
+    # SMC version 6.2 returns in invalid format (2018-01-09T00:58:41Z)
+    except TypeError:
         return ms
 
 
@@ -44,12 +45,12 @@ def millis_to_utc(millis):
     """
     Given milliseconds, convert to datetime object in UTC. This will
     also use the systems local timezone when displaying.
-    
+
     :param int millis: milliseconds
     :return datetime using local system time conversion
     :rtype: datetime
     """
-    return datetime.datetime(1970, 1, 1) + datetime.timedelta(milliseconds=millis) 
+    return datetime.datetime(1970, 1, 1) + datetime.timedelta(milliseconds=millis)
 
 
 def save_to_file(filename, content):
@@ -63,6 +64,7 @@ def save_to_file(filename, content):
     :raises IOError: permissions issue saving, invalid directory, etc
     """
     import os.path
+
     path = os.path.abspath(filename)
     with open(path, "w") as text_file:
         text_file.write("{}".format(content))
@@ -108,15 +110,16 @@ def element_default(clazz, default_name, exact_match=False):
     Some element defaults are provided by SMC. Where they are not provided,
     supply a simple mechanism to retrieve the default first match by
     class and name
-    
+
     :param Element clazz: must be of type Element
     :param str default_name: name to search
     :param bool exact_match: whether match can be fuzzy or exact
     :return: the href of the element or None
-    """ 
-    return getattr(clazz.objects.filter(default_name, exact_match=exact_match)\
-        .first(), 'href', None)
-        
+    """
+    return getattr(
+        clazz.objects.filter(default_name, exact_match=exact_match).first(), "href", None
+    )
+
 
 def merge_dicts(dict1, dict2, append_lists=False):
     """
@@ -138,8 +141,7 @@ def merge_dicts(dict1, dict2, append_lists=False):
             # The value in dict1 must be a list in order to append new
             # values onto it. Don't add duplicates.
             if key in dict1 and isinstance(dict1[key], list):
-                dict1[key].extend(
-                    [k for k in dict2[key] if k not in dict1[key]])
+                dict1[key].extend([k for k in dict2[key] if k not in dict1[key]])
             else:
                 dict1[key] = dict2[key]
         else:
@@ -151,15 +153,15 @@ def is_subdict(small, big):
     Check if one dict is a subset of another with matching keys and values.
     Used for 'flat' dictionary comparisons such as in comparing interface
     settings. This should work on both python 2 and 3.
-    
+
     See: https://docs.python.org/2/reference/expressions.html#value-comparisons
-    
+
     :rtype: bool
     """
     return dict(big, **small) == big
-    
-    
-def unicode_to_bytes(s, encoding='utf-8', errors='replace'):
+
+
+def unicode_to_bytes(s, encoding="utf-8", errors="replace"):
     """
     Helper to convert unicode strings to bytes for data that needs to be
     written to on output stream (i.e. terminal)
@@ -176,15 +178,15 @@ def unicode_to_bytes(s, encoding='utf-8', errors='replace'):
 def b64encode(source):
     """
     Base64 encoding for python 2 and 3
-    
+
     :rtype: base64 content
     """
     if compat.PY3:
-        source = source.encode('utf-8')
-    return base64.b64encode(source).decode('utf-8')
+        source = source.encode("utf-8")
+    return base64.b64encode(source).decode("utf-8")
 
 
-def bytes_to_unicode(s, encoding='utf-8', errors='replace'):
+def bytes_to_unicode(s, encoding="utf-8", errors="replace"):
     """
     Helper to convert byte string to unicode string for user based input
 
@@ -194,9 +196,9 @@ def bytes_to_unicode(s, encoding='utf-8', errors='replace'):
     :return: unicode utf-8 string
     """
     if compat.PY3:
-        return str(s, 'utf-8') if isinstance(s, bytes) else s
+        return str(s, "utf-8") if isinstance(s, bytes) else s
     return s if isinstance(s, unicode) else s.decode(encoding, errors)
-        
+
 
 def import_submodules(package, recursive=True):
     """
@@ -211,11 +213,12 @@ def import_submodules(package, recursive=True):
     """
     import importlib
     import pkgutil
+
     if isinstance(package, str):
         package = importlib.import_module(package)
     results = {}
     for _loader, name, is_pkg in pkgutil.walk_packages(package.__path__):
-        full_name = package.__name__ + '.' + name
+        full_name = package.__name__ + "." + name
         results[full_name] = importlib.import_module(full_name)
         if recursive and is_pkg:
             results.update(import_submodules(full_name))

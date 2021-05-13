@@ -1,6 +1,6 @@
-'''
+"""
 Exceptions Module
-'''
+"""
 import smc.api.web
 from smc.base.util import unicode_to_bytes
 
@@ -17,10 +17,12 @@ class SessionNotFound(SMCException):
 
 
 class SessionManagerNotFound(Exception):
-    def __init__(self, message=''):
-        msg = 'A session manager was not found for this session. This generally means '\
-        'the session was not obtained through the standard session factory or the session '\
-        'manager may have been replaced. '
+    def __init__(self, message=""):
+        msg = (
+            "A session manager was not found for this session. This generally means "
+            "the session was not obtained through the standard session factory or the session "
+            "manager may have been replaced. "
+        )
         _msg = message or msg
         super(SessionManagerNotFound, self).__init__(_msg)
 
@@ -41,7 +43,7 @@ class SMCConnectionError(SMCException):
 
 
 class SMCOperationFailure(SMCException):
-    """ Exception class for storing results from calls to the SMC
+    """Exception class for storing results from calls to the SMC
     This is thrown for HTTP methods that do not return the expected HTTP
     status code. See each http_* method in :py:mod:`smc.api.web` for
     expected success status
@@ -70,14 +72,14 @@ class SMCOperationFailure(SMCException):
     def _unpack_response(self):
         details = None
         self.code = self.response.status_code
-        if self.response.headers.get('content-type') == 'application/json':
+        if self.response.headers.get("content-type") == "application/json":
             try:
                 data = self.response.json()
             except ValueError:
-                message = 'No valid message returned from SMC server'
+                message = "No valid message returned from SMC server"
             else:
-                message = data.get('message', None)
-                details = data.get('details', None)
+                message = data.get("message", None)
+                details = data.get("details", None)
         else:  # it's not json
             if self.response.text:
                 message = self.response.text
@@ -87,23 +89,26 @@ class SMCOperationFailure(SMCException):
         self.smcresult.code = self.code
 
         if details:
-            details = unicode_to_bytes(' '.join(details)) \
-                if isinstance(details, list) else unicode_to_bytes(details)
+            details = (
+                unicode_to_bytes(" ".join(details))
+                if isinstance(details, list)
+                else unicode_to_bytes(details)
+            )
             # Some error messages from SMC include line breaks
-            details = details.replace('\n', ' ').rstrip()
+            details = details.replace("\n", " ").rstrip()
 
         if message:
             message = unicode_to_bytes(message)
 
         if message and details:
-            self.smcresult.msg = '{} {}'.format(message, details)
+            self.smcresult.msg = "{} {}".format(message, details)
         elif details:
             self.smcresult.msg = details
         else:
             self.smcresult.msg = message
 
     def __repr__(self):
-        return 'SMCOperationFailure(response=%s)' % (self.response)
+        return "SMCOperationFailure(response=%s)" % (self.response)
 
 
 class CertificateError(SMCException):
@@ -134,7 +139,7 @@ class CreateEngineFailed(SMCException):
 
 
 class LoadEngineFailed(SMCException):
-    """ Thrown when attempting to load an engine that does not
+    """Thrown when attempting to load an engine that does not
     exist
     """
 
@@ -217,7 +222,7 @@ class MissingDependency(SMCException):
     """
     A dependency is missing for the given operation.
     """
-    
+
 
 class ActionCommandFailed(SMCException):
     """
@@ -293,7 +298,7 @@ class UnsupportedInterfaceType(SMCException):
     when an attempt is made to enumerate interfaces for an engine type missing
     a reference to an unsupported interface type
     """
-    
+
 
 class TaskRunFailed(SMCException):
     """
@@ -301,7 +306,7 @@ class TaskRunFailed(SMCException):
     from SMC is a failure, possibly due to an incorrect input (i.e. missing policy),
     then this exception will be thrown
     """
-    
+
 
 class LicenseError(SMCException):
     """
@@ -310,7 +315,7 @@ class LicenseError(SMCException):
     For node licensing specific actions, see:
     :py:class: `smc.core.node.Node`
     """
-    
+
 
 class NodeCommandFailed(SMCException):
     """
@@ -320,7 +325,7 @@ class NodeCommandFailed(SMCException):
     For all node specific command actions, see:
     :py:class: `smc.core.node.Node`
     """
-    
+
 
 class EngineCommandFailed(SMCException):
     """
@@ -328,16 +333,16 @@ class EngineCommandFailed(SMCException):
     blacklist entries, flushing blacklist or adding routes. This exception will be
     thrown if the SMC API responds with any sort of error and wrap the response
     """
-    
+
 
 class InterfaceNotFound(SMCException):
     """
     Returned when attempting to fetch an interface directly
     """
-    
+
+
 class UserElementNotFound(SMCException):
     """
     Raised when attempting to find a user element that cannot be found in a
     mapped database (internal or external LDAP)
     """
-    

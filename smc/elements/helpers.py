@@ -7,7 +7,7 @@ from smc.administration.system import AdminDomain
 from smc.elements.other import LogicalInterface, Location
 from smc.api.exceptions import ElementNotFound
 from smc.base.collection import Search
-    
+
 
 def location_helper(name, search_only=False):
     """
@@ -22,25 +22,24 @@ def location_helper(name, search_only=False):
         do not create
     :return str href: href of location if search_only is not False
     :rtype: str or None
-    """ 
+    """
     try:
         return name.href
     except AttributeError:
-        if name and name.startswith('http'):
+        if name and name.startswith("http"):
             return name
     except ElementNotFound:
-        return Location.create(name=name.name).href if not \
-            search_only else None
-        
+        return Location.create(name=name.name).href if not search_only else None
+
     # Get all locations; tmp to support earlier 6.x versions.
     if name is not None:
-        locations = [location for location in Search.objects.entry_point(
-            'location') if location.name == name]
+        locations = [
+            location for location in Search.objects.entry_point("location") if location.name == name
+        ]
         if not locations:
-            return Location.create(name=name).href if not search_only \
-                else None
+            return Location.create(name=name).href if not search_only else None
         return locations[0].href
-        
+
 
 def zone_helper(zone):
     """
@@ -54,10 +53,10 @@ def zone_helper(zone):
         return None
     elif isinstance(zone, Zone):
         return zone.href
-    elif zone.startswith('http'):
+    elif zone.startswith("http"):
         return zone
     return Zone.get_or_create(name=zone).href
-    
+
 
 def logical_intf_helper(interface):
     """
@@ -69,10 +68,10 @@ def logical_intf_helper(interface):
     :return str href: href of logical interface
     """
     if interface is None:
-        return LogicalInterface.get_or_create(name='default_eth').href
+        return LogicalInterface.get_or_create(name="default_eth").href
     elif isinstance(interface, LogicalInterface):
         return interface.href
-    elif interface.startswith('http'):
+    elif interface.startswith("http"):
         return interface
     return LogicalInterface.get_or_create(name=interface).href
 

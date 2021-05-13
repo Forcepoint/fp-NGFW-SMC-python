@@ -41,7 +41,7 @@ class System(SubElement):
     """
 
     def __init__(self):
-        entry = fetch_entry_point('system')
+        entry = fetch_entry_point("system")
         super(System, self).__init__(href=entry)
 
     @property
@@ -49,19 +49,16 @@ class System(SubElement):
         """
         Return the SMC version
         """
-        return self.make_request(
-            resource='smc_version').get('value')
+        return self.make_request(resource="smc_version").get("value")
 
     @property
     def smc_time(self):
         """
         Return the SMC time as datetime object in UTC
-        
+
         :rtype datetime
         """
-        return millis_to_utc(
-            int(self.make_request(
-                resource='smc_time').get('value')))
+        return millis_to_utc(int(self.make_request(resource="smc_time").get("value")))
 
     @property
     def massive_license_bind(self):
@@ -69,19 +66,16 @@ class System(SubElement):
         Bind licenses on all unlicensed nodes
 
         """
-        return self.make_request(
-                method='create',
-                resource='massive_license_bind').get('value')
+        return self.make_request(method="create", resource="massive_license_bind").get("value")
 
     @property
     def last_activated_package(self):
         """
         Return the last activated package by id
-        
+
         :raises ActionCommandFailed: failure to retrieve resource
         """
-        return self.make_request(
-            resource='last_activated_package').get('value')
+        return self.make_request(resource="last_activated_package").get("value")
 
     def empty_trash_bin(self):
         """
@@ -90,17 +84,15 @@ class System(SubElement):
         :raises ActionCommandFailed: failed removing trash
         :return: None
         """
-        self.make_request(
-            method='delete',
-            resource='empty_trash_bin')
+        self.make_request(method="delete", resource="empty_trash_bin")
 
     def update_package(self):
         """
         Show all update packages on SMC.
-        
+
         To find specific updates available from the returned
         collection, use convenience methods::
-        
+
             system = System()
             updates = system.update_package()
             updates.get_contains('1027')
@@ -108,9 +100,7 @@ class System(SubElement):
         :raises ActionCommandFailed: failure to retrieve resource
         :rtype: SubElementCollection(UpdatePackage)
         """
-        return sub_collection(
-            self.get_relation('update_package'),
-            UpdatePackage)
+        return sub_collection(self.get_relation("update_package"), UpdatePackage)
 
     def update_package_import(self):
         pass
@@ -121,7 +111,7 @@ class System(SubElement):
 
         To find specific upgrades available from the returned
         collection, use convenience methods::
-        
+
             system = System()
             upgrades = system.engine_upgrade()
             upgrades.get_contains('6.2')
@@ -131,9 +121,7 @@ class System(SubElement):
         :raises ActionCommandFailed: failure to retrieve resource
         :rtype: SubElementCollection(EngineUpgrade)
         """
-        return sub_collection(
-            self.get_relation('engine_upgrade'),
-            EngineUpgrade)
+        return sub_collection(self.get_relation("engine_upgrade"), EngineUpgrade)
 
     def uncommitted(self):
         pass
@@ -141,10 +129,10 @@ class System(SubElement):
     def system_properties(self):
         """
         List of all properties applied to the SMC
-        
+
         :raises ActionCommandFailed: failure to retrieve resource
         """
-        return self.make_request(resource='system_properties')
+        return self.make_request(resource="system_properties")
 
     def clean_invalid_filters(self):
         pass
@@ -163,15 +151,14 @@ class System(SubElement):
         .. seealso:: :class:`smc.core.engine.Engine.blacklist`. Applying
             a blacklist at the system level will be a global blacklist entry
             versus an engine specific entry.
-        
+
         .. note:: If more advanced blacklist is required using source/destination
             ports and protocols (udp/tcp), use kw to provide these arguments. See
             :py:func:`smc.elements.other.prepare_blacklist` for more details.
         """
         self.make_request(
-            method='create',
-            resource='blacklist',
-            json=prepare_blacklist(src, dst, duration, **kw))
+            method="create", resource="blacklist", json=prepare_blacklist(src, dst, duration, **kw)
+        )
 
     @property
     def licenses(self):
@@ -189,34 +176,33 @@ class System(SubElement):
         :raises ActionCommandFailed: failure to retrieve resource
         :rtype: list(Licenses)
         """
-        return Licenses(self.make_request(resource='licenses'))
+        return Licenses(self.make_request(resource="licenses"))
 
     def license_fetch(self, proof_of_serial):
         """
         Request a license download for the specified POS (proof of serial).
-        
+
         :param str proof_of_serial: proof of serial number of license to fetch
         :raises ActionCommandFailed: failure to retrieve resource
         """
         return self.make_request(
-            resource='license_fetch',
-            params={'proofofserial': proof_of_serial})
+            resource="license_fetch", params={"proofofserial": proof_of_serial}
+        )
 
     def license_install(self, license_file):
         """
         Install a new license.
-        
+
         :param str license_file: fully qualified path to the
             license jar file.
         :raises: ActionCommandFailed
         :return: None
         """
         self.make_request(
-            method='update',
-            resource='license_install',
-            files={
-                'license_file': open(license_file, 'rb')
-            })
+            method="update",
+            resource="license_install",
+            files={"license_file": open(license_file, "rb")},
+        )
 
     def license_details(self):
         """
@@ -226,21 +212,22 @@ class System(SubElement):
         :raises ActionCommandFailed: failure to retrieve resource
         :return: dictionary of key/values
         """
-        return self.make_request(resource='license_details')
+        return self.make_request(resource="license_details")
 
     def license_check_for_new(self):
         """
         Launch the check and download of licenses on the Management Server.
         This task can be long so call returns immediately.
-        
+
         :raises ActionCommandFailed: failure to retrieve resource
         """
-        return self.make_request(resource='license_check_for_new')
+        return self.make_request(resource="license_check_for_new")
 
     def delete_license(self):
         raise NotImplementedError
 
-    def visible_virtual_engine_mapping(self, filter=None):  # @ReservedAssignment
+    # @ReservedAssignment
+    def visible_virtual_engine_mapping(self, filter=None):
         """
         Mappings for master engines and virtual engines
 
@@ -249,24 +236,27 @@ class System(SubElement):
         :return: list of dict items related to master engines and virtual
             engine mappings
         """
-        return self.make_request(resource='visible_virtual_engine_mapping',
-                params={'filter': filter})
-    
-    def visible_security_group_mapping(self, filter=None):  # @ReservedAssignment
+        return self.make_request(
+            resource="visible_virtual_engine_mapping", params={"filter": filter}
+        )
+
+    # @ReservedAssignment
+    def visible_security_group_mapping(self, filter=None):
         """
         Return all security groups assigned to VSS container types. This
         is only available on SMC >= 6.5.
-        
+
         :param str filter: filter for searching by name
         :raises ActionCommandFailed: element not found on this version of SMC
         :raises ResourceNotFound: unsupported method on SMC < 6.5
         :return: dict
         """
-        if 'visible_security_group_mapping' not in self.data.links:
-            raise ResourceNotFound('This entry point is only supported on SMC >= 6.5')
-        
-        return self.make_request(resource='visible_security_group_mapping',
-            params={'filter': filter})
+        if "visible_security_group_mapping" not in self.data.links:
+            raise ResourceNotFound("This entry point is only supported on SMC >= 6.5")
+
+        return self.make_request(
+            resource="visible_security_group_mapping", params={"filter": filter}
+        )
 
     def references_by_element(self, element_href):
         """
@@ -277,13 +267,13 @@ class System(SubElement):
         :rtype: list(dict)
         """
         result = self.make_request(
-            method='create',
-            resource='references_by_element',
-            json={
-                'value': element_href})
+            method="create", resource="references_by_element", json={"value": element_href}
+        )
         return result
 
-    def export_elements(self, filename='export_elements.zip', typeof='all', timeout=5, max_tries=36):
+    def export_elements(
+        self, filename="export_elements.zip", typeof="all", timeout=5, max_tries=36
+    ):
         """
         Export elements from SMC.
 
@@ -297,77 +287,88 @@ class System(SubElement):
         :raises TaskRunFailed: failure during export with reason
         :rtype: DownloadTask
         """
-        valid_types = ['all', 'nw', 'ips', 'sv', 'rb', 'al', 'vpn']
+        valid_types = ["all", "nw", "ips", "sv", "rb", "al", "vpn"]
         if typeof not in valid_types:
-            typeof = 'all'
-        
-        return Task.download(self, 'export_elements', filename, timeout=timeout, max_tries=max_tries,
-            params={'recursive': True, 'type': typeof})
+            typeof = "all"
+
+        return Task.download(
+            self,
+            "export_elements",
+            filename,
+            timeout=timeout,
+            max_tries=max_tries,
+            params={"recursive": True, "type": typeof},
+        )
 
     def active_alerts_ack_all(self):
         """
         Acknowledge all active alerts in the SMC. Only valid for
         SMC version >= 6.2.
-    
+
         :raises ActionCommandFailed: Failure during acknowledge with reason
         :return: None
         """
-        self.make_request(
-            method='delete',
-            resource='active_alerts_ack_all')
+        self.make_request(method="delete", resource="active_alerts_ack_all")
 
     def import_elements(self, import_file):
         """
         Import elements into SMC. Specify the fully qualified path
         to the import file.
-        
+
         :param str import_file: system level path to file
         :raises: ActionCommandFailed
         :return: None
         """
-        import_follower= Task(self.make_request(
-            method='create',
-            resource='import_elements',
-            files={
-                'import_file': open(import_file, 'rb')
-                }))
+        import_follower = Task(
+            self.make_request(
+                method="create",
+                resource="import_elements",
+                files={"import_file": open(import_file, "rb")},
+            )
+        )
         in_progress = import_follower.data.in_progress
         progress = import_follower.progress
         while in_progress is True:
             time.sleep(1)
-            logger.info("[{}] XML Import task => {}%"
-                  .format('{:%H:%M:%S.%f}'.format(datetime.now())[:-3], progress))
+            logger.info(
+                "[{}] XML Import task => {}%".format(
+                    "{:%H:%M:%S.%f}".format(datetime.now())[:-3], progress
+                )
+            )
             in_progress = import_follower.update_status().data.in_progress
             progress = import_follower.update_status().progress
             succeed = import_follower.update_status().success
             last_message = import_follower.update_status().last_message
 
         if not succeed:
-            logger.info("[{}] XML Import task failed:{}"
-                        .format('{:%H:%M:%S.%f}'.format(datetime.now())[:-3], last_message))
+            logger.info(
+                "[{}] XML Import task failed:{}".format(
+                    "{:%H:%M:%S.%f}".format(datetime.now())[:-3], last_message
+                )
+            )
             raise ActionCommandFailed(last_message)
 
-        logger.info("[{}] XML Import task succeed"
-              .format('{:%H:%M:%S.%f}'.format(datetime.now())[:-3]))
+        logger.info(
+            "[{}] XML Import task succeed".format("{:%H:%M:%S.%f}".format(datetime.now())[:-3])
+        )
 
     def force_unlock(self, element):
         return self.make_request(
-            method='create',
-            resource='force_unlock',
-            json={'value': element.href})
-    
+            method="create", resource="force_unlock", json={"value": element.href}
+        )
+
     def unlicensed_components(self):
         raise NotImplementedError
-    
+
     @property
     def mgt_integration_configuration(self):
         """
         Retrieve the management API configuration for 3rd party integration
         devices.
-        
+
         :raises ActionCommandFailed: failure to retrieve resource
         """
-        return self.make_request(resource='mgt_integration_configuration')
+        return self.make_request(resource="mgt_integration_configuration")
 
 
 class AdminDomain(Element):
@@ -375,33 +376,33 @@ class AdminDomain(Element):
     Administrative domain element. Domains are used to provide object
     based segmentation within SMC. If domains are in use, you can
     log in directly to a domain to modify contents within that domain.
-        
+
     Find all available domains::
-    
+
         >>> list(AdminDomain.objects.all())
         [AdminDomain(name=Shared Domain)]
-  
+
     .. note:: Admin Domains require and SMC license.
     """
-    typeof = 'admin_domain'
-   
+
+    typeof = "admin_domain"
+
     @classmethod
     def create(cls, name, comment=None):
         """
         Create a new Admin Domain element for SMC objects.
-        
+
         Example::
-    
+
             >>> AdminDomain.create(name='mydomain', comment='mycomment')
-            >>> AdminDomain(name=mydomain) 
-        
+            >>> AdminDomain(name=mydomain)
+
         :param str name: name of domain
         :param str comment: optional comment
         :raises CreateElementFailed: failed creating element with reason
         :return: instance with meta
         :rtype: AdminDomain
         """
-        json = {'name': name,
-                'comment': comment}
-        
+        json = {"name": name, "comment": comment}
+
         return ElementCreator(cls, json)

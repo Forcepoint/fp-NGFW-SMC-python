@@ -36,16 +36,25 @@ class Policy(Element):
 
     All generic methods that are policy level, such as 'open', 'save', 'force_unlock',
     'export', and 'upload' are encapsulated into this base class.
-    
+
     :ivar Element template: The template associated with this policy. Can be None
     :ivar InspectionPolicy inspection_policy: related inspection policy
     :ivar FileFilteringPolicy file_filtering_policy: related file policy
     """
-    template = ElementRef('template')
-    inspection_policy = ElementRef('inspection_policy')
-    file_filtering_policy = ElementRef('file_filtering_policy')
-    
-    def upload(self, engine, timeout=5, wait_for_finish=False, preserve_connections=True, generate_snapshot=True, **kw):
+
+    template = ElementRef("template")
+    inspection_policy = ElementRef("inspection_policy")
+    file_filtering_policy = ElementRef("file_filtering_policy")
+
+    def upload(
+        self,
+        engine,
+        timeout=5,
+        wait_for_finish=False,
+        preserve_connections=True,
+        generate_snapshot=True,
+        **kw
+    ):
         """
         Upload policy to specific device. Using wait for finish
         returns a poller thread for monitoring progress::
@@ -63,8 +72,18 @@ class Policy(Element):
         :raises: TaskRunFailed
         :return: TaskOperationPoller
         """
-        return Task.execute(self, 'upload', params={'filter': engine}, json={'preserve_connections': preserve_connections, 'snapshot_creation': generate_snapshot},
-            timeout=timeout, wait_for_finish=wait_for_finish, **kw)
+        return Task.execute(
+            self,
+            "upload",
+            params={"filter": engine},
+            json={
+                "preserve_connections": preserve_connections,
+                "snapshot_creation": generate_snapshot,
+            },
+            timeout=timeout,
+            wait_for_finish=wait_for_finish,
+            **kw
+        )
 
     def force_unlock(self):
         """
@@ -72,10 +91,7 @@ class Policy(Element):
 
         :return: None
         """
-        self.make_request(
-            PolicyCommandFailed,
-            method='create',
-            resource='force_unlock')
+        self.make_request(PolicyCommandFailed, method="create", resource="force_unlock")
 
     def search_rule(self, search):
         """
@@ -91,31 +107,27 @@ class Policy(Element):
         :return: rule elements matching criteria
         :rtype: list(Element)
         """
-        result = self.make_request(
-            resource='search_rule',
-            params={'filter': search})
-        
+        result = self.make_request(resource="search_rule", params={"filter": search})
+
         if result:
             results = []
             for data in result:
-                typeof = data.get('type')
-                if 'ethernet' in typeof:
-                    klazz = lookup_class('ethernet_rule')
-                elif typeof in [
-                    'ips_ipv4_access_rule', 'l2_interface_ipv4_access_rule']:
-                    klazz = lookup_class('layer2_ipv4_access_rule')
+                typeof = data.get("type")
+                if "ethernet" in typeof:
+                    klazz = lookup_class("ethernet_rule")
+                elif typeof in ["ips_ipv4_access_rule", "l2_interface_ipv4_access_rule"]:
+                    klazz = lookup_class("layer2_ipv4_access_rule")
                 else:
                     klazz = lookup_class(typeof)
                 results.append(klazz(**data))
             return results
         return []
-        
-    def rule_counters(self, engine=None, duration_type='one_week',
-            duration=0, start_time=0):
+
+    def rule_counters(self, engine=None, duration_type="one_week", duration=0, start_time=0):
         """
         .. versionadded:: 0.5.6
             Obtain rule counters for this policy. Requires SMC >= 6.2
-        
+
         Rule counters can be obtained for a given policy and duration for
         those counters can be provided in duration_type. A custom start
         range can also be provided.
@@ -131,14 +143,16 @@ class Policy(Element):
         :return: list of rule counter objects
         :rtype: RuleCounter
         """
-        json = {'duration_type': duration_type, 'target_ref': engine.href
-            if engine else None, 'duration': duration}
-        
-        return [RuleCounter(**rule)
-                for rule in self.make_request(
-                    method='create',
-                    resource='rule_counter',
-                    json=json)]
+        json = {
+            "duration_type": duration_type,
+            "target_ref": engine.href if engine else None,
+            "duration": duration,
+        }
+
+        return [
+            RuleCounter(**rule)
+            for rule in self.make_request(method="create", resource="rule_counter", json=json)
+        ]
 
 
 class InspectionPolicy(Policy):
@@ -149,18 +163,20 @@ class InspectionPolicy(Policy):
     In addition, exceptions can be made at this policy level to bypass scanning based
     on the rule properties.
     """
-    typeof = 'inspection_template_policy'
 
-    def export(self): pass  # Not valid for inspection policy
+    typeof = "inspection_template_policy"
 
-    def upload(self): pass  # Not valid for inspection policy
-    
+    def export(self):
+        pass  # Not valid for inspection policy
 
-class RuleCounter(collections.namedtuple(
-        'RuleCounter', 'hits rule_ref total_hits')):
+    def upload(self):
+        pass  # Not valid for inspection policy
+
+
+class RuleCounter(collections.namedtuple("RuleCounter", "hits rule_ref total_hits")):
     """
     Rule counter representing hits for a specific rule.
-    
+
     :param int hits: The number of times where the rule has been used on
         the engine. If not specified, that means the rule has not been uploaded
         or unknown on the engine.
@@ -168,17 +184,18 @@ class RuleCounter(collections.namedtuple(
     :param Rule rule: resolved rule_ref to element
     :param total_hits: total number of hits over the duration
     """
+
     __slots__ = ()
+
     def __new__(cls, rule_ref, hits=0, total_hits=0):  # @ReservedAssignment
         return super(RuleCounter, cls).__new__(cls, hits, rule_ref, total_hits)
-    
+
     @property
     def rule(self):
         """
         Return the Rule element for this rule counter. A rule may be from
         the policy or the policy template.
-        
+
         :rtype: Rule
         """
         return Element.from_href(self.rule_ref)
-

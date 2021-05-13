@@ -19,32 +19,28 @@ def create_single_fw():
     """
     Create single layer 3 firewall for this example
     """
-    Layer3Firewall.create(name='testfw',
-                          mgmt_ip='192.168.10.1',
-                          mgmt_network='192.168.10.0/24')
+    Layer3Firewall.create(name="testfw", mgmt_ip="192.168.10.1", mgmt_network="192.168.10.0/24")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
-    session.login(url='http://172.18.1.25:8082',
-                  api_key='4366TuolHMJp3nHaUeF60001')
+    session.login(url="http://172.18.1.25:8082", api_key="4366TuolHMJp3nHaUeF60001")
 
     create_single_fw()
 
     """
-    An external gateway defines a non-SMC managed gateway device that acts as a 
-    remote VPN peer. 
+    An external gateway defines a non-SMC managed gateway device that acts as a
+    remote VPN peer.
     First create the external gateway element
     """
-    external_gateway = ExternalGateway.create('mygw')
+    external_gateway = ExternalGateway.create("mygw")
 
     """
     An external endpoint is defined within the external gateway and specifies the
     IP address settings and other VPN specific settings for this endpoint
     After creating, add to the external gateway
     """
-    external_gateway.external_endpoint.create(name='myendpoint',
-                                              address='2.2.2.2')
+    external_gateway.external_endpoint.create(name="myendpoint", address="2.2.2.2")
 
     """
     Lastly, 'sites' need to be configured that identify the network/s on the
@@ -52,21 +48,21 @@ if __name__ == '__main__':
     new ones as in the example below.
     Then add this site to the external gateway
     """
-    network = Network.create('remote-network', '1.1.1.0/24').href
+    network = Network.create("remote-network", "1.1.1.0/24").href
 
-    external_gateway.vpn_site.create('remote-site', [network])
+    external_gateway.vpn_site.create("remote-site", [network])
 
     """
     Retrieve the internal gateway for SMC managed engine by loading the
     engine configuration. The internal gateway reference is located as
     engine.internal_gateway.href
     """
-    engine = Engine('testfw').load()
+    engine = Engine("testfw").load()
 
     """
     Create the VPN Policy
     """
-    vpn = PolicyVPN.create(name='myVPN', nat=True)
+    vpn = PolicyVPN.create(name="myVPN", nat=True)
     print(vpn.name, vpn.vpn_profile)
 
     vpn.open()

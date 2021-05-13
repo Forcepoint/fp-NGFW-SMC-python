@@ -12,45 +12,46 @@ class BaseIterable(object):
     Elements can be retrieved from the container through iteration,
     slicing, or by using `get` and providing either the index or an
     attribute / value pair.
-    
+
     If subclassing, it may be useful to override `get` to provide a restricted
     interface to common attributes to fetch.
-    
+
     Examples::
-    
+
         >>> for status in engine.nodes[0].interface_status:
         ...   status
-        ... 
+        ...
         InterfaceStatus(aggregate_is_active=False, ....
-    
+
     By index::
-    
+
         >>> engine.nodes[0].interface_status[1]
 
     Slicing::
-    
+
         >>> engine.nodes[0].interface_status[1:5:2]
         >>> engine.nodes[0].interface_status[::-1]
-    
+
     Using get by index or attribute::
-    
+
         >>> engine.nodes[0].interface_status.get(1)
         >>> engine.nodes[0].interface_status.get(interface_id=2)
-        
+
     :param iterable item: items for which to perform iteration. Can be
         another class with an __iter__ method also to chain iterators.
     """
+
     def __init__(self, items):
         self.items = items
-    
+
     def __getitem__(self, index):
         if not isinstance(index, (int, slice)):
-            raise TypeError('Invalid index specified. Must be int or slice.')
+            raise TypeError("Invalid index specified. Must be int or slice.")
         if isinstance(index, slice):
-            return self.items[index.start:index.stop:index.step]
+            return self.items[index.start: index.stop: index.step]
         else:
             return self.items[index]
-    
+
     def get(self, *args, **kwargs):
         """
         Get an element from the iterable by an arg or kwarg.
@@ -60,7 +61,7 @@ class BaseIterable(object):
         The key is expected to be a valid attribute of the iterated class.
         For example, to get an element that has a attribute name of 'foo',
         pass name='foo'.
-        
+
         :raises ValueError: An argument was missing
         :return: the specified item, type is based on what is
             returned by this iterable, may be None
@@ -68,7 +69,7 @@ class BaseIterable(object):
         if self:
             if args:
                 index = args[0]
-                if index <= len(self) -1:
+                if index <= len(self) - 1:
                     return self[args[0]]
                 return None
             elif kwargs:
@@ -77,14 +78,17 @@ class BaseIterable(object):
                     if getattr(item, key, None) == value:
                         return item
             else:
-                raise ValueError('Missing argument. You must provide an '
-                    'arg or kwarg to fetch an element from the collection.')
-        
+                raise ValueError(
+                    "Missing argument. You must provide an "
+                    "arg or kwarg to fetch an element from the collection."
+                )
+
     def __iter__(self):
         return iter(self.items)
-        
+
     def __bool__(self):
         return bool(self.items)
+
     __nonzero__ = __bool__
 
     def __len__(self):
@@ -92,11 +96,11 @@ class BaseIterable(object):
 
     def __repr__(self):
         return "%s(items: %s)" % (self.__class__.__name__, len(self))
-    
+
     def count(self):
         """
         Return the number of entries
-        
+
         :rtype: int
         """
         return len(self)
@@ -107,28 +111,30 @@ class BaseIterable(object):
         """
         return list(self)
 
-    
+
 class SerializedIterable(BaseIterable):
     """
     A pre-serialized list of elements. This is used when it's easier to
     provide a pre-serialized class as long as all elements are of the
     same type.
-    
+
     :param iterable item: items for which to perform iteration. Can be
         another class with an __iter__ method also to chain iterators.
-    :param model: optional class to serialize each iteration. 
+    :param model: optional class to serialize each iteration.
     """
+
     def __init__(self, items, model):
         items = [model(**r) for r in items]
         super(SerializedIterable, self).__init__(items)
 
 
-class NestedDict(collections.MutableMapping): 
-    """ 
-    Generic dict structure that can be used to objectify 
+class NestedDict(collections.MutableMapping):
+    """
+    Generic dict structure that can be used to objectify
     complex json. This dict allows attribute access for data
     stored in the data dict by overridding getattr.
-    """ 
+    """
+
     def __init__(self, data=None, **kwargs):
         self.data = data if data else {}
         self.update(self.data, **kwargs)

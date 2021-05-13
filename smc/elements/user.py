@@ -9,12 +9,12 @@ It is possible to fully provision an Admin User with specific permissions and
 roles and initial password.
 
 Create the admin::
-    
+
     admin = AdminUser.create(name='auditor', superuser=False)
 
 .. note:: If the Admin User should have unrestricted access, set ``superuser=True`` and
     skip the below sections related to adding permissions and roles.
-    
+
 Permissions relate to elements that the user will have access to (Policies, Engines or
 AccessControlLists) and the domain where the privileges apply (default is 'Shared Domain').
 
@@ -22,7 +22,7 @@ Create a permission using the default domain of Shared, granting access to a spe
 engine and firewall policy::
 
     permission = Permission.create(
-        elements=[Engine('vm'), FirewallPolicy('VM Policy')], 
+        elements=[Engine('vm'), FirewallPolicy('VM Policy')],
         role=Role('Viewer'))
 
 Create a second permission granting access to all firewalls in the domain 'mydomain'::
@@ -43,8 +43,8 @@ Set an initial password for the Admin User::
 .. note:: Roles are used to define what granular controls will be available to the assigned
     user, such as read/read write/all. AccessControlLists encapsulate elements into a single
     container for re-use.
-    
-.. seealso:: :class:`smc.administration.role.Role` and 
+
+.. seealso:: :class:`smc.administration.role.Role` and
     :class:`smc.administration.access_rights.AccessControlList` for more information.
 
 """
@@ -55,9 +55,10 @@ from smc.administration.access_rights import Permission
 
 class UserMixin(object):
     """
-    User Mixin class providing common operations for Admin Users and 
+    User Mixin class providing common operations for Admin Users and
     API Clients.
     """
+
     def enable_disable(self):
         """
         Toggle enable and disable of administrator account.
@@ -66,7 +67,7 @@ class UserMixin(object):
         :raises UpdateElementFailed: failed with reason
         :return: None
         """
-        self.update(href=self.get_relation('enable_disable'), etag=None)
+        self.update(href=self.get_relation("enable_disable"), etag=None)
 
     def change_password(self, password):
         """
@@ -77,23 +78,22 @@ class UserMixin(object):
         """
         self.make_request(
             ModificationFailed,
-            method='update',
-            resource='change_password',
-            params={'password': password})
+            method="update",
+            resource="change_password",
+            params={"password": password},
+        )
 
     def generate_password(self):
         """
         Generate a random password for this user.
-        
+
         :return: random password
         :rtype: str
         """
-        pwd = self.make_request(
-            method='update',
-            resource='generate_password')
-        if 'value' in pwd:
-            return pwd['value'][0]
-        
+        pwd = self.make_request(method="update", resource="generate_password")
+        if "value" in pwd:
+            return pwd["value"][0]
+
     def add_permission(self, permission):
         """
         Add a permission to this Admin User. A role defines permissions that
@@ -102,41 +102,41 @@ class UserMixin(object):
         elements. Domain specifies where the access is granted. The Shared
         Domain is default unless specific domain provided. Change is committed
         at end of method call.
-        
+
         :param permission: permission/s to add to admin user
         :type permission: list(Permission)
         :raises UpdateElementFailed: failed updating admin user
         :return: None
         """
-        if 'permissions' not in self.data:
-            self.data['superuser'] = False
-            self.data['permissions'] = {'permission':[]}
-        
+        if "permissions" not in self.data:
+            self.data["superuser"] = False
+            self.data["permissions"] = {"permission": []}
+
         for p in permission:
-            self.data['permissions']['permission'].append(p.data)
+            self.data["permissions"]["permission"].append(p.data)
         self.update()
-        
+
     @property
     def permissions(self):
         """
         Return each permission role mapping for this Admin User. A permission
         role will have 3 fields:
-        
+
         * Domain
         * Role (Viewer, Operator, etc)
         * Elements (Engines, Policies, or ACLs)
-        
+
         :return: permissions as list
         :rtype: list(Permission)
         """
-        if 'permissions' in self.data:
-            _permissions = self.data['permissions']['permission']
+        if "permissions" in self.data:
+            _permissions = self.data["permissions"]["permission"]
             return [Permission(**perm) for perm in _permissions]
         return []
-               
-   
+
+
 class AdminUser(UserMixin, Element):
-    """ Represents an Adminitrator account on the SMC
+    """Represents an Adminitrator account on the SMC
     Use the constructor to create the user.
 
     Create an Admin::
@@ -150,23 +150,33 @@ class AdminUser(UserMixin, Element):
         admin = AdminUser('admin')
         admin.change_password('mynewpassword1')
         admin.enable_disable()
-        
+
     Attributes available:
-    
+
     :ivar bool allow_sudo: is this account allowed to sudo on an engine.
     :ivar bool local_admin: is the admin a local admin
     :ivar bool superuser: is this account a superuser for SMC
     """
-    typeof = 'admin_user'
+
+    typeof = "admin_user"
 
     @classmethod
-    def create(cls, name, local_admin=False, allow_sudo=False,
-               superuser=False, enabled=True, engine_target=None,
-               can_use_api=True, console_superuser=False,
-               allowed_to_login_in_shared=True, comment=None):
+    def create(
+        cls,
+        name,
+        local_admin=False,
+        allow_sudo=False,
+        superuser=False,
+        enabled=True,
+        engine_target=None,
+        can_use_api=True,
+        console_superuser=False,
+        allowed_to_login_in_shared=True,
+        comment=None,
+    ):
         """
         Create an admin user account.
-        
+
         .. versionadded:: 0.6.2
             Added can_use_api, console_superuser, and allowed_to_login_in_shared.
             Requires SMC >= SMC 6.4
@@ -186,31 +196,33 @@ class AdminUser(UserMixin, Element):
         :rtype: AdminUser
         """
         engines = [] if engine_target is None else engine_target
-    
-        json = {'name': name,
-                'enabled': enabled,
-                'allow_sudo': allow_sudo,
-                'console_superuser': console_superuser,
-                'allowed_to_login_in_shared': allowed_to_login_in_shared,
-                'engine_target': engines,
-                'local_admin': local_admin,
-                'superuser': superuser,
-                'can_use_api': can_use_api,
-                'comment': comment}
-        
+
+        json = {
+            "name": name,
+            "enabled": enabled,
+            "allow_sudo": allow_sudo,
+            "console_superuser": console_superuser,
+            "allowed_to_login_in_shared": allowed_to_login_in_shared,
+            "engine_target": engines,
+            "local_admin": local_admin,
+            "superuser": superuser,
+            "can_use_api": can_use_api,
+            "comment": comment,
+        }
+
         return ElementCreator(cls, json)
-        
+
     @property
     def enabled(self):
         """
         Read only enabled status
-        
+
         :rtype: bool
         """
-        return self.data.get('enabled')
+        return self.data.get("enabled")
 
     def change_engine_password(self, password):
-        """ Change Engine password for engines on allowed
+        """Change Engine password for engines on allowed
         list.
 
         :param str password: password for engine level
@@ -219,16 +231,18 @@ class AdminUser(UserMixin, Element):
         """
         self.make_request(
             ModificationFailed,
-            method='update',
-            resource='change_engine_password',
-            params={'password': password})
+            method="update",
+            resource="change_engine_password",
+            params={"password": password},
+        )
 
 
 class ApiClient(UserMixin, Element):
     """
     Represents an API Client
     """
-    typeof = 'api_client'
+
+    typeof = "api_client"
 
     @classmethod
     def create(cls, name, enabled=True, superuser=True):
@@ -248,9 +262,6 @@ class ApiClient(UserMixin, Element):
         :return: instance with meta
         :rtype: ApiClient
         """
-        json = {
-            'enabled': enabled,
-            'name': name,
-            'superuser': superuser}
+        json = {"enabled": enabled, "name": name, "superuser": superuser}
 
         return ElementCreator(cls, json)

@@ -4,7 +4,7 @@ VPN elements consist of external gateway and VPN site settings that identify 3rd
 gateways to be used as a VPN termination endpoint.
 
 There are several ways to create an external gateway configuration.
-A step by step process which first creates a network element to be used in a 
+A step by step process which first creates a network element to be used in a
 VPN site, then creates the ExternalGatway, an ExternalEndpoint for the gateway,
 and inserts the VPN site into the configuration::
 
@@ -21,7 +21,7 @@ configurations (SMC version 6.4.x)::
     >>> from smc.elements.network import Network
     >>> from smc.vpn.elements import ExternalGateway
     >>> network = Network.get_or_create(name='network-172.18.1.0/24', ipv4_network='172.18.1.0/24')
-    >>> 
+    >>>
     >>> g = ExternalGateway.update_or_create(name='newgw',
         external_endpoint=[
             {'name': 'endpoint1', 'address': '1.1.1.1', 'enabled': True},
@@ -31,18 +31,18 @@ configurations (SMC version 6.4.x)::
     ExternalGateway(name=newgw)
     >>> for endpoint in g.external_endpoint:
     ...   endpoint
-    ... 
+    ...
     ExternalEndpoint(name=endpoint1 (1.1.1.1))
     ExternalEndpoint(name=endpoint2 (2.2.2.2))
     >>> for site in g.vpn_site:
     ...   site, site.site_element
-    ... 
+    ...
     (VPNSite(name=sitea), [Network(name=network-172.18.1.0/24)])
 
 In SMC version >= 6.5, you can also provide the `connection_type_ref` parameter when defining
 the external gateway::
 
-    
+
     .. note:: When calling `update_or_create` from the ExternalGateway, providing the
         parameters for external_endpoints and vpn_site is optional.
 
@@ -60,24 +60,29 @@ from smc.elements.other import ContactAddress, Location
 class GatewaySettings(Element):
     """
     Gateway settings define various VPN related settings that
-    are applied at the firewall level such as negotiation 
+    are applied at the firewall level such as negotiation
     timers and mobike settings. A gateway setting is a property
     of an engine::
 
         engine = Engine('myfw')
         engine.vpn.gateway_settings
     """
-    typeof = 'gateway_settings'
+
+    typeof = "gateway_settings"
 
     @classmethod
-    def create(cls, name, negotiation_expiration=200000,
-               negotiation_retry_timer=500,
-               negotiation_retry_max_number=32,
-               negotiation_retry_timer_max=7000,
-               certificate_cache_crl_validity=90000,
-               mobike_after_sa_update=False,
-               mobike_before_sa_update=False,
-               mobike_no_rrc=True):
+    def create(
+        cls,
+        name,
+        negotiation_expiration=200000,
+        negotiation_retry_timer=500,
+        negotiation_retry_max_number=32,
+        negotiation_retry_timer_max=7000,
+        certificate_cache_crl_validity=90000,
+        mobike_after_sa_update=False,
+        mobike_before_sa_update=False,
+        mobike_no_rrc=True,
+    ):
         """
         Create a new gateway setting profile.
 
@@ -91,21 +96,23 @@ class GatewaySettings(Element):
             for Mobike Policy
         :param boolean mobike_before_sa_update: Whether the Before SA flag is
             set for Mobike Policy
-        :param boolean mobike_no_rrc: Whether the No RRC flag is set for 
+        :param boolean mobike_no_rrc: Whether the No RRC flag is set for
             Mobike Policy
         :raises CreateElementFailed: failed creating profile
         :return: instance with meta
         :rtype: GatewaySettings
         """
-        json = {'name': name,
-                'negotiation_expiration': negotiation_expiration,
-                'negotiation_retry_timer': negotiation_retry_timer,
-                'negotiation_retry_max_number': negotiation_retry_max_number,
-                'negotiation_retry_timer_max': negotiation_retry_timer_max,
-                'certificate_cache_crl_validity': certificate_cache_crl_validity,
-                'mobike_after_sa_update': mobike_after_sa_update,
-                'mobike_before_sa_update': mobike_before_sa_update,
-                'mobike_no_rrc': mobike_no_rrc}
+        json = {
+            "name": name,
+            "negotiation_expiration": negotiation_expiration,
+            "negotiation_retry_timer": negotiation_retry_timer,
+            "negotiation_retry_max_number": negotiation_retry_max_number,
+            "negotiation_retry_timer_max": negotiation_retry_timer_max,
+            "certificate_cache_crl_validity": certificate_cache_crl_validity,
+            "mobike_after_sa_update": mobike_after_sa_update,
+            "mobike_before_sa_update": mobike_before_sa_update,
+            "mobike_no_rrc": mobike_no_rrc,
+        }
 
         return ElementCreator(cls, json)
 
@@ -117,7 +124,8 @@ class GatewayProfile(Element):
     and computed from the firewall version and FIPS mode.
     Gateway Profiles of External Gateways are user-defined.
     """
-    typeof = 'gateway_profile'
+
+    typeof = "gateway_profile"
 
     def capabilities(self):
         pass
@@ -125,7 +133,7 @@ class GatewayProfile(Element):
 
 class ExternalGateway(Element):
     """
-    External Gateway defines an VPN Gateway for a non-SMC managed device. 
+    External Gateway defines an VPN Gateway for a non-SMC managed device.
     This will specify details such as the endpoint IP, and VPN site
     protected networks. Example of manually provisioning each step::
 
@@ -133,16 +141,17 @@ class ExternalGateway(Element):
         gw = ExternalGateway.create(name='mygw')
         gw.external_endpoint.create(name='myendpoint', address='10.10.10.10')
         gw.vpn_site.create(name='mysite', site_element=[Network('mynetwork')])
-    
+
     :ivar GatewayProfile gateway_profile: A gateway profile will define the
         capabilities (i.e. crypto) allowed for this VPN.
     """
-    typeof = 'external_gateway'
-    gateway_profile = ElementRef('gateway_profile')
+
+    typeof = "external_gateway"
+    gateway_profile = ElementRef("gateway_profile")
 
     @classmethod
     def create(cls, name, trust_all_cas=True, gateway_profile=None, **kwargs):
-        """ 
+        """
         Create new External Gateway
 
         :param str name: name of test_external gateway
@@ -153,17 +162,21 @@ class ExternalGateway(Element):
         :return: instance with meta
         :rtype: ExternalGateway
         """
-        json = {'name': name,
-                'trust_all_cas': trust_all_cas,
-                'gateway_profile': element_resolver(gateway_profile) if gateway_profile\
-                else element_default(GatewayProfile, 'Default')}
+        json = {
+            "name": name,
+            "trust_all_cas": trust_all_cas,
+            "gateway_profile": element_resolver(gateway_profile)
+            if gateway_profile
+            else element_default(GatewayProfile, "Default"),
+        }
         json.update(kwargs)
 
         return ElementCreator(cls, json)
 
     @classmethod
-    def update_or_create(cls, name, external_endpoint=None, vpn_site=None,
-        trust_all_cas=True, with_status=False):
+    def update_or_create(
+        cls, name, external_endpoint=None, vpn_site=None, trust_all_cas=True, with_status=False
+    ):
         """
         Update or create an ExternalGateway. The ``external_endpoint`` and
         ``vpn_site`` parameters are expected to be a list of dicts with key/value
@@ -171,7 +184,7 @@ class ExternalGateway(Element):
         represent the final state of the VPN site list. ExternalEndpoint that are
         pre-existing will not be deleted if not provided in the ``external_endpoint``
         parameter, however existing elements will be updated as specified.
-        
+
         :param str name: name of external gateway
         :param list(dict) external_endpoint: list of dict items with key/value
             to satisfy ExternalEndpoint.create constructor
@@ -185,20 +198,22 @@ class ExternalGateway(Element):
         """
         if external_endpoint:
             for endpoint in external_endpoint:
-                if 'name' not in endpoint:
-                    raise ValueError('External endpoints are configured '
-                        'but missing the name parameter.')
-        
+                if "name" not in endpoint:
+                    raise ValueError(
+                        "External endpoints are configured " "but missing the name parameter."
+                    )
+
         if vpn_site:
             for site in vpn_site:
-                if 'name' not in site:
-                    raise ValueError('VPN sites are configured but missing '
-                        'the name parameter.')
+                if "name" not in site:
+                    raise ValueError("VPN sites are configured but missing " "the name parameter.")
                 # Make sure VPN sites are resolvable before continuing
-                sites = [element_resolver(element, do_raise=True)
-                    for element in site.get('site_element', [])]
+                sites = [
+                    element_resolver(element, do_raise=True)
+                    for element in site.get("site_element", [])
+                ]
                 site.update(site_element=sites)
-        
+
         updated = False
         created = False
         try:
@@ -206,19 +221,23 @@ class ExternalGateway(Element):
         except ElementNotFound:
             extgw = ExternalGateway.create(name, trust_all_cas)
             created = True
-        
+
         if external_endpoint:
             for endpoint in external_endpoint:
                 _, modified, was_created = ExternalEndpoint.update_or_create(
-                    extgw, with_status=True, **endpoint)
+                    extgw, with_status=True, **endpoint
+                )
                 if was_created or modified:
                     updated = True
-        
+
         if vpn_site:
             for site in vpn_site:
-                _, modified, was_created = VPNSite.update_or_create(extgw,
-                    name=site['name'], site_element=site.get('site_element'),
-                    with_status=True)
+                _, modified, was_created = VPNSite.update_or_create(
+                    extgw,
+                    name=site["name"],
+                    site_element=site.get("site_element"),
+                    with_status=True,
+                )
                 if was_created or modified:
                     updated = True
 
@@ -235,9 +254,7 @@ class ExternalGateway(Element):
 
         :rtype: CreateCollection(VPNSite)
         """
-        return create_collection(
-            self.get_relation('vpn_site'),
-            VPNSite)
+        return create_collection(self.get_relation("vpn_site"), VPNSite)
 
     @property
     def external_endpoint(self):
@@ -253,9 +270,7 @@ class ExternalGateway(Element):
 
         :rtype: CreateCollection(ExternalEndpoint)
         """
-        return create_collection(
-            self.get_relation('external_endpoint'),
-            ExternalEndpoint)
+        return create_collection(self.get_relation("external_endpoint"), ExternalEndpoint)
 
     @property
     def trust_all_cas(self):
@@ -265,7 +280,7 @@ class ExternalGateway(Element):
 
         :rtype: bool
         """
-        return self.data.get('trust_all_cas')
+        return self.data.get("trust_all_cas")
 
 
 class ElementContactAddress(SerializedIterable):
@@ -274,26 +289,28 @@ class ElementContactAddress(SerializedIterable):
     These contact addresses can have multiple location and addresses per element
     but any single contact address can have only one address associated.
     """
+
     def __init__(self, smcresult, subelement):
-        self._subelement = subelement # Original element
+        self._subelement = subelement  # Original element
         self._etag = smcresult.etag
-        super(ElementContactAddress, self).__init__(smcresult.json.get(
-            'contact_addresses', []), ContactAddress)
-    
+        super(ElementContactAddress, self).__init__(
+            smcresult.json.get("contact_addresses", []), ContactAddress
+        )
+
     def create(self, location_ref, address, dynamic=False, overwrite_existing=False):
         """
         Create a contact address for the given element. Address is always
         a required field. If the contact address should be dynamic, then
         the value of the address field should be assigned by the DHCP
         interface name, i.e.::
-        
+
             external_endpoint.contact_addresses.create(
                 location=Location('foo'),
                 address='First DHCP Interface ip', dynamic=True)
-        
+
         If you set override_existing=True, any pre-existing contact addresses will
         be removed, otherwise this is an append operation.
-             
+
         :param str,Location location_ref: href or Location element, location is created
             if provided as a string and it doesn't exist
         :param address: string repesenting address
@@ -303,70 +320,82 @@ class ElementContactAddress(SerializedIterable):
         :return: None
         :raises: ActionCommandFailed
         """
-        json=[{'location_ref': location_helper(location_ref),
-               'address': address,
-               'dynamic': dynamic}]
-        
+        json = [
+            {"location_ref": location_helper(location_ref), "address": address, "dynamic": dynamic}
+        ]
+
         if not overwrite_existing:
             json.extend(addr.data for addr in self.items)
-        
+
         return self._subelement.make_request(
-            resource='contact_addresses',
-            method='update',
+            resource="contact_addresses",
+            method="update",
             etag=self._etag,
-            json={'contact_addresses': json})
-             
+            json={"contact_addresses": json},
+        )
+
     def delete(self, location_name=None):
         """
         Delete a contact address by it's location name. Every ElementContactAddress
         has a one to one relationship between a location and an address. If the
         location is not provided, then all contact addresses will be deleted.
-        
+
         :param str location_name: name of the location to remove
         :raises ElementNotFound: location specified does not exist
         """
-        json={'contact_addresses': []}
-        
+        json = {"contact_addresses": []}
+
         if location_name:
             location_ref = Location(location_name).href
-            json.setdefault('contact_addresses',[]).extend(
-                [location.data for location in self if location.location_ref != location_ref])
-        
-        return self._subelement.make_request(
-            resource='contact_addresses',
-            method='update',
-            etag=self._etag,
-            json=json)
+            json.setdefault("contact_addresses", []).extend(
+                [location.data for location in self if location.location_ref != location_ref]
+            )
 
-   
+        return self._subelement.make_request(
+            resource="contact_addresses", method="update", etag=self._etag, json=json
+        )
+
+
 class ExternalEndpoint(SubElement):
     """
     External Endpoint is used by the External Gateway and defines the IP
     and other VPN related settings to identify the VPN peer. This is created
     to define the details of the non-SMC managed gateway. This class is a property
-    of :py:class:`smc.vpn.elements.ExternalGateway` and should not be called 
+    of :py:class:`smc.vpn.elements.ExternalGateway` and should not be called
     directly.
     Add an endpoint to existing External Gateway::
-    
+
         gw = ExternalGateway('aws')
         gw.external_endpoint.create(name='aws01', address='2.2.2.2')
-    
+
     .. versionchanged:: 0.7.0
-    
+
         When using SMC >= 6.5, you can also provide a value for ConnectionType parameter
         when creating the element, for example::
-    
+
             gw = ExternalGateway('aws')
-            gw.external_endpoint.create(name='aws01', address='2.2.2.2', connection_type=ConnectionType('Active'))
-    
+            gw.external_endpoint.create(name='aws01', address='2.2.2.2',
+                                        connection_type=ConnectionType('Active'))
+
     .. seealso:: :class:`~ConnectionType`
     """
-    typeof = 'external_endpoint'
-    
-    def create(self, name, address=None, enabled=True, ipsec_vpn=True,
-               nat_t=False, force_nat_t=False, dynamic=False,
-               ike_phase1_id_type=None, ike_phase1_id_value=None,
-               connection_type_ref=None, **kw):
+
+    typeof = "external_endpoint"
+
+    def create(
+        self,
+        name,
+        address=None,
+        enabled=True,
+        ipsec_vpn=True,
+        nat_t=False,
+        force_nat_t=False,
+        dynamic=False,
+        ike_phase1_id_type=None,
+        ike_phase1_id_value=None,
+        connection_type_ref=None,
+        **kw
+    ):
         """
         Create an test_external endpoint. Define common settings for that
         specify the address, enabled, nat_t, name, etc. You can also omit
@@ -390,31 +419,33 @@ class ExternalEndpoint(SubElement):
         :return: newly created element
         :rtype: ExternalEndpoint
         """
-        json = {'name': name,
-                'address': address,
-                'dynamic': dynamic,
-                'enabled': enabled,
-                'nat_t': nat_t,
-                'force_nat_t': force_nat_t,
-                'ipsec_vpn': ipsec_vpn}
-        
+        json = {
+            "name": name,
+            "address": address,
+            "dynamic": dynamic,
+            "enabled": enabled,
+            "nat_t": nat_t,
+            "force_nat_t": force_nat_t,
+            "ipsec_vpn": ipsec_vpn,
+        }
+
         json.update(kw)
         if dynamic:
-            json.pop('address', None)
+            json.pop("address", None)
 
         if ike_phase1_id_value:
             json.update(ike_phase1_id_value=ike_phase1_id_value)
-        
-        if not ike_phase1_id_type == None:
+
+        if ike_phase1_id_type is not None:
             json.update(ike_phase1_id_type=ike_phase1_id_type)
 
-        json.update(connection_type_ref=element_resolver(connection_type_ref)) if connection_type_ref\
-            else json.update(connection_type_ref=element_default(ConnectionType, 'Active'))
-        
-        return ElementCreator(
-            self.__class__,
-            href=self.href,
-            json=json)
+        json.update(
+            connection_type_ref=element_resolver(connection_type_ref)
+        ) if connection_type_ref else json.update(
+            connection_type_ref=element_default(ConnectionType, "Active")
+        )
+
+        return ElementCreator(self.__class__, href=self.href, json=json)
 
     @classmethod
     def update_or_create(cls, external_gateway, name, with_status=False, **kw):
@@ -423,7 +454,7 @@ class ExternalEndpoint(SubElement):
         An ExternalEndpoint is considered unique based on the IP address for the
         endpoint (you cannot add two external endpoints with the same IP). If the
         external endpoint is dynamic, then the name is the unique identifier.
-        
+
         :param ExternalGateway external_gateway: external gateway reference
         :param str name: name of the ExternalEndpoint. This is only used as
             a direct match if the endpoint is dynamic. Otherwise the address
@@ -440,29 +471,29 @@ class ExternalEndpoint(SubElement):
             return only ExternalEndpoint.
         """
         external_endpoint = None
-        if 'address' in kw:
+        if "address" in kw:
             external_endpoint = external_gateway.external_endpoint.get_contains(
-                            '({})'.format(kw['address']))
-        if external_endpoint == None:
+                "({})".format(kw["address"])
+            )
+        if external_endpoint is None:
             external_endpoint = external_gateway.external_endpoint.get_contains(name)
-        
+
         updated = False
         created = False
         if external_endpoint:  # Check for changes
-            if 'connection_type_ref' in kw: # 6.5 only
-                kw.update(connection_type_ref=element_resolver(kw.pop('connection_type_ref')))
-            
-            for name, value in kw.items(): # Check for differences before updating
+            if "connection_type_ref" in kw:  # 6.5 only
+                kw.update(connection_type_ref=element_resolver(kw.pop("connection_type_ref")))
+
+            for name, value in kw.items():  # Check for differences before updating
                 if getattr(external_endpoint, name, None) != value:
                     external_endpoint.data[name] = value
                     updated = True
             if updated:
                 external_endpoint.update()
         else:
-            external_endpoint = external_gateway.external_endpoint.create(
-                name, **kw)
+            external_endpoint = external_gateway.external_endpoint.create(name, **kw)
             created = True
-        
+
         if with_status:
             return external_endpoint, updated, created
         return external_endpoint
@@ -474,7 +505,7 @@ class ExternalEndpoint(SubElement):
 
         :rtype: bool
         """
-        return self.data.get('force_nat_t')
+        return self.data.get("force_nat_t")
 
     @property
     def enabled(self):
@@ -483,7 +514,7 @@ class ExternalEndpoint(SubElement):
 
         :rtype: bool
         """
-        return self.data.get('enabled')
+        return self.data.get("enabled")
 
     def enable_disable(self):
         """
@@ -492,8 +523,7 @@ class ExternalEndpoint(SubElement):
 
         :return: None
         """
-        self.update(enabled=True) if not self.enabled else \
-            self.update(enabled=False)
+        self.update(enabled=True) if not self.enabled else self.update(enabled=False)
 
     def enable_disable_force_nat_t(self):
         """
@@ -502,34 +532,34 @@ class ExternalEndpoint(SubElement):
 
         :return: None
         """
-        self.update(force_nat_t=True) if not self.force_nat_t else \
-            self.update(force_nat_t=False)
-    
+        self.update(force_nat_t=True) if not self.force_nat_t else self.update(force_nat_t=False)
+
     @property
     def contact_addresses(self):
         """
         Contact Addresses are a mutable collection of contact addresses
         assigned to a supported element.
-        
+
         :rtype: ElementContactAddress
         """
-        return ElementContactAddress(self.make_request(
-            resource='contact_addresses', raw_result=True), self)
-    
+        return ElementContactAddress(
+            self.make_request(resource="contact_addresses", raw_result=True), self
+        )
+
     @property
     def connection_type_ref(self):
         """
         The reference to the connection type for this external endpoint. A
         connection type specifies how the endpoint will behave in an active,
         standby or aggregate role.
-        
+
         .. note:: This will return None on SMC versions < 6.5
-        
+
         :rtype: ConnectionType
         """
-        return Element.from_href(self.data.get('connection_type_ref'))
+        return Element.from_href(self.data.get("connection_type_ref"))
 
-        
+
 class VPNSite(SubElement):
     """
     VPN Site information for an internal or test_external gateway
@@ -543,19 +573,20 @@ class VPNSite(SubElement):
         engine.vpn.sites.create('newsite', [network.href])
 
     Sites can also be added to ExternalGateway's as well::
-    
+
         extgw = ExternalGateway('mygw')
         extgw.vpn_site.create('newsite', [Network('foo')])
 
     This class is a property of :py:class:`smc.core.engine.InternalGateway`
     or :py:class:`smc.vpn.elements.ExternalGateway` and should not be accessed
     directly.
-    
+
     :ivar InternalGateway,ExternalGateway gateway: gateway referenced
     """
-    typeof = 'vpn_site'
-    gateway = ElementRef('gateway')
-    
+
+    typeof = "vpn_site"
+    gateway = ElementRef("gateway")
+
     def create(self, name, site_element):
         """
         Create a VPN site for an internal or external gateway
@@ -568,24 +599,18 @@ class VPNSite(SubElement):
         :rtype: str
         """
         site_element = element_resolver(site_element)
-        json = {
-            'name': name,
-            'site_element': site_element}
-        
-        return ElementCreator(
-            self.__class__,
-            href=self.href,
-            json=json)
-    
+        json = {"name": name, "site_element": site_element}
+
+        return ElementCreator(self.__class__, href=self.href, json=json)
+
     @classmethod
-    def update_or_create(cls, external_gateway, name, site_element=None,
-            with_status=False):
+    def update_or_create(cls, external_gateway, name, site_element=None, with_status=False):
         """
         Update or create a VPN Site elements or modify an existing VPN
         site based on value of provided site_element list. The resultant
         VPN site end result will be what is provided in the site_element
         argument (can also be an empty list to clear existing).
-        
+
         :param ExternalGateway external_gateway: The external gateway for
             this VPN site
         :param str name: name of the VPN site
@@ -601,28 +626,27 @@ class VPNSite(SubElement):
         vpn_site = external_gateway.vpn_site.get_exact(name)
         updated = False
         created = False
-        if vpn_site: # If difference, reset
-            if set(site_elements) != set(vpn_site.data.get('site_element', [])):
-                vpn_site.data['site_element'] = site_elements
+        if vpn_site:  # If difference, reset
+            if set(site_elements) != set(vpn_site.data.get("site_element", [])):
+                vpn_site.data["site_element"] = site_elements
                 vpn_site.update()
                 updated = True
-            
+
         else:
-            vpn_site = external_gateway.vpn_site.create(
-                name=name, site_element=site_elements)
+            vpn_site = external_gateway.vpn_site.create(name=name, site_element=site_elements)
             created = True
-        
+
         if with_status:
             return vpn_site, updated, created
         return vpn_site
-                
+
     @property
     def name(self):
         name = super(VPNSite, self).name
         if not name:
-            return self.data.get('name')
+            return self.data.get("name")
         return name
-    
+
     @property
     def site_element(self):
         """
@@ -631,8 +655,7 @@ class VPNSite(SubElement):
         :return: Elements used in this VPN site
         :rtype: list(Element)
         """
-        return [Element.from_href(element)
-                for element in self.data.get('site_element')]
+        return [Element.from_href(element) for element in self.data.get("site_element")]
 
     def add_site_element(self, element):
         """
@@ -645,10 +668,10 @@ class VPNSite(SubElement):
         :return: None
         """
         element = element_resolver(element)
-        self.data['site_element'].extend(element)
+        self.data["site_element"].extend(element)
         self.update()
 
-       
+
 class VPNProfile(Element):
     """
     A VPN Profile is used to specify cryptography and other Policy VPN specific
@@ -656,7 +679,8 @@ class VPNProfile(Element):
     common profiles labeled as System Element that can be used without
     modification.
     """
-    typeof = 'vpn_profile'
+
+    typeof = "vpn_profile"
 
     @classmethod
     def create(cls, name, comment=None, **kw):
@@ -665,22 +689,22 @@ class VPNProfile(Element):
         can be and also retrieved about a VPN Profile. Keyword parameters
         are specified below. To access a valid keyword, use the standard
         dot notation.
-        
+
         To validate supported keyword attributes for a VPN Profile, consult
         the native SMC API docs for your version of SMC. You can also optionally
         print the element contents after retrieving the element and use
         `update` to modify the element.
-        
+
         For example::
-        
+
             vpn = VPNProfile.create(name='mySecureVPN', comment='test comment')
             pprint(vars(vpn.data))
-        
+
         Then once identifying the attribute, update the relevant top level
         attribute values::
-        
+
             vpn.update(sa_life_time=128000, tunnel_life_time_seconds=57600)
-        
+
         :param str name: Name of profile
         :param str comment: optional comment
         :raises CreateElementFailed: failed creating element with reason
@@ -688,7 +712,7 @@ class VPNProfile(Element):
         """
         kw.update(name=name, comment=comment)
         return ElementCreator(cls, json=kw)
-    
+
     @property
     def capabilities(self):
         """
@@ -696,21 +720,22 @@ class VPNProfile(Element):
         cryptography features to enable or disable on this VPN profile.
         To update or change these values, you can use the built in `update`
         with a key of 'capabilities' and dict value of attributes, i.e::
-        
+
             vpn = VPNProfile('mySecureVPN')
             pprint(vpn.capabilities) # <-- show all options
             vpn.update(capabilities={'sha2_for_ipsec': True, 'sha2_for_ike': True})
-        
+
         :rtype: dict
         """
-        return self.data.get('capabilities', {})
+        return self.data.get("capabilities", {})
 
 
 class VPNBrokerDomain(Element):
     """VPN Broker Domain element defines the virtual network that
     contains the VPN Broker gateway and the VPN Broker members.
     """
-    typeof = 'vpn_broker_domain'
+
+    typeof = "vpn_broker_domain"
 
     @classmethod
     def create(cls, name, mac_address_prefix, file_ref, comment=None, **kw):
@@ -732,16 +757,18 @@ class VPNBrokerDomain(Element):
         :rtype: VPNBrokerDomain
 
         """
-        kw.update(name=name, comment=comment,
-                  mac_address_prefix=mac_address_prefix,
-                  file_ref=file_ref)
+        kw.update(
+            name=name, comment=comment, mac_address_prefix=mac_address_prefix, file_ref=file_ref
+        )
         return ElementCreator(cls, json=kw)
+
 
 class VPNBrokerConfigFile(Element):
     """
     exported VPN Broker Domain element from the NGFW Manager
     """
-    typeof = 'broker_config_file'
+
+    typeof = "broker_config_file"
 
     @classmethod
     def create(cls, name, comment=None, **kw):
@@ -758,30 +785,29 @@ class VPNBrokerConfigFile(Element):
         return ElementCreator(cls, json=kw)
 
 
-
-
 class ConnectionType(Element):
     """
     .. versionadded:: 0.7.0
         Introduced in SMC >= 6.5 to provide a way to group VPN element types
-    
+
     ConnectionTypes are used in various VPN configurations such as an
     ExternalGateway endpoint element to define how the endpoint should
     be treated, i.e. active, aggregate or standby.
-    
+
     :ivar int connectivity_group: connectivity group for this connection type
     :ivar str mode: mode, valid options: 'active', 'aggregate', 'standby'
     """
-    typeof = 'connection_type'
-    
+
+    typeof = "connection_type"
+
     @classmethod
-    def create(cls, name, mode='active', connectivity_group=1, comment=None):
+    def create(cls, name, mode="active", connectivity_group=1, comment=None):
         """
         Create a connection type for an VPN endpoint.
         ::
-        
+
             ConnectionType.create(name='mygroup', mode='standby')
-        
+
         :param str name: name of connection type
         :param str mode: mode of connection type, valid options active, standby,
             aggregate
@@ -791,11 +817,12 @@ class ConnectionType(Element):
         :raises CreateElementFailed: reason for failure
         :rtype: ConnectionType
         """
-        return ElementCreator(cls,
-            json={'name': name,
-                  'mode': mode,
-                  'comment': comment,
-                  'connectivity_group': connectivity_group})
-        
-
-        
+        return ElementCreator(
+            cls,
+            json={
+                "name": name,
+                "mode": mode,
+                "comment": comment,
+                "connectivity_group": connectivity_group,
+            },
+        )

@@ -2,14 +2,15 @@ from smc.base.model import Element, ElementCreator
 from smc.base.structs import NestedDict
 from smc.api.exceptions import ElementNotFound, InvalidRuleValue
 from smc.base.util import element_resolver
-from smc.compat import is_version_less_than_or_equal
+from smc.compat import is_api_version_less_than_or_equal
 
 
 class RuleElement(object):
     """
-    Rule Element encapsulates actions for source, destination and 
-    service fields. 
+    Rule Element encapsulates actions for source, destination and
+    service fields.
     """
+
     @property
     def is_any(self):
         """
@@ -17,14 +18,14 @@ class RuleElement(object):
 
         :rtype: bool
         """
-        return 'any' in self
+        return "any" in self
 
     def set_any(self):
         """
         Set field to any
         """
         self.clear()
-        self.update({'any': True})
+        self.update({"any": True})
 
     @property
     def is_none(self):
@@ -33,14 +34,14 @@ class RuleElement(object):
 
         :rtype: bool
         """
-        return 'none' in self
+        return "none" in self
 
     def set_none(self):
         """
         Set field to none
         """
         self.clear()
-        self.update({'none': True})
+        self.update({"none": True})
 
     def add(self, data):
         """
@@ -78,7 +79,7 @@ class RuleElement(object):
         """
         Add multiple entries to field. Entries should be list format.
         Entries can be of types relavant to the field type. For example,
-        for source and destination fields, elements may be of type 
+        for source and destination fields, elements may be of type
         :py:mod:`smc.elements.network` or be the elements direct href,
         or a combination of both.
 
@@ -87,7 +88,7 @@ class RuleElement(object):
             policy = FirewallPolicy('policy')
             for rule in policy.fw_ipv4_nat_rules.all():
                 if rule.name == 'therule':
-                    rule.sources.add_many([Host('myhost'), 
+                    rule.sources.add_many([Host('myhost'),
                                           'http://1.1.1.1/hosts/12345'])
                     rule.save()
 
@@ -103,29 +104,29 @@ class RuleElement(object):
 
         data = element_resolver(data, do_raise=False)
         self.data[self.typeof] = data
-    
+
     def __eq__(self, other):
-        if type(self) is type(other):
+        if isinstance(self, type(other)):
             if self.is_none or self.is_any:
                 if self.is_none and other.is_none or self.is_any and other.is_any:
                     return True
                 return False
-            if other.is_none or other.is_any: # Current sources not any or none
+            if other.is_none or other.is_any:  # Current sources not any or none
                 return False
             if set(self.all_as_href()) == set(other.all_as_href()):
                 return True
         return False
-    
+
     def __ne__(self, other):
         return not self.__eq__(other)
-        
+
     def update_field(self, elements):
         """
         Update the field with a list of provided values but only if the values
         are different. Return a boolean indicating whether a change was made
         indicating whether `save` should be called. If the field is currently
         set to any or none, then no comparison is made and field is updated.
-        
+
         :param list elements: list of elements in href or Element format
             to compare to existing field
         :rtype: bool
@@ -140,14 +141,20 @@ class RuleElement(object):
                 if set(self.all_as_href()) ^ set(_elements):
                     self.data[self.typeof] = _elements
                     changed = True
-        
-        if changed and self.rule and (isinstance(self, (Source, Destination)) and \
-            self.rule.typeof in ('fw_ipv4_nat_rule', 'fw_ipv6_nat_rule')):
+
+        if (
+            changed
+            and self.rule
+            and (
+                isinstance(self, (Source, Destination))
+                and self.rule.typeof in ("fw_ipv4_nat_rule", "fw_ipv6_nat_rule")
+            )
+        ):
             # Modify NAT cell if necessary
             self.rule._update_nat_field(self)
-            
+
         return changed
-    
+
     def all_as_href(self):
         """
         Return all elements without resolving to :class:`smc.elements.network`
@@ -175,8 +182,7 @@ class RuleElement(object):
         :rtype: list(Element)
         """
         if not self.is_any and not self.is_none:
-            return [Element.from_href(href)
-                    for href in self.get(self.typeof)]
+            return [Element.from_href(href) for href in self.get(self.typeof)]
         return []
 
 
@@ -184,24 +190,24 @@ class Destination(RuleElement, NestedDict):
     """
     Destination fields for a rule.
     """
-    typeof = 'dst'
+
+    typeof = "dst"
 
     def __init__(self, rule=None):
-        dests = dict(none=True) if not rule else \
-            rule.data.get('destinations')
+        dests = dict(none=True) if not rule else rule.data.get("destinations")
         self.rule = rule
         super(Destination, self).__init__(data=dests)
-    
-    
+
+
 class Source(RuleElement, NestedDict):
     """
     Source fields for a rule
     """
-    typeof = 'src'
-        
+
+    typeof = "src"
+
     def __init__(self, rule=None):
-        sources = dict(none=True) if not rule else \
-            rule.data.get('sources')
+        sources = dict(none=True) if not rule else rule.data.get("sources")
         self.rule = rule
         super(Source, self).__init__(data=sources)
 
@@ -210,122 +216,123 @@ class Service(RuleElement, NestedDict):
     """
     Service fields for a rule
     """
-    typeof = 'service'
+
+    typeof = "service"
 
     def __init__(self, rule=None):
-        services = dict(none=True) if not rule else \
-            rule.data.get('services')
+        services = dict(none=True) if not rule else rule.data.get("services")
         self.rule = rule
-        super(Service, self).__init__(data=services)    
+        super(Service, self).__init__(data=services)
 
-        
-class Action(NestedDict): 
-    """ 
-    This represents the action associated with the rule. 
-    """ 
+
+class Action(NestedDict):
+    """
+    This represents the action associated with the rule.
+    """
+
     def __init__(self, rule=None):
         if rule is None:
-            if is_version_less_than_or_equal('6.5'):
-                action = dict(action='allow')
+            if is_api_version_less_than_or_equal("6.5"):
+                action = dict(action="allow")
             else:
-                action = dict(action=['allow'])
+                action = dict(action=["allow"])
             conn_tracking = ConnectionTracking()
             action.update(connection_tracking_options=conn_tracking.data)
-            action.update(scan_detection='undefined') 
-        else: 
-            action = rule.data.get('action', {})
+            action.update(scan_detection="undefined")
+        else:
+            action = rule.data.get("action", {})
         super(Action, self).__init__(data=action)
- 
-    @property 
-    def action(self): 
-        """ 
-        Action set for this rule 
- 
-        :param str value: allow\|discard\|continue\|refuse\|jump\|apply_vpn 
-                          \|enforce_vpn\|forward_vpn\|blacklist
-        :rtype: str 
-        """ 
-        return self.get('action') 
- 
-    @action.setter 
-    def action(self, value): 
-        self.update(action=value) 
- 
+
     @property
-    def connection_tracking_options(self): 
-        """ 
-        Enables connection tracking. 
-        The firewall allows or discards packets according to the selected Connection 
-        Tracking mode. Reply packets are allowed as part of the allowed connection 
-        without an explicit Access rule. Protocols that use a dynamic port assignment 
-        must be allowed using a Service with the appropriate Protocol Agent for that 
-        protocol (in Access rules and NAT rules). 
- 
+    def action(self):
+        """
+        Action set for this rule
+
+        :param str value: allow\\|discard\\|continue\\|refuse\\|jump\\|apply_vpn
+                          \\|enforce_vpn\\|forward_vpn\\|blacklist
+        :rtype: str
+        """
+        return self.get("action")
+
+    @action.setter
+    def action(self, value):
+        self.update(action=value)
+
+    @property
+    def connection_tracking_options(self):
+        """
+        Enables connection tracking.
+        The firewall allows or discards packets according to the selected Connection
+        Tracking mode. Reply packets are allowed as part of the allowed connection
+        without an explicit Access rule. Protocols that use a dynamic port assignment
+        must be allowed using a Service with the appropriate Protocol Agent for that
+        protocol (in Access rules and NAT rules).
+
         :rtype: ConnectionTracking
         """
-        return ConnectionTracking(self) 
-    
+        return ConnectionTracking(self)
+
     @property
     def decrypting(self):
         """
         .. versionadded:: 0.6.0
             Requires SMC version >= 6.3.3
-        
+
         Whether the decryption is enabled on this rule.
-        
-        :param bool value: True, False, None (inherit from continue rule) 
+
+        :param bool value: True, False, None (inherit from continue rule)
         :rtype: bool
         """
-        return self.get('decrypting')
-    
+        return self.get("decrypting")
+
     @decrypting.setter
     def decrypting(self, value):
-        self.update(decrypting=value) 
-        
-    @property 
-    def deep_inspection(self): 
-        """ 
-        Selects traffic that matches this rule for checking against the Inspection 
-        Policy referenced by this policy. Traffic is inspected as the Protocol that 
-        is attached to the Service element in this rule. 
- 
-        :param bool value: True, False, None (inherit from continue rule) 
-        :rtype: bool 
-        """ 
-        return self.get('deep_inspection') 
- 
-    @deep_inspection.setter 
-    def deep_inspection(self, value): 
-        self.update(deep_inspection=value) 
- 
-    @property 
-    def file_filtering(self): 
-        """ 
-        (IPv4 Only) Inspects matching traffic against the File Filtering policy. 
-        Selecting this option should also activates the Deep Inspection option. 
-        You can further adjust virus scanning in the Inspection Policy.  
- 
-        :param bool value: True, False, None (inherit from continue rule) 
-        :rtype: bool 
-        """ 
-        return self.get('file_filtering') 
- 
-    @file_filtering.setter 
-    def file_filtering(self, value): 
-        self.update(file_filtering=value) 
- 
-    @property 
-    def dos_protection(self): 
-        """ 
-        Enable or disable DOS protection mode 
- 
-        :param bool value: True, False, None (inherit from continue rule) 
-        :rtype: bool 
-        """ 
-        return self.get('dos_protection') 
- 
-    @dos_protection.setter 
-    def dos_protection(self, value): 
+        self.update(decrypting=value)
+
+    @property
+    def deep_inspection(self):
+        """
+        Selects traffic that matches this rule for checking against the Inspection
+        Policy referenced by this policy. Traffic is inspected as the Protocol that
+        is attached to the Service element in this rule.
+
+        :param bool value: True, False, None (inherit from continue rule)
+        :rtype: bool
+        """
+        return self.get("deep_inspection")
+
+    @deep_inspection.setter
+    def deep_inspection(self, value):
+        self.update(deep_inspection=value)
+
+    @property
+    def file_filtering(self):
+        """
+        (IPv4 Only) Inspects matching traffic against the File Filtering policy.
+        Selecting this option should also activates the Deep Inspection option.
+        You can further adjust virus scanning in the Inspection Policy.
+
+        :param bool value: True, False, None (inherit from continue rule)
+        :rtype: bool
+        """
+        return self.get("file_filtering")
+
+    @file_filtering.setter
+    def file_filtering(self, value):
+        self.update(file_filtering=value)
+
+    @property
+    def dos_protection(self):
+        """
+        Enable or disable DOS protection mode
+
+        :param bool value: True, False, None (inherit from continue rule)
+        :rtype: bool
+        """
+        return self.get("dos_protection")
+
+    @dos_protection.setter
+    def dos_protection(self, value):
         self.update(dos_protection=value)
 
     @property
@@ -336,85 +343,85 @@ class Action(NestedDict):
         :param bool value: True, False, None (inherit from continue rule)
         :rtype: bool
         """
-        return self.get('antispam')
+        return self.get("antispam")
 
     @antispam.setter
     def antispam(self, value):
         self.update(antispam=value)
 
-    @property 
-    def scan_detection(self): 
-        """ 
-        Enable or disable Scan Detection for traffic that matches the 
-        rule. This overrides the option set in the Engine properties. 
- 
-        Enable scan detection on this rule:: 
- 
-            for rule in policy.fw_ipv4_access_rules.all(): 
-                rule.action.scan_detection = 'on' 
- 
-        :param str value: on\|off\|undefined 
-        :return: scan detection setting (on,off,undefined) 
-        :rtype: str 
-        """ 
-        return self.get('scan_detection') 
- 
-    @scan_detection.setter 
-    def scan_detection(self, value): 
-        if value in ('on', 'off', 'undefined'): 
-            self.update(scan_detection=value) 
- 
-    @property 
-    def sub_policy(self): 
-        """ 
-        Sub policy is used when ``action=jump``. 
-         
-        :rtype: FirewallSubPolicy 
-        """ 
-        if 'sub_policy' in self: 
-            return Element.from_href(self.get('sub_policy')) 
- 
-    @sub_policy.setter 
-    def sub_policy(self, value): 
+    @property
+    def scan_detection(self):
+        """
+        Enable or disable Scan Detection for traffic that matches the
+        rule. This overrides the option set in the Engine properties.
+
+        Enable scan detection on this rule::
+
+            for rule in policy.fw_ipv4_access_rules.all():
+                rule.action.scan_detection = 'on'
+
+        :param str value: on\\|off\\|undefined
+        :return: scan detection setting (on,off,undefined)
+        :rtype: str
+        """
+        return self.get("scan_detection")
+
+    @scan_detection.setter
+    def scan_detection(self, value):
+        if value in ("on", "off", "undefined"):
+            self.update(scan_detection=value)
+
+    @property
+    def sub_policy(self):
+        """
+        Sub policy is used when ``action=jump``.
+
+        :rtype: FirewallSubPolicy
+        """
+        if "sub_policy" in self:
+            return Element.from_href(self.get("sub_policy"))
+
+    @sub_policy.setter
+    def sub_policy(self, value):
         self.update(sub_policy=element_resolver(value))
- 
-    @property 
-    def user_response(self): 
-        """ 
-        Read-only user response setting 
-        """ 
-        return self.get('user_response') 
- 
-    @property 
-    def vpn(self): 
-        """ 
-        Return vpn reference. Only used if 'enforce_vpn', 'apply_vpn', 
-        or 'forward_vpn' is the action type. 
-     
+
+    @property
+    def user_response(self):
+        """
+        Read-only user response setting
+        """
+        return self.get("user_response")
+
+    @property
+    def vpn(self):
+        """
+        Return vpn reference. Only used if 'enforce_vpn', 'apply_vpn',
+        or 'forward_vpn' is the action type.
+
         :param PolicyVPN value: set the policy VPN for VPN action
-        :rtype: PolicyVPN 
-        """ 
-        if 'vpn' in self: 
-            return Element.from_href(self.get('vpn'))
- 
-    @vpn.setter 
+        :rtype: PolicyVPN
+        """
+        if "vpn" in self:
+            return Element.from_href(self.get("vpn"))
+
+    @vpn.setter
     def vpn(self, value):
         self.update(vpn=element_resolver(value))
 
-    @property 
-    def mobile_vpn(self): 
-        """ 
-        Mobile VPN only applies to engines that support VPN and that 
-        have the action of 'enforce_vpn', 'apply_vpn' or 'forward_vpn' 
-        set. This will enable mobile VPN traffic on this VPN rule. 
- 
+    @property
+    def mobile_vpn(self):
+        """
+        Mobile VPN only applies to engines that support VPN and that
+        have the action of 'enforce_vpn', 'apply_vpn' or 'forward_vpn'
+        set. This will enable mobile VPN traffic on this VPN rule.
+
         :param boolean value: set mobile vpn on or off
-        :rtype: boolean 
-        """ 
-        return self.get('mobile_vpn') 
- 
-    @mobile_vpn.setter 
-    def mobile_vpn(self, value): 
+        :rtype: boolean
+        """
+        return self.get("mobile_vpn")
+
+    @mobile_vpn.setter
+    def mobile_vpn(self, value):
         self.update(mobile_vpn=value)
 
 
@@ -433,15 +440,12 @@ class ConnectionTracking(NestedDict):
             rule.action.connection_tracking_options.sync_connections = True
             rule.save()
     """
+
     def __init__(self, rule=None):
         if rule is None:
-            ct = dict(
-                mss_enforced=False,
-                mss_enforced_max=0,
-                mss_enforced_min=0,
-                timeout=-1)
+            ct = dict(mss_enforced=False, mss_enforced_max=0, mss_enforced_min=0, timeout=-1)
         else:
-            ct = rule.data.get('connection_tracking_options', {})
+            ct = rule.data.get("connection_tracking_options", {})
         super(ConnectionTracking, self).__init__(data=ct)
 
     @property
@@ -452,7 +456,7 @@ class ConnectionTracking(NestedDict):
         :param bool value: True, False
         :return: bool
         """
-        return self.get('mss_enforced')
+        return self.get("mss_enforced")
 
     @mss_enforced.setter
     def mss_enforced(self, value):
@@ -469,8 +473,7 @@ class ConnectionTracking(NestedDict):
         :return: (min, max) values
         :rtype: tuple
         """
-        return (self.get('mss_enforced_min'),
-                self.get('mss_enforced_max'))
+        return (self.get("mss_enforced_min"), self.get("mss_enforced_max"))
 
     @mss_enforced_min_max.setter
     def mss_enforced_min_max(self, value):
@@ -488,7 +491,7 @@ class ConnectionTracking(NestedDict):
         :param str value: no,loose,normal,strict
         :return: str
         """
-        return self.get('state')
+        return self.get("state")
 
     @state.setter
     def state(self, value):
@@ -504,13 +507,13 @@ class ConnectionTracking(NestedDict):
         :param int value: time in seconds
         :return: int
         """
-        return self.get('timeout')
+        return self.get("timeout")
 
     @timeout.setter
     def timeout(self, value):
         """
         Set the idle timeout for connections in seconds
-        
+
         :param int value: idle connection timeout
         """
         self.update(timeout=value)
@@ -518,14 +521,14 @@ class ConnectionTracking(NestedDict):
     @property
     def sync_connections(self):
         """
-        Are sync connections enabled for this engine. If 
+        Are sync connections enabled for this engine. If
         None, then this is set to inherit from a continue
         rule.
-        
+
         :return True, False, None (inherit from continue rule)
         """
-        return self.get('sync_connections')
-    
+        return self.get("sync_connections")
+
     @sync_connections.setter
     def sync_connections(self, value):
         self.update(sync_connections=value)
@@ -535,7 +538,7 @@ class LogOptions(NestedDict):
     """
     Log Options represent the settings related to per rule logging.
 
-    Example of obtaining a rule reference and turning logging on 
+    Example of obtaining a rule reference and turning logging on
     for a particular rule::
 
         policy = FirewallPolicy('smcpython')
@@ -547,67 +550,69 @@ class LogOptions(NestedDict):
                 rule.options.user_logging = 'enforced'
                 rule.save()
     """
+
     def __init__(self, rule=None):
         if rule is None:
             logopts = dict(
                 log_accounting_info_mode=False,
                 log_closing_mode=True,
-                log_level='undefined',
+                log_level="undefined",
                 log_payload_additionnal=False,
                 log_payload_excerpt=False,
                 log_payload_record=False,
-                log_severity=-1)
+                log_severity=-1,
+            )
         else:
-            logopts = rule.data.get('options', {})
+            logopts = rule.data.get("options", {})
         super(LogOptions, self).__init__(data=logopts)
-        
+
     @property
     def application_logging(self):
         """
         Stores information about Application use. You can log spplication
         use even if you do not use Applications for access control.
 
-        :param str value: off\|default\|enforced
+        :param str value: off\\|default\\|enforced
         :return: str
         """
-        return self.get('application_logging')
+        return self.get("application_logging")
 
     @application_logging.setter
     def application_logging(self, value):
-        if value in ('off', 'default', 'enforced'):
+        if value in ("off", "default", "enforced"):
             self.update(application_logging=value)
 
     @property
     def log_accounting_info_mode(self):
         """
         Both connection opening and closing are logged and information
-        on the volume of traffic is collected. This option is not 
+        on the volume of traffic is collected. This option is not
         available for rules that issue alerts.
-        If you want to create reports that are based on traffic volume, 
+        If you want to create reports that are based on traffic volume,
         you must select this option for all rules that allow traffic that
         you want to include in the reports.
 
         :param bool value: log accounting information (bits/bytes transferred)
-        :return: bool 
+        :return: bool
         """
-        return self.get('log_accounting_info_mode')
+        return self.get("log_accounting_info_mode")
 
     @log_accounting_info_mode.setter
     def log_accounting_info_mode(self, value):
         self.update(log_accounting_info_mode=value)
-        
+
     @property
     def log_closing_mode(self):
         """
-        Specifying False means no log entries are created when 
-        connections are closed. True will mean both connection 
-        opening and closing are logged, but no information is 
+        Specifying False means no log entries are created when
+        connections are closed. True will mean both connection
+        opening and closing are logged, but no information is
         collected on the volume of traffic.
 
         :param bool value: enable/disable accounting data
         :return: bool
         """
-        return self.get('log_closing_mode')
+        return self.get("log_closing_mode")
 
     @log_closing_mode.setter
     def log_closing_mode(self, value):
@@ -617,17 +622,17 @@ class LogOptions(NestedDict):
     def log_level(self):
         """
         Configure per rule logging. It is recommended to configure an
-        Any/Any/Any/Continue rule in position 1 if global logging is 
+        Any/Any/Any/Continue rule in position 1 if global logging is
         required. This can be used to override any global logging setting.
 
-        :param str value: none\|stored\|transient\|essential\|alert\|undefined
+        :param str value: none\\|stored\\|transient\\|essential\\|alert\\|undefined
         :return: str
         """
-        return self.get('log_level')
+        return self.get("log_level")
 
     @log_level.setter
     def log_level(self, value):
-        if value in ('none', 'stored', 'transient', 'essential', 'alert'):
+        if value in ("none", "stored", "transient", "essential", "alert"):
             self.update(log_level=value)
         if not self.log_accounting_info_mode:
             self.log_accounting_info_mode = True
@@ -635,14 +640,14 @@ class LogOptions(NestedDict):
     @property
     def log_payload_additional(self):
         """
-        Stores packet payload extracted from the traffic. The collected 
+        Stores packet payload extracted from the traffic. The collected
         payload provides information for some of the additional log fields
         depending on the type of traffic.
 
         :param bool value: True, False
         :return: bool
         """
-        return self.get('log_payload_additionnal')
+        return self.get("log_payload_additionnal")
 
     @log_payload_additional.setter
     def log_payload_additional(self, value):
@@ -658,7 +663,7 @@ class LogOptions(NestedDict):
         :param bool value: collect excerpt or not
         :return: bool
         """
-        return self.get('log_payload_excerpt')
+        return self.get("log_payload_excerpt")
 
     @log_payload_excerpt.setter
     def log_payload_excerpt(self, value):
@@ -667,13 +672,13 @@ class LogOptions(NestedDict):
     @property
     def log_payload_record(self):
         """
-        Records the traffic up to the limit that is set in the Record 
+        Records the traffic up to the limit that is set in the Record
         Length field.
 
         :param bool value: True, False
         :return: bool
         """
-        return self.get('log_payload_record')
+        return self.get("log_payload_record")
 
     @log_payload_record.setter
     def log_payload_record(self, value):
@@ -686,7 +691,7 @@ class LogOptions(NestedDict):
 
         :return: str
         """
-        return self.get('log_severity')
+        return self.get("log_severity")
 
     @property
     def user_logging(self):
@@ -698,42 +703,40 @@ class LogOptions(NestedDict):
         Otherwise, only the IP address associated with the User at the time
         the log was created is stored.
 
-        :param str value: off\|default\|enforced
+        :param str value: off\\|default\\|enforced
         :return: str
         """
-        return self.get('user_logging')
+        return self.get("user_logging")
 
     @user_logging.setter
     def user_logging(self, value):
-        if value in ('off', 'default', 'enforced'):
+        if value in ("off", "default", "enforced"):
             self.update(user_logging=value)
 
 
 class SourceVpn(NestedDict):
 
-    type_list = ('normal', 'no_vpn', 'mobile_vpn')
+    type_list = ("normal", "no_vpn", "mobile_vpn")
 
     """
     This represents The Match VPN Options.
     The rule matches traffic from specific VPNs.
     A sub part of Firewall Access Rule used for matching the source VPN.
     """
+
     def __init__(self, rule=None):
         if rule is None:
-            match_vpn_options = dict(
-                match_type="no_vpn",
-                match_vpns=[])
+            match_vpn_options = dict(match_type="no_vpn", match_vpns=[])
         else:
-            match_vpn_options = rule.data.get('match_vpn_options', {})
+            match_vpn_options = rule.data.get("match_vpn_options", {})
         super(SourceVpn, self).__init__(data=match_vpn_options)
 
     def __eq__(self, other):
         if isinstance(other, SourceVpn):
             if self.match_type != other.match_type:
                 return False
-            for values in ('match_vpns'):
-                if set(self.data.get(values, [])) != \
-                        set(other.data.get(values, [])):
+            for values in "match_vpns":
+                if set(self.data.get(values, [])) != set(other.data.get(values, [])):
                     return False
             return True
         return False
@@ -742,8 +745,9 @@ class SourceVpn(NestedDict):
         return not self.__eq__(other)
 
     def __str__(self):
-        return '{}(match_type={} match_vpns={})'.format(
-            self.__class__.__name__, self.match_type, self.match_vpns)
+        return "{}(match_type={} match_vpns={})".format(
+            self.__class__.__name__, self.match_type, self.match_vpns
+        )
 
     @property
     def match_vpns(self):
@@ -752,7 +756,7 @@ class SourceVpn(NestedDict):
 
         :return: list value: vpns or None
         """
-        vpns = self.get('match_vpns')
+        vpns = self.get("match_vpns")
         return [Element.from_href(vpn) for vpn in vpns] if vpns is not None else None
 
     @match_vpns.setter
@@ -769,14 +773,18 @@ class SourceVpn(NestedDict):
 
         :return: str
         """
-        return self.get('match_type')
+        return self.get("match_type")
 
     @match_type.setter
     def match_type(self, value):
         if value in self.type_list:
             self.update(match_type=value)
         else:
-            raise InvalidRuleValue('match_type attribute {} is invalid! Should be part of {}'.format(value, self.type_list))
+            raise InvalidRuleValue(
+                "match_type attribute {} is invalid! Should be part of {}".format(
+                    value, self.type_list
+                )
+            )
 
 
 class AuthenticationOptions(NestedDict):
@@ -787,28 +795,24 @@ class AuthenticationOptions(NestedDict):
 
     def __init__(self, rule=None):
         if rule is None:
-            auth = dict(
-                methods=[],
-                require_auth=False,
-                users=[])
-        else: 
-            auth = rule.data.get('authentication_options', {})
+            auth = dict(methods=[], require_auth=False, users=[])
+        else:
+            auth = rule.data.get("authentication_options", {})
         super(AuthenticationOptions, self).__init__(data=auth)
-    
+
     def __eq__(self, other):
         if isinstance(other, AuthenticationOptions):
             if self.require_auth != other.require_auth:
                 return False
-            for values in ('users', 'methods'):
-                if set(self.data.get(values, [])) != \
-                    set(other.data.get(values, [])):
+            for values in ("users", "methods"):
+                if set(self.data.get(values, [])) != set(other.data.get(values, [])):
                     return False
             return True
         return False
-    
+
     def __ne__(self, other):
         return not self.__eq__(other)
-    
+
     @property
     def methods(self):
         """
@@ -816,7 +820,7 @@ class AuthenticationOptions(NestedDict):
 
         :return: list value: auth methods enabled
         """
-        return [Element.from_href(method) for method in self.get('methods')]
+        return [Element.from_href(method) for method in self.get("methods")]
 
     @property
     def require_auth(self):
@@ -825,7 +829,7 @@ class AuthenticationOptions(NestedDict):
 
         :return: boolean
         """
-        return self.get('require_auth')
+        return self.get("require_auth")
 
     @property
     def timeout(self):
@@ -834,7 +838,7 @@ class AuthenticationOptions(NestedDict):
 
         :return: int
         """
-        return self.get('timeout')
+        return self.get("timeout")
 
     @property
     def users(self):
@@ -843,7 +847,7 @@ class AuthenticationOptions(NestedDict):
 
         :return: list
         """
-        return [Element.from_href(user) for user in self.get('users', [])]
+        return [Element.from_href(user) for user in self.get("users", [])]
 
 
 class TimeRange(object):
@@ -871,11 +875,11 @@ class TimeRange(object):
 
         :param str jan,feb,mar,apr,may,jun,jul,aug,sep,oct,nov,dec
         """
-        return self.data.get('month_range_start')
+        return self.data.get("month_range_start")
 
     @month_range_start.setter
     def month_range_start(self, value):
-        self.data['month_range_start'] = value
+        self.data["month_range_start"] = value
 
     @property
     def month_range_end(self):
@@ -884,18 +888,18 @@ class TimeRange(object):
 
         :param str jan,feb,mar,apr,may,jun,jul,aug,sep,oct,nov,dec
         """
-        return self.data.get('month_range_end')
+        return self.data.get("month_range_end")
 
     @month_range_end.setter
     def month_range_end(self, value):
-        self.data['month_range_end'] = value
+        self.data["month_range_end"] = value
 
 
 class MatchExpression(Element):
     """
     A match expression is used in the source / destination / service fields to group
     together elements into an 'AND'ed configuration. For example, a normal rule might
-    have a source field that could include network=172.18.1.0/24 and zone=Internal 
+    have a source field that could include network=172.18.1.0/24 and zone=Internal
     objects. A match expression enables you to AND these elements together to enforce
     the match requires both. Logically it would be represented as
     (network 172.18.1.0/24 AND zone Internal).
@@ -903,36 +907,51 @@ class MatchExpression(Element):
         >>> from smc.elements.network import Host, Zone
         >>> from smc.policy.rule_elements import MatchExpression
         >>> from smc.policy.layer3 import FirewallPolicy
-        >>> match = MatchExpression.create(name='mymatch', network_element=Host('kali'), zone=Zone('Mail'))
+        >>> match = MatchExpression.create(name='mymatch', network_element=Host('kali'),
+                                           zone=Zone('Mail'))
         >>> policy = FirewallPolicy('smcpython')
-        >>> policy.fw_ipv4_access_rules.create(name='myrule', sources=[match], destinations='any', services='any')
+        >>> policy.fw_ipv4_access_rules.create(name='myrule', sources=[match],
+                                               destinations='any', services='any')
         'http://172.18.1.150:8082/6.2/elements/fw_policy/261/fw_ipv4_access_rule/2099740'
         >>> rule = policy.search_rule('myrule')
         ...
         >>> for source in rule[0].sources.all():
         ...   print(source, source.values())
-        ... 
+        ...
         MatchExpression(name=MatchExpression _1491760686976_2) [Zone(name=Mail), Host(name=kali)]
 
     Match expressions can also be used on service fields by providing values for service
     and service ports as follows::
 
-        match = MatchExpression.create(name='mymatch', service=ApplicationSituation('FTP'), service_ports='TCPService('Any TCP Service')')
+        match = MatchExpression.create(name='mymatch', service=ApplicationSituation('FTP'),
+                                       service_ports='TCPService('Any TCP Service')')
 
     If the service match expression requires ANY ports, you can use the string of 'any' to provide
     this logic::
 
-        match = MatchExpression.create(name='mymatch', service=ApplicationSituation('FTP'), service_ports='any')
+        match = MatchExpression.create(name='mymatch', service=ApplicationSituation('FTP'),
+                                       service_ports='any')
 
     Once the service match expression is created, you can use that in the policy rule::
 
-        policy.fw_ipv4_access_rules.create(name='myrule', sources='any', destinations='any', services=[match], action=['discard'])
+        policy.fw_ipv4_access_rules.create(name='myrule', sources='any', destinations='any',
+                                           services=[match], action=['discard'])
     """
-    typeof = 'match_expression'
+
+    typeof = "match_expression"
 
     @classmethod
-    def create(cls, name, user=None, network_element=None, domain_name=None,
-               zone=None, executable=None, service=None, service_ports='any'):
+    def create(
+        cls,
+        name,
+        user=None,
+        network_element=None,
+        domain_name=None,
+        zone=None,
+        executable=None,
+        service=None,
+        service_ports="any",
+    ):
         """
         Create a match expression
 
@@ -963,16 +982,15 @@ class MatchExpression(Element):
         if service:
             ref_list.append(service.href)
 
-        json = {'name': name,
-                'ref': ref_list}
+        json = {"name": name, "ref": ref_list}
 
         if service:
             try:
-                json.setdefault('ref', []).append(service_ports.href) # Assume Element
+                json.setdefault("ref", []).append(service_ports.href)  # Assume Element
             except AttributeError:
-                json.update(service_port_selection='any')
+                json.update(service_port_selection="any")
 
         return ElementCreator(cls, json)
 
     def values(self):
-        return [Element.from_href(ref) for ref in self.data.get('ref')]
+        return [Element.from_href(ref) for ref in self.data.get("ref")]

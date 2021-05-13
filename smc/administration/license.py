@@ -1,21 +1,24 @@
 """
 Module representing read-only licenses in SMC
 """
+
+
 class Licenses(object):
     """
     List of all available licenses for this Management Server.
     """
+
     def __init__(self, licenses):
         self.licenses = []
-        for lic in licenses['license']:
+        for lic in licenses["license"]:
             self.licenses.append(License(**lic))
-    
+
     def __iter__(self):
         return iter(self.licenses)
-    
+
     def __len__(self):
         return len(self.licenses)
-    
+
     def __getitem__(self, index):
         return self.licenses[index]
 
@@ -39,7 +42,8 @@ class License(object):
     :ivar proof_of_license: proof of license key
     :ivar type: type of license (SECNODE, Mgmt, etc)
     """
-    typeof = 'licenses'
+
+    typeof = "licenses"
 
     def __init__(self, **data):
         for d, v in data.items():
@@ -51,10 +55,8 @@ class License(object):
 
     def __getattr__(self, attr):
         return None
-    
+
     def __repr__(self):
-        return '{0}(id={1},binding={2},bound_to={3})'.format(
-            self.__class__.__name__,
-            self.name,
-            self.binding_state,
-            self.bound_to)
+        return "{0}(id={1},binding={2},bound_to={3})".format(
+            self.__class__.__name__, self.name, self.binding_state, self.bound_to
+        )

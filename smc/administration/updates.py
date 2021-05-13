@@ -20,9 +20,8 @@ class PackageMixin(object):
         :raises TaskRunFailed: failure during task status
         :rtype: TaskOperationPoller
         """
-        return Task.execute(self, 'download', timeout=timeout,
-            wait_for_finish=wait_for_finish)
-    
+        return Task.execute(self, "download", timeout=timeout, wait_for_finish=wait_for_finish)
+
     def activate(self, resource=None, timeout=3, wait_for_finish=False):
         """
         Activate this package on the SMC
@@ -33,15 +32,20 @@ class PackageMixin(object):
         :raises TaskRunFailed: failure during activation (downloading, etc)
         :rtype: TaskOperationPoller
         """
-        return Task.execute(self, 'activate', json={'resource': resource},
-            timeout=timeout, wait_for_finish=wait_for_finish)
+        return Task.execute(
+            self,
+            "activate",
+            json={"resource": resource},
+            timeout=timeout,
+            wait_for_finish=wait_for_finish,
+        )
 
     @property
     def release_notes(self):
         """
         HTTP location of the release notes
         """
-        return self.data.get('release_notes')
+        return self.data.get("release_notes")
 
 
 class EngineUpgrade(PackageMixin, SubElement):
@@ -54,12 +58,12 @@ class EngineUpgrade(PackageMixin, SubElement):
         system = System()
         upgrades = system.engine_upgrade()
         package = upgrades.get_contains('6.2')
-        
+
         poller = package.download(wait_for_finish=True)
         while not poller.done():
             print(poller.result(3))
         print("Finished download: %s" % poller.result())
-        package.activate() 
+        package.activate()
 
     """
 
@@ -68,21 +72,21 @@ class EngineUpgrade(PackageMixin, SubElement):
         """
         Release date for this engine upgrade
         """
-        return self.data.get('release_date')
+        return self.data.get("release_date")
 
     @property
     def version(self):
         """
         Engine upgrade version
         """
-        return self.data.get('version')
+        return self.data.get("version")
 
     @property
     def platform(self):
         """
         Platform for this engine upgrade
         """
-        return self.data.get('platform')
+        return self.data.get("platform")
 
 
 class UpdatePackage(PackageMixin, SubElement):
@@ -94,12 +98,12 @@ class UpdatePackage(PackageMixin, SubElement):
         system = System()
         packages = system.update_package()
         dynup = packages.get_contains('1007')
-        
+
         poller = dynup.download(wait_for_finish=True)
         while not poller.done():
             print(poller.result(3))
         print("Finished download: %s" % poller.result())
-        package.activate() 
+        package.activate()
 
     """
 
@@ -107,29 +111,29 @@ class UpdatePackage(PackageMixin, SubElement):
     def activation_date(self):
         """
         Date this update was activated, if any
-        
+
         :rtype: str
         """
-        return self.data.get('activation_date')
+        return self.data.get("activation_date")
 
     @property
     def package_id(self):
         """
         ID of the package. These will increment as new versions
         are released.
-        
+
         :rtype: str
         """
-        return self.data.get('package_id')
+        return self.data.get("package_id")
 
     @property
     def release_date(self):
         """
         Date of release
-        
+
         :rtype: str
         """
-        return self.data.get('release_date')
+        return self.data.get("release_date")
 
     @property
     def state(self):
@@ -137,7 +141,7 @@ class UpdatePackage(PackageMixin, SubElement):
         State of this package as string. Valid states are available, imported, active.
         If the package is available, you can execute a download. If the package is
         imported, you can activate.
-        
+
         :rtype: str
         """
-        return self.data.get('state')
+        return self.data.get("state")

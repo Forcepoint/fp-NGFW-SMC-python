@@ -5,17 +5,18 @@ SMCRequest is the general data structure that is sent to the send_request
 method in smc.api.web.SMCConnection to submit the data to the SMC.
 """
 from smc.api.web import send_request
-from smc.api.exceptions import SMCOperationFailure, SMCConnectionError, \
-    SessionManagerNotFound
+from smc.api.exceptions import SMCOperationFailure, SMCConnectionError, SessionManagerNotFound
 
 
 def _get_session(session_manager=None):
     if not session_manager:
-        session_manager = getattr(SMCRequest, '_session_manager')
+        session_manager = getattr(SMCRequest, "_session_manager")
     try:
-        return session_manager.get_default_session() if not \
-            session_manager._session_hook else \
-            session_manager._session_hook(session_manager)
+        return (
+            session_manager.get_default_session()
+            if not session_manager._session_hook
+            else session_manager._session_hook(session_manager)
+        )
 
     except AttributeError:
         raise SessionManagerNotFound
@@ -32,11 +33,20 @@ class SMCRequest(object):
     :param str filename: name of file for download, optional for create
     :param str etag: etag of element, required for update
     """
+
     _session_manager = None
-    
-    def __init__(self, href=None, json=None, params=None, filename=None,
-                 etag=None, user_session=None, **kwargs):
-        
+
+    def __init__(
+        self,
+        href=None,
+        json=None,
+        params=None,
+        filename=None,
+        etag=None,
+        user_session=None,
+        **kwargs
+    ):
+
         #: Filename if a file download is requested
         self.filename = filename
         #: dictionary of query parameters
@@ -47,54 +57,53 @@ class SMCRequest(object):
         self.etag = etag
         #: JSON data to send in request
         self.json = {} if json is None else json
-        
+
         # Only used in the case of streaming file download/upload
         self.files = None
         #: Default headers
-        self.headers = {'Content-Type': 'application/json'}
-        
+        self.headers = {"Content-Type": "application/json"}
+
         # Optional user session for this request
-        #self.user_session = user_session # smc.api.session.Session
-        
+        # self.user_session = user_session # smc.api.session.Session
+
         for k, v in kwargs.items():
             setattr(self, k, v)
-    
+
     def __call__(self, session):
         pass
-    
+
     def create(self):
-        return self._make_request(method='POST')
+        return self._make_request(method="POST")
 
     def delete(self):
-        return self._make_request(method='DELETE')
+        return self._make_request(method="DELETE")
 
     def update(self):
-        return self._make_request(method='PUT')
+        return self._make_request(method="PUT")
 
     def read(self):
-        return self._make_request(method='GET')
-    
+        return self._make_request(method="GET")
+
     def _make_request(self, method):
         err = None
         result = None
         try:
             # Obtain the session
-            session = _get_session(getattr(self, '_session_manager', None))
-            
-            if method == 'GET':
+            session = _get_session(getattr(self, "_session_manager", None))
+
+            if method == "GET":
                 if not self.href:
-                    self.href = session.entry_points.get('elements')
-            
+                    self.href = session.entry_points.get("elements")
+
             result = send_request(session, method, self)
-            
+
         except SMCOperationFailure as e:
             result = e.smcresult
             try:
                 err = self.exception(result.msg)  # Exception set
             except AttributeError:
                 pass
-        except (SessionManagerNotFound, SMCConnectionError,
-                IOError, TypeError) as e:
+        except (SessionManagerNotFound, SMCConnectionError, IOError, TypeError) as e:
             err = e
         finally:
             if err:
@@ -104,11 +113,8 @@ class SMCRequest(object):
     def __str__(self):
         sb = []
         for key in self.__dict__:
-            sb.append(
-                "{key}='{value}'".format(
-                    key=key,
-                    value=self.__dict__[key]))
-        return 'SMCRequest({})'.format(','.join(sb))    
+            sb.append("{key}='{value}'".format(key=key, value=self.__dict__[key]))
+        return "SMCRequest({})".format(",".join(sb))
 
 
 def entry_point():
@@ -127,9 +133,9 @@ def fetch_entry_point(name):
     :return: href pulled from API cache
     :rtype: str
     """
-    return entry_point().get(name) # from entry point cache
+    return entry_point().get(name)  # from entry point cache
 
-    
+
 def fetch_meta_by_name(name, filter_context=None, exact_match=True):
     """
     Find the element based on name and optional filters. By default, the
@@ -146,11 +152,9 @@ def fetch_meta_by_name(name, filter_context=None, exact_match=True):
     :rtype: SMCResult
     """
     result = SMCRequest(
-        params={'filter': name,
-                'filter_context': filter_context,
-                'exact_match': exact_match}).read()
-    
+        params={"filter": name, "filter_context": filter_context, "exact_match": exact_match}
+    ).read()
+
     if not result.json:
         result.json = []
     return result
-

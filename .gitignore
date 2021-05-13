@@ -1,4 +1,14 @@
 # remove all intellij conf giles
+.DS_store
 .idea
 .idea*/*
 *.pyc
+build/*
+dist/*
+fp_NGFW_SMC_python.egg-info/*
+smc-monitoring/build/*
+smc-monitoring/dist/*
+smc-monitoring/fp_NGFW_SMC_python_monitoring.egg-info/*
+qa/results/*
+qa/test_suites/examples/*
+venv*

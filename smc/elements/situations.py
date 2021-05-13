@@ -16,7 +16,7 @@ individual inspection contexts. You can retrieve these as follows::
     >>> from smc.elements.situations import SituationContextGroup
     >>> for group in SituationContextGroup.objects.all():
     ...   group
-    ... 
+    ...
     SituationContextGroup(name=DoS Detection)
     SituationContextGroup(name=FINGER)
     SituationContextGroup(name=SMTP Deprecated)
@@ -36,7 +36,8 @@ context groups or inspection contexts::
      InspectionSituationContext(name=TCP synflood detection (SYN-timeout method)),
      InspectionSituationContext(name=Non-ratebased DoS attacks),
      InspectionSituationContext(name=TCP DoS events),
-     InspectionSituationContext(name=UDP DoS events), InspectionSituationContext(name=UDP DoS detected)]
+     InspectionSituationContext(name=UDP DoS events),
+                                InspectionSituationContext(name=UDP DoS detected)]
 
 If you are interested in inspection contexts directly (i.e. groups are
 'flattened' out), you can retrieve these as follows::
@@ -44,7 +45,7 @@ If you are interested in inspection contexts directly (i.e. groups are
     >>> from smc.elements.situations import InspectionSituationContext
     >>> for context in InspectionSituationContext.objects.all():
     ...   context
-    ... 
+    ...
     InspectionSituationContext(name=Context for DNS_POLICY_NOTIFY_FAIL)
     InspectionSituationContext(name=Context for FTP AUTH success)
     InspectionSituationContext(name=TCP PPTP Server Stream)
@@ -53,10 +54,10 @@ If you are interested in inspection contexts directly (i.e. groups are
     InspectionSituationContext(name=RIFF File Stream)
     InspectionSituationContext(name=Context for IP Total Length Error)
     ...
-    
+
 You can optionally retrieve an inspection situation context directly. Most
 situation contexts are system level elements and will be read only, but you
-can fetch them to view configurations if necessary. 
+can fetch them to view configurations if necessary.
 
 Every situation context will have at least one `situation parameter`, which
 is the parameter / value pair used to match the on inspection situations which
@@ -66,9 +67,9 @@ a text file stream, a single regular expression type situation parameter is used
     >>> context = InspectionSituationContext('Text File Stream')
     >>> for parameter in context.situation_parameters:
     ...   parameter
-    ... 
+    ...
     SituationParameter(name=Regular Expression)
-    
+
 Inspection Situations are the individual events that are either predefined or
 system defined that identify specific events to inspect for. All inspection
 situations have an inspection context (see above), and can also be customized
@@ -82,28 +83,37 @@ to match within a Text File Stream::
 
     >>> from smc.elements.situations import InspectionSituation
     >>> from smc.elements.situations import InspectionSituationContext
-    >>> 
-    >>> situation = InspectionSituation.create(name='foosituation', situation_context=InspectionSituationContext('Text File Stream'), severity='high')
+    >>>
+    >>> situation = InspectionSituation.create(name='foosituation',
+                    situation_context=InspectionSituationContext('Text File Stream'),
+                    severity='high')
     >>> situation
     InspectionSituation(name=foosituation)
-    >>> situation.create_regular_expression(r'(?x)\\n.*ActiveXObject \\x28 \\x22 WScript\\.Shell(?[s_file_text_script -> sid()])\\n')
+    >>> situation.create_regular_expression(r'(?x)\\n.*ActiveXObject \\x28 \\x22 WScript\\.'\
+                                            'Shell(?[s_file_text_script -> sid()])\\n')
     >>>
 
 """
-from smc.base.model import Element, ElementRef, ElementList, SubElement,\
-    ElementCache, ElementCreator
+from smc.base.model import (
+    Element,
+    ElementRef,
+    ElementList,
+    SubElement,
+    ElementCache,
+    ElementCreator,
+)
 from smc.api.exceptions import CreateElementFailed, ElementNotFound
 from smc.elements.other import SituationTag
 
 
-SEVERITY = {10: 'critical', 7: 'high', 4: 'low', 1: 'information'}
+SEVERITY = {10: "critical", 7: "high", 4: "low", 1: "information"}
 
 
 def _severity_by_name(name):
     """
     Return the severity integer value by it's name. If not found,
     return 'information'.
-    
+
     :rtype: int
     """
     for intvalue, sevname in SEVERITY.items():
@@ -118,34 +128,35 @@ class SituationParameter(SubElement):
     the inspection situation context. For example, Regular Expression
     would be a situation parameter.
     """
+
     @property
     def type(self):
         """
         The type of this situation parameter in textual format. For
         example, integer, regexp, etc.
-        
+
         :rtype: str
         """
-        return self.data.get('type')
-    
+        return self.data.get("type")
+
     @property
     def display_name(self):
         """
         The display name as shown in the SMC
-        
+
         :rtype: str
         """
-        return self.data.get('display_name')
-    
+        return self.data.get("display_name")
+
     @property
     def order(self):
         """
         The order placement for this parameter. This is only relevant when
         there are multiple parameters in an inspection context definition.
-        
+
         :rtype: int
         """
-        return self.data.get('order', 0)
+        return self.data.get("order", 0)
 
 
 class SituationParameterValue(SubElement):
@@ -154,18 +165,18 @@ class SituationParameterValue(SubElement):
     and as the name implies, provides the value payload for the given
     parameter.
     """
- 
+
 
 class SituationContextGroup(Element):
     """
     A situation context group is simply a top level group for organizing
     individual situation contexts. This is a top level element that can
     be retrieved directly::
-    
+
         >>> from smc.elements.situations import SituationContextGroup
         >>> for group in SituationContextGroup.objects.all():
         ...   group
-        ... 
+        ...
         SituationContextGroup(name=DoS Detection)
         SituationContextGroup(name=FINGER)
         SituationContextGroup(name=SMTP Deprecated)
@@ -175,12 +186,13 @@ class SituationContextGroup(Element):
         SituationContextGroup(name=SIP)
         SituationContextGroup(name=SNMP)
         ...
-    
+
     :ivar list(InspectionContext, InspectionContextGroup) sub_elements: the
         members of this inspection context group
     """
-    typeof = 'situation_context_group'
-    sub_elements = ElementList('sub_elements')
+
+    typeof = "situation_context_group"
+    sub_elements = ElementList("sub_elements")
 
 
 class SituationContext(Element):
@@ -188,19 +200,20 @@ class SituationContext(Element):
     A situation context can be used by an inspection situation or by a
     correlated situation. The context defines the situation parameters
     used to define a pattern match and how that match is made.
-    
+
     :ivar str name: name of this situation context
     :ivar str comment: comment for the context
     """
+
     @property
     def description(self):
         """
         Description for this context
-        
+
         :rtype: str
         """
-        return self.data.get('description', '')
-    
+        return self.data.get("description", "")
+
     @property
     def situation_parameters(self):
         """
@@ -208,14 +221,15 @@ class SituationContext(Element):
         This will return a list of SituationParameter indicating how
         the detection is made, i.e. regular expression, integer value,
         etc.
-        
+
         :rtype: list(SituationParameter)
         """
-        for param in self.data.get('situation_parameters', []):
+        for param in self.data.get("situation_parameters", []):
             cache = ElementCache(data=self.make_request(href=param))
-            yield type('SituationParameter', (SituationParameter,), {
-                'data': cache})(name=cache.name, type=cache.type, href=param)
-                
+            yield type("SituationParameter", (SituationParameter,), {"data": cache})(
+                name=cache.name, type=cache.type, href=param
+            )
+
 
 class InspectionSituationContext(SituationContext):
     """
@@ -226,7 +240,8 @@ class InspectionSituationContext(SituationContext):
     inspection situations such as ActiveX in text file stream detection,
     etc.
     """
-    typeof = 'inspection_situation_context'
+
+    typeof = "inspection_situation_context"
 
 
 class CorrelationSituationContext(SituationContext):
@@ -236,72 +251,75 @@ class CorrelationSituationContext(SituationContext):
     Group, Match and Sequence. See SMC documentation for more details on
     each context type and meaning.
     """
-    typeof = 'correlation_situation_context'
-    
-    
+
+    typeof = "correlation_situation_context"
+
+
 class Situation(Element):
     """
     Situation defines a common interface for inspection and correlated
     situations.
     """
-    typeof = 'situations'
-    situation_context = ElementRef('situation_context_ref')
-    
+
+    typeof = "situations"
+    situation_context = ElementRef("situation_context_ref")
+
     @property
     def severity(self):
         """
         The severity of this inspection situation, critical, high,
         low, information
-        
+
         :rtype: int
         """
-        return SEVERITY.get(self.data.get('severity'))
+        return SEVERITY.get(self.data.get("severity"))
 
     @property
     def description(self):
         """
         The description for this situation
-        
+
         :rtype: str
         """
-        return self.data.get('description', '')
-    
+        return self.data.get("description", "")
+
     @property
     def attacker(self):
         """
         How the Attacker is determined when the Situation matches. This
         information is used for blacklisting and in log entries and may
         be None
-        
+
         :rtype: str or None
         """
-        return self.data.get('attacker')
-    
+        return self.data.get("attacker")
+
     @property
     def target(self):
         """
         How the Target is determined when the Situation matches. This
         information is used for blacklisting and in log entries and may
         be None
-        
+
         :rtype: str or None
         """
-        return self.data.get('target')
+        return self.data.get("target")
 
     @property
     def parameter_values(self):
         """
         Parameter values for this inspection situation. This correlate to
         the the situation_context.
-        
+
         :rtype: list(SituationParameterValue)
         """
-        for param in self.data.get('parameter_values', []):
+        for param in self.data.get("parameter_values", []):
             cache = ElementCache(data=self.make_request(href=param))
-            name = '{}'.format(cache.type.title()).replace('_', '')
-            yield type(name, (SituationParameterValue,), {
-                'data': cache})(name=cache.name, type=cache.type, href=param)
-    
+            name = "{}".format(cache.type.title()).replace("_", "")
+            yield type(name, (SituationParameterValue,), {"data": cache})(
+                name=cache.name, type=cache.type, href=param
+            )
+
 
 class InspectionSituation(Situation):
     """
@@ -310,15 +328,24 @@ class InspectionSituation(Situation):
     Context information, i.e., a pattern that the system is to look for in
     the inspected traffic.
     """
-    typeof = 'inspection_situation'
-    
+
+    typeof = "inspection_situation"
+
     @classmethod
-    def create(cls, name, situation_context, attacker=None, target=None,
-               severity='information', situation_type=None, description=None,
-               comment=None):
+    def create(
+        cls,
+        name,
+        situation_context,
+        attacker=None,
+        target=None,
+        severity="information",
+        situation_type=None,
+        description=None,
+        comment=None,
+    ):
         """
         Create an inspection situation.
-        
+
         :param str name: name of the situation
         :param InspectionSituationContext situation_context: The situation
             context type used to define this situation. Identifies the proper
@@ -338,60 +365,64 @@ class InspectionSituation(Situation):
         """
         try:
             json = {
-                'name': name, 'comment': comment,
-                'description': description,
-                'situation_context_ref': situation_context.href,
-                'attacker': attacker, 'victim': target,
-                'severity': _severity_by_name(severity)}
-            
+                "name": name,
+                "comment": comment,
+                "description": description,
+                "situation_context_ref": situation_context.href,
+                "attacker": attacker,
+                "victim": target,
+                "severity": _severity_by_name(severity),
+            }
+
             element = ElementCreator(cls, json)
-            tag = situation_type or SituationTag('User Defined Situations')
+            tag = situation_type or SituationTag("User Defined Situations")
             tag.add_element(element)
             return element
-            
+
         except ElementNotFound as e:
-            raise CreateElementFailed('{}. Inspection Situation Contexts require SMC '
-                'version 6.5 and above.'.format(str(e)))
-        
+            raise CreateElementFailed(
+                "{}. Inspection Situation Contexts require SMC "
+                "version 6.5 and above.".format(str(e))
+            )
+
     def create_regular_expression(self, regexp):
         """
         Create a regular expression for this inspection situation
         context. The inspection situation must be using an inspection
         context that supports regex.
-        
+
         :param str regexp: regular expression string
         :raises CreateElementFailed: failed to modify the situation
         """
         for parameter in self.situation_context.situation_parameters:
-            if parameter.type == 'regexp':
+            if parameter.type == "regexp":
                 return self.add_parameter_value(
-                    'reg_exp_situation_parameter_values',
-                    **{'parameter_ref': parameter.href,
-                       'reg_exp': regexp}) # Treat as raw string
+                    "reg_exp_situation_parameter_values",
+                    **{"parameter_ref": parameter.href, "reg_exp": regexp}
+                )  # Treat as raw string
 
-        raise CreateElementFailed('The situation does not support a regular '
-            'expression as a context value.')
+        raise CreateElementFailed(
+            "The situation does not support a regular " "expression as a context value."
+        )
 
     def add_parameter_value(self, resource, **value):
         return self.make_request(
-            CreateElementFailed,
-            method='create', 
-            resource=resource,
-            json=value)
-    
+            CreateElementFailed, method="create", resource=resource, json=value
+        )
+
     def find_vulnerabilities(self):
-        pass # Not yet implemented
-        
+        pass  # Not yet implemented
+
     @property
     def vulnerability_references(self):
         """
         If this inspection situation has associated CVE, OSVDB, BID,
         etc references, this will return those reference IDs
-        
+
         :rtype: list(str)
         """
-        return self.data.get('vulnerability_references', [])
-    
+        return self.data.get("vulnerability_references", [])
+
 
 class CorrelationSituation(Situation):
     """
@@ -400,12 +431,12 @@ class CorrelationSituation(Situation):
     not handle traffic directly. Instead they analyze the events generated by
     matches to Situations found in traffic. Correlation Situations use Event
     Binding elements to define the log events that bind together different
-    types of events in traffic. 
+    types of events in traffic.
     """
-    typeof = 'correlation_situation'
-    
+
+    typeof = "correlation_situation"
+
+
 #     @classmethod
 #     def create(cls, **kw):
 #         return ElementCreator(json=kw)
-    
-

@@ -32,43 +32,43 @@ class Node(SubElement):
 
         >>> for node in engine.nodes:
         ...   node
-        ... 
+        ...
         Node(name=fwcluster node 1)
         Node(name=fwcluster node 2)
 
     """
-    
+
     @property
     def type(self):
         """
         Node type
         """
         return self._meta.type
-    
+
     @property
     def version(self):
         """
         Engine version. If the node is not yet initialized, this
         will return None.
-        
+
         :return: str or None
         """
-        return self.data.get('engine_version')
+        return self.data.get("engine_version")
 
     def rename(self, name):
         """
         Rename this node
-        
+
         :param str name: new name for node
         """
-        self.update(name='{} node {}'.format(name, self.nodeid))
+        self.update(name="{} node {}".format(name, self.nodeid))
 
     @property
     def nodeid(self):
         """
         ID of this node
         """
-        return self.data.get('nodeid')
+        return self.data.get("nodeid")
 
     def update(self, *args, **kw):
         # Delete cache from engine reference
@@ -76,8 +76,7 @@ class Node(SubElement):
         self._engine._del_cache()
 
     @classmethod
-    def _create(cls, name, node_type, nodeid=1,
-                loopback_ndi=None):
+    def _create(cls, name, node_type, nodeid=1, loopback_ndi=None):
         """
         Create the node/s for the engine. This isn't called directly,
         instead it is used when engine.create() is called
@@ -89,35 +88,37 @@ class Node(SubElement):
             interface for node.
         """
         loopback = loopback_ndi if loopback_ndi else []
-        node = {node_type: {
-            'activate_test': True,
-            'disabled': False,
-            'loopback_node_dedicated_interface': loopback,
-            'name': name + ' node ' + str(nodeid),
-            'nodeid': nodeid}
+        node = {
+            node_type: {
+                "activate_test": True,
+                "disabled": False,
+                "loopback_node_dedicated_interface": loopback,
+                "name": name + " node " + str(nodeid),
+                "nodeid": nodeid,
+            }
         }
         return node
-    
+
     @property
     def loopback_interface(self):
         """
         Loopback interfaces for this node. This will return
         empty if the engine is not a layer 3 firewall type::
-        
+
             >>> engine = Engine('dingo')
             >>> for node in engine.nodes:
             ...   for loopback in node.loopback_interface:
             ...     loopback
-            ... 
+            ...
             LoopbackInterface(address=172.20.1.1, nodeid=1, rank=1)
             LoopbackInterface(address=172.31.1.1, nodeid=1, rank=2)
             LoopbackInterface(address=2.2.2.2, nodeid=1, rank=3)
-        
+
         :rtype: list(LoopbackInterface)
         """
-        for lb in self.data.get('loopback_node_dedicated_interface', []):
+        for lb in self.data.get("loopback_node_dedicated_interface", []):
             yield LoopbackInterface(lb, self._engine)
-        
+
     def fetch_license(self):
         """
         Fetch the node level license
@@ -125,10 +126,7 @@ class Node(SubElement):
         :raises LicenseError: fetching license failure with reason
         :return: None
         """
-        self.make_request(
-            LicenseError,
-            method='create',
-            resource='fetch')
+        self.make_request(LicenseError, method="create", resource="fetch")
 
     def bind_license(self, license_item_id=None):
         """
@@ -138,12 +136,8 @@ class Node(SubElement):
         :raises LicenseError: binding license failed, possibly no licenses
         :return: None
         """
-        params = {'license_item_id': license_item_id}
-        self.make_request(
-            LicenseError,
-            method='create',
-            resource='bind',
-            params=params)
+        params = {"license_item_id": license_item_id}
+        self.make_request(LicenseError, method="create", resource="bind", params=params)
 
     def unbind_license(self):
         """
@@ -152,10 +146,7 @@ class Node(SubElement):
         :raises LicenseError: failure with reason
         :return: None
         """
-        self.make_request(
-            LicenseError,
-            method='create',
-            resource='unbind')
+        self.make_request(LicenseError, method="create", resource="unbind")
 
     def cancel_unbind_license(self):
         """
@@ -164,16 +155,17 @@ class Node(SubElement):
         :raises LicenseError: unbind failed with reason
         :return: None
         """
-        self.make_request(
-            LicenseError,
-            method='create',
-            resource='cancel_unbind')
+        self.make_request(LicenseError, method="create", resource="cancel_unbind")
 
-    def initial_contact(self, enable_ssh=True, time_zone=None,
-                        keyboard=None,
-                        install_on_server=None,
-                        filename=None,
-                        as_base64=False):
+    def initial_contact(
+        self,
+        enable_ssh=True,
+        time_zone=None,
+        keyboard=None,
+        install_on_server=None,
+        filename=None,
+        as_base64=False,
+    ):
         """
         Allows to save the initial contact for for the specified node
 
@@ -193,41 +185,43 @@ class Node(SubElement):
         """
         result = self.make_request(
             NodeCommandFailed,
-            method='create',
+            method="create",
             raw_result=True,
-            resource='initial_contact',
-            params={'enable_ssh': enable_ssh})
-        
+            resource="initial_contact",
+            params={"enable_ssh": enable_ssh},
+        )
+
         if result.content:
             if as_base64:
                 result.content = b64encode(result.content)
-                    
+
             if filename:
                 try:
                     save_to_file(filename, result.content)
                 except IOError as e:
                     raise NodeCommandFailed(
-                        'Error occurred when attempting to save initial '
-                        'contact to file: {}'.format(e))
+                        "Error occurred when attempting to save initial "
+                        "contact to file: {}".format(e)
+                    )
         return result.content
-    
+
     def dynamic_element_update(self, name_cache_object):
-        """
-        """
+        """"""
         return self.make_request(
             NodeCommandFailed,
-            method='create',
-            resource='dynamic_element_update',
-            headers = {'content-type': 'multipart/form-data'},
-            files = {'update_file': name_cache_object.serialize()})
-        
+            method="create",
+            resource="dynamic_element_update",
+            headers={"content-type": "multipart/form-data"},
+            files={"update_file": name_cache_object.serialize()},
+        )
+
     @property
     def interface_status(self):
         """
         Obtain the interface status for this node. This will return an
         iterable that provides information about the existing interfaces.
         Retrieve a single interface status::
-        
+
             >>> node = engine.nodes[0]
             >>> node
             Node(name=ngf-1065)
@@ -238,38 +232,34 @@ class Node(SubElement):
                 flow_control=u'AutoNeg: off Rx: off Tx: off',
                 interface_id=0, mtu=1500, name=u'eth0_0', port=u'Copper',
                 speed_duplex=u'1000 Mb/s / Full / Automatic', status=u'Up')
-    
+
         Or iterate and get all interfaces::
-            
+
             >>> for stat in node.interface_status:
             ...   stat
-            ... 
+            ...
             InterfaceStatus(aggregate_is_active=False, capability=u'Normal Interface', ...
             ...
-            
+
         :raises NodeCommandFailed: failure to retrieve current status
         :rtype: InterfaceStatus
         """
-        result = self.make_request(
-            NodeCommandFailed,
-            resource='appliance_status')
-        return InterfaceStatus(result.get('interface_statuses', []))
-    
+        result = self.make_request(NodeCommandFailed, resource="appliance_status")
+        return InterfaceStatus(result.get("interface_statuses", []))
+
     @property
     def hardware_status(self):
         """
         Obtain hardware statistics for various areas of this node.
-        
+
         See :class:`~HardwareStatus` for usage.
-        
+
         :raises NodeCommandFailed: failure to retrieve current status
         :rtype: HardwareStatus
         """
-        result = self.make_request(
-            NodeCommandFailed,
-            resource='appliance_status')
-        return HardwareStatus(result.get('hardware_statuses', []))
-    
+        result = self.make_request(NodeCommandFailed, resource="appliance_status")
+        return HardwareStatus(result.get("hardware_statuses", []))
+
     @property
     def health(self):
         """
@@ -279,27 +269,25 @@ class Node(SubElement):
 
         :rtype: ApplianceStatus
         """
-        appliance_status = self.make_request(
-            NodeCommandFailed,
-            resource='status')
+        appliance_status = self.make_request(NodeCommandFailed, resource="status")
         return ApplianceStatus(appliance_status)
-    
+
     def appliance_info(self):
         """
         .. versionadded:: 0.5.7
             Requires SMC version >= 6.3
-        
+
         Retrieve appliance info for this engine.
-        
+
         :raises NodeCommandFailed: Appliance info not supported on
             this node
         :rtype: ApplianceInfo
         """
-        if 'appliance_info' in self.data:
-            return ApplianceInfo(**self.data['appliance_info'])
+        if "appliance_info" in self.data:
+            return ApplianceInfo(**self.data["appliance_info"])
         else:
-            raise NodeCommandFailed('Appliance information is not available on this engine')
-        
+            raise NodeCommandFailed("Appliance information is not available on this engine")
+
     def status(self):
         """
         Basic status for individual node. Specific information such as node
@@ -308,10 +296,8 @@ class Node(SubElement):
 
         :rtype: ApplianceStatus
         """
-        result = self.make_request(
-            NodeCommandFailed,
-            resource='status')
-        
+        result = self.make_request(NodeCommandFailed, resource="status")
+
         return ApplianceStatus(result)
 
     def go_online(self, comment=None):
@@ -325,10 +311,8 @@ class Node(SubElement):
         :return: None
         """
         self.make_request(
-            NodeCommandFailed,
-            method='update',
-            resource='go_online',
-            params={'comment': comment})
+            NodeCommandFailed, method="update", resource="go_online", params={"comment": comment}
+        )
 
     def go_offline(self, comment=None):
         """
@@ -339,10 +323,8 @@ class Node(SubElement):
         :return: None
         """
         self.make_request(
-            NodeCommandFailed,
-            method='update',
-            resource='go_offline',
-            params={'comment': comment})
+            NodeCommandFailed, method="update", resource="go_offline", params={"comment": comment}
+        )
 
     def go_standby(self, comment=None):
         """
@@ -354,10 +336,8 @@ class Node(SubElement):
         :return: None
         """
         self.make_request(
-            NodeCommandFailed,
-            method='update',
-            resource='go_standby',
-            params={'comment': comment})
+            NodeCommandFailed, method="update", resource="go_standby", params={"comment": comment}
+        )
 
     def lock_online(self, comment=None):
         """
@@ -368,10 +348,8 @@ class Node(SubElement):
         :return: None
         """
         self.make_request(
-            NodeCommandFailed,
-            method='update',
-            resource='lock_online',
-            params={'comment': comment})
+            NodeCommandFailed, method="update", resource="lock_online", params={"comment": comment}
+        )
 
     def lock_offline(self, comment=None):
         """
@@ -383,10 +361,8 @@ class Node(SubElement):
         :return: None
         """
         self.make_request(
-            NodeCommandFailed,
-            method='update',
-            resource='lock_offline',
-            params={'comment': comment})
+            NodeCommandFailed, method="update", resource="lock_offline", params={"comment": comment}
+        )
 
     def reset_user_db(self, comment=None):
         """
@@ -399,9 +375,10 @@ class Node(SubElement):
         """
         self.make_request(
             NodeCommandFailed,
-            method='update',
-            resource='reset_user_db',
-            params={'comment': comment})
+            method="update",
+            resource="reset_user_db",
+            params={"comment": comment},
+        )
 
     def debug(self, filter_enabled=False):
         """
@@ -409,40 +386,35 @@ class Node(SubElement):
         debug object. View the debug object repr to identify settings
         to enable or disable and submit the object to :meth:`set_debug`
         to enable settings.
-        
+
         Add filter_enabled=True argument to see only enabled settings
 
         :param bool filter_enabled: returns all enabled diagnostics
         :raises NodeCommandFailed: failure getting diagnostics
         :rtype: Debug
-        
+
         .. seealso:: :class:`~Debug` for example usage
         """
-        params = {'filter_enabled': filter_enabled}
-        result = self.make_request(
-            NodeCommandFailed,
-            resource='diagnostic',
-            params=params)
-        return Debug(result.get('diagnostics'))
-    
+        params = {"filter_enabled": filter_enabled}
+        result = self.make_request(NodeCommandFailed, resource="diagnostic", params=params)
+        return Debug(result.get("diagnostics"))
+
     def set_debug(self, debug):
         """
         Set the debug settings for this node. This should be a modified
         :class:`~Debug` instance. This will take effect immediately on
         the specified node.
-        
+
         :param Debug debug: debug object with specified settings
         :raises NodeCommandFailed: fail to communicate with node
         :return: None
-        
+
         .. seealso:: :class:`~Debug` for example usage
         """
         self.make_request(
-            NodeCommandFailed,
-            method='create',
-            resource='send_diagnostic',
-            json=debug.serialize())
-        
+            NodeCommandFailed, method="create", resource="send_diagnostic", json=debug.serialize()
+        )
+
     def reboot(self, comment=None):
         """
         Send reboot command to this node.
@@ -452,44 +424,34 @@ class Node(SubElement):
         :return: None
         """
         self.make_request(
-            NodeCommandFailed,
-            method='update',
-            resource='reboot',
-            params={'comment': comment})
+            NodeCommandFailed, method="update", resource="reboot", params={"comment": comment}
+        )
 
     def power_off(self):
         """
         .. versionadded:: 0.5.6
             Requires engine version >=6.3
-        
+
         Power off engine.
-         
+
         :raises NodeCommandFailed: online not available
         :return: None
         """
-        self.make_request(
-            NodeCommandFailed,
-            method='update',
-            resource='power_off')
-    
+        self.make_request(NodeCommandFailed, method="update", resource="power_off")
+
     def reset_to_factory(self):
         """
         .. versionadded:: 0.5.6
             Requires engine version >=6.3
-        
+
         Reset the engine to factory defaults.
-        
+
         :raises NodeCommandFailed: online not available
         :return: None
         """
-        self.make_request(
-            NodeCommandFailed,
-            method='update',
-            resource='reset_to_factory')
+        self.make_request(NodeCommandFailed, method="update", resource="reset_to_factory")
 
-    def sginfo(self, include_core_files=False,
-               include_slapcat_output=False,
-               filename='sginfo.gz'):
+    def sginfo(self, include_core_files=False, include_slapcat_output=False, filename="sginfo.gz"):
         """
         Get the SG Info of the specified node. Optionally provide
         a filename, otherwise default to 'sginfo.gz'. Once you run
@@ -502,16 +464,14 @@ class Node(SubElement):
         :rtype: str
         """
         params = {
-            'include_core_files': include_core_files,
-            'include_slapcat_output': include_slapcat_output}
-        
+            "include_core_files": include_core_files,
+            "include_slapcat_output": include_slapcat_output,
+        }
+
         result = self.make_request(
-            NodeCommandFailed,
-            raw_result=True,
-            resource='sginfo',
-            filename=filename,
-            params=params)
-        
+            NodeCommandFailed, raw_result=True, resource="sginfo", filename=filename, params=params
+        )
+
         return result.content
 
     def ssh(self, enable=True, comment=None):
@@ -525,9 +485,10 @@ class Node(SubElement):
         """
         self.make_request(
             NodeCommandFailed,
-            method='update',
-            resource='ssh',
-            params={'enable': enable, 'comment': comment})
+            method="update",
+            resource="ssh",
+            params={"enable": enable, "comment": comment},
+        )
 
     def change_ssh_pwd(self, pwd=None, comment=None):
         """
@@ -540,11 +501,12 @@ class Node(SubElement):
         """
         self.make_request(
             NodeCommandFailed,
-            method='update',
-            resource='change_ssh_pwd',
-            params={'comment': comment},
-            json={'value': pwd})
-    
+            method="update",
+            resource="change_ssh_pwd",
+            params={"comment": comment},
+            json={"value": pwd},
+        )
+
     def time_sync(self):
         """
         Send a time sync command to this node.
@@ -552,10 +514,7 @@ class Node(SubElement):
         :raises NodeCommandFailed: time sync not supported on node
         :return: None
         """
-        self.make_request(
-            NodeCommandFailed,
-            method='update',
-            resource='time_sync')
+        self.make_request(NodeCommandFailed, method="update", resource="time_sync")
 
     def certificate_info(self):
         """
@@ -565,8 +524,7 @@ class Node(SubElement):
 
         :return: dict with links to cert info
         """
-        return self.make_request(
-            resource='certificate_info')
+        return self.make_request(resource="certificate_info")
 
 
 class ApplianceStatus(NestedDict):
@@ -582,6 +540,7 @@ class ApplianceStatus(NestedDict):
     .. versionchanged:: 1.0.1
         added master_node since SMC version >= 6.10 API6.10, 6.9, 6.8
     """
+
     def __init__(self, data):
         super(ApplianceStatus, self).__init__(data=data)
 
@@ -596,14 +555,14 @@ class ApplianceStatus(NestedDict):
         """
         :return: str dyn_up: Dynamic update package version
         """
-        return self.get('dyn_up')
+        return self.get("dyn_up")
 
     @property
     def name(self):
         """
         :return: str name: Name of engine
         """
-        return self.get('name')
+        return self.get("name")
 
     @property
     def platform(self):
@@ -661,7 +620,7 @@ class ApplianceStatus(NestedDict):
         """
         :return: str installed_policy: Installed policy by name
         """
-        return self.get('installed_policy')
+        return self.get("installed_policy")
 
     @property
     def master_node(self):
@@ -670,12 +629,18 @@ class ApplianceStatus(NestedDict):
 
         :return: MasterNode: the master node or None
         """
-        return Element.from_href(self.get('master_node')) if self.get('master_node') is not None else None
+        return (
+            Element.from_href(self.get("master_node"))
+            if self.get("master_node") is not None
+            else None
+        )
 
 
-ApplianceInfo = collections.namedtuple('ApplianceInfo', 
-    'cloud_id cloud_type first_upload_time hardware_version initial_contact_time product_name '
-    'initial_license_remaining_days proof_of_serial software_features software_version')
+ApplianceInfo = collections.namedtuple(
+    "ApplianceInfo",
+    "cloud_id cloud_type first_upload_time hardware_version initial_contact_time product_name "
+    "initial_license_remaining_days proof_of_serial software_features software_version",
+)
 
 """
 Appliance specific information about the given engine node.
@@ -684,7 +649,7 @@ details about the hardware model, applied license features, if the engine
 has made initial contact and when initial policy upload was made.
 
     Retrieve appliance info engine nodes::
-    
+
         engine = Engine('dingo')
         for node in engine.nodes:
             node.appliance_info()
@@ -703,17 +668,21 @@ has made initial contact and when initial policy upload was made.
 ApplianceInfo.__new__.__defaults__ = (None,) * len(ApplianceInfo._fields)
 
 
-InternalInterfaceStatus = collections.namedtuple('InterfaceStatus',
-    'aggregate_is_active capability flow_control interface_id mtu name port speed_duplex status aggregate_mode aggregate_slaves aggregate_master aggregate_master_status')
+InternalInterfaceStatus = collections.namedtuple(
+    "InterfaceStatus",
+    "aggregate_is_active capability flow_control interface_id mtu name port speed_duplex "
+    "status aggregate_mode aggregate_slaves aggregate_master aggregate_master_status",
+)
 InternalInterfaceStatus.__new__.__defaults__ = (None,) * len(InternalInterfaceStatus._fields)
+
 
 class InterfaceStatus(SerializedIterable):
     """
     An iterable that provides a collections interface to interfaces
     and current status on the specified node.
-    
+
     Interface status fields:
-    
+
     :ivar bool aggregate_is_active: Is link aggregation enabled on this interface
     :ivar str capability: What type of interface this is, i.e. "Normal Interface"
     :ivar str flow_control: Autonegotiation, etc
@@ -724,15 +693,15 @@ class InterfaceStatus(SerializedIterable):
     :ivar str speed_duplex: Negotiated speed on the interface
     :ivar str status: Status of interface, Up, Down, etc.
     """
-    
+
     def __init__(self, status):
-        data = status.get('interface_status')
+        data = status.get("interface_status")
         super(InterfaceStatus, self).__init__(data, InternalInterfaceStatus)
 
     def get(self, interface_id):
         """
         Get a specific interface by the interface id
-        
+
         :param int interface_id: interface ID
         :rtype: InterfaceStatus
         """
@@ -741,7 +710,7 @@ class InterfaceStatus(SerializedIterable):
 
 def item_status_6_6(item):
     for items in item.items:
-        statuses = items.get('statuses')
+        statuses = items.get("statuses")
         if statuses:
             for status in statuses:
                 yield Status_6_6(**status)
@@ -749,19 +718,19 @@ def item_status_6_6(item):
 
 def item_status_6_7(item):
     for items in item.items:
-        statuses = items.get('statuses')
-        item_status = items.get('status')
+        statuses = items.get("statuses")
+        item_status = items.get("status")
         if statuses:
             for status in statuses:
                 yield (item_status, Status_6_7(**status))
 
 
-label_6_7 = collections.namedtuple('Label', 'name status items')
-label_6_6 = collections.namedtuple('Label', 'name items')
-Status_6_7 = collections.namedtuple('Status', 'label param sub_system value')
-Status_6_6 = collections.namedtuple('Status', 'label param status sub_system value')
+label_6_7 = collections.namedtuple("Label", "name status items")
+label_6_6 = collections.namedtuple("Label", "name items")
+Status_6_7 = collections.namedtuple("Status", "label param sub_system value")
+Status_6_6 = collections.namedtuple("Status", "label param status sub_system value")
 
-""" 
+"""
 Status fields for hardware status. These fields have generic titles which
 are used to represent the field and values for each hardware type.
 
@@ -784,22 +753,32 @@ class HardwareStatus(SerializedIterable):
         >>> node
         Node(name=ngf-1065)
         >>> node.hardware_status
-        HardwareStatus(Anti-Malware, File Systems, GTI Cloud, Sandbox, Logging subsystem, MLC Connection, Web Filtering)
+        HardwareStatus(Anti-Malware, File Systems, GTI Cloud, Sandbox, Logging subsystem,
+                       MLC Connection, Web Filtering)
         >>> node.hardware_status.filesystem
         HardwareCollection(File Systems, items: 5)
         >>> for stats in node.hardware_status.filesystem:
         ...   stats
-        ... 
-        Status(label=u'Root', param=u'Partition Size', status=-1, sub_system=u'File Systems', value=u'600 MB')
-        Status(label=u'Data', param=u'Usage', status=-1, sub_system=u'File Systems', value=u'6.3%')
-        Status(label=u'Data', param=u'Size', status=-1, sub_system=u'File Systems', value=u'1937 MB')
-        Status(label=u'Spool', param=u'Usage', status=-1, sub_system=u'File Systems', value=u'4.9%')
-        Status(label=u'Spool', param=u'Size', status=-1, sub_system=u'File Systems', value=u'9729 MB')
-        Status(label=u'Tmp', param=u'Usage', status=-1, sub_system=u'File Systems', value=u'0.0%')
-        Status(label=u'Tmp', param=u'Size', status=-1, sub_system=u'File Systems', value=u'3941 MB')
-        Status(label=u'Swap', param=u'Usage', status=-1, sub_system=u'File Systems', value=u'0.0%')
-        Status(label=u'Swap', param=u'Size', status=-1, sub_system=u'File Systems', value=u'1887 MB')
-    
+        ...
+        Status(label=u'Root', param=u'Partition Size', status=-1, sub_system=u'File Systems',
+               value=u'600 MB')
+        Status(label=u'Data', param=u'Usage', status=-1, sub_system=u'File Systems',
+               value=u'6.3%')
+        Status(label=u'Data', param=u'Size', status=-1, sub_system=u'File Systems',
+               value=u'1937 MB')
+        Status(label=u'Spool', param=u'Usage', status=-1, sub_system=u'File Systems',
+               value=u'4.9%')
+        Status(label=u'Spool', param=u'Size', status=-1, sub_system=u'File Systems',
+               value=u'9729 MB')
+        Status(label=u'Tmp', param=u'Usage', status=-1, sub_system=u'File Systems',
+               value=u'0.0%')
+        Status(label=u'Tmp', param=u'Size', status=-1, sub_system=u'File Systems',
+               value=u'3941 MB')
+        Status(label=u'Swap', param=u'Usage', status=-1, sub_system=u'File Systems',
+               value=u'0.0%')
+        Status(label=u'Swap', param=u'Size', status=-1, sub_system=u'File Systems',
+               value=u'1887 MB')
+
         Since SMC-API >= v6.7
         ('OK', Status(label='Swap', param='Size', sub_system='File Systems', value='494 MB'))
         ('WARNING', Status(label='Tmp', param='Usage', sub_system='File Systems', value='96.7%'))
@@ -808,47 +787,48 @@ class HardwareStatus(SerializedIterable):
         >>> for stats in node.hardware_status.sandbox_subsystem:
         ...   stats
         ...
-        ('WARNING', Status(label='Cloud connection', param='status', sub_system='Sandbox', value='1'))
+        ('WARNING', Status(label='Cloud connection', param='status', sub_system='Sandbox',
+                           value='1'))
 
     """
+
     def __init__66(self, status):
-        data = status.get('hardware_statuses')
+        data = status.get("hardware_statuses")
         super(HardwareStatus, self).__init__(data, label_6_6)
 
     def __init__67(self, status):
-        data = status.get('hardware_statuses')
+        data = status.get("hardware_statuses")
         super(HardwareStatus, self).__init__(data, label_6_7)
 
     def __init__(cls, *args, **kwargs):
-        versioned_method = get_best_version(
-            ('6.6', cls.__init__66),
-            ('6.7', cls.__init__67))
+        versioned_method = get_best_version(("6.6", cls.__init__66), ("6.7", cls.__init__67))
         versioned_method(*args, **kwargs)
 
     def __repr__(self):
         items = [item.name for item in self]
-        return "%s(%s)" % (self.__class__.__name__, ','.join(items))
-    
-    @property 
+        return "%s(%s)" % (self.__class__.__name__, ",".join(items))
+
+    @property
     def logging_subsystem(cls, *args, **kwargs):
         """
         A collection of logging subsystem statuses
-        
+
         :rtype: Status
         """
         versioned_method = get_best_version(
-            ('6.6', cls._logging_subsystem_6_6),
-            ('6.7', cls._logging_subsystem_6_7))
+            ("6.6", cls._logging_subsystem_6_6), ("6.7", cls._logging_subsystem_6_7)
+        )
         return versioned_method(*args, **kwargs)
 
     def _logging_subsystem_6_6(self):
         for item in self:
-            if item.name.startswith('Logging'):
+            if item.name.startswith("Logging"):
                 for s in item_status_6_6(item):
                     yield s
+
     def _logging_subsystem_6_7(self):
         for item in self:
-            if item.name.startswith('Logging'):
+            if item.name.startswith("Logging"):
                 for s in item_status_6_7(item):
                     yield s
 
@@ -860,19 +840,19 @@ class HardwareStatus(SerializedIterable):
         :rtype: Status
         """
         versioned_method = get_best_version(
-            ('6.6', cls._sandbox_subsystem_6_6),
-            ('6.7', cls._sandbox_subsystem_6_7))
+            ("6.6", cls._sandbox_subsystem_6_6), ("6.7", cls._sandbox_subsystem_6_7)
+        )
         return versioned_method(*args, **kwargs)
 
     def _sandbox_subsystem_6_6(self):
         for item in self:
-            if item.name.startswith('Sandbox'):
+            if item.name.startswith("Sandbox"):
                 for s in item_status_6_6(item):
                     yield s
 
     def _sandbox_subsystem_6_7(self):
         for item in self:
-            if item.name.startswith('Sandbox'):
+            if item.name.startswith("Sandbox"):
                 for s in item_status_6_7(item):
                     yield s
 
@@ -884,21 +864,22 @@ class HardwareStatus(SerializedIterable):
         :rtype: Status
         """
         versioned_method = get_best_version(
-            ('6.6', cls._filesystem_6_6),
-            ('6.7', cls._filesystem_6_7))
+            ("6.6", cls._filesystem_6_6), ("6.7", cls._filesystem_6_7)
+        )
         return versioned_method(*args, **kwargs)
 
     def _filesystem_6_6(self):
         for item in self:
-            if item.name.startswith('File System'):
+            if item.name.startswith("File System"):
                 for s in item_status_6_6(item):
                     yield s
 
     def _filesystem_6_7(self):
         for item in self:
-            if item.name.startswith('File System'):
+            if item.name.startswith("File System"):
                 for s in item_status_6_7(item):
                     yield s
+
 
 class Debug(object):
     """
@@ -909,7 +890,7 @@ class Debug(object):
     change settings. Setting changes are in effect immediately and
     does not require a policy push.
     Example usage::
-    
+
         >>> node = engine.nodes[0]
         >>> node
         Node(name=ngf-1065)
@@ -932,30 +913,30 @@ class Debug(object):
             >>> debug.sandbox=True
             >>> node.set_debug(debug)
     """
+
     _attr_map = {}
+
     def __init__(self, diag):
         for diagnostic in diag:
-            setting = diagnostic.get('diagnostic')
-            name = setting.get('name')
-            escaped_key = name.replace(" ", "_").replace('-', '_').lower()
-            setattr(self, escaped_key,
-                    setting.get('enabled'))
+            setting = diagnostic.get("diagnostic")
+            name = setting.get("name")
+            escaped_key = name.replace(" ", "_").replace("-", "_").lower()
+            setattr(self, escaped_key, setting.get("enabled"))
             self._attr_map[escaped_key] = name
-            
+
     def __setattr__(self, key, value):
         if not isinstance(value, bool):
-            raise ValueError('Attributes can only be True or False.')
+            raise ValueError("Attributes can only be True or False.")
         super(Debug, self).__setattr__(key, value)
-    
+
     def serialize(self):
-        debug = [{'enabled': v, 'name': self._attr_map.get(k)}
-                 for k, v in self.__dict__.items()]
-        return {'diagnostics' : [{'diagnostic': item} for item in debug]}
-    
+        debug = [{"enabled": v, "name": self._attr_map.get(k)} for k, v in self.__dict__.items()]
+        return {"diagnostics": [{"diagnostic": item} for item in debug]}
+
     def __repr__(self):
         keys = sorted(self.__dict__)
         items = ("{}={!r}".format(k, self.__dict__[k]) for k in keys)
-        return "{}({})".format(type(self).__name__, ", ".join(items))  
+        return "{}({})".format(type(self).__name__, ", ".join(items))
 
 
 class MasterNode(Node):
@@ -963,4 +944,5 @@ class MasterNode(Node):
     This represents an individual Master NGFW Engine node in the Security Management Client,
     representing a device that runs firewall software as part of a Master NGFW Engine.
     """
+
     typeof = "master_node"

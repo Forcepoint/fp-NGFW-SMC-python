@@ -20,25 +20,24 @@ import re
 import time
 import threading
 from smc.base.model import ElementCache, Element, SubElement
-from smc.api.exceptions import TaskRunFailed, ActionCommandFailed,\
-    ResourceNotFound
+from smc.api.exceptions import TaskRunFailed, ActionCommandFailed, ResourceNotFound
 from smc.base.collection import Search
 from smc.base.util import millis_to_utc
 
 
-clean_html = re.compile(r'<.*?>')
+clean_html = re.compile(r"<.*?>")
 
 
 def TaskHistory():
     """
     Task history retrieves a list of tasks in an event queue.
-    
+
     :return: list of task events
     :rtype: list(TaskProgress)
     """
-    events = Search.objects.entry_point('task_progress')
+    events = Search.objects.entry_point("task_progress")
     return [event for event in events]
-        
+
 
 class TaskProgress(Element):
     """
@@ -46,17 +45,18 @@ class TaskProgress(Element):
     tasks may be completed or still running. The task event
     queue events can be retrieved by calling :func:`~TaskHistory`.
     """
-    typeof = 'task_progress'
+
+    typeof = "task_progress"
 
     @property
     def task(self):
         """
         Return the task associated with this event
-        
+
         :rtype: Task
         """
         return Task(self.data)
-        
+
 
 class Task(SubElement):
     """
@@ -70,10 +70,9 @@ class Task(SubElement):
     :param str follower: Fully qualified path to the follower link to track
         this task.
     """
+
     def __init__(self, task):
-        super(Task, self).__init__(
-            href=task.get('follower', None),
-            name=task.get('type', None))
+        super(Task, self).__init__(href=task.get("follower", None), name=task.get("type", None))
         self.data = ElementCache(task)
 
     @property
@@ -83,8 +82,7 @@ class Task(SubElement):
 
         :rtype: list(Element)
         """
-        return [Element.from_href(resource)
-                for resource in self.data.get('resource', [])]
+        return [Element.from_href(resource) for resource in self.data.get("resource", [])]
 
     @property
     def progress(self):
@@ -93,7 +91,7 @@ class Task(SubElement):
 
         :rtype: int
         """
-        return self.data.get('progress', 0)
+        return self.data.get("progress", 0)
 
     @property
     def success(self):
@@ -102,7 +100,7 @@ class Task(SubElement):
 
         :rtype: boolean
         """
-        return self.data.get('success', 0)
+        return self.data.get("success", 0)
 
     @property
     def last_message(self):
@@ -111,7 +109,7 @@ class Task(SubElement):
 
         :rtype: string
         """
-        return self.data.get('last_message', 0)
+        return self.data.get("last_message", 0)
 
     @property
     def start_time(self):
@@ -120,7 +118,7 @@ class Task(SubElement):
 
         :rtype: datetime
         """
-        start_time = self.data.get('start_time')
+        start_time = self.data.get("start_time")
         if start_time:
             return millis_to_utc(start_time)
 
@@ -131,7 +129,7 @@ class Task(SubElement):
 
         :rtype: datetime
         """
-        end_time = self.data.get('end_time')
+        end_time = self.data.get("end_time")
         if end_time:
             return millis_to_utc(end_time)
 
@@ -143,10 +141,8 @@ class Task(SubElement):
         :return: None
         """
         try:
-            self.make_request(
-                method='delete',
-                resource='abort')
-    
+            self.make_request(method="delete", resource="abort")
+
         except ResourceNotFound:
             pass
         except ActionCommandFailed:
@@ -159,7 +155,7 @@ class Task(SubElement):
 
         :rtype: str
         """
-        return self.get_relation('result')
+        return self.get_relation("result")
 
     def update_status(self):
         """
@@ -168,55 +164,44 @@ class Task(SubElement):
 
         :raises TaskRunFailed: fail to update task status
         """
-        task = self.make_request(
-            TaskRunFailed,
-            href=self.href)
+        task = self.make_request(TaskRunFailed, href=self.href)
 
         return Task(task)
-    
+
     def __getattr__(self, key):
         return self.data.get(key)
-    
+
     @staticmethod
     def execute(self, resource, **kw):
         """
         Execute the task and return a TaskOperationPoller.
-        
+
         :rtype: TaskOperationPoller
         """
-        params = kw.pop('params', {})
-        json = kw.pop('json', None)
+        params = kw.pop("params", {})
+        json = kw.pop("json", None)
         task = self.make_request(
-            TaskRunFailed,
-            method='create',
-            params=params,
-            json=json,
-            resource=resource)
+            TaskRunFailed, method="create", params=params, json=json, resource=resource
+        )
 
-        timeout = kw.pop('timeout', 5)
-        wait_for_finish = kw.pop('wait_for_finish', True)
-        
+        timeout = kw.pop("timeout", 5)
+        wait_for_finish = kw.pop("wait_for_finish", True)
+
         return TaskOperationPoller(
-            task=task, timeout=timeout,
-            wait_for_finish=wait_for_finish,
-            **kw)
+            task=task, timeout=timeout, wait_for_finish=wait_for_finish, **kw
+        )
 
     @staticmethod
-    def download(self, resource, filename,timeout=5, max_tries=36,  **kw):
+    def download(self, resource, filename, timeout=5, max_tries=36, **kw):
         """
         Start and return a Download Task
-        
+
         :rtype: DownloadTask(TaskOperationPoller)
         """
-        params = kw.pop('params', {})
-        task = self.make_request(
-            TaskRunFailed,
-            method='create',
-            resource=resource,
-            params=params)
+        params = kw.pop("params", {})
+        task = self.make_request(TaskRunFailed, method="create", resource=resource, params=params)
 
-        return DownloadTask(
-            timeout=timeout, max_tries=max_tries, filename=filename, task=task)
+        return DownloadTask(timeout=timeout, max_tries=max_tries, filename=filename, task=task)
 
 
 class TaskOperationPoller(object):
@@ -226,19 +211,18 @@ class TaskOperationPoller(object):
     by functions that return a task. Typically these will be
     operations like refreshing policy, uploading policy, etc.
     """
-    def __init__(self, task, timeout=5, max_tries=36,
-                 wait_for_finish=False):
+
+    def __init__(self, task, timeout=5, max_tries=36, wait_for_finish=False):
         self._task = Task(task)
         self._thread = None
         self._done = None
         self._exception = None
-        self.callbacks = [] # Call after operation completes
+        self.callbacks = []  # Call after operation completes
         if wait_for_finish:
             self._max_tries = max_tries
             self._timeout = timeout
             self._done = threading.Event()
-            self._thread = threading.Thread(
-                target=self._start)
+            self._thread = threading.Thread(target=self._start)
             self._thread.daemon = True
             self._thread.start()
 
@@ -257,8 +241,7 @@ class TaskOperationPoller(object):
             call(self.task)
 
     def finished(self):
-        return self._done.is_set() or not self._task.in_progress or \
-            self._max_tries == 0
+        return self._done.is_set() or not self._task.in_progress or self._max_tries == 0
 
     def add_done_callback(self, callback):
         """
@@ -270,7 +253,7 @@ class TaskOperationPoller(object):
             will be the completed Task.
         """
         if self._done is None or self._done.is_set():
-            raise ValueError('Task has already finished')
+            raise ValueError("Task has already finished")
         if callable(callback):
             self.callbacks.append(callback)
 
@@ -332,9 +315,12 @@ class DownloadTask(TaskOperationPoller):
     A download task handles tasks that have files associated, for example
     exporting an element to a specified file.
     """
+
     def __init__(self, filename, task, timeout=5, max_tries=36, **kw):
-        super(DownloadTask, self).__init__(task, timeout=timeout, max_tries=max_tries, wait_for_finish=True, **kw)
-        self.type = 'download_task'
+        super(DownloadTask, self).__init__(
+            task, timeout=timeout, max_tries=max_tries, wait_for_finish=True, **kw
+        )
+        self.type = "download_task"
         self.filename = filename
 
         self.download(None)
@@ -345,13 +331,10 @@ class DownloadTask(TaskOperationPoller):
             raise TaskRunFailed(self.task.last_message)
         try:
             result = self.task.make_request(
-                TaskRunFailed,
-                raw_result=True,
-                href=self.task.result_url,
-                filename=self.filename)
+                TaskRunFailed, raw_result=True, href=self.task.result_url, filename=self.filename
+            )
 
             self.filename = result.content
-    
+
         except IOError as io:
-            raise TaskRunFailed(
-                'Export task failed with message: {}'.format(io))
+            raise TaskRunFailed("Export task failed with message: {}".format(io))

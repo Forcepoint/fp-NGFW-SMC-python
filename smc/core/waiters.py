@@ -38,17 +38,32 @@ import time
 import threading
 
 #: Configuration status constant values
-CFG_STATUS = frozenset(['Initial', 'Declared', 'Configured', 'Installed'])
+CFG_STATUS = frozenset(["Initial", "Declared", "Configured", "Installed"])
 
 #: Node status constant values
-STATUS = frozenset(['Not Monitored', 'Unknown', 'Online', 'Going Online',
-                    'Locked Online', 'Going Locked Online','Offline','Going Offline',
-                    'Locked Offline', 'Going Locked Offline','Standby','Going Standby',
-                    'No Policy Installed', 'Policy Out Of Date'])
+STATUS = frozenset(
+    [
+        "Not Monitored",
+        "Unknown",
+        "Online",
+        "Going Online",
+        "Locked Online",
+        "Going Locked Online",
+        "Offline",
+        "Going Offline",
+        "Locked Offline",
+        "Going Locked Offline",
+        "Standby",
+        "Going Standby",
+        "No Policy Installed",
+        "Policy Out Of Date",
+    ]
+)
 
 #: Node state constant values
-STATE = frozenset(['INITIAL', 'READY', 'ERROR', 'SERVER_ERROR', 'NO_STATUS',
-                   'TIMEOUT', 'DELETED', 'DUMMY'])
+STATE = frozenset(
+    ["INITIAL", "READY", "ERROR", "SERVER_ERROR", "NO_STATUS", "TIMEOUT", "DELETED", "DUMMY"]
+)
 
 
 class NodeWaiter(threading.Thread):
@@ -56,11 +71,11 @@ class NodeWaiter(threading.Thread):
     Node Waiter provides a common threaded interface to monitoring
     a nodes status and wait for a specific response.
     """
-    def __init__(self, resource, status, timeout=5,
-                 max_wait=36, **kw):
+
+    def __init__(self, resource, status, timeout=5, max_wait=36, **kw):
         threading.Thread.__init__(self)
         self._desired_status = status
-        self._resource = resource #node resource
+        self._resource = resource  # node resource
         self._status = None
         self._max_wait = max_wait
         self._timeout = timeout
@@ -94,9 +109,7 @@ class NodeWaiter(threading.Thread):
             return latest[0] or None
 
     def finished(self):
-        return self._done.is_set() or \
-            self._status == self._desired_status or \
-            self._max_wait == 0
+        return self._done.is_set() or self._status == self._desired_status or self._max_wait == 0
 
     def add_done_callback(self, callback):
         """
@@ -107,7 +120,7 @@ class NodeWaiter(threading.Thread):
         :param callable callback
         """
         if self._done.is_set():
-            raise ValueError('Thread has already terminated, cannot add callback.')
+            raise ValueError("Thread has already terminated, cannot add callback.")
         if callable(callback):
             self.callbacks.append(callback)
 
@@ -155,12 +168,12 @@ class ConfigurationStatusWaiter(NodeWaiter):
         status. If thrown after the thread has started, it is caught
         and returned in the ``result`` after ending the thread.
     """
-    value = ('configuration_status',)
+
+    value = ("configuration_status",)
 
     def __init__(self, resource, status, **kw):
         if status not in CFG_STATUS:
-            raise ValueError(
-                'Status is invalid. Valid options are: %s' % CFG_STATUS)
+            raise ValueError("Status is invalid. Valid options are: %s" % CFG_STATUS)
         super(ConfigurationStatusWaiter, self).__init__(resource, status, **kw)
 
 
@@ -176,15 +189,15 @@ class NodeStatusWaiter(NodeWaiter):
         status. If thrown after the thread has started, it is caught
         and returned in the ``result`` after ending the thread.
     """
+
     # Node status changed in SMC 6.5 from status to monitoring_status so
     # value was changed to an iterable to check for a status other than
-    # None for both attributes 
-    value = ('status', 'monitoring_status', 'engine_node_status')
+    # None for both attributes
+    value = ("status", "monitoring_status", "engine_node_status")
 
     def __init__(self, resource, status, **kw):
         if status not in STATUS:
-            raise ValueError(
-                'Status is invalid. Valid options are: %s' % STATUS)
+            raise ValueError("Status is invalid. Valid options are: %s" % STATUS)
         super(NodeStatusWaiter, self).__init__(resource, status, **kw)
 
 
@@ -200,10 +213,10 @@ class NodeStateWaiter(NodeWaiter):
         status. If thrown after the thread has started, it is caught
         and returned in the ``result`` after ending the thread.
     """
-    value = ('state', 'monitoring_state')
+
+    value = ("state", "monitoring_state")
 
     def __init__(self, resource, status, **kw):
         if status not in STATE:
-            raise ValueError(
-                'Status is invalid. Valid options are: %s' % STATE)
+            raise ValueError("Status is invalid. Valid options are: %s" % STATE)
         super(NodeStateWaiter, self).__init__(resource, status, **kw)

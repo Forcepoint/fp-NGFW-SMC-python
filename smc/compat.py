@@ -9,14 +9,15 @@ from distutils.version import LooseVersion
 PY3 = sys.version_info > (3,)
 
 if PY3:
-    string_types = str,
+    string_types = (str,)
 else:
-    string_types = basestring,
-    
+    string_types = (basestring,)
+
 if PY3:
     unicode = str
 else:
     unicode = unicode
+
 
 def min_smc_version(version):
     """
@@ -24,6 +25,7 @@ def min_smc_version(version):
     Used for compatibility with selective functions
     """
     return float(smc.session.api_version) >= version
+
 
 def get_best_version(*versions):
     """
@@ -35,7 +37,7 @@ def get_best_version(*versions):
         ElementList(('6.5', 'ref'),('6.6', 'network_ref'))
     """
     versions = list(versions)
-    sorted_versions = sorted(versions, key=lambda t:LooseVersion(t[0]))
+    sorted_versions = sorted(versions, key=lambda t: LooseVersion(t[0]))
     best_value = sorted_versions[0][1]
 
     for version, value in sorted_versions:
@@ -45,6 +47,12 @@ def get_best_version(*versions):
 
     return best_value
 
-def is_version_less_than_or_equal(check_version):
-    return LooseVersion(smc.session.api_version) <= \
-            LooseVersion(check_version)
+
+def is_smc_version_less_than_or_equal(check_version):
+    smc_version = smc.administration.system.System().smc_version
+    smc_version = '.'.join(smc_version.split()[0].split('.')[:2])
+    return LooseVersion(smc_version) <= LooseVersion(check_version)
+
+
+def is_api_version_less_than_or_equal(check_version):
+    return LooseVersion(smc.session.api_version) <= LooseVersion(check_version)

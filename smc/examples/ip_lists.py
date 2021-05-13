@@ -1,20 +1,20 @@
 """
 Example script to create an empty IP List, create an IPList with contents provided as
-a python list, download an IP List in a specified format (txt, json or zip), 
-and upload an IP List. 
+a python list, download an IP List in a specified format (txt, json or zip),
+and upload an IP List.
 
-IP Lists are a new network element supported in SMC API and engines at version 6.1 or newer. 
-These allow for individual IP addresses or network addresses, one per line, and can be used 
+IP Lists are a new network element supported in SMC API and engines at version 6.1 or newer.
+These allow for individual IP addresses or network addresses, one per line, and can be used
 in the source/destination fields of an engine policy.
 
 IPList operations are done by downloading the existing IPList (after creation), modifying
-the list contents and uploading back to SMC. 
+the list contents and uploading back to SMC.
 
 .. note:: Contents of the uploaded IPList will replace the existing contents of the IPList
-          with the same name on the SMC. 
-          
-For upload, a content-type of 
-multipart/form-data is required with the exception of modifying an IPList as json. The 
+          with the same name on the SMC.
+
+For upload, a content-type of
+multipart/form-data is required with the exception of modifying an IPList as json. The
 header type setting is handled by smc-python automatically.
 
 File format for the IPList is::
@@ -55,7 +55,7 @@ def upload_as_zip(name, filename):
 
 
 def upload_as_text(name, filename):
-    """ 
+    """
     Upload the IPList as text from a file.
 
     :param str name: name of IPList
@@ -65,12 +65,12 @@ def upload_as_text(name, filename):
     location = list(IPList.objects.filter(name))
     if location:
         iplist = location[0]
-        return iplist.upload(filename=filename, as_type='txt')
+        return iplist.upload(filename=filename, as_type="txt")
 
 
 def upload_as_json(name, mylist):
     """
-    Upload the IPList as json payload. 
+    Upload the IPList as json payload.
 
     :param str name: name of IPList
     :param list: list of IPList entries
@@ -79,7 +79,7 @@ def upload_as_json(name, mylist):
     location = list(IPList.objects.filter(name))
     if location:
         iplist = location[0]
-        return iplist.upload(json=mylist, as_type='json')
+        return iplist.upload(json=mylist, as_type="json")
 
 
 def download_as_zip(name, filename):
@@ -107,12 +107,12 @@ def download_as_text(name, filename):
     location = list(IPList.objects.filter(name))
     if location:
         iplist = location[0]
-        return iplist.download(filename=filename, as_type='txt')
+        return iplist.download(filename=filename, as_type="txt")
 
 
 def download_as_json(name):
     """
-    Download IPList as json. This would allow for easily 
+    Download IPList as json. This would allow for easily
     manipulation of the IPList, but generally recommended only for
     smaller lists
 
@@ -122,7 +122,7 @@ def download_as_json(name):
     location = list(IPList.objects.filter(name))
     if location:
         iplist = location[0]
-        return iplist.download(as_type='json')
+        return iplist.download(as_type="json")
 
 
 def create_iplist(name):
@@ -148,15 +148,13 @@ def create_iplist_with_data(name, iplist):
     return iplist
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
-    session.login(url='http://172.18.1.26:8082',
-                  api_key='xxxxxxxxxxxxxxxxxxx', timeout=45)
+    session.login(url="http://172.18.1.26:8082", api_key="xxxxxxxxxxxxxxxxxxx", timeout=45)
 
     # Create initial list programmatically
-    result = create_iplist_with_data(name='mylistlist', iplist=[
-                                     '123.123.123.123', '23.23.23.23'])
-    print('This is the href location for the newly created list: %s' % result)
+    result = create_iplist_with_data(name="mylistlist", iplist=["123.123.123.123", "23.23.23.23"])
+    print("This is the href location for the newly created list: %s" % result)
 
     # print upload_as_text('mylist',
     # '/Users/username/git/smc-python/src/smc/examples/ip_addresses')
@@ -168,9 +166,9 @@ if __name__ == '__main__':
 
     # print create_iplist(name='newlist')
 
-    #download_as_text('mylist', filename='/Users/username/iplist.txt')
+    # download_as_text('mylist', filename='/Users/username/iplist.txt')
 
-    #download_as_zip('mylist', filename='/Users/username/iplist.zip')
+    # download_as_zip('mylist', filename='/Users/username/iplist.zip')
 
     # print(download_as_json('mylist'))
 

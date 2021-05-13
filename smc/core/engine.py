@@ -1,15 +1,24 @@
 from collections import namedtuple
 from smc.elements.helpers import domain_helper, location_helper
 from smc.base.model import Element, SubElement, lookup_class, ElementCreator
-from smc.api.exceptions import UnsupportedEngineFeature,\
-    UnsupportedInterfaceType, EngineCommandFailed, SMCConnectionError
+from smc.api.exceptions import (
+    UnsupportedEngineFeature,
+    UnsupportedInterfaceType,
+    EngineCommandFailed,
+    SMCConnectionError,
+)
 from smc.core.node import Node
 from smc.core.resource import Snapshot, PendingChanges
 from smc.core.interfaces import InterfaceOptions, PhysicalInterface
-from smc.core.collection import InterfaceCollection, LoopbackCollection,\
-    PhysicalInterfaceCollection, TunnelInterfaceCollection,\
-    VPNBrokerInterfaceCollection,\
-    VirtualPhysicalInterfaceCollection, SwitchInterfaceCollection
+from smc.core.collection import (
+    InterfaceCollection,
+    LoopbackCollection,
+    PhysicalInterfaceCollection,
+    TunnelInterfaceCollection,
+    VPNBrokerInterfaceCollection,
+    VirtualPhysicalInterfaceCollection,
+    SwitchInterfaceCollection,
+)
 from smc.administration.tasks import Task
 from smc.elements.other import prepare_blacklist
 from smc.elements.network import Alias
@@ -18,10 +27,15 @@ from smc.routing.bgp import DynamicRouting
 from smc.routing.ospf import OSPFProfile
 from smc.core.route import Antispoofing, Routing, Route, PolicyRoute
 from smc.core.contact_address import ContactAddressCollection
-from smc.core.general import DNSRelay, Layer2Settings, DefaultNAT, \
-    SNMP, RankedDNSAddress
-from smc.core.addon import AntiVirus, FileReputation,\
-    SidewinderProxy, UrlFiltering, Sandbox, TLSInspection
+from smc.core.general import DNSRelay, Layer2Settings, DefaultNAT, SNMP, RankedDNSAddress
+from smc.core.addon import (
+    AntiVirus,
+    FileReputation,
+    SidewinderProxy,
+    UrlFiltering,
+    Sandbox,
+    TLSInspection,
+)
 from smc.elements.servers import LogServer
 from smc.base.collection import create_collection, sub_collection
 from smc.base.util import element_resolver
@@ -30,7 +44,8 @@ from smc.base.decorators import cacheable_resource
 from smc.administration.certificates.vpn import GatewayCertificate
 from smc.base.structs import BaseIterable
 from smc.elements.profiles import SNMPAgent
-from smc.compat import is_version_less_than_or_equal
+from smc.compat import is_smc_version_less_than_or_equal, is_api_version_less_than_or_equal
+
 
 class Engine(Element):
     """
@@ -50,7 +65,7 @@ class Engine(Element):
         >>> list(Engine.objects.all())
         [Layer3Firewall(name=i-06145fc6c59a04335 (us-east-2a)), FirewallCluster(name=sg_vm),
         Layer3VirtualEngine(name=ve-5), MasterEngine(name=master-eng)]
-        
+
     Or only search for specific engine types::
 
         >>> from smc.core.engines import Layer3Firewall
@@ -59,19 +74,30 @@ class Engine(Element):
 
     Engine types are defined in :class:`smc.core.engines`.
     """
-    typeof = 'engine_clusters'
+
+    typeof = "engine_clusters"
 
     @classmethod
-    def _create(cls, name, node_type,
-                physical_interfaces,
-                nodes=1, loopback_ndi=None,
-                log_server_ref=None,
-                domain_server_address=None,
-                enable_antivirus=False, enable_gti=False,
-                sidewinder_proxy_enabled=False,
-                default_nat=False, location_ref=None,
-                enable_ospf=None, ospf_profile=None, snmp_agent=None,
-                comment=None, **kw):
+    def _create(
+        cls,
+        name,
+        node_type,
+        physical_interfaces,
+        nodes=1,
+        loopback_ndi=None,
+        log_server_ref=None,
+        domain_server_address=None,
+        enable_antivirus=False,
+        enable_gti=False,
+        sidewinder_proxy_enabled=False,
+        default_nat=False,
+        location_ref=None,
+        enable_ospf=None,
+        ospf_profile=None,
+        snmp_agent=None,
+        comment=None,
+        **kw
+    ):
         """
         Create will return the engine configuration as a dict that is a
         representation of the engine. The creating class will also add
@@ -87,49 +113,49 @@ class Engine(Element):
         """
         node_list = []
         for nodeid in range(1, nodes + 1):  # start at nodeid=1
-            node_list.append(Node._create(
-                name,
-                node_type,
-                nodeid,
-                loopback_ndi))
+            node_list.append(Node._create(name, node_type, nodeid, loopback_ndi))
 
         domain_server_list = []
         if domain_server_address:
             for num, server in enumerate(domain_server_address):
                 try:
-                    domain_server = {'rank': num, 'ne_ref' : server.href}
+                    domain_server = {"rank": num, "ne_ref": server.href}
                 except AttributeError:
-                    domain_server = {'rank': num, 'value': server}
-                
+                    domain_server = {"rank": num, "value": server}
+
                 domain_server_list.append(domain_server)
 
         # Set log server reference, if not explicitly provided
-        if not log_server_ref and node_type is not 'virtual_fw_node':
+        if not log_server_ref and node_type != "virtual_fw_node":
             log_server_ref = LogServer.objects.first().href
 
         base_cfg = {
-            'name': name,
-            'nodes': node_list,
-            'domain_server_address': domain_server_list,
-            'log_server_ref': log_server_ref,
-            'physicalInterfaces': physical_interfaces}
+            "name": name,
+            "nodes": node_list,
+            "domain_server_address": domain_server_list,
+            "log_server_ref": log_server_ref,
+            "physicalInterfaces": physical_interfaces,
+        }
 
         if enable_antivirus:
             antivirus = {
-                'antivirus': {
-                    'antivirus_enabled': True,
-                    'antivirus_update': 'daily',
-                    'virus_log_level': 'stored',
-                    'virus_mirror': 'update.nai.com/Products/CommonUpdater'}}
+                "antivirus": {
+                    "antivirus_enabled": True,
+                    "antivirus_update": "daily",
+                    "virus_log_level": "stored",
+                    "virus_mirror": "update.nai.com/Products/CommonUpdater",
+                }
+            }
             base_cfg.update(antivirus)
 
         if enable_gti:
-            if is_version_less_than_or_equal('6.5'):
-                gti = {'gti_settings': {
-                    'file_reputation_context': 'gti_cloud_only'}}
+            # gti_settings element replaced since smc 6.6 and api 6.6
+            # and since smc 6.7 and api 6.5
+            if is_smc_version_less_than_or_equal("6.6") \
+                    and is_api_version_less_than_or_equal("6.5"):
+                gti = {"gti_settings": {"file_reputation_context": "gti_cloud_only"}}
             else:
-                gti = {'file_reputation_settings': {
-                    'file_reputation_context': 'gti_cloud_only'}}
+                gti = {"file_reputation_settings": {"file_reputation_context": "gti_cloud_only"}}
             base_cfg.update(gti)
 
         if sidewinder_proxy_enabled:
@@ -139,28 +165,23 @@ class Engine(Element):
             base_cfg.update(default_nat=True)
 
         if location_ref:
-            base_cfg.update(location_ref=location_helper(location_ref) \
-                            if location_ref else None)
-        
+            base_cfg.update(location_ref=location_helper(location_ref) if location_ref else None)
+
         if snmp_agent:
-            snmp_agent_ref = SNMPAgent(snmp_agent.pop('snmp_agent_ref')).href
-            base_cfg.update(
-                snmp_agent_ref=snmp_agent_ref,
-                **snmp_agent)
-            
+            snmp_agent_ref = SNMPAgent(snmp_agent.pop("snmp_agent_ref")).href
+            base_cfg.update(snmp_agent_ref=snmp_agent_ref, **snmp_agent)
+
         if enable_ospf:
             if not ospf_profile:  # get default profile
-                ospf_profile = OSPFProfile('Default OSPFv2 Profile').href
-            ospf = {'dynamic_routing': {
-                'ospfv2': {
-                    'enabled': True,
-                    'ospfv2_profile_ref': ospf_profile}
-            }}
+                ospf_profile = OSPFProfile("Default OSPFv2 Profile").href
+            ospf = {
+                "dynamic_routing": {"ospfv2": {"enabled": True, "ospfv2_profile_ref": ospf_profile}}
+            }
             base_cfg.update(ospf)
-        
-        base_cfg.update(kw, comment=comment) # Add rest of kwargs
+
+        base_cfg.update(kw, comment=comment)  # Add rest of kwargs
         return base_cfg
-    
+
     @property
     def type(self):
         if not self._meta:
@@ -175,19 +196,19 @@ class Engine(Element):
 
         :rtype: str or None
         """
-        return getattr(self, 'engine_version', None)
+        return getattr(self, "engine_version", None)
 
     @property
     def installed_policy(self):
         """
         Return the name of the policy installed on this engine. If
         no policy, None will be returned.
-        
+
         :rtype: str or None
         """
         for node in self.nodes:
             return node.health.installed_policy
-    
+
     def rename(self, name):
         """
         Rename the firewall engine, nodes, and internal gateway (VPN gw)
@@ -198,7 +219,7 @@ class Engine(Element):
             node.rename(name)
         self.update(name=name)
         self.vpn.rename(name)
-    
+
     @property
     def log_server(self):
         """
@@ -212,7 +233,7 @@ class Engine(Element):
     @log_server.setter
     def log_server(self, value):
         self.data.update(log_server_ref=location_helper(value))
-    
+
     @property
     def location(self):
         """
@@ -226,27 +247,27 @@ class Engine(Element):
         :return: Location element or None
         """
         location = Element.from_href(self.location_ref)
-        if location and location.name == 'Default':
+        if location and location.name == "Default":
             return None
         return location
 
     @location.setter
     def location(self, value):
         self.data.update(location_ref=location_helper(value))
-    
+
     @property
     def geolocation(self):
         """
         Return the geolocation for the given engine. This attribute requires
         at least SMC version >= 6.5.x. If no geolocation is assigned or the
-        SMC is not a correct version this will return None. 
+        SMC is not a correct version this will return None.
         If setting a new geolocation, call update() after modification.
-        
+
         Exmaple::
-        
+
             >>> from smc.elements.other import Geolocation
             >>> engine = Engine('azure')
-        
+
             >>> geo = Geolocation.create(name='MyGeo', latitude='44.97997', longitude='-93.26384')
             >>> geo
             Geolocation(name=MyGeo)
@@ -259,12 +280,12 @@ class Engine(Element):
             href or type Geolocation element.
         :rtype: Geolocation or None
         """
-        return self.from_href(getattr(self, 'geolocation_ref', None))
-    
+        return self.from_href(getattr(self, "geolocation_ref", None))
+
     @geolocation.setter
     def geolocation(self, value):
         self.data.update(geolocation_ref=element_resolver(value))
-    
+
     @property
     def default_nat(self):
         """
@@ -272,14 +293,13 @@ class Engine(Element):
         NAT without the requirement to add specific NAT rules. This is a
         more common configuration for outbound traffic. Inbound traffic
         will still require specific NAT rules for redirection.
-        
+
         :rtype: DefaultNAT
         """
-        if 'default_nat' in self.data:
+        if "default_nat" in self.data:
             return DefaultNAT(self)
-        raise UnsupportedEngineFeature( 
-            'This engine type does not support default NAT.')
-    
+        raise UnsupportedEngineFeature("This engine type does not support default NAT.")
+
     @property
     def dns(self):
         """
@@ -287,7 +307,7 @@ class Engine(Element):
         This resource is iterable and yields instances of
         :class:`smc.core.addon.DNSEntry`.
         Example of adding entries::
-        
+
             >>> from smc.elements.servers import DNSServer
             >>> server = DNSServer.create(name='mydnsserver', address='10.0.0.1')
             >>> engine.dns.add(['8.8.8.8', server])
@@ -296,62 +316,64 @@ class Engine(Element):
             >>> list(engine.dns)
             [DNSEntry(rank=0,value=8.8.8.8,ne_ref=None),
              DNSEntry(rank=1,value=None,ne_ref=DNSServer(name=mydnsserver))]
-        
+
         :rtype: RankedDNSAddress
         """
-        return RankedDNSAddress(self.data.get('domain_server_address', []))
-    
+        return RankedDNSAddress(self.data.get("domain_server_address", []))
+
     @property
     def snmp(self):
         """
         SNMP engine settings. SNMP is supported on all engine types,
         however can be enabled only on NDI interfaces (interfaces that
         have assigned addresses).
-        
+
         :rtype: SNMP
         """
-        if not self.type.startswith('virtual'):
+        if not self.type.startswith("virtual"):
             return SNMP(self)
         raise UnsupportedEngineFeature(
-            'SNMP is not supported directly on this engine type. If this '
-            'is a virtual engine, SNMP is configured on the master engine.')
-        
+            "SNMP is not supported directly on this engine type. If this "
+            "is a virtual engine, SNMP is configured on the master engine."
+        )
+
     @property
     def antivirus(self):
         """
         AntiVirus engine settings. Note that for virtual engines
         the AV settings are configured on the Master Engine.
         Get current status::
-        
+
             engine.antivirus.status
-        
+
         :raises UnsupportedEngineFeature: Invalid engine type for AV
         :rtype: AntiVirus
         """
-        if not self.type.startswith('virtual'):
+        if not self.type.startswith("virtual"):
             return AntiVirus(self)
         raise UnsupportedEngineFeature(
-            'Antivirus is not supported directly on this engine type. If this '
-            'is a virtual engine, AV is configured on the master engine.')
-    
+            "Antivirus is not supported directly on this engine type. If this "
+            "is a virtual engine, AV is configured on the master engine."
+        )
+
     @property
     def file_reputation(self):
         """
         File reputation status on engine. Note that for virtual engines
         the AV settings are configured on the Master Engine.
         Get current status::
-        
+
             engine.file_reputation.status
-            
+
         :raises UnsupportedEngineFeature: Invalid engine type for file rep
         :rtype: FileReputation
         """
-        if not self.type.startswith('virtual'):
+        if not self.type.startswith("virtual"):
             return FileReputation(self)
         raise UnsupportedEngineFeature(
-            'GTI should be enabled on the Master Engine not directly on the '
-            'virtual engine.')
-    
+            "GTI should be enabled on the Master Engine not directly on the " "virtual engine."
+        )
+
     @property
     def sidewinder_proxy(self):
         """
@@ -359,51 +381,54 @@ class Engine(Element):
         proxy is supported on layer 3 engines and require SMC and engine
         version >= 6.1.
         Get current status::
-        
+
             engine.sidewinder_proxy.status
-        
-        :raises UnsupportedEngineFeature: requires layer 3 engine    
+
+        :raises UnsupportedEngineFeature: requires layer 3 engine
         :rtype: SidewinderProxy
         """
-        if 'sidewinder_proxy_enabled' in self.data:
+        if "sidewinder_proxy_enabled" in self.data:
             return SidewinderProxy(self)
         raise UnsupportedEngineFeature(
-            'Sidewinder Proxy requires a layer 3 engine and version >= v6.1.')
-    
+            "Sidewinder Proxy requires a layer 3 engine and version >= v6.1."
+        )
+
     @property
     def url_filtering(self):
         """
         Configure URL Filtering settings on the engine.
         Get current status::
-        
+
             engine.url_filtering.status
-        
+
         :raises UnsupportedEngineFeature: not supported on virtual engines
         :rtype: UrlFiltering
         """
-        if not self.type.startswith('virtual'):
+        if not self.type.startswith("virtual"):
             return UrlFiltering(self)
         raise UnsupportedEngineFeature(
-            'Enabling URL Filtering should be done on the Master Engine, not '
-            'directly on the virtual engine.')
-    
+            "Enabling URL Filtering should be done on the Master Engine, not "
+            "directly on the virtual engine."
+        )
+
     @property
     def sandbox(self):
         """
         Configure sandbox settings on the engine.
         Get current status::
-        
+
             engine.sandbox.status
-        
+
         :raises UnsupportedEngineFeature: not supported on virtual engine
         :rtype: Sandbox
-        """    
-        if not self.type.startswith('virtual'):
+        """
+        if not self.type.startswith("virtual"):
             return Sandbox(self)
         raise UnsupportedEngineFeature(
-            'Enabling sandbox should be done on the Master Engine, not '
-            'directly on the virtual engine.')
-    
+            "Enabling sandbox should be done on the Master Engine, not "
+            "directly on the virtual engine."
+        )
+
     @property
     def dns_relay(self):
         """
@@ -411,39 +436,38 @@ class Engine(Element):
         on this engine. You must still separately configure the
         :class:`smc.elements.profiles.DNSRelayProfile` that the
         engine references.
-        
+
         :raises UnsupportedEngineFeature: unsupported feature on
             this engine type.
         :rtype: DNSRelay
         """
-        if 'dns_relay_interface' in self.data:
+        if "dns_relay_interface" in self.data:
             return DNSRelay(self)
-        raise UnsupportedEngineFeature(
-            'DNS Relay requires a layer 3 engine and version >= v6.2.')
-    
+        raise UnsupportedEngineFeature("DNS Relay requires a layer 3 engine and version >= v6.2.")
+
     @property
     def tls_inspection(self):
-        """    
+        """
         TLS Inspection settings manage certificates assigned to the
         engine for TLS server decryption (inbound) and TLS client
         decryption (outbound). In order to enable either, you must
         first assign certificates to the engine.
         Example of adding TLSServerCredentials to an engine::
-        
+
             >>> engine = Engine('myfirewall')
             >>> tls = TLSServerCredential('server2.test.local')
             >>> engine.tls_inspection.add_tls_credential([tls])
             >>> engine.tls_inspection.server_credentials
             [TLSServerCredential(name=server2.test.local)]
-        
+
         :rtype: TLSInspection
         """
         return TLSInspection(self)
-    
+
     @property
     def ospf(self):
         return self.dynamic_routing.ospf
-        
+
     @property
     def bgp(self):
         return self.dynamic_routing.bgp
@@ -452,55 +476,51 @@ class Engine(Element):
     def dynamic_routing(self):
         """
         Dynamic Routing entry point. Access BGP, OSPF configurations
-        
+
         :raises UnsupportedEngineFeature: Only supported on layer 3 engines
         :rtype: DynamicRouting
         """
-        if 'dynamic_routing' in self.data:
+        if "dynamic_routing" in self.data:
             return DynamicRouting(self)
-        raise UnsupportedEngineFeature( 
-            'Dynamic routing is only supported on layer 3 engine types')
-    
+        raise UnsupportedEngineFeature("Dynamic routing is only supported on layer 3 engine types")
+
     @property
     def l2fw_settings(self):
         """
         Layer 2 Firewall Settings make it possible for a layer 3 firewall
         to run specified interfaces in layer 2 mode. This requires that
         a layer 2 interface policy is assigned to the engine and that
-        inline_l2fw interfaces are created. 
-        
+        inline_l2fw interfaces are created.
+
         :raises UnsupportedEngineFeature: requires layer 3 engine
         :rtype: Layer2Settings
         """
-        if 'l2fw_settings' in self.data:
+        if "l2fw_settings" in self.data:
             return Layer2Settings(self)
-        raise UnsupportedEngineFeature( 
-            'Layer2FW settings are only supported on layer 3 engines using '
-            'engine and SMC version >= 6.3')
-    
+        raise UnsupportedEngineFeature(
+            "Layer2FW settings are only supported on layer 3 engines using "
+            "engine and SMC version >= 6.3"
+        )
+
     @property
     def nodes(self):
         """
         Return a list of child nodes of this engine. This can be
         used to iterate to obtain access to node level operations
         ::
-        
+
             >>> print(list(engine.nodes))
             [Node(name=myfirewall node 1)]
             >>> engine.nodes.get(0)
             Node(name=myfirewall node 1)
-            
-        
+
+
         :return: nodes for this engine
         :rtype: SubElementCollection(Node)
         """
-        resource = sub_collection(
-            self.get_relation( 
-                'nodes'), 
-            Node) 
-        resource._load_from_engine(self, 'nodes') 
+        resource = sub_collection(self.get_relation("nodes"), Node)
+        resource._load_from_engine(self, "nodes")
         return resource
-        
 
     @property
     def permissions(self):
@@ -512,7 +532,7 @@ class Engine(Element):
             >>> engine = Engine('myfirewall')
             >>> for x in engine.permissions:
             ...   print(x)
-            ... 
+            ...
             AccessControlList(name=ALL Elements)
             AccessControlList(name=ALL Firewalls)
 
@@ -521,16 +541,15 @@ class Engine(Element):
         :rtype: list(AccessControlList)
         """
         acl_list = list(AccessControlList.objects.all())
+
         def acl_map(elem_href):
             for elem in acl_list:
                 if elem.href == elem_href:
                     return elem
-        
-        acls = self.make_request(
-            UnsupportedEngineFeature,
-            resource='permissions')
-        for acl in acls['granted_access_control_list']:
-            yield(acl_map(acl))
+
+        acls = self.make_request(UnsupportedEngineFeature, resource="permissions")
+        for acl in acls["granted_access_control_list"]:
+            yield (acl_map(acl))
 
     @property
     def pending_changes(self):
@@ -542,12 +561,12 @@ class Engine(Element):
             support pending changes
         :rtype: PendingChanges
         """
-        if 'pending_changes' in self.data.links:
+        if "pending_changes" in self.data.links:
             return PendingChanges(self)
         raise UnsupportedEngineFeature(
-            'Pending changes is an unsupported feature on this engine: {}'
-            .format(self.type))
-    
+            "Pending changes is an unsupported feature on this engine: {}".format(self.type)
+        )
+
     def alias_resolving(self):
         """
         Alias definitions with resolved values as defined on this engine.
@@ -566,7 +585,7 @@ class Engine(Element):
         :rtype: Alias
         """
         alias_list = list(Alias.objects.all())
-        for alias in self.make_request(resource='alias_resolving'):
+        for alias in self.make_request(resource="alias_resolving"):
             yield Alias._from_engine(alias, alias_list)
 
     def blacklist(self, src, dst, duration=3600, **kw):
@@ -579,33 +598,32 @@ class Engine(Element):
         :param int duration: how long to blacklist in seconds
         :raises EngineCommandFailed: blacklist failed during apply
         :return: None
-        
+
         .. note:: This method is only valid for SMC version < 6.4. Use
             :meth:`~blacklist_bulk` to add entries.
         """
         self.make_request(
             EngineCommandFailed,
-            method='create',
-            resource='blacklist',
-            json=prepare_blacklist(src, dst, duration, **kw))
-    
+            method="create",
+            resource="blacklist",
+            json=prepare_blacklist(src, dst, duration, **kw),
+        )
+
     def blacklist_bulk(self, blacklist):
         """
         Add blacklist entries to the engine node in bulk. For blacklist to work,
         you must also create a rule with action "Apply Blacklist".
         First create your blacklist entries using :class:`smc.elements.other.Blacklist`
         then provide the blacklist to this method.
-        
+
         :param blacklist Blacklist: pre-configured blacklist entries
-        
+
         .. note:: This method requires SMC version >= 6.4
         """
         self.make_request(
-            EngineCommandFailed,
-            method='create',
-            resource='blacklist',
-            json=blacklist.entries)
-    
+            EngineCommandFailed, method="create", resource="blacklist", json=blacklist.entries
+        )
+
     def blacklist_flush(self):
         """
         Flush entire blacklist for engine
@@ -613,29 +631,26 @@ class Engine(Element):
         :raises EngineCommandFailed: flushing blacklist failed with reason
         :return: None
         """
-        self.make_request(
-            EngineCommandFailed,
-            method='delete',
-            resource='flush_blacklist')
-    
+        self.make_request(EngineCommandFailed, method="delete", resource="flush_blacklist")
+
     def blacklist_show(self, **kw):
         """
         .. versionadded:: 0.5.6
             Requires pip install smc-python-monitoring
-        
+
         Blacklist show requires that you install the smc-python-monitoring
         package. To obtain blacklist entries from the engine you need to
         use this extension to plumb the websocket to the session. If you
         need more granular controls over the blacklist such as filtering by
-        source and destination address, use the smc-python-monitoring 
+        source and destination address, use the smc-python-monitoring
         package directly.
         Blacklist entries that are returned from this generator have a
         delete() method that can be called to simplify removing entries.
         A simple query would look like::
-        
+
             for bl_entry in engine.blacklist_show():
                 print(bl_entry)
-        
+
         :param kw: keyword arguments passed to blacklist query. Common setting
             is to pass max_recv=20, which specifies how many "receive" batches
             will be retrieved from the SMC for the query. At most, 200 results
@@ -653,7 +668,7 @@ class Engine(Element):
             query = BlacklistQuery(self.name)
             for record in query.fetch_as_element(**kw):
                 yield record
-    
+
     def add_route(self, gateway, network, payload=None):
         """
         Add a route to engine. Specify gateway and network.
@@ -675,37 +690,34 @@ class Engine(Element):
         """
         if payload:
             self.make_request(
-                EngineCommandFailed,
-                method='create',
-                resource='add_route',
-                json=payload)
+                EngineCommandFailed, method="create", resource="add_route", json=payload
+            )
         else:
             # Doing simple add route
             self.make_request(
                 EngineCommandFailed,
-                method='create',
-                resource='add_route',
-                params={'gateway': gateway,
-                        'network': network},
-                payload={})
+                method="create",
+                resource="add_route",
+                params={"gateway": gateway, "network": network},
+                payload={},
+            )
 
     @property
     def policy_route(self):
         """
         Configure policy based routes on the engine.
         ::
-            
+
             engine.policy_route.create(
                 source='172.18.2.0/24', destination='192.168.3.0/24',
                 gateway_ip='172.18.2.1')
-        
+
         :rtype: PolicyRoute
         """
-        if 'policy_route' in self.data:
+        if "policy_route" in self.data:
             return PolicyRoute(self)
-        raise UnsupportedEngineFeature( 
-            'Policy routing is only supported on layer 3 engine types')
-    
+        raise UnsupportedEngineFeature("Policy routing is only supported on layer 3 engine types")
+
     @property
     def routing(self):
         """
@@ -723,7 +735,7 @@ class Engine(Element):
         :return: top level routing node
         :rtype: Routing
         """
-        return Routing(href=self.get_relation('routing'))
+        return Routing(href=self.get_relation("routing"))
 
     @property
     def routing_monitoring(self):
@@ -738,8 +750,9 @@ class Engine(Element):
             >>> engine = Engine('sg_vm')
             >>> for route in engine.routing_monitoring:
             ...   route
-            ... 
-            Route(route_network=u'0.0.0.0', route_netmask=0, route_gateway=u'10.0.0.1', route_type=u'Static', dst_if=1, src_if=-1)
+            ...
+            Route(route_network=u'0.0.0.0', route_netmask=0, route_gateway=u'10.0.0.1',
+                  route_type=u'Static', dst_if=1, src_if=-1)
             ...
 
         :raises EngineCommandFailed: routes cannot be retrieved
@@ -747,13 +760,11 @@ class Engine(Element):
         :rtype: SerializedIterable(Route)
         """
         try:
-            result = self.make_request(
-                EngineCommandFailed,
-                resource='routing_monitoring')
-            
+            result = self.make_request(EngineCommandFailed, resource="routing_monitoring")
+
             return Route(result)
         except SMCConnectionError:
-            raise EngineCommandFailed('Timed out waiting for routes')
+            raise EngineCommandFailed("Timed out waiting for routes")
 
     @property
     def antispoofing(self):
@@ -768,7 +779,7 @@ class Engine(Element):
         :return: top level antispoofing node
         :rtype: Antispoofing
         """
-        return Antispoofing(href=self.get_relation('antispoofing'))
+        return Antispoofing(href=self.get_relation("antispoofing"))
 
     @property
     def internal_gateway(self):
@@ -778,7 +789,7 @@ class Engine(Element):
         an interface, adding VPN sites, etc.
         Example of adding a new VPN site to the engine's site list with
         associated networks::
-        
+
             >>> network = Network.get_or_create(name='mynetwork', ipv4_network='1.1.1.0/24')
             Network(name=mynetwork)
             >>> engine.internal_gateway.vpn_site.create(name='mynewsite', site_element=[network])
@@ -795,7 +806,7 @@ class Engine(Element):
     def vpn(self):
         """
         VPN configuration for the engine.
-        
+
         :raises: UnsupportedEngineFeature: VPN is only supported on layer 3
             engines.
         :rtype: VPN
@@ -810,7 +821,7 @@ class Engine(Element):
         may have multiple IP addresses assigned, the endpoints are
         returned based on the address. Endpoints are properties of the
         engines Internal Gateway.
-        
+
         :raises UnsupportedEngineFeature: only supported on layer 3 engines
         :rtype: SubElementCollection(InternalEndpoint)
         """
@@ -821,19 +832,18 @@ class Engine(Element):
         """
         .. versionadded:: 0.6.0
             Requires SMC version >= 6.3.4
-        
+
         VPN policy mappings (by name) for this engine. This is a shortcut
         method to determine which VPN policies are used by the firewall.
-        
+
         :raises UnsupportedEngineFeature: requires a layer 3 firewall and
             SMC version >= 6.3.4.
         :rtype: VPNMappingCollection(VPNMapping)
         """
         return VPNMappingCollection(
-            self.make_request(
-                UnsupportedEngineFeature,
-                resource='vpn_mapping'))
-            
+            self.make_request(UnsupportedEngineFeature, resource="vpn_mapping")
+        )
+
     @property
     def virtual_resource(self):
         """
@@ -847,11 +857,9 @@ class Engine(Element):
         :rtype: CreateCollection(VirtualResource)
         """
         resource = create_collection(
-            self.get_relation(
-                'virtual_resources',
-                UnsupportedEngineFeature),
-            VirtualResource)
-        resource._load_from_engine(self, 'virtualResources')
+            self.get_relation("virtual_resources", UnsupportedEngineFeature), VirtualResource
+        )
+        resource._load_from_engine(self, "virtualResources")
         return resource
 
     @property
@@ -862,31 +870,30 @@ class Engine(Element):
         component through a NAT'd connection. For example, if a firewall is
         known by a pubic address but the interface uses a private address,
         you would assign the public address as a contact address for that
-        interface. 
-        
+        interface.
+
         .. note:: Contact addresses are only supported with SMC >= 6.2.
-        
+
         Obtain all eligible interfaces for contact addressess::
-        
+
             >>> engine = Engine('dingo')
             >>> for ca in engine.contact_addresses:
             ...   ca
-            ... 
+            ...
             ContactAddressNode(interface_id=11, interface_ip=10.10.10.20)
             ContactAddressNode(interface_id=120, interface_ip=120.120.120.100)
             ContactAddressNode(interface_id=0, interface_ip=1.1.1.1)
             ContactAddressNode(interface_id=12, interface_ip=3.3.3.3)
             ContactAddressNode(interface_id=12, interface_ip=17.17.17.17)
-        
+
         .. seealso:: :py:mod:`smc.core.contact_address`
-        
+
         This is set to a private method because the logic doesn't make sense with
         respects to how this is configured under the SMC.
-        
+
         :rtype: ContactAddressCollection(ContactAddressNode)
         """
-        return ContactAddressCollection(
-            self.get_relation('contact_addresses'))        
+        return ContactAddressCollection(self.get_relation("contact_addresses"))
 
     @property
     def interface_options(self):
@@ -895,17 +902,17 @@ class Engine(Element):
         backup management, outgoing, and primary/backup heartbeat
         interfaces. For example, set primary management interface
         (this unsets it from the currently assigned interface)::
-        
+
             engine.interface_options.set_primary_mgt(10)
-        
+
         Obtain the primary management interface::
-        
+
             print(engine.interface_options.primary_mgt)
-        
+
         :rtype: InterfaceOptions
         """
         return InterfaceOptions(self)
-    
+
     @property
     def interface(self):
         """
@@ -939,7 +946,7 @@ class Engine(Element):
 
     @property
     def virtual_physical_interface(self):
-        """ Master Engine virtual instance only
+        """Master Engine virtual instance only
 
         A virtual physical interface is for a master engine virtual instance.
         This interface type is just a subset of a normal physical interface
@@ -981,20 +988,21 @@ class Engine(Element):
         """
         Retrieve any loopback interfaces for this engine.
         Loopback interfaces are only supported on layer 3 firewall types.
-        
+
         Retrieve all loopback addresses::
-        
+
             for loopback in engine.loopback_interface:
                 print(loopback)
-        
+
         :raises UnsupportedInterfaceType: supported on layer 3 engine only
         :rtype: LoopbackCollection
         """
-        if self.type in ('single_fw', 'fw_cluster', 'virtual_fw'):
+        if self.type in ("single_fw", "fw_cluster", "virtual_fw"):
             return LoopbackCollection(self)
         raise UnsupportedInterfaceType(
-            'Loopback addresses are only supported on layer 3 firewall types')
-    
+            "Loopback addresses are only supported on layer 3 firewall types"
+        )
+
     @property
     def modem_interface(self):
         """
@@ -1004,9 +1012,7 @@ class Engine(Element):
             on layer 3 engines
         :return: list of dict entries with href,name,type, or None
         """
-        return self.make_request(
-            UnsupportedInterfaceType,
-            resource='modem_interface')
+        return self.make_request(UnsupportedInterfaceType, resource="modem_interface")
 
     @property
     def adsl_interface(self):
@@ -1017,9 +1023,7 @@ class Engine(Element):
             on layer 3 engines
         :return: list of dict entries with href,name,type, or None
         """
-        return self.make_request(
-            UnsupportedInterfaceType,
-            resource='adsl_interface')
+        return self.make_request(UnsupportedInterfaceType, resource="adsl_interface")
 
     @property
     def wireless_interface(self):
@@ -1030,34 +1034,32 @@ class Engine(Element):
             supported on layer 3 engines
         :return: list of dict entries with href,name,type, or None
         """
-        return self.make_request(
-            UnsupportedInterfaceType,
-            resource='wireless_interface')
+        return self.make_request(UnsupportedInterfaceType, resource="wireless_interface")
 
     @property
     def switch_physical_interface(self):
         """
         Get only switch physical interfaces for this engine node.
         This is an iterable property::
-        
+
             for interface in engine.switch_physical_interface:
                 ...
-        
+
         Or you can fetch a switch port interface/module directly
         by using the generic interface property::
-        
+
             engine.interface.get('SWP_0')
-        
+
         Or through this property directly::
-        
+
             engine.switch_physical_interface.get('SWP_0')
-        
+
         :raises UnsupportedInterfaceType: switch interfaces are only
             supported on specific firewall models
         :return: list of dict entries with href,name,type, or None
         """
         return SwitchInterfaceCollection(self)
-        
+
     def add_interface(self, interface, **kw):
         """
         Add interface is a lower level option to adding interfaces directly
@@ -1065,26 +1067,34 @@ class Engine(Element):
         Layer3PhysicalInterface, Layer2PhysicalInterface, TunnelInterface,
         or ClusterInterface. The engines instance cache is flushed after
         this call is made to provide an updated cache after modification.
-        
+
         .. seealso:: :class:`smc.core.engine.interface.update_or_create`
-        
+
         :param PhysicalInterface,TunnelInterface interface: instance of
             pre-created interface
         :return: None
         """
         params = None
-        if 'params' in kw:
-            params = kw.pop('params')
+        if "params" in kw:
+            params = kw.pop("params")
 
         self.make_request(
             EngineCommandFailed,
-            method='create', 
+            method="create",
             href=self.get_relation(interface.typeof),
             json=interface,
-            params=params)
+            params=params,
+        )
         self._del_cache()
-        
-    def refresh(self, timeout=3, wait_for_finish=False, preserve_connections=True, generate_snapshot=True, **kw):
+
+    def refresh(
+        self,
+        timeout=3,
+        wait_for_finish=False,
+        preserve_connections=True,
+        generate_snapshot=True,
+        **kw
+    ):
         """
         Refresh existing policy on specified device. This is an asynchronous
         call that will return a 'follower' link that can be queried to
@@ -1095,7 +1105,7 @@ class Engine(Element):
             while not poller.done():
                 poller.wait(5)
                 print('Percentage complete {}%'.format(poller.task.progress))
-        
+
         :param int timeout: timeout between queries
         :param bool wait_for_finish: poll the task waiting for status
         :param bool preserve_connections: flag to preserve connections (True by default)
@@ -1103,10 +1113,17 @@ class Engine(Element):
         :raises TaskRunFailed: refresh failed, possibly locked policy
         :rtype: TaskOperationPoller
         """
-        return Task.execute(self, 'refresh',
-            timeout=timeout, wait_for_finish=wait_for_finish, **kw)
-        
-    def upload(self, policy=None, timeout=5, wait_for_finish=False, preserve_connections=True, generate_snapshot=True, **kw):
+        return Task.execute(self, "refresh", timeout=timeout, wait_for_finish=wait_for_finish, **kw)
+
+    def upload(
+        self,
+        policy=None,
+        timeout=5,
+        wait_for_finish=False,
+        preserve_connections=True,
+        generate_snapshot=True,
+        **kw
+    ):
         """
         Upload policy to engine. This is used when a new policy is required
         for an engine, or this is the first time a policy is pushed to an
@@ -1130,10 +1147,20 @@ class Engine(Element):
         :raises TaskRunFailed: upload failed with reason
         :rtype: TaskOperationPoller
         """
-        return Task.execute(self, 'upload', params={'filter': policy, 'preserve_connections': preserve_connections, 'generate_snapshot': generate_snapshot},
-            timeout=timeout, wait_for_finish=wait_for_finish, **kw)
+        return Task.execute(
+            self,
+            "upload",
+            params={
+                "filter": policy,
+                "preserve_connections": preserve_connections,
+                "generate_snapshot": generate_snapshot,
+            },
+            timeout=timeout,
+            wait_for_finish=wait_for_finish,
+            **kw
+        )
 
-    def generate_snapshot(self, filename='snapshot.zip'):
+    def generate_snapshot(self, filename="snapshot.zip"):
         """
         Generate and retrieve a policy snapshot from the engine
         This is blocking as file is downloaded
@@ -1145,14 +1172,10 @@ class Engine(Element):
         :return: None
         """
         try:
-            self.make_request(
-                EngineCommandFailed,
-                resource='generate_snapshot',
-                filename=filename)
+            self.make_request(EngineCommandFailed, resource="generate_snapshot", filename=filename)
 
         except IOError as e:
-            raise EngineCommandFailed(
-                'Generate snapshot failed: {}'.format(e))
+            raise EngineCommandFailed("Generate snapshot failed: {}".format(e))
 
     @property
     def snapshots(self):
@@ -1163,11 +1186,10 @@ class Engine(Element):
         :raises EngineCommandFailed: failure downloading, or IOError
         :rtype: SubElementCollection(Snapshot)
         """
-        return sub_collection(
-            self.get_relation('snapshots', EngineCommandFailed), Snapshot)
+        return sub_collection(self.get_relation("snapshots", EngineCommandFailed), Snapshot)
 
     def __unicode__(self):
-        return u'{0}(name={1})'.format(lookup_class(self.type).__name__, self.name)
+        return u"{0}(name={1})".format(lookup_class(self.type).__name__, self.name)
 
     def ldap_replication(self, enable):
         """
@@ -1179,115 +1201,118 @@ class Engine(Element):
 
         self.make_request(
             EngineCommandFailed,
-            method='update',
-            resource='ldap_replication',
-            params={'enable': enable})
+            method="update",
+            resource="ldap_replication",
+            params={"enable": enable},
+        )
 
 
 class VPNMappingCollection(BaseIterable):
     def __init__(self, vpns):
-        mappings = vpns.get('vpnMappings')
+        mappings = vpns.get("vpnMappings")
         _mappings = []
         if mappings:
             for entry in mappings:
-                vpn_mapping = entry.get('vpn_mapping_entry')
-                vpn_mapping.setdefault('gateway_nodes_usage', {})
+                vpn_mapping = entry.get("vpn_mapping_entry")
+                vpn_mapping.setdefault("gateway_nodes_usage", {})
                 _mappings.append(VPNMapping(**vpn_mapping))
         super(VPNMappingCollection, self).__init__(_mappings)
 
 
-class VPNMapping(namedtuple('VPNMapping', 'gateway_ref vpn_ref gateway_nodes_usage')):
+class VPNMapping(namedtuple("VPNMapping", "gateway_ref vpn_ref gateway_nodes_usage")):
     """
     A VPN Mapping represents Policy Based VPNs associated with this engine.
     This simplifies finding references where an engine is used within a VPN
     without iterating through existing VPNs to find the engine.
     """
+
     __slots__ = ()
+
     @property
     def internal_gateway(self):
         """
         Return the engines internal gateway as element
-        
+
         :rtype: InternalGateway
         """
         return Element.from_href(self.gateway_ref)
-    
+
     @property
     def vpn(self):
         """
         The VPN policy for this engine mapping
-        
+
         :rtype: PolicyVPN
         """
         return Element.from_href(self.vpn_ref)
-    
+
     @property
     def is_central_gateway(self):
         """
         Is this engine a central gateway in the VPN policy
-        
+
         :rtype: bool
         """
-        return 'central_gateway_node_ref' in self.gateway_nodes_usage
-    
+        return "central_gateway_node_ref" in self.gateway_nodes_usage
+
     @property
     def _central_gateway(self):
         """
         Return the central gateway tree node as href. This can be used
         to simplify removal of the element from the specified VPN.
         You must first open the VPN policy then save and close.
-        
+
         :return: GatewayTreeNode href
         :rtype: str
         """
-        return self.gateway_nodes_usage.get('central_gateway_node_ref', None)
-    
+        return self.gateway_nodes_usage.get("central_gateway_node_ref", None)
+
     @property
     def is_satellite_gateway(self):
         """
         Is this engine a satellite gateway in the VPN policy
-        
+
         :rtype: bool
         """
-        return 'satellite_gateway_node_ref' in self.gateway_nodes_usage
-    
+        return "satellite_gateway_node_ref" in self.gateway_nodes_usage
+
     @property
     def _satellite_gateway(self):
         """
         Return the satellite gateway tree node href. This can be used
         to simplify removal of the element from the specified VPN.
         You must first open the VPN policy then save and close.
-        
-        :return: GatewayTreeNode href 
+
+        :return: GatewayTreeNode href
         :rtype: str
         """
-        return self.gateway_nodes_usage.get('satellite_gateway_node_ref', None)
-    
+        return self.gateway_nodes_usage.get("satellite_gateway_node_ref", None)
+
     @property
     def is_mobile_gateway(self):
         """
         Is the engine specified as a mobile gateway in the Policy VPN
         configuration
-        
+
         :rtype: bool
         """
-        return 'mobile_gateway_node_ref' in self.gateway_nodes_usage
-    
+        return "mobile_gateway_node_ref" in self.gateway_nodes_usage
+
     @property
     def _mobile_gateway(self):
         """
         Return the mobile gateway tree href. This can be used
         to simplify removal of the element from the specified VPN.
         You must first open the VPN policy then save and close.
-        
+
         :return: GatewayTreeNode href
         :rtype: str
         """
-        return self.gateway_nodes_usage.get('mobile_gateway_node_ref', None)
-    
+        return self.gateway_nodes_usage.get("mobile_gateway_node_ref", None)
+
     def __str__(self):
-        return str('VPNMapping(vpn={})'.format(self.vpn))
-     
+        return str("VPNMapping(vpn={})".format(self.vpn))
+
 
 class VPN(object):
     """
@@ -1295,114 +1320,110 @@ class VPN(object):
     To enable IPSEC, SSL or SSL VPN on the engine, enable on the
     endpoint.
     """
+
     def __init__(self, engine):
         self.engine = engine
-        result = self.engine.make_request(
-            UnsupportedEngineFeature,
-            resource='internal_gateway') 
+        result = self.engine.make_request(UnsupportedEngineFeature, resource="internal_gateway")
         self.internal_gateway = InternalGateway(**result[0])
-    
+
     def rename(self, name):
         """
         Rename the internal gateway.
-        
+
         :param str name: new name for internal gateway
         :return: None
         """
-        self.internal_gateway.rename(name) # Engine update changes this ETag
-    
+        self.internal_gateway.rename(name)  # Engine update changes this ETag
+
     @property
     def name(self):
-        return self.internal_gateway.name      
+        return self.internal_gateway.name
 
     @property
     def vpn_client(self):
         """
         VPN Client settings for this engine.
-        
+
         Alias for internal_gateway.
-        
+
         :rtype: InternalGateway
         """
         return self.internal_gateway
-    
+
     @property
     def sites(self):
         """
         VPN sites configured for this engine. Using sub element
         methods simplify fetching sites of interest::
-        
+
             engine = Engine('sg_vm')
             mysite = engine.vpn.sites.get_contains('inter')
             print(mysite)
-        
+
         :rtype: CreateCollection(VPNSite)
         """
-        return create_collection( 
-            self.internal_gateway.get_relation('vpn_site'), 
-            VPNSite) 
-    
+        return create_collection(self.internal_gateway.get_relation("vpn_site"), VPNSite)
+
     def add_site(self, name, site_elements=None):
         """
         Add a VPN site with site elements to this engine.
         VPN sites identify the sites with protected networks
         to be included in the VPN.
         Add a network and new VPN site::
-        
+
             >>> net = Network.get_or_create(name='wireless', ipv4_network='192.168.5.0/24')
             >>> engine.vpn.add_site(name='wireless', site_elements=[net])
             VPNSite(name=wireless)
             >>> list(engine.vpn.sites)
             [VPNSite(name=dingo - Primary Site), VPNSite(name=wireless)]
-        
+
         :param str name: name for VPN site
         :param list site_elements: network elements for VPN site
         :type site_elements: list(str,Element)
         :raises ElementNotFound: if site element is not found
         :raises UpdateElementFailed: failed to add vpn site
         :rtype: VPNSite
-        
+
         .. note:: Update is immediate for this operation.
         """
         site_elements = site_elements if site_elements else []
-        return self.sites.create(
-            name, site_elements)
-        
+        return self.sites.create(name, site_elements)
+
     @property
     def internal_endpoint(self):
         """
         Internal endpoints to enable VPN for the engine.
-        
+
         :rtype: SubElementCollection(InternalEndpoint)
         """
-        return sub_collection( 
-            self.internal_gateway.get_relation('internal_endpoint'), 
-            InternalEndpoint) 
-    
+        return sub_collection(
+            self.internal_gateway.get_relation("internal_endpoint"), InternalEndpoint
+        )
+
     @property
     def loopback_endpoint(self):
         """
         Internal Loopback endpoints to enable VPN for the engine.
-        
+
         :rtype: SubElementCollection(InternalEndpoint)
         """
         return sub_collection(
-            self.internal_gateway.get_relation('loopback_endpoint'),
-            InternalEndpoint)
-    
+            self.internal_gateway.get_relation("loopback_endpoint"), InternalEndpoint
+        )
+
     @property
     def gateway_profile(self):
         """
         Gateway Profile for this VPN. This is only a valid setting
         on layer 3 firewalls.
-        
+
         :rtype: GatewayProfile
         """
         return Element.from_href(self.internal_gateway.gateway_profile)
-    
+
     @property
     def gateway_settings(self):
-        """   
+        """
         A gateway settings profile defines VPN specific settings related
         to timers such as negotiation retries (min, max) and mobike
         settings. Gateway settings are only present on layer 3 FW
@@ -1414,26 +1435,31 @@ class VPN(object):
             This can return None on layer 3 firewalls if VPN is not
             enabled.
         """
-        return Element.from_href(
-            self.engine.data.get('gateway_settings_ref'))
-    
+        return Element.from_href(self.engine.data.get("gateway_settings_ref"))
+
     @property
     def gateway_certificate(self):
         """
         A Gateway Certificate is used by the engine for securing
         communications such as VPN. You can also check the expiration,
         view the signing CA and renew the certificate from this element.
-        
+
         :return: GatewayCertificate
         :rtype: list
         """
-        return [GatewayCertificate(**cert)
-                for cert in \
-                self.internal_gateway.make_request(resource='gateway_certificate')]
+        return [
+            GatewayCertificate(**cert)
+            for cert in self.internal_gateway.make_request(resource="gateway_certificate")
+        ]
 
-    def generate_certificate(self, common_name, public_key_algorithm='rsa',
-            signature_algorithm='rsa_sha_512', key_length=2048,
-            signing_ca=None):
+    def generate_certificate(
+        self,
+        common_name,
+        public_key_algorithm="rsa",
+        signature_algorithm="rsa_sha_512",
+        key_length=2048,
+        signing_ca=None,
+    ):
         """
         Generate an internal gateway certificate used for VPN on this engine.
         Certificate request should be an instance of VPNCertificate.
@@ -1453,22 +1479,23 @@ class VPN(object):
         :raises CertificateError: error generating certificate
         :return: GatewayCertificate
         """
-        return GatewayCertificate._create(self, common_name, public_key_algorithm,
-            signature_algorithm, key_length, signing_ca)
+        return GatewayCertificate._create(
+            self, common_name, public_key_algorithm, signature_algorithm, key_length, signing_ca
+        )
 
     def __repr__(self):
-        return 'VPN(name={})'.format(self.name)
+        return "VPN(name={})".format(self.name)
 
 
 class InternalGateway(SubElement):
     """
     InternalGateway represents the VPN Client configuration
     endpoint on the NGFW. Settings under Internal Gateway
-    reflect client settings such as requiring antivirus, 
+    reflect client settings such as requiring antivirus,
     windows firewall and setting the VPN client mode.
-    
+
         View settings through an engine reference::
-        
+
             >>> engine = Engine('dingo')
             >>> vpn = engine.vpn
             >>> vpn.name
@@ -1479,33 +1506,32 @@ class InternalGateway(SubElement):
             False
             >>> vpn.vpn_client.vpn_client_mode
             u'ipsec'
-        
+
         Enable client AV and windows FW::
-        
+
             engine.vpn.vpn_client.update(
                 firewall=True, antivirus=True)
-    
+
     :ivar bool firewall: require windows firewall
     :ivar bool antivirus: require client antivirus
-    :ivar str vpn_client_mode: 
+    :ivar str vpn_client_mode:
     """
-    typeof = 'internal_gateway'
+
+    typeof = "internal_gateway"
 
     def rename(self, name):
-        self._del_cache() # Engine update changes this ETag
-        self.update(name='{} Primary'.format(name))
-    
+        self._del_cache()  # Engine update changes this ETag
+        self.update(name="{} Primary".format(name))
+
     @property
     def internal_endpoint(self):
         """
         Internal endpoints to enable VPN for the engine.
-        
+
         :rtype: SubElementCollection(InternalEndpoint)
         """
-        return sub_collection( 
-            self.get_relation('internal_endpoint'), 
-            InternalEndpoint) 
-    
+        return sub_collection(self.get_relation("internal_endpoint"), InternalEndpoint)
+
 
 class InternalEndpoint(SubElement):
     """
@@ -1523,18 +1549,18 @@ class InternalEndpoint(SubElement):
         ...
         InternalEndpoint(name=10.0.0.254)
         InternalEndpoint(name=172.18.1.254)
-    
+
     You can also retrieve an internal endpoint directly and operate on it, for
     example, enabling it as a VPN endpoint::
-    
+
         engine = Engine('sg_vm')
         my_interface = engine.vpn.internal_endpoint.get_exact('10.0.0.254')
         my_interface.update(enabled=True)
-    
+
     Multiple attributes can be updated by calling `update`::
-    
+
         my_interface.update(enabled=True,ipsec_vpn=True,force_nat_t=True,ssl_vpn_portal=False,ssl_vpn_tunnel=False)
-    
+
     Available attributes:
 
     :ivar bool enabled: enable this interface as a VPN endpoint
@@ -1550,32 +1576,33 @@ class InternalEndpoint(SubElement):
     :ivar str balancing_mode: VPN load balancing mode. Valid options are:
         'standby', 'aggregate', 'active' (default: 'active')
     """
+
     @property
     def name(self):
         """
         Get the name from deducted name
         """
-        return self.data.get('deducted_name')
+        return self.data.get("deducted_name")
 
     @property
     def interface_id(self):
         """
         Interface ID for this VPN endpoint
-        
+
         :return: str interface id
         """
         return self.physical_interface.interface_id
-        
+
     @property
     def physical_interface(self):
         """
         Physical interface for this endpoint.
-        
+
         :rtype: PhysicalInterface
         """
-        return PhysicalInterface(href=self.data.get('physical_interface'))
-    
-    
+        return PhysicalInterface(href=self.data.get("physical_interface"))
+
+
 class VirtualResource(SubElement):
     """
     A Virtual Resource is a container placeholder for a virtual engine
@@ -1598,10 +1625,18 @@ class VirtualResource(SubElement):
 
     When updating this element, make modifications and call update()
     """
-    typeof = 'virtual_resource'
-    
-    def create(self, name, vfw_id, domain='Shared Domain',
-               show_master_nic=False, connection_limit=0, comment=None):
+
+    typeof = "virtual_resource"
+
+    def create(
+        self,
+        name,
+        vfw_id,
+        domain="Shared Domain",
+        show_master_nic=False,
+        connection_limit=0,
+        comment=None,
+    ):
         """
         Create a new virtual resource. Called through engine
         reference::
@@ -1619,15 +1654,17 @@ class VirtualResource(SubElement):
         :rtype: str
         """
         allocated_domain = domain_helper(domain)
-        json = {'name': name,
-                'connection_limit': connection_limit,
-                'show_master_nic': show_master_nic,
-                'vfw_id': vfw_id,
-                'comment': comment,
-                'allocated_domain_ref': allocated_domain}
-        
+        json = {
+            "name": name,
+            "connection_limit": connection_limit,
+            "show_master_nic": show_master_nic,
+            "vfw_id": vfw_id,
+            "comment": comment,
+            "allocated_domain_ref": allocated_domain,
+        }
+
         return ElementCreator(self.__class__, json=json, href=self.href)
-        
+
     @property
     def allocated_domain_ref(self):
         """
@@ -1644,7 +1681,7 @@ class VirtualResource(SubElement):
         :return: AdminDomain element
         :rtype: AdminDomain
         """
-        return Element.from_href(self.data.get('allocated_domain_ref'))
+        return Element.from_href(self.data.get("allocated_domain_ref"))
 
     def set_admin_domain(self, admin_domain):
         """
@@ -1656,7 +1693,7 @@ class VirtualResource(SubElement):
         :return: None
         """
         admin_domain = element_resolver(admin_domain)
-        self.data['allocated_domain_ref'] = admin_domain
+        self.data["allocated_domain_ref"] = admin_domain
 
     @property
     def vfw_id(self):
@@ -1667,5 +1704,4 @@ class VirtualResource(SubElement):
         :return: vfw id
         :rtype: int
         """
-        return self.data.get('vfw_id')
-    
+        return self.data.get("vfw_id")

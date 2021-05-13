@@ -9,19 +9,20 @@ then import element
 import logging
 import zipfile
 import sys
+
 # Python SMC Import
 from smc import session
 from smc.administration.system import System
 from smc.api.exceptions import ActionCommandFailed
 from smc.core.engines import Layer2Firewall
 
-FORMAT = '%(asctime)s - %(levelname)s - %(message)s'
+FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
 logging.getLogger()
-logging.basicConfig(level=logging.INFO, format=FORMAT, datefmt='%H:%M:%S')
+logging.basicConfig(level=logging.INFO, format=FORMAT, datefmt="%H:%M:%S")
 
-if __name__ == '__main__':
-    URLSMC='http://localhost:8082'
-    APIKEYSMC='HuphG4Uwg4dN6TyvorTR0001'
+if __name__ == "__main__":
+    URLSMC = "http://localhost:8082"
+    APIKEYSMC = "HuphG4Uwg4dN6TyvorTR0001"
     try:
         session.login(url=URLSMC, api_key=APIKEYSMC, verify=False, timeout=120)
     except BaseException as exception_retournee:
@@ -42,16 +43,16 @@ if valid_zip is not None:
 else:
     logging.info("Zip file is valid")
 
-logging.info('Export firewall')
+logging.info("Export firewall")
 # try export firewall
 l2FW = Layer2Firewall("Atlanta L2 FW")
 for interface in l2FW.interface:
-    logging.info("interface="+str(interface))
+    logging.info("interface=" + str(interface))
 l2FW.export("/tmp/Atlantal2FW.zip")
 
 # try import corrupted file
-logging.info('Import Corrupted file')
+logging.info("Import Corrupted file")
 try:
     system.import_elements("/tmp/WRONG_Atlantal2FW.zip")
 except ActionCommandFailed as exception:
-    logging.warning("Import result: "+str(exception))
+    logging.warning("Import result: " + str(exception))

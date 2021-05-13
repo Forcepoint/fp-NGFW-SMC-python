@@ -14,7 +14,8 @@ To get an existing policy::
 Or through collections::
 
     >>> list(FirewallPolicy.objects.all())
-    [FirewallPolicy(name=Standard Firewall Policy with Inspection), FirewallPolicy(name=Layer 3 Virtual FW Policy)]
+    [FirewallPolicy(name=Standard Firewall Policy with Inspection),
+     FirewallPolicy(name=Layer 3 Virtual FW Policy)]
 
 To create a new policy, use::
 
@@ -37,20 +38,25 @@ Example rule deletion::
             rule.delete()
 """
 from smc.base.model import ElementCreator, LoadElement
-from smc.api.exceptions import CreatePolicyFailed, ElementNotFound, LoadPolicyFailed,\
-    CreateElementFailed
+from smc.api.exceptions import (
+    CreatePolicyFailed,
+    ElementNotFound,
+    LoadPolicyFailed,
+    CreateElementFailed,
+)
 from smc.policy.policy import Policy
 from smc.policy.rule import IPv4Rule, IPv6Rule
 from smc.policy.rule_nat import IPv4NATRule, IPv6NATRule
 from smc.base.collection import rule_collection
 
-                
+
 class FirewallRule(object):
     """
     Encapsulates all references to firewall rule related entry
     points. This is referenced by multiple classes such as
     FirewallPolicy and FirewallPolicyTemplate.
     """
+
     @property
     def fw_ipv4_access_rules(self):
         """
@@ -58,9 +64,7 @@ class FirewallRule(object):
 
         :rtype: rule_collection(IPv4Rule)
         """
-        return rule_collection(
-            self.get_relation('fw_ipv4_access_rules'),
-            IPv4Rule)
+        return rule_collection(self.get_relation("fw_ipv4_access_rules"), IPv4Rule)
 
     @property
     def fw_ipv4_nat_rules(self):
@@ -69,9 +73,7 @@ class FirewallRule(object):
 
         :rtype: rule_collection(IPv4NATRule)
         """
-        return rule_collection(
-            self.get_relation('fw_ipv4_nat_rules'),
-            IPv4NATRule)
+        return rule_collection(self.get_relation("fw_ipv4_nat_rules"), IPv4NATRule)
 
     @property
     def fw_ipv6_access_rules(self):
@@ -80,9 +82,7 @@ class FirewallRule(object):
 
         :rtype: rule_collection(IPv6Rule)
         """
-        return rule_collection(
-            self.get_relation('fw_ipv6_access_rules'),
-            IPv6Rule)
+        return rule_collection(self.get_relation("fw_ipv6_access_rules"), IPv6Rule)
 
     @property
     def fw_ipv6_nat_rules(self):
@@ -91,9 +91,7 @@ class FirewallRule(object):
 
         :rtype: rule_collection(IPv6NATRule)
         """
-        return rule_collection(
-            self.get_relation('fw_ipv6_nat_rules'),
-            IPv6NATRule)
+        return rule_collection(self.get_relation("fw_ipv6_nat_rules"), IPv6NATRule)
 
 
 class FirewallPolicy(FirewallRule, Policy):
@@ -114,10 +112,11 @@ class FirewallPolicy(FirewallRule, Policy):
     :ivar fw_ipv6_nat_rules: :py:class:`~FirewallRule.ipv6_nat_rules`
 
     """
-    typeof = 'fw_policy'
+
+    typeof = "fw_policy"
 
     @classmethod
-    def create(cls, name, template='Firewall Inspection Template'):
+    def create(cls, name, template="Firewall Inspection Template"):
         """
         Create Firewall Policy. Template policy is required for the
         policy. The template parameter should be the name of the
@@ -138,16 +137,13 @@ class FirewallPolicy(FirewallRule, Policy):
             FirewallPolicy('newpolicy')
         """
         try:
-            if cls.typeof == 'fw_template_policy' and template is None:
+            if cls.typeof == "fw_template_policy" and template is None:
                 fw_template = None
             else:
                 fw_template = FirewallTemplatePolicy(template).href
         except ElementNotFound:
-            raise LoadPolicyFailed(
-                'Cannot find specified firewall template: {}'.format(template))
-        json = {
-            'name': name,
-            'template': fw_template}
+            raise LoadPolicyFailed("Cannot find specified firewall template: {}".format(template))
+        json = {"name": name, "template": fw_template}
         try:
             return ElementCreator(cls, json)
         except CreateElementFailed as err:
@@ -162,12 +158,13 @@ class FirewallPolicy(FirewallRule, Policy):
 
         :cautious_update: True to load etag from API before updating.
         """
-        if cautious_update and 'etag' not in kwargs:
+        if cautious_update and "etag" not in kwargs:
             etag = LoadElement(href=self.href, only_etag=True)
             result = super(FirewallPolicy, self).update(etag=etag, **kwargs)
         else:
             result = super(FirewallPolicy, self).update(**kwargs)
         return result
+
 
 class FirewallSubPolicy(Policy):
     """
@@ -188,7 +185,8 @@ class FirewallSubPolicy(Policy):
             services=[TCPService('SSH')],
             action='discard')
     """
-    typeof = 'sub_ipv4_fw_policy'
+
+    typeof = "sub_ipv4_fw_policy"
 
     @classmethod
     def create(cls, name):
@@ -201,7 +199,7 @@ class FirewallSubPolicy(Policy):
         :raises CreateElementFailed: failed to create policy
         :rtype: FirewallSubPolicy
         """
-        return ElementCreator(cls, json={'name': name})
+        return ElementCreator(cls, json={"name": name})
 
     @property
     def fw_ipv4_access_rules(self):
@@ -210,12 +208,11 @@ class FirewallSubPolicy(Policy):
 
         :rtype: rule_collection(IPv4Rule)
         """
-        return rule_collection(
-            self.get_relation('fw_ipv4_access_rules'),
-            IPv4Rule)
+        return rule_collection(self.get_relation("fw_ipv4_access_rules"), IPv4Rule)
+
 
 class FirewallIPv6SubPolicy(FirewallSubPolicy):
-    typeof = 'sub_ipv6_fw_policy'
+    typeof = "sub_ipv6_fw_policy"
 
     @property
     def fw_ipv6_access_rules(self):
@@ -224,9 +221,8 @@ class FirewallIPv6SubPolicy(FirewallSubPolicy):
 
         :rtype: rule_collection(IPv4Rule)
         """
-        return rule_collection(
-            self.get_relation('fw_ipv6_access_rules'),
-            IPv6Rule)
+        return rule_collection(self.get_relation("fw_ipv6_access_rules"), IPv6Rule)
+
 
 class FirewallTemplatePolicy(FirewallPolicy):
     """
@@ -244,6 +240,8 @@ class FirewallTemplatePolicy(FirewallPolicy):
         for rule in policy.template.fw_ipv4_access_rules.all():
             print rule
     """
-    typeof = 'fw_template_policy'
 
-    def upload(self): pass  # Not supported on the template
+    typeof = "fw_template_policy"
+
+    def upload(self):
+        pass  # Not supported on the template

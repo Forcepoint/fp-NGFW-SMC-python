@@ -10,11 +10,11 @@ import sys
 from smc import session
 from smc.core.engines import Layer3VirtualEngine, Layer3Firewall
 
-if __name__ == '__main__':
-    URLSMC='http://localhost:8082'
-    APIKEYSMC='HuphG4Uwg4dN6TyvorTR0001'
+if __name__ == "__main__":
+    URLSMC = "http://localhost:8082"
+    APIKEYSMC = "HuphG4Uwg4dN6TyvorTR0001"
     try:
-        session.login(url=URLSMC, api_key=APIKEYSMC, verify=False, timeout=120, api_version='6.9')
+        session.login(url=URLSMC, api_key=APIKEYSMC, verify=False, timeout=120, api_version="6.9")
     except BaseException as exception_retournee:
         sys.exit(-1)
 
@@ -47,6 +47,6 @@ try:
         print("health=>{}".format(node.health))
 
 except Exception as e:
-        print(e)
+    print(e)
 finally:
     session.logout()

@@ -30,7 +30,8 @@ class NeighborQuery(Query):
 
     :param str target: Engine for which to filter neighbors.
     """
-    location = '/monitoring/session/socket'
+
+    location = "/monitoring/session/socket"
     field_ids = [
         LogField.NODEID,
         LogField.RECEPTIONTIME,
@@ -43,10 +44,10 @@ class NeighborQuery(Query):
         LogField.NEIGHBORPROTOCOL,
         LogField.NEIGHBORL3DATA,
         LogField.NEIGHBORL2DATA,
-        ]
+    ]
 
     def __init__(self, target=None):
-        super(NeighborQuery, self).__init__('NEIGHBORS', target)
+        super(NeighborQuery, self).__init__("NEIGHBORS", target)
 
     def fetch_as_element(self, **kw):
         """
@@ -57,8 +58,8 @@ class NeighborQuery(Query):
         :rtype: Neighbor
         """
         clone = self.copy()
-        clone.format.field_format('id')
-        for custom_field in ['field_ids', 'field_names']:
+        clone.format.field_format("id")
+        for custom_field in ["field_ids", "field_names"]:
             clone.format.data.pop(custom_field, None)
 
         for list_of_results in clone.fetch_raw(**kw):
@@ -177,10 +178,14 @@ class Neighbor(object):
         return self.neighbor.get(str(LogField.NEIGHBORL2DATA))
 
     def __str__(self):
-        return '{}(interface={},protocol={},state={},IP Address={},Mac Address={})'.format(
+        return "{}(interface={},protocol={},state={},IP Address={},Mac Address={})".format(
             self.__class__.__name__,
-            self.neighbor_interface, self.neighbor_protocol, self.neighbor_state, self.neighbor_l3_data,
-            self.neighbor_l2_data)
+            self.neighbor_interface,
+            self.neighbor_protocol,
+            self.neighbor_state,
+            self.neighbor_l3_data,
+            self.neighbor_l2_data,
+        )
 
     def __repr__(self):
         return str(self)

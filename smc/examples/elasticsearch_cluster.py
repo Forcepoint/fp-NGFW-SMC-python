@@ -33,7 +33,7 @@ if __name__ == '__main__':
                   api_key='aAAaa')
 
     es_server = ElasticsearchCluster.create(name='ES7',
-                                            addresses='1.2.3.4,demo.dns.net'
+                                            addresses=['1.2.3.4', 'demo.dns.net'],
                                             enable_cluster_sniffer=True,
                                             es_replica_number=10,
                                             es_retention_period=-1,

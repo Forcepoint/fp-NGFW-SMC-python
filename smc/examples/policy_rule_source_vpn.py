@@ -13,14 +13,11 @@ from smc.elements.service import TCPService
 from smc.policy.layer3 import FirewallPolicy
 from smc.policy.rule_elements import SourceVpn
 from smc.vpn.policy import PolicyVPN
+from smc_info import *
 
-if __name__ == '__main__':
-    URLSMC='http://localhost:8082'
-    APIKEYSMC='HuphG4Uwg4dN6TyvorTR0001'
-    try:
-        session.login(url=URLSMC, api_key=APIKEYSMC, verify=False, timeout=120, api_version='6.10')
-    except BaseException as exception_retournee:
-        sys.exit(-1)
+if __name__ == "__main__":
+
+    session.login(url=SMC_URL, api_key=API_KEY, verify=False, timeout=120, api_version=API_VERSION)
 
     print("session OK")
 
@@ -41,22 +38,24 @@ try:
     sourceVpn.match_vpns = list_vpn
 
     # add rule to a Policy
-    p = FirewallPolicy('myPolicy1')
+    p = FirewallPolicy("myPolicy1")
     p.fw_ipv4_access_rules.create(
-     name='newule',
-     sources='any',
-     destinations='any',
-     services=[TCPService('SSH')],
-     action='discard',
-     match_vpn_options=sourceVpn)
+        name="newule",
+        sources="any",
+        destinations="any",
+        services=[TCPService("SSH")],
+        action="discard",
+        match_vpn_options=sourceVpn,
+    )
 
     # add rule without match_vpn_options to a Policy
     p.fw_ipv4_access_rules.create(
-     name='newule',
-     sources='any',
-     destinations='any',
-     services=[TCPService('SSH')],
-     action='discard')
+        name="newule",
+        sources="any",
+        destinations="any",
+        services=[TCPService("SSH")],
+        action="discard",
+    )
 
     # Display SourceVpn for rules
     for rule in p.fw_ipv4_access_rules.all():
@@ -64,6 +63,6 @@ try:
 
 finally:
     # Delete policy
-    p = FirewallPolicy('myPolicy1')
+    p = FirewallPolicy("myPolicy1")
     p.delete()
     session.logout()

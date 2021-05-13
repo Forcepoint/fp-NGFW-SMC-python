@@ -54,17 +54,29 @@ import collections
 import smc.base.collection
 from smc.compat import string_types
 from smc.base.structs import NestedDict
-from smc.base.decorators import cached_property, classproperty, exception,\
-    create_hook, with_metaclass
+from smc.base.decorators import (
+    cached_property,
+    classproperty,
+    exception,
+    create_hook,
+    with_metaclass,
+)
 from smc.api.common import SMCRequest, fetch_meta_by_name, fetch_entry_point
-from smc.api.exceptions import ElementNotFound, \
-    CreateElementFailed, ModificationFailed, ResourceNotFound,\
-    DeleteElementFailed, FetchElementFailed, UpdateElementFailed,\
-    UnsupportedEntryPoint
+from smc.api.exceptions import (
+    ElementNotFound,
+    CreateElementFailed,
+    ModificationFailed,
+    ResourceNotFound,
+    DeleteElementFailed,
+    FetchElementFailed,
+    UpdateElementFailed,
+    UnsupportedEntryPoint,
+)
 from .util import bytes_to_unicode, unicode_to_bytes, merge_dicts
 from smc.base.mixins import RequestAction, UnicodeMixin
 from smc.base.util import element_resolver
 from smc.compat import get_best_version
+
 
 @exception
 def prepared_request(*exception, **kwargs):  # @UnusedVariable
@@ -81,7 +93,7 @@ def LoadElement(href, only_etag=False):
     """
     Return an instance of a element as a ElementCache dict
     used as a cache.
-    
+
     :rtype ElementCache
     """
     request = SMCRequest(href=href)
@@ -89,8 +101,7 @@ def LoadElement(href, only_etag=False):
     result = request.read()
     if only_etag:
         return result.etag
-    return ElementCache(
-        result.json, etag=result.etag)
+    return ElementCache(result.json, etag=result.etag)
 
 
 @create_hook
@@ -108,20 +119,14 @@ def ElementCreator(cls, json, **kwargs):
     :return: instance of type Element with meta
     :rtype: Element
     """
-    if 'exception' not in kwargs:
+    if "exception" not in kwargs:
         kwargs.update(exception=CreateElementFailed)
-    href = kwargs.pop('href') if 'href' in kwargs else cls.href
-    
-    result = SMCRequest(
-        href=href,
-        json=json,
-        **kwargs).create()
-    
-    element = cls(
-        name=json.get('name'),
-        type=cls.typeof,
-        href=result.href)
-    
+    href = kwargs.pop("href") if "href" in kwargs else cls.href
+
+    result = SMCRequest(href=href, json=json, **kwargs).create()
+
+    element = cls(name=json.get("name"), type=cls.typeof, href=result.href)
+
     if result.user_session.in_atomic_block:
         result.user_session.transactions.append(element)
     return element
@@ -131,7 +136,7 @@ def ElementFactory(href, smcresult=None, raise_exc=None):
     """
     Factory returns an object of type Element when only
     the href is provided.
-    
+
     :param str href: string href to fetch
     :param SMCResult smcresult: optional SMCResult. If provided,
         the request fetch will be skipped
@@ -143,10 +148,7 @@ def ElementFactory(href, smcresult=None, raise_exc=None):
     if smcresult.json:
         cache = ElementCache(smcresult.json, etag=smcresult.etag)
         typeof = lookup_class(cache.type)
-        instance = typeof(
-            name=cache.get('name'),
-            href=href,
-            type=cache.type)
+        instance = typeof(name=cache.get("name"), href=href, type=cache.type)
         instance.data = cache
         return instance
     if raise_exc and smcresult.msg:
@@ -155,42 +157,40 @@ def ElementFactory(href, smcresult=None, raise_exc=None):
 
 class ElementCache(NestedDict):
     def __init__(self, data=None, **kw):
-        self._etag = kw.pop('etag', None)
-        super(ElementCache, self).__init__(data=
-            data if data else {})
+        self._etag = kw.pop("etag", None)
+        super(ElementCache, self).__init__(data=data if data else {})
 
     def etag(self, href):
         """
         ETag can be None if a subset of element json is using
         this container, such as the case with Routing.
         """
-#         if self and (self.get('etag', None) or self._etag):
-#             return self.get('etag') or self._etag # Prefer etag from element
-#         self._etag = LoadElement(href, only_etag=True)
-#         return self._etag
+        #         if self and (self.get('etag', None) or self._etag):
+        #             return self.get('etag') or self._etag # Prefer etag from element
+        #         self._etag = LoadElement(href, only_etag=True)
+        #         return self._etag
         if self and self._etag is None:
             self._etag = LoadElement(href, only_etag=True)
         return self._etag
-    
+
     @cached_property
     def links(self):
-        return {link['rel']:link['href'] for link in self['link']}
-    
+        return {link["rel"]: link["href"] for link in self["link"]}
+
     @property
     def type(self):
-        for link in self.get('link', []):
-            if link.get('rel') == 'self':
-                return link.get('type')
-    
+        for link in self.get("link", []):
+            if link.get("rel") == "self":
+                return link.get("type")
+
     def get_link(self, rel):
         """
         Return link for specified resource
         """
         if rel in self.links:
             return self.links[rel]
-        raise ResourceNotFound('Resource requested: %r is not available '
-            'on this element.' % rel)
-        
+        raise ResourceNotFound("Resource requested: %r is not available " "on this element." % rel)
+
 
 class ElementRef(object):
     """
@@ -202,12 +202,15 @@ class ElementRef(object):
          monitoring_group = ElementRef(('6.5','monitoring_group_ref'),
                                   ('6.6','tunnel_group_ref'))
     """
+
     def __init__(self, *attrs):
         self.attr = attrs
+
     def __set__(self, obj, value):
         self._attr_version()
         obj.data[self.attr] = element_resolver(value)
         return obj
+
     def __get__(self, obj, owner):
         self._attr_version()
         if obj is None:
@@ -223,7 +226,6 @@ class ElementRef(object):
                 self.attr = get_best_version(*self.attr)
 
 
-
 class ElementList(object):
     """
     Descriptor defining a list of hrefs that can be resolved to an
@@ -233,6 +235,7 @@ class ElementList(object):
     ex.
         network = ElementList(('6.5', 'ref'), ('6.6', 'network_ref'))
     """
+
     def __init__(self, *attrs):
         self.attr = attrs
 
@@ -247,7 +250,7 @@ class ElementList(object):
             return self
 
         return [Element.from_href(href) for href in obj.data.get(self.attr, [])]
-        
+
 
 class ElementLocator(object):
     """
@@ -270,31 +273,33 @@ class ElementLocator(object):
     This descriptor is a non data descriptor and can be overridden if 'href'
     is defined in the instance dict.
     """
+
     def __get__(self, instance, cls=None):
         # Does the instance already have meta data
         if instance is not None and instance._meta:
             return instance._meta.href
-        if hasattr(cls, 'typeof'):
+        if hasattr(cls, "typeof"):
             if instance is not None:
-                element = fetch_meta_by_name(
-                    instance.name,
-                    filter_context=instance.typeof)
+                element = fetch_meta_by_name(instance.name, filter_context=instance.typeof)
                 if element.json:
                     instance._meta = Meta(**element.json[0])
                     return instance._meta.href
                 raise ElementNotFound(
-                    'Cannot find specified element: {}, type: {}'
-                    .format(unicode_to_bytes(instance.name),
-                            instance.typeof))
+                    "Cannot find specified element: {}, type: {}".format(
+                        unicode_to_bytes(instance.name), instance.typeof
+                    )
+                )
             else:
                 try:
                     element = fetch_entry_point(cls.typeof)
                 except UnsupportedEntryPoint as e:
                     raise ElementNotFound(e)
                 return element
-        else: 
-            raise ElementNotFound('This class does not have the required attribute '
-                'and cannot be referenced directly, type: {}'.format(instance))
+        else:
+            raise ElementNotFound(
+                "This class does not have the required attribute "
+                "and cannot be referenced directly, type: {}".format(instance)
+            )
 
 
 class ElementMeta(type):
@@ -302,11 +307,13 @@ class ElementMeta(type):
     Element metaclass that registers classes with the typeof
     attribute into a registry for later lookups.
     """
+
     _map = {}
+
     def __new__(meta, name, bases, clsdict):  # @NoSelf
         cls = super(ElementMeta, meta).__new__(meta, name, bases, clsdict)
-        if 'typeof' in clsdict:
-            meta._map[clsdict['typeof']] = cls
+        if "typeof" in clsdict:
+            meta._map[clsdict["typeof"]] = cls
         return cls
 
 
@@ -321,16 +328,16 @@ class ElementBase(RequestAction, UnicodeMixin):
     API, meta is returned for the element (unless a direct link query
     is made). The meta format include 'href','type','name'.
     For example::
-    
+
         "href":"http://1.1.1.1:8082/6.4/elements/host/707","name":"foobar","type":"host"
-    
+
     Methods of the element classes are designed to expose any links or
     attributes of the specific element to simplify manipulation. If a method,
     etc is accessed that requires the elements data, the element is fetched
     and the elements cache (stored in `data` attribute) is inflated. The ETag
     is also retained in the element and is used when updating or deleting the
     element to ensure we are operating on the latest version.
-    
+
     Meta can be passed to constructor through as key value pairs
     kwargs, href=.... (only partial meta), or meta={.....} (as dict)
 
@@ -338,12 +345,12 @@ class ElementBase(RequestAction, UnicodeMixin):
     """
 
     def __init__(self, **meta):
-        meta_as_kw = meta.pop('meta', None)
+        meta_as_kw = meta.pop("meta", None)
         if meta_as_kw:
             self._meta = Meta(**meta_as_kw)
         else:
             self._meta = Meta(**meta) if meta else None
-    
+
     @classmethod
     def from_href(cls, href):
         """
@@ -361,8 +368,8 @@ class ElementBase(RequestAction, UnicodeMixin):
         :param dict meta: raw dict meta from smc
         :rtype: Element
         """
-        return lookup_class(meta.get('type'))(**meta)
-    
+        return lookup_class(meta.get("type"))(**meta)
+
     @cached_property
     def data(self):
         return LoadElement(self.href)
@@ -370,7 +377,7 @@ class ElementBase(RequestAction, UnicodeMixin):
     @property
     def etag(self):
         return self.data.etag(self.href)
-    
+
     def get_relation(self, rel, exception=None):
         """
         Get a relational link. Provide optional exception to be
@@ -382,38 +389,37 @@ class ElementBase(RequestAction, UnicodeMixin):
             if exception:
                 raise exception(e)
             raise
-    
+
     def _del_cache(self):
         try:
             del self.data
         except AttributeError:
             pass
-    
+
     def __getstate__(self):
         state = self.__dict__.copy()
         state.update(data=self.data.data)
-        if '_cache' in state:
-            del state['_cache']
+        if "_cache" in state:
+            del state["_cache"]
         return state
 
     def __setstate__(self, state):
-        if 'data' in state:
-            cache = state.pop('data')
+        if "data" in state:
+            cache = state.pop("data")
             state.update(data=ElementCache(cache))
         self.__dict__.update(state)
-    
+
     def __getattr__(self, key):
-        if 'typeof' not in key and key in self.data:
+        if "typeof" not in key and key in self.data:
             return self.data[key]
-        raise AttributeError("%r object has no attribute %r"
-            % (self.__class__, key))
-    
+        raise AttributeError("%r object has no attribute %r" % (self.__class__, key))
+
     def __unicode__(self):
-        return u'{0}(name={1})'.format(self.__class__.__name__, self.name)
+        return u"{0}(name={1})".format(self.__class__.__name__, self.name)
 
     def __repr__(self):
         return str(self)
-    
+
     def delete(self):
         """
         Delete the element
@@ -421,9 +427,7 @@ class ElementBase(RequestAction, UnicodeMixin):
         :raises DeleteElementFailed: possible dependencies, record locked, etc
         :return: None
         """
-        request = SMCRequest(
-            href=self.href,
-            headers={'if-match': self.etag})
+        request = SMCRequest(href=self.href, headers={"if-match": self.etag})
         request.exception = DeleteElementFailed
         request.delete()
 
@@ -432,13 +436,13 @@ class ElementBase(RequestAction, UnicodeMixin):
         Update the existing element and clear the instance cache.
         Removing the cache will ensure subsequent calls requiring element
         attributes will force a new fetch to obtain the latest copy.
-        
+
         Calling update() with no args will assume the element has already
         been modified directly and the `data` cache will be used to update.
         You can also override the following attributes: href, etag, json and
         params. If json is sent, it is expected to the be a complete payload
         to satisfy the update.
-        
+
         For kwargs, if attribute values are a list, you can pass
         'append_lists=True' to add to an existing list, otherwise overwrite
         the existing (default: overwrite)
@@ -453,8 +457,8 @@ class ElementBase(RequestAction, UnicodeMixin):
         :return: href of the element modified
         :rtype: str
         """
-        if self.data.get('system', False):
-            raise ModificationFailed('Cannot modify system element: %s' % self.name)
+        if self.data.get("system", False):
+            raise ModificationFailed("Cannot modify system element: %s" % self.name)
 
         if not exception:
             exception = UpdateElementFailed
@@ -462,41 +466,42 @@ class ElementBase(RequestAction, UnicodeMixin):
             exception = exception[0]
 
         params = {
-            'href': self.href,
+            "href": self.href,
         }
-        params.update(params=kwargs.pop('params', {})) # URI strings
+        params.update(params=kwargs.pop("params", {}))  # URI strings
 
-        if 'href' in kwargs:
-            params.update(href=kwargs.pop('href'))
+        if "href" in kwargs:
+            params.update(href=kwargs.pop("href"))
 
-        if 'etag' in kwargs:
-            etag = kwargs.pop('etag')
+        if "etag" in kwargs:
+            etag = kwargs.pop("etag")
             if etag:
                 params.update(etag=etag)
         else:
             params.update(etag=self.etag)
 
-        json = kwargs.pop('json', self.data) #if 'json' in kwargs else self.data
-        name = kwargs.get('name', json.get('name'))
-        
-        del self.data       # Delete the cache before processing attributes
+        # if 'json' in kwargs else self.data
+        json = kwargs.pop("json", self.data)
+        name = kwargs.get("name", json.get("name"))
+
+        del self.data  # Delete the cache before processing attributes
 
         # If kwarg settings are provided AND instance variables, kwargs
         # will overwrite collected instance attributes with the same name.
         if kwargs:
-            append_lists = kwargs.pop('append_lists', False)
+            append_lists = kwargs.pop("append_lists", False)
             merge_dicts(json, kwargs, append_lists)
 
         params.update(json=json)
 
-        request = SMCRequest(**params) 
+        request = SMCRequest(**params)
         request.exception = exception
         result = request.update()
-        
-        if name: # Reset instance name
+
+        if name:  # Reset instance name
             self._meta = Meta(name=name, href=self.href, type=self._meta.type)
             self._name = name
-        
+
         return result.href
 
 
@@ -507,6 +512,7 @@ class Element(ElementBase):
     an underscore to avoid having the attributes serialized when
     calling update.
     """
+
     href = ElementLocator()  # : href of this resource
 
     def __init__(self, name=None, **meta):
@@ -514,15 +520,15 @@ class Element(ElementBase):
             meta.update(name=name)
         super(Element, self).__init__(**meta)
         self._name = name  # <str>
-    
+
     def __eq__(self, other):
         if isinstance(other, Element):
             return self.name == other.name and self.typeof == other.typeof
         return False
-    
+
     def __ne__(self, other):
         return not self == other
-    
+
     def __hash__(self):
         return hash((self.name, self.typeof))
 
@@ -540,19 +546,19 @@ class Element(ElementBase):
     def get(cls, name, raise_exc=True):
         """
         Get the element by name. Does an exact match by element type.
-        
+
         :param str name: name of element
-        :param bool raise_exc: optionally disable exception. 
+        :param bool raise_exc: optionally disable exception.
         :raises ElementNotFound: if element does not exist
         :rtype: Element
         """
-        element = cls.objects.filter(name, exact_match=True).first() if \
-            name is not None else None
+        element = cls.objects.filter(name, exact_match=True).first() if name is not None else None
         if not element and raise_exc:
-            raise ElementNotFound('Cannot find specified element: %s, type: '
-                '%s' % (name, cls.__name__))
-        return element 
-        
+            raise ElementNotFound(
+                "Cannot find specified element: %s, type: " "%s" % (name, cls.__name__)
+            )
+        return element
+
     @classmethod
     def get_or_create(cls, filter_key=None, with_status=False, **kwargs):
         """
@@ -591,45 +597,48 @@ class Element(ElementBase):
         :rtype: Element
         """
         was_created = False
-        if 'name' not in kwargs:
-            raise ElementNotFound('Name field is a required parameter '
-                'for all create or update_or_create type operations on an element')
+        if "name" not in kwargs:
+            raise ElementNotFound(
+                "Name field is a required parameter "
+                "for all create or update_or_create type operations on an element"
+            )
 
         if filter_key:
             elements = cls.objects.filter(**filter_key)
             element = elements.first() if elements.exists() else None
         else:
             try:
-                element = cls.get(kwargs.get('name'))
+                element = cls.get(kwargs.get("name"))
             except ElementNotFound:
-                if not hasattr(cls, 'create'):
-                    raise CreateElementFailed('%s: %r not found and this element '
-                        'type does not have a create method.' %
-                        (cls.__name__, kwargs['name']))
+                if not hasattr(cls, "create"):
+                    raise CreateElementFailed(
+                        "%s: %r not found and this element "
+                        "type does not have a create method." % (cls.__name__, kwargs["name"])
+                    )
                 element = None
-        
+
         if not element:
-            params = {k: v() if callable(v) else v
-                      for k, v in kwargs.items()}
+            params = {k: v() if callable(v) else v for k, v in kwargs.items()}
             try:
                 element = cls.create(**params)
                 was_created = True
             except TypeError:
-                raise CreateElementFailed('%s: %r not found and missing '
-                    'constructor arguments to properly create.' %
-                    (cls.__name__, kwargs['name']))
+                raise CreateElementFailed(
+                    "%s: %r not found and missing "
+                    "constructor arguments to properly create." % (cls.__name__, kwargs["name"])
+                )
 
         if with_status:
             return element, was_created
         return element
-    
+
     @classmethod
     def update_or_create(cls, filter_key=None, with_status=False, **kwargs):
         """
         Update or create the element. If the element exists, update it using the
         kwargs provided if the provided kwargs after resolving differences from
         existing values. When comparing values, strings and ints are compared
-        directly. If a list is provided and is a list of strings, it will be 
+        directly. If a list is provided and is a list of strings, it will be
         compared and updated if different. If the list contains unhashable elements,
         it is skipped. To handle complex comparisons, override this method on
         the subclass and process the comparison seperately.
@@ -664,10 +673,10 @@ class Element(ElementBase):
         updated = False
         # Providing this flag will return before updating and require the calling
         # class to call update if changes were made.
-        defer_update = kwargs.pop('defer_update', False)
+        defer_update = kwargs.pop("defer_update", False)
         if defer_update:
             with_status = True
-        
+
         element, created = cls.get_or_create(filter_key=filter_key, with_status=True, **kwargs)
         if not created:
             for key, value in kwargs.items():
@@ -683,26 +692,27 @@ class Element(ElementBase):
                 # of the href to element when doing an equality comparison
                 attr_type = getattr(type(element), key, None)
                 if isinstance(attr_type, ElementRef):
-                    attr_name = getattr(attr_type, 'attr', None)
+                    attr_name = getattr(attr_type, "attr", None)
                     if element.data.get(attr_name) != value:
                         element.data[attr_name] = value
                         updated = True
                     continue
                 elif isinstance(attr_type, ElementList):
-                    value_hrefs = element_resolver(value) # Resolve the elements to href
-                    attr_name = getattr(attr_type, 'attr', None)
+                    # Resolve the elements to href
+                    value_hrefs = element_resolver(value)
+                    attr_name = getattr(attr_type, "attr", None)
                     if set(element.data.get(attr_name, [])) != set(value_hrefs):
                         element.data[attr_name] = value_hrefs
                         updated = True
                     continue
-                
+
                 # Type is not 'special', therefore we are expecting only strings,
                 # integer types or list of strings. Complex data structures
                 # will be handled later through encapsulation and __eq__, __hash__
                 # for comparison. The keys value type here is going to assume the
                 # provided value is of the right type as the key may not necessarily
                 # exist in the cached json.
-                if isinstance(value, (string_types, int)): # also covers bool
+                if isinstance(value, (string_types, int)):  # also covers bool
                     val = getattr(element, key, None)
                     if val != value:
                         element.data[key] = value
@@ -715,10 +725,10 @@ class Element(ElementBase):
                 # Complex lists, objects, etc will fall down here and be skipped.
                 # To process these, provide defer_update=True, override update_or_create,
                 # process the complex object deltas and call update()
-            
+
             if updated and not defer_update:
                 element.update()
-        
+
         if with_status:
             return element, updated, created
         return element
@@ -735,11 +745,11 @@ class Element(ElementBase):
         """
         Comment for element
         """
-        return self.data.get('comment', None)
+        return self.data.get("comment", None)
 
     @comment.setter
     def comment(self, comment):
-        self.data['comment'] = comment
+        self.data["comment"] = comment
 
     def rename(self, name):
         """
@@ -750,7 +760,7 @@ class Element(ElementBase):
         :return: None
         """
         self.update(name=name)
-    
+
     def add_category(self, category):
         """
         Category Tags are used to characterize an element by a type
@@ -766,8 +776,9 @@ class Element(ElementBase):
 
         .. seealso:: :class:`smc.elements.other.Category`
         """
-        assert isinstance(category, list), 'Category input was expecting list.'
+        assert isinstance(category, list), "Category input was expecting list."
         from smc.elements.other import Category
+
         for tag in category:
             category = Category(tag)
             try:
@@ -788,11 +799,12 @@ class Element(ElementBase):
 
         :rtype: list(Category)
         """
-        return [Element.from_meta(**tag)
-                for tag in self.make_request(
-                    resource='search_category_tags_from_element')]
+        return [
+            Element.from_meta(**tag)
+            for tag in self.make_request(resource="search_category_tags_from_element")
+        ]
 
-    def export(self, filename='element.zip'):
+    def export(self, filename="element.zip"):
         """
         Export this element.
 
@@ -809,11 +821,12 @@ class Element(ElementBase):
         :raises TaskRunFailed: invalid permissions, invalid directory, or this
             element is a system element and cannot be exported.
         :return: DownloadTask
-        
+
         .. note:: It is not possible to export system elements
         """
         from smc.administration.tasks import Task
-        return Task.download(self, 'export', filename)
+
+        return Task.download(self, "export", filename)
 
     @property
     def referenced_by(self):
@@ -825,51 +838,49 @@ class Element(ElementBase):
         :return: list referenced elements
         :rtype: list(Element)
         """
-        href = fetch_entry_point('references_by_element')
-        return [Element.from_meta(**ref)
-                for ref in self.make_request(
-                    method='create',
-                    href=href,
-                    json={'value': self.href})]
+        href = fetch_entry_point("references_by_element")
+        return [
+            Element.from_meta(**ref)
+            for ref in self.make_request(method="create", href=href, json={"value": self.href})
+        ]
 
     @property
     def history(self):
         """
         .. versionadded:: 0.5.7
             Requires SMC version >= 6.3.2
-        
+
         Obtain the history of this element. This will not chronicle every
         modification made over time, but instead a current snapshot with
         historical information such as when the element was created, by
         whom, when it was last modified and it's current state.
-        
+
         :raises ResourceNotFound: If not running SMC version >= 6.3.2
         :rtype: History
         """
         from smc.core.resource import History
-        return History(**self.make_request(resource='history'))
-        
+
+        return History(**self.make_request(resource="history"))
+
     def duplicate(self, name):
         """
         .. versionadded:: 0.5.8
             Requires SMC version >= 6.3.2
-        
+
         Duplicate this element. This is a shortcut method that will make
         a direct copy of the element under the new name and type.
-        
+
         :param str name: name for the duplicated element
         :raises ActionCommandFailed: failed to duplicate the element
         :return: the newly created element
         :rtype: Element
         """
         dup = self.make_request(
-            method='update',
-            raw_result=True,
-            resource='duplicate',
-            params={'name': name})
+            method="update", raw_result=True, resource="duplicate", params={"name": name}
+        )
         return type(self)(name=name, href=dup.href, type=type(self).typeof)
 
-        
+
 class SubElement(ElementBase):
     """
     SubElement is the base class for elements that do not
@@ -894,14 +905,15 @@ class UserElement(ElementBase):
     """
     User element mixin for LDAP of Internal Domains.
     """
+
     href = ElementLocator()
-    
+
     def __init__(self, name, **meta):
         if meta:
             meta.update(name=name)
         super(UserElement, self).__init__(**meta)
         self._name = name  # <str>
-    
+
     @property
     def name(self):
         return bytes_to_unicode(self._name)
@@ -910,37 +922,37 @@ class UserElement(ElementBase):
     def unique_id(self):
         """
         Fully qualified unique DN for this entry
-        
+
         :rtype: str
         """
-        return self.data.get('unique_id')
-    
+        return self.data.get("unique_id")
+
     def __eq__(self, other):
         if isinstance(other, UserElement):
             if self.unique_id == other.unique_id:
                 return True
         return False
-    
+
     def __ne__(self, other):
         return not self.__eq__(other)
 
 
 def lookup_class(typeof, default=Element):
     cls = ElementMeta._map.get(typeof, None)
-    if cls is None: # Create a dynamic class from meta type field
-        attrs = {'typeof': typeof}
+    if cls is None:  # Create a dynamic class from meta type field
+        attrs = {"typeof": typeof}
         # There are multiple entry points for specific aliases
         # that should derive from the smc.elements.network.Alias
         # class so it has access to Alias class methods like ``resolve``.
-        if 'alias' in typeof:
-            default = ElementMeta._map.get('alias')
-        cls_name = '{0}Dynamic'.format(typeof.title())
-        return type(cls_name.replace('_',''), (default,), attrs)
-        
+        if "alias" in typeof:
+            default = ElementMeta._map.get("alias")
+        cls_name = "{0}Dynamic".format(typeof.title())
+        return type(cls_name.replace("_", ""), (default,), attrs)
+
     return ElementMeta._map.get(typeof, default)
 
 
-class Meta(collections.namedtuple('Meta', 'name href type')):
+class Meta(collections.namedtuple("Meta", "name href type")):
     """
     Internal namedtuple used to store top level element information. When
     doing base level searches, SMC API will return only meta data for the
@@ -948,5 +960,6 @@ class Meta(collections.namedtuple('Meta', 'name href type')):
     Meta allows elements to be lazy loaded as they can be fetched to validate
     their existence without fetching the payload from the href location.
     """
+
     def __new__(cls, name=None, href=None, type=None, etag=None):  # @ReservedAssignment
         return super(Meta, cls).__new__(cls, name, href, type)
