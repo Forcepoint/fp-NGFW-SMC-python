@@ -163,6 +163,10 @@ class StaticNetlink(Element):
             json.update(ref=element_resolver(network))
         else:
             json.update(network_ref=element_resolver(network))
+
+        # connection_type_ref available since
+        # SMC6.8 api>=6.8
+        if not is_api_version_less_than_or_equal("6.7"):
             if not connection_type:
                 # by default, Active is used
                 json.update(connection_type_ref=element_resolver(ConnectionType("Active")))

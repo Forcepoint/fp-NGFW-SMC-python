@@ -1113,6 +1113,8 @@ class Engine(Element):
         :raises TaskRunFailed: refresh failed, possibly locked policy
         :rtype: TaskOperationPoller
         """
+        kw.update({"params": {"generate_snapshot": generate_snapshot,
+                              "preserve_connections": preserve_connections}})
         return Task.execute(self, "refresh", timeout=timeout, wait_for_finish=wait_for_finish, **kw)
 
     def upload(
