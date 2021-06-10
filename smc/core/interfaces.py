@@ -42,7 +42,7 @@ from smc.core.sub_interfaces import (
     get_sub_interface,
     SubInterfaceCollection,
 )
-from smc.compat import string_types
+from smc.compat import string_types, is_api_version_less_than_or_equal
 from smc.elements.helpers import zone_helper, logical_intf_helper
 from smc.elements.network import Zone
 from smc.base.structs import BaseIterable
@@ -1167,13 +1167,22 @@ class SwitchPhysicalInterface(Interface):
         # Everything else is top level
         base_interface = ElementCache()
 
-        base_interface.update(
-            switch_physical_interface_switch_module_ref=element_default(
-                ApplianceSwitchModule, kw.pop("appliance_switch_module", None)
-            ),
-            interface_id=interface_id,
-            **kw
-        )
+        if is_api_version_less_than_or_equal("6.7"):
+            base_interface.update(
+                switch_physical_interface_switch_module_ref=element_default(
+                    ApplianceSwitchModule, kw.pop("appliance_switch_module", None)
+                ),
+                interface_id=interface_id,
+                **kw
+            )
+        else:
+            base_interface.update(
+                switch_interface_switch_module_ref=element_default(
+                    ApplianceSwitchModule, kw.pop("appliance_switch_module", None)
+                ),
+                interface_id=interface_id,
+                **kw
+            )
 
         self.data = base_interface
 
@@ -1226,9 +1235,14 @@ class SwitchPhysicalInterface(Interface):
                 if len(this.switch_physical_interface_port) != len(
                     other.switch_physical_interface_port
                 ):
-                    this.data.update(
-                        switch_physical_interface_port=other.switch_physical_interface_port
-                    )
+                    if is_api_version_less_than_or_equal("6.7"):
+                        this.data.update(
+                            switch_physical_interface_port=other.switch_physical_interface_port
+                        )
+                    else:
+                        this.data.update(
+                            switch_interface_port=other.switch_physical_interface_port
+                        )
                     updated = True
 
                 if this.zone_ref != other.zone_ref:  # Zone compare
@@ -1237,20 +1251,30 @@ class SwitchPhysicalInterface(Interface):
 
                 # Are port groups and comments alike. Switch port count matches, but value/s
                 # within the existing changed so take new setting
-                val = (
-                    "switch_physical_interface_port_number",
-                    "switch_physical_interface_port_comment",
-                )
+                if is_api_version_less_than_or_equal("6.7"):
+                    val = (
+                        "switch_physical_interface_port_number",
+                        "switch_physical_interface_port_comment",
+                    )
+                else:
+                    val = (
+                        "switch_interface_port_number",
+                        "switch_interface_port_comment",
+                    )
 
                 if set(
                     [(d.get(val[0]), d.get(val[1])) for d in this.switch_physical_interface_port]
                 ) ^ set(
                     [(d.get(val[0]), d.get(val[1])) for d in other.switch_physical_interface_port]
                 ):
-
-                    this.data.update(
-                        switch_physical_interface_port=other.switch_physical_interface_port
-                    )
+                    if is_api_version_less_than_or_equal("6.7"):
+                        this.data.update(
+                            switch_physical_interface_port=other.switch_physical_interface_port
+                        )
+                    else:
+                        this.data.update(
+                            switch_interface_port=other.switch_physical_interface_port
+                        )
                     updated = True
 
                 # If there is more than 1 interfaces (IP's assigned) on any given
@@ -1306,6 +1330,10 @@ class SwitchPhysicalInterface(Interface):
         return ApplianceSwitchModule.from_href(
             self.data.get("switch_physical_interface_switch_module_ref")
         )
+
+
+class SwitchInterface(SwitchPhysicalInterface):
+    typeof = "switch_interface"
 
 
 class PhysicalInterface(Interface):

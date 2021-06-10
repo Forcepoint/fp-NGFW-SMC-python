@@ -106,11 +106,12 @@ from smc.core.interfaces import (
     VirtualPhysicalInterface,
     SwitchPhysicalInterface,
     VPNBrokerInterface,
+    SwitchInterface,
 )
 from smc.core.sub_interfaces import LoopbackClusterInterface, LoopbackInterface
 from smc.base.structs import BaseIterable
 from smc.api.exceptions import UnsupportedInterfaceType, InterfaceNotFound
-from smc.compat import get_best_version
+from smc.compat import get_best_version, is_api_version_less_than_or_equal
 
 
 def get_all_loopbacks(engine):
@@ -332,7 +333,7 @@ class SwitchInterfaceCollection(InterfaceCollection):
     Get specific switch interfaces assigned on the given engine::
 
         for interface in engine.switch_physical_interface:
-            print(interface, interface.port_groups)
+            print(interface, interface.port_groups_interface)
 
     You can also retrieve a switch directly by referencing it using the
     switch interface id. Switch interfaces will always have a name starting
@@ -352,7 +353,10 @@ class SwitchInterfaceCollection(InterfaceCollection):
     """
 
     def __init__(self, engine):
-        super(SwitchInterfaceCollection, self).__init__(engine, "switch_physical_interface")
+        if is_api_version_less_than_or_equal("6.7"):
+            super(SwitchInterfaceCollection, self).__init__(engine, "switch_physical_interface")
+        else:
+            super(SwitchInterfaceCollection, self).__init__(engine, "switch_interface")
 
     def add_switch_interface(
         self, interface_id, appliance_switch_module="110", comment=None, **kwargs
@@ -361,6 +365,7 @@ class SwitchInterfaceCollection(InterfaceCollection):
         In case of Switch Physical/Port Group interfaces, the interface ID must
         be prefixed by 'SWP\\_'. For example, for switch ID 1 and Port Group ID 1.2
         you must enter 'SWP\\_1' for the switch and SWP_1.2 for the Port Group.
+        Since API 6.8 prefix is 'SWI\\_'
 
         :param str interface_id: Name of the interface, must be prefixed with 'SWP\\_'
         :param str appliance_switch_module: appliance switch module which specifies
@@ -372,13 +377,23 @@ class SwitchInterfaceCollection(InterfaceCollection):
         :return: None
 
         """
-        interface = SwitchPhysicalInterface(
-            engine=self._engine,
-            interface_id=interface_id,
-            appliance_switch_module=appliance_switch_module,
-            comment=comment,
-            **kwargs
-        )
+        if is_api_version_less_than_or_equal("6.7"):
+            interface = SwitchPhysicalInterface(
+                engine=self._engine,
+                interface_id=interface_id,
+                appliance_switch_module=appliance_switch_module,
+                comment=comment,
+                **kwargs
+            )
+        else:
+            interface = SwitchInterface(
+                engine=self._engine,
+                interface_id=interface_id,
+                appliance_switch_module=appliance_switch_module,
+                comment=comment,
+                **kwargs
+            )
+
         self._engine.add_interface(interface, **kwargs)
 
     def add_port_group_interface(
@@ -402,7 +417,7 @@ class SwitchInterfaceCollection(InterfaceCollection):
             group with the specified settings
 
         :param str interface_id: The top level switch, naming convention should be
-            SWP_0, SWP_1, etc.
+            SWP_0, SWP_1, etc. ( Since API 6.8: SWI_0, SWI_1..)
         :param int port_group_id: Port group number encapsulating switch port/s
         :param list interface_ports: list of interface ports to add to this port
             group. If the port group.
@@ -414,13 +429,23 @@ class SwitchInterfaceCollection(InterfaceCollection):
         :return: None
         """
         switch = self._engine.interface.get(interface_id)
-        switch_port = {
-            "interface_id": "{}.{}".format(switch.interface_id, port_group_id),
-            "switch_physical_interface_port": [
-                {"switch_physical_interface_port_number": port} for port in interface_ports
-            ],
-            "zone_ref": zone_ref,
-        }
+        if is_api_version_less_than_or_equal("6.7"):
+            switch_port = {
+                "interface_id": "{}.{}".format(switch.interface_id, port_group_id),
+                "switch_physical_interface_port": [
+                    {"switch_physical_interface_port_number": port} for port in interface_ports
+                ],
+                "zone_ref": zone_ref,
+            }
+        else:
+            switch_port = {
+                "interface_id": "{}.{}".format(switch.interface_id, port_group_id),
+                "switch_interface_port": [
+                    {"physical_switch_port_number": port} for port in interface_ports
+                ],
+                "zone_ref": zone_ref,
+            }
+
         switch_port.update(interfaces=interfaces if interfaces else [])
         interface = {"interface_id": switch.interface_id, "port_group_interface": [switch_port]}
         switch.update_interface(SwitchPhysicalInterface(**interface))

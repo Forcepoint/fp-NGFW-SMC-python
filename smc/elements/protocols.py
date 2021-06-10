@@ -84,6 +84,7 @@ You can unset a ProxyServer by setting the proxy_server field to None and updati
 """
 from smc.base.model import Element, SubElement, ElementCache
 from smc.base.decorators import cached_property
+from smc.compat import is_api_version_less_than_or_equal
 from smc.elements.servers import ProxyServer
 from smc.base.util import element_resolver
 from smc.base.structs import BaseIterable
@@ -304,6 +305,9 @@ class ProxyServiceValue(ProtocolParameterValue):
             for proxy in ProxyServer.objects.all():
                 if self._inspected_service_ref.startswith(proxy.href + "/"):
                     return proxy
+        # Since API 6.11
+        else:
+            return Element.from_href(self.protocol_agent_values.get("proxy_server_ref"))
 
     def _update(self, **kwargs):
         """
@@ -330,9 +334,11 @@ class ProxyServiceValue(ProtocolParameterValue):
                     )
 
                 if self._inspected_service_ref != enabled_services.get(self.protocol_agent.name):
-                    self.protocol_agent_values["inspected_service_ref"] = enabled_services.get(
-                        self.protocol_agent.name
-                    )
+                    if is_api_version_less_than_or_equal("6.10"):
+                        self.protocol_agent_values["inspected_service_ref"] = enabled_services.get(
+                            self.protocol_agent.name)
+                    else:
+                        self.protocol_agent_values["proxy_server_ref"] = proxy_server.href
                     updated = True
         return updated
 

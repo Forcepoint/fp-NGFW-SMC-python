@@ -34,5 +34,9 @@ Release History
 - Remove kwargs from websocket call to super to support older versions of websocket-client
 - Fixed fetch_batch to only return a single payload, previous versions were unlimited
 
+1.4.0
++++++
+
+- Update requirements to fp_NGFW_SMC_python >= 1.0.0
 
 

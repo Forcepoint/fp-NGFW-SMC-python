@@ -43,5 +43,5 @@ setup(
         "License :: OSI Approved :: Apache Software License",
     ],
     zip_safe=False,
-    install_requires=["smc-python >=0.6.0", "websocket-client >=0.48.0"],
+    install_requires=["fp_NGFW_SMC_python >=1.0.0", "websocket-client >=0.48.0"],
 )

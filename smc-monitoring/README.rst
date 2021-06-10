@@ -38,7 +38,7 @@ This package has been tested with Python 2.7, 3.5 and 3.6.
 Requirements
 ============
 
-smc-python >= v0.6.1
+fp_NGFW_SMC_python >= 1.0.0
 
 websocket-client
 

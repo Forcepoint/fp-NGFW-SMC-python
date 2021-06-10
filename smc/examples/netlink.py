@@ -3,29 +3,31 @@ Example script to show how to use Multilink Element
 """
 
 # Python Base Import
-import sys
 from smc import session
 from smc.elements.netlink import StaticNetlink, MultilinkMember, Multilink
+from smc.elements.network import Network, Router
+from smc.vpn.elements import ConnectionType
+from smc_info import *
 
 if __name__ == '__main__':
-    URLSMC = 'http://localhost:8082'
-    APIKEYSMC = 'HuphG4Uwg4dN6TyvorTR0001'
-    try:
-        session.login(url=URLSMC, api_key=APIKEYSMC, verify=False, timeout=120, api_version='6.5')
-    except BaseException as exception_retournee:
-        sys.exit(-1)
-
+    session.login(url=SMC_URL, api_key=API_KEY, verify=False, timeout=120, api_version=API_VERSION)
     print("session OK")
+
 try:
     # create multi link
-    connection_type = "http://localhost:8082/6.10/elements/connection_type/1"
+    # get first connection type
+    connection_type = list(ConnectionType.objects.all())[0]
+    network1 = Network("net-10.1.16.0/24")
+    network2 = Network("net-172.31.16.0/24")
+    router1 = Router("Etisalat Dubai Router")
+    router2 = Router("Du Dubai Router")
     snl1 = StaticNetlink.create(name="SNL_Premier-ISP",
                                 provider_name="ISP1",
                                 output_speed=40000,
                                 input_speed=40000,
                                 probe_address=["10.1.16.1"],
-                                network=["http://localhost:8082/6.10/elements/network/1684"],
-                                gateway="http://localhost:8082/6.10/elements/router/1682",
+                                network=[network1],
+                                gateway=router1,
                                 connection_type=connection_type,
                                 )
     snl2 = StaticNetlink.create(name="SNL_Second-ISP",
@@ -33,8 +35,8 @@ try:
                                 output_speed=50000,
                                 input_speed=50000,
                                 probe_address=["172.31.16.1"],
-                                network=["http://localhost:8082/6.10/elements/network/1678"],
-                                gateway="http://localhost:8082/6.10/elements/router/1676",
+                                network=[network2],
+                                gateway=router2,
                                 connection_type=connection_type,
                                 )
 
@@ -54,6 +56,7 @@ try:
     print('oml={} members={}'.format(str(oml), oml.members))
 except Exception as e:
     print(e)
+    exit(1)
 finally:
     print("delete elements..")
     try:
