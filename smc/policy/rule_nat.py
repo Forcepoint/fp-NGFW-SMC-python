@@ -609,7 +609,8 @@ class IPv4NATRule(RuleCommon, NATRule, SubElement):
 
         elif static_src_nat:
             sources = rule_values["sources"]
-            if "any" in sources or "none" in sources:
+            if ("any" in sources and sources["any"] is True) \
+                    or ("none" in sources and sources["none"] is True):
                 raise InvalidRuleValue(
                     "Source field cannot be none or any for " "static source NAT."
                 )
@@ -620,7 +621,8 @@ class IPv4NATRule(RuleCommon, NATRule, SubElement):
 
         if static_dst_nat:
             destinations = rule_values["destinations"]
-            if "any" in destinations or "none" in destinations:
+            if ("any" in destinations and destinations["any"] is True) \
+                    or ("none" in destinations and destinations["none"] is True):
                 raise InvalidRuleValue(
                     "Destination field cannot be none or any for " "destination NAT."
                 )

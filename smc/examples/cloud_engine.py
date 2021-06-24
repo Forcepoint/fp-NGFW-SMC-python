@@ -1,32 +1,13 @@
 #!/usr/bin/python
-
-
-################################################
-#    Customize these variable                  #
-################################################
-
 from smc.core.engine import Engine
 from smc.core.engines import CloudSGSingleFW
 from smc import session
+from smc_info import *
 
-smc_url = "http://localhost:8082"
-smc_key = "HuphG4Uwg4dN6TyvorTR0001"
+if __name__ == '__main__':
 
-smc_domain = ""
-api_version = "6.9"
-timeout = 180
-
-################################################
-# Login the api
-
-session.login(
-    url=smc_url,
-    domain=smc_domain,
-    api_key=smc_key,
-    api_version=api_version,
-    timeout=timeout,
-    verify=False,
-)
+    session.login(url=SMC_URL, api_key=API_KEY, verify=False, timeout=120, api_version=API_VERSION)
+    print("session OK")
 
 
 try:
@@ -60,14 +41,11 @@ try:
     for node in engine.nodes:
         print("Firewall node %s status: %s" % (node.name, str(node.status())))
 
-    # Delete Engine
-    engine.delete()
-
 except Exception as e:
     print("Example failed:" + str(e))
-    engine = Engine("Cloud Single firewall 1")
+    exit(-1)
+
+finally:
+    engine = CloudSGSingleFW("Cloud Single firewall 1")
     engine.delete()
     session.logout()
-    exit(1)
-
-session.logout()

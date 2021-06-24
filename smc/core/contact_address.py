@@ -191,7 +191,12 @@ class ContactAddressNode(SubElement):
 
         :rtype: str
         """
-        return self._name.split(" ")[-1]
+        # Aggregated Interfaces case
+        if self._name.endswith("(Aggregated)"):
+            interface_id_to_return = self._name.split(" ")[1]
+        else:
+            interface_id_to_return = self._name.split(" ")[-1]
+        return interface_id_to_return
 
     @property
     def interface_ip(self):

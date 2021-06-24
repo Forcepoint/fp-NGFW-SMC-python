@@ -99,7 +99,7 @@ from smc.policy.rule_elements import (
 from smc.base.util import element_resolver
 from smc.base.decorators import cacheable_resource
 from smc.core.resource import History
-from smc.compat import get_best_version
+from smc.compat import get_best_version, is_api_version_less_than_or_equal
 
 
 class Rule(object):
@@ -301,17 +301,51 @@ class Rule(object):
         """
         return self.update()
 
-    def update(self, validate=True, **kwargs):
+    def update(self,
+               validate=True,
+               sources=None,
+               destinations=None,
+               services=None,
+               action="allow",
+               **kwargs):
         """
-        Override update on rules to allow validate=False be passed
+        update a rule
 
+        :param sources: source/s for rule
+        :type sources: str, list[Element] str can be "any" or json
+        :param destinations: destination/s for rule
+        :type destinations: str, list[Element] str can be "any" or json
+        :param services: service/s for rule
+        :type services: str, list[Element] str can be "any" or json
         :param bool validate: validate the policy before update; default True
         :return: href of this rule
         :rtype: str
+        :param action: action/s for rule
+        :type action: str, list[str] since API 6.6, json
         """
+
+        rule_values = self.update_targets(sources, destinations, services)
+
+        # action still compatible with json
+        if isinstance(action, dict):
+            # Api 6.5 compatibility
+            if is_api_version_less_than_or_equal("6.5"):
+                if isinstance(action["action"], list):
+                    action["action"] = action["action"][0]
+            else:
+                if isinstance(action["action"], str):
+                    action["action"] = [action["action"]]
+
+            rule_values.update(action=action)
+        else:
+            rule_action = self._get_action(action)
+            rule_values.update(action=rule_action.data)
+
+        rule_values.update(kwargs)
+
         if not validate:
-            kwargs.update(params={"validate": False})
-        result = super(Rule, self).update(PolicyCommandFailed, **kwargs)
+            rule_values.update(params={"validate": False})
+        result = super(Rule, self).update(PolicyCommandFailed, **rule_values)
         try:
             del self._cache
         except AttributeError:
@@ -411,39 +445,60 @@ class RuleCommon(object):
             params = {"before": before}
         return params
 
-    def update_targets(self, sources, destinations, services):
+    def update_targets(self, sources=None, destinations=None, services=None):
         source = Source()
         destination = Destination()
         service = Service()
 
         if sources is not None:
+            source.clear()
             if isinstance(sources, str) and sources.lower() == "any":
                 source.set_any()
+            # still allow json as parameter
+            elif isinstance(sources, dict):
+                source.unset_any()
+                source.add_many(sources.get("src"))
             else:
+                source.unset_any()
                 source.add_many(sources)
         else:
             source.set_none()
 
         if destinations is not None:
+            destination.clear()
             if isinstance(destinations, str) and destinations.lower() == "any":
                 destination.set_any()
+            # still allow json as parameter
+            elif isinstance(destinations, dict):
+                destination.unset_any()
+                destination.add_many(destinations.get("dst"))
             else:
+                destination.unset_any()
                 destination.add_many(destinations)
         else:
             destination.set_none()
 
         if services is not None:
+            service.clear()
             if isinstance(services, str) and services.lower() == "any":
                 service.set_any()
+            # still allow json as parameter
+            elif isinstance(services, dict):
+                service.unset_any()
+                destination.add_many(destinations.get("service"))
             else:
+                service.unset_any()
                 service.add_many(services)
         else:
             service.set_none()
 
         e = {}
-        e.update(sources=source.data)
-        e.update(destinations=destination.data)
-        e.update(services=service.data)
+        if sources is not None:
+            e.update(sources=source.data)
+        if destinations is not None:
+            e.update(destinations=destination.data)
+        if services is not None:
+            e.update(services=service.data)
         return e
 
     def update_logical_if(self, logical_interfaces):
@@ -516,6 +571,8 @@ class RuleCommon(object):
             rule_action = Action()
             if isinstance(action, str):
                 rule_action.action = action
+            elif isinstance(action, list):
+                rule_action.action = action[0]
             else:
                 raise CreateRuleFailed(
                     "Action specified should be a str " "rule type; action: {}".format(action)

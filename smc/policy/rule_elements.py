@@ -18,7 +18,7 @@ class RuleElement(object):
 
         :rtype: bool
         """
-        return "any" in self
+        return self["any"] if "any" in self else False
 
     def set_any(self):
         """
@@ -26,6 +26,13 @@ class RuleElement(object):
         """
         self.clear()
         self.update({"any": True})
+
+    def unset_any(self):
+        """
+        UnSet field to any
+        """
+        self.clear()
+        self.update({"any": False})
 
     @property
     def is_none(self):
@@ -120,6 +127,18 @@ class RuleElement(object):
     def __ne__(self, other):
         return not self.__eq__(other)
 
+    def __str__(self):
+        # fields to display
+        fields_to_display = ("is_none", 'is_any')
+        str = ""
+        for key in fields_to_display:
+            element = self.__getattribute__(key)
+            if isinstance(element, Element):
+                str += element.__str__()
+            else:
+                str += "{} = {}; ".format(key, element)
+        return str
+
     def update_field(self, elements):
         """
         Update the field with a list of provided values but only if the values
@@ -198,6 +217,24 @@ class Destination(RuleElement, NestedDict):
         self.rule = rule
         super(Destination, self).__init__(data=dests)
 
+    def __str__(self):
+        return "ANY={}, NONE={}, DESTINATIONS={}".format(self.is_any, self.is_none, self.dst)
+
+    @property
+    def dst(self):
+        """
+        All elements corresponding to the matching criteria (if not any or none).
+
+        :return: list value: source elements
+        """
+        elements = self.get("dst")
+        return [Element.from_href(element) for element in elements] \
+            if elements is not None else None
+
+    @dst.setter
+    def dst(self, value):
+        self.update(dst=value)
+
 
 class Source(RuleElement, NestedDict):
     """
@@ -211,6 +248,24 @@ class Source(RuleElement, NestedDict):
         self.rule = rule
         super(Source, self).__init__(data=sources)
 
+    def __str__(self):
+        return "ANY={}, NONE={}, SOURCES={}".format(self.is_any, self.is_none, self.src)
+
+    @property
+    def src(self):
+        """
+        All elements corresponding to the matching criteria (if not any or none).
+
+        :return: list value: source elements
+        """
+        elements = self.get("src")
+        return [Element.from_href(element) for element in elements]\
+            if elements is not None else None
+
+    @src.setter
+    def src(self, value):
+        self.update(src=value)
+
 
 class Service(RuleElement, NestedDict):
     """
@@ -223,6 +278,24 @@ class Service(RuleElement, NestedDict):
         services = dict(none=True) if not rule else rule.data.get("services")
         self.rule = rule
         super(Service, self).__init__(data=services)
+
+    def __str__(self):
+        return "ANY={}, NONE={}, SERVICES={}".format(self.is_any, self.is_none, self.service)
+
+    @property
+    def service(self):
+        """
+        All elements corresponding to the matching criteria (if not any or none).
+
+        :return: list value: source elements
+        """
+        elements = self.data.get("service")
+        return [Element.from_href(element) for element in elements] \
+            if elements is not None else None
+
+    @service.setter
+    def service(self, value):
+        self.update(service=value)
 
 
 class Action(NestedDict):

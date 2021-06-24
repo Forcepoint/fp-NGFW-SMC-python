@@ -12,3 +12,4 @@ smc-monitoring/fp_NGFW_SMC_python_monitoring.egg-info/*
 qa/results/*
 qa/test_suites/examples/*
 venv*
+/smc_info/

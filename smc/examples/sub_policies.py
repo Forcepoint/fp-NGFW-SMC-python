@@ -1,13 +1,14 @@
 """
 Example script
 -create SubPolicy and IPv6SubPolicy
+-update a rule
 -return all FirewallSubPolicy and FirewallIPv6SubPolicy.
 
 """
 
 # Python Base Import
-import sys
 from smc import session
+from smc.elements.network import Host
 from smc.policy.layer3 import FirewallSubPolicy, FirewallIPv6SubPolicy
 from smc.elements.service import TCPService
 from smc_info import *
@@ -17,37 +18,100 @@ if __name__ == "__main__":
     session.login(url=SMC_URL, api_key=API_KEY, verify=False, timeout=120, api_version=API_VERSION)
 
     print("session OK")
+    try:
 
-    # Create a Sub Policy
-    p = FirewallSubPolicy()
-    p.create("mySubPolicy1")
+        # Create hosts
+        host1 = Host.create("myHost1", "192.168.1.1")
+        host2 = Host.create("myHost2", "192.168.1.2")
+        host3 = Host.create("myHost3", "192.168.1.3")
 
-    # add rule to a Sub Policy
-    p = FirewallSubPolicy("mySubPolicy1")
-    p.fw_ipv4_access_rules.create(
-        name="newule",
-        sources="any",
-        destinations="any",
-        services=[TCPService("SSH")],
-        action="discard",
-    )
+        # Create a Sub Policy
+        p = FirewallSubPolicy().create("mySubPolicy1")
 
-    print(list(FirewallSubPolicy.objects.all()))
+        # add rule to a Sub Policy
+        p = FirewallSubPolicy("mySubPolicy1")
+        rule1 = p.fw_ipv4_access_rules.create(
+            name="newrule",
+            sources="any",
+            destinations="any",
+            services=[TCPService("SSH")],
+            action="discard",
+        )
 
-    # Create a IPv6 Sub Policy
-    p = FirewallIPv6SubPolicy()
-    p.create("myIPv6SubPolicy1")
+        # update the rule
+        # can mix element and element.href
+        # like for create, to be compatible with 6.5, we can set action as a String
+        # it will be converted to a list of String for api > 6.5
+        rule1.update(sources=[host1, host2.href],
+                     destinations=[host3],
+                     services=[TCPService("FTP")],
+                     action="allow")
+        print("After update {} src={} dst={}".format(rule1, rule1.sources, rule1.destinations))
 
-    # add rule to a IPv6 Sub Policy
-    p = FirewallIPv6SubPolicy("myIPv6SubPolicy1")
-    p.fw_ipv6_access_rules.create(
-        name="newule",
-        sources="any",
-        destinations="any",
-        services=[TCPService("SSH")],
-        action="discard",
-    )
+        # Need to keep backward compatibility and let user inject json code or Elements or href
+        # action can also be a list since Api 6.6
+        rule1.update(sources={"src": [host1.href]},
+                     destinations=[host3],
+                     services=[TCPService("FTP").href],
+                     action=["allow"])
+        print("After update {} src={} dst={} action={}".format(rule1,
+                                                               rule1.sources,
+                                                               rule1.destinations,
+                                                               rule1.action.action))
 
-    print(list(FirewallIPv6SubPolicy.objects.all()))
+        # action can also be json injection both str and list are accepted
+        rule1.update(sources={"src": [host1.href]},
+                     destinations=[host3],
+                     services=[TCPService("FTP").href],
+                     action={"action": "deny"})
+        print("After update {} src={} dst={} action={}".format(rule1,
+                                                               rule1.sources,
+                                                               rule1.destinations,
+                                                               rule1.action.action))
+        # action can also be json injection both str and list are accepted
+        rule1.update(sources={"src": [host1.href]},
+                     destinations=[host3],
+                     services=[TCPService("FTP").href],
+                     action={"action": ["deny"]})
+        print("After update {} src={} dst={} action={}".format(rule1,
+                                                               rule1.sources,
+                                                               rule1.destinations,
+                                                               rule1.action.action))
 
-    session.logout()
+        # search for the rule
+        rule1 = p.search_rule("newrule")
+        print("Search 'newrule': {} src={} dst={} action={}".format(rule1[0],
+                                                                    rule1[0].sources,
+                                                                    rule1[0].destinations,
+                                                                    rule1[0].action.action))
+
+        print("All sub-policies:")
+        print(list(FirewallSubPolicy.objects.all()))
+
+        print("Add myIPv6SubPolicy1:")
+        # Create a IPv6 Sub Policy
+        p = FirewallIPv6SubPolicy()
+        p.create("myIPv6SubPolicy1")
+
+        # add rule to a IPv6 Sub Policy
+        p = FirewallIPv6SubPolicy("myIPv6SubPolicy1")
+        p.fw_ipv6_access_rules.create(
+            name="newule",
+            sources="any",
+            destinations="any",
+            services=[TCPService("SSH")],
+            action="discard",
+        )
+
+        print(list(FirewallIPv6SubPolicy.objects.all()))
+
+    except BaseException as e:
+        print("ex={}".format(e))
+        exit(-1)
+    finally:
+        FirewallSubPolicy("mySubPolicy1").delete()
+        Host("myHost1").delete()
+        Host("myHost2").delete()
+        Host("myHost3").delete()
+        FirewallIPv6SubPolicy("myIPv6SubPolicy1").delete()
+        session.logout()
