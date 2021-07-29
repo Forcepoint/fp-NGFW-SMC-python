@@ -1,8 +1,8 @@
 """
 Example script to export all elements.
-follow the result and check result is valid zip file
-
-then import element
+-follow the result and check result is valid zip file
+-use exclude_trashed option
+-import inconsistent import file. check exception
 """
 
 # Python Base Import
@@ -33,8 +33,21 @@ if __name__ == "__main__":
 # try export all
 system = System()
 export_zip = "/tmp/export_test.zip"
+
+# check trashed host is in export (default case)
+# using the SMC Client need first to create a testHostTrashed Host and trash it
 system.export_elements(export_zip, timeout=5, max_tries=50)
 the_zip_file = zipfile.ZipFile(export_zip)
+data_xml = the_zip_file.open('exported_data.xml').read()
+assert data_xml.find('testHostTrashed'.encode()) > -1, "Host testHostTrashed not found in export"
+
+# use exclude_trashed=true parameter and check trashed host NOT in export
+system.export_elements(export_zip, timeout=5, max_tries=50, exclude_trashed=True)
+the_zip_file = zipfile.ZipFile(export_zip)
+data_xml = the_zip_file.open('exported_data.xml').read()
+assert data_xml.find('testHostTrashed'.encode()) == -1, "Host testHostTrashed found in export"
+
+
 valid_zip = the_zip_file.testzip()
 
 # check export all is valid

@@ -821,6 +821,7 @@ class IPv4Layer2Rule(RuleCommon, Rule, SubElement):
         before=None,
         comment=None,
         validate=True,
+        sub_policy=None,
         **kw
     ):
         """
@@ -850,6 +851,8 @@ class IPv4Layer2Rule(RuleCommon, Rule, SubElement):
             and ``after`` params.
         :param str comment: optional comment for this rule
         :param bool validate: validate the inspection policy during rule creation. Default: True
+        :param str,Element sub_policy: sub policy required when rule has an action of 'jump'.
+            Can be the IPSSubPolicy element or href.
         :raises MissingRequiredInput: when options are specified the need additional
             setting, i.e. use_vpn action requires a vpn policy be specified.
         :raises CreateRuleFailed: rule creation failure
@@ -859,6 +862,14 @@ class IPv4Layer2Rule(RuleCommon, Rule, SubElement):
         rule_values = self.update_targets(sources, destinations, services)
 
         rule_action = self._get_action(action)
+
+        if "jump" in rule_action.action:
+            try:
+                rule_action.sub_policy = element_resolver(sub_policy)
+            except ElementNotFound:
+                raise MissingRequiredInput(
+                    "Cannot find sub policy specified: {} ".format(sub_policy)
+                )
 
         rule_values.update(
             self.update_logical_if(logical_interfaces),
@@ -880,6 +891,25 @@ class IPv4Layer2Rule(RuleCommon, Rule, SubElement):
         return ElementCreator(
             self.__class__, exception=CreateRuleFailed, href=href, params=params, json=rule_values
         )
+
+
+class IPSRule(IPv4Layer2Rule):
+    """
+    Create IPS Rule
+
+    Example of creating an allow all rule::
+
+        ips_policy = IPSPolicy("myIPSPolicy1")
+        rule1 = ips_policy.ips_ipv4_access_rules.create(
+                                                         name="ips_jump_rule",
+                                                         sources="any",
+                                                         destinations="any",
+                                                         services=[TCPService("SSH")],
+                                                         action="allow"
+                                                        )
+    """
+
+    typeof = "ips_ipv4_access_rules"
 
 
 class EthernetRule(RuleCommon, Rule, SubElement):

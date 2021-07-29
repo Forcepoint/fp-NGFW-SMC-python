@@ -272,7 +272,12 @@ class System(SubElement):
         return result
 
     def export_elements(
-        self, filename="export_elements.zip", typeof="all", timeout=5, max_tries=36
+            self,
+            filename="export_elements.zip",
+            typeof="all",
+            timeout=5,
+            max_tries=36,
+            exclude_trashed=None
     ):
         """
         Export elements from SMC.
@@ -297,7 +302,7 @@ class System(SubElement):
             filename,
             timeout=timeout,
             max_tries=max_tries,
-            params={"recursive": True, "type": typeof},
+            params={"recursive": True, "type": typeof, "exclude_trashed": exclude_trashed},
         )
 
     def active_alerts_ack_all(self):

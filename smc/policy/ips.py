@@ -35,7 +35,7 @@ Example rule deletion::
             rule.delete()
 """
 from smc.policy.policy import Policy
-from smc.policy.rule import IPv4Layer2Rule, EthernetRule
+from smc.policy.rule import IPv4Layer2Rule, EthernetRule, IPSRule
 from smc.base.model import ElementCreator
 from smc.api.exceptions import (
     ElementNotFound,
@@ -46,7 +46,7 @@ from smc.api.exceptions import (
 from smc.base.collection import rule_collection
 
 
-class IPSRule(object):
+class IPSPolicyRule(object):
     """
     Encapsulates all references to IPS rule related entry
     points. This is referenced by multiple classes such as
@@ -77,7 +77,7 @@ class IPSRule(object):
         return rule_collection(self.get_relation("ips_ethernet_rules"), EthernetRule)
 
 
-class IPSPolicy(IPSRule, Policy):
+class IPSPolicy(IPSPolicyRule, Policy):
     """
     IPS Policy represents a set of rules installed on an IPS / IDS
     engine. IPS mode supports both inline and SPAN interface types and
@@ -117,6 +117,48 @@ class IPSPolicy(IPSRule, Policy):
             return ElementCreator(cls, json)
         except CreateElementFailed as err:
             raise CreatePolicyFailed(err)
+
+
+class IPSSubPolicy(Policy):
+    """
+    A IPS Sub Policy is a rule section within an IPS policy
+    that provides a container to create rules that are referenced from
+    a 'jump' rule. Typically rules in a sub policy are similar in some
+    fashion such as applying to a specific service. Sub Policies can also
+    be delegated from an administrative perspective.
+
+        p = IPSSubPolicy('MyIPSSubPolicy')
+        p.fw_ipv4_access_rules.create(
+            name='newule',
+            sources='any',
+            destinations='any',
+            services=[TCPService('SSH')],
+            action='discard')
+    """
+
+    typeof = "sub_ipv4_ips_policy"
+
+    @classmethod
+    def create(cls, name):
+        """
+        Create a sub policy. Only name is required. Other settings are
+        inherited from the parent IPS policy (template, inspection
+        policy, etc).
+
+        :param str name: name of sub policy
+        :raises CreateElementFailed: failed to create policy
+        :rtype: IPSSubPolicy
+        """
+        return ElementCreator(cls, json={"name": name})
+
+    @property
+    def ips_ipv4_access_rules(self):
+        """
+        IPv4 rule entry point
+
+        :rtype: rule_collection(IPSRule)
+        """
+        return rule_collection(self.get_relation("ips_ipv4_access_rules"), IPSRule)
 
 
 class IPSTemplatePolicy(IPSPolicy):
