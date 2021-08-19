@@ -93,7 +93,6 @@ from smc.policy.rule_elements import (
     Source,
     Service,
     AuthenticationOptions,
-    TimeRange,
     SourceVpn,
 )
 from smc.base.util import element_resolver

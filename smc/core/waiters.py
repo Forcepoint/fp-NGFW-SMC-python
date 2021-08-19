@@ -36,8 +36,10 @@ to block input while waiting for the engine to reach a specific status::
 """
 import time
 import threading
+from smc.compat import PYTHON_v3_9
 
 #: Configuration status constant values
+
 CFG_STATUS = frozenset(["Initial", "Declared", "Configured", "Installed"])
 
 #: Node status constant values
@@ -130,7 +132,10 @@ class NodeWaiter(threading.Thread):
 
         :rtype: bool
         """
-        return self._done.is_set() or not self.isAlive()
+        # isAlive() is removed since python3.9
+        return self._done.is_set() or \
+            (PYTHON_v3_9 and not self.is_alive()) or \
+            (not PYTHON_v3_9 and not self.isAlive())
 
     def result(self, timeout=None):
         """
@@ -152,7 +157,7 @@ class NodeWaiter(threading.Thread):
         """
         Stop thread if it's still running
         """
-        if self.isAlive():
+        if (not PYTHON_v3_9 and self.isAlive()) or (PYTHON_v3_9 and self.is_alive()):
             self._done.set()
 
 

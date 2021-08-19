@@ -23,7 +23,7 @@ from smc.base.model import ElementCache, Element, SubElement
 from smc.api.exceptions import TaskRunFailed, ActionCommandFailed, ResourceNotFound
 from smc.base.collection import Search
 from smc.base.util import millis_to_utc
-
+from smc.compat import PYTHON_v3_9
 
 clean_html = re.compile(r"<.*?>")
 
@@ -291,7 +291,10 @@ class TaskOperationPoller(object):
 
         :rtype: bool
         """
-        return self._thread is None or not self._thread.isAlive()
+        # isAlive() is removed since python3.9
+        return self._thread is None or \
+            (not PYTHON_v3_9 and not self._thread.isAlive()) or \
+            (PYTHON_v3_9 and not self._thread.is_alive())
 
     @property
     def task(self):

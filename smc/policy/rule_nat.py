@@ -1,7 +1,8 @@
 from smc.policy.rule import Rule, RuleCommon
 from smc.base.model import Element, SubElement, ElementCreator
 from smc.policy.rule_elements import LogOptions
-from smc.api.exceptions import ElementNotFound, InvalidRuleValue, CreateRuleFailed
+from smc.api.exceptions import ElementNotFound, InvalidRuleValue, CreateRuleFailed, \
+    PolicyCommandFailed
 from smc.base.util import element_resolver
 from smc.base.structs import NestedDict
 
@@ -95,6 +96,125 @@ class NATRule(Rule):
         :rtype: StaticDestNAT
         """
         return StaticDestNAT(self)
+
+    def _update_nat(self,
+                    rule_values,
+                    dynamic_src_nat=None,
+                    dynamic_src_nat_ports=(1024, 65535),
+                    dynamic_src_nat_automatic_proxy=None,
+                    static_src_nat=None,
+                    static_dst_nat=None,
+                    static_dst_nat_ports=None,
+                    static_dst_nat_automatic_proxy=None
+                    ):
+        if dynamic_src_nat:
+            nat = DynamicSourceNAT()
+            start_port, end_port = dynamic_src_nat_ports
+            nat.update_field(dynamic_src_nat, start_port=start_port, end_port=end_port)
+            nat.automatic_proxy = dynamic_src_nat_automatic_proxy
+            rule_values.update(options=nat)
+
+        elif static_src_nat:
+            sources = rule_values["sources"]
+            if ("any" in sources and sources["any"] is True) \
+                    or ("none" in sources and sources["none"] is True):
+                raise InvalidRuleValue(
+                    "Source field cannot be none or any for " "static source NAT."
+                )
+
+            nat = StaticSourceNAT()
+            nat.update_field(static_src_nat, original_value=sources.get("src")[0])
+            rule_values.update(options=nat)
+
+        if static_dst_nat:
+            destinations = rule_values["destinations"]
+            if ("any" in destinations and destinations["any"] is True) \
+                    or ("none" in destinations and destinations["none"] is True):
+                raise InvalidRuleValue(
+                    "Destination field cannot be none or any for " "destination NAT."
+                )
+
+            nat = StaticDestNAT()
+            original_port, translated_port = None, None
+            if static_dst_nat_ports:
+                original_port, translated_port = static_dst_nat_ports
+
+            nat.update_field(
+                static_dst_nat,
+                original_value=destinations.get("dst")[0],
+                original_port=original_port,
+                translated_port=translated_port,
+            )
+            nat.automatic_proxy = static_dst_nat_automatic_proxy
+
+            rule_values.setdefault("options", {}).update(nat)
+
+        if "options" not in rule_values:  # No NAT
+            rule_values.update(options=LogOptions())
+
+        return rule_values
+
+    def update(self,
+               validate=True,
+               sources=None,
+               destinations=None,
+               services=None,
+               dynamic_src_nat=None,
+               dynamic_src_nat_ports=(1024, 65535),
+               dynamic_src_nat_automatic_proxy=None,
+               static_src_nat=None,
+               static_dst_nat=None,
+               static_dst_nat_ports=None,
+               static_dst_nat_automatic_proxy=None,
+               **kwargs):
+        """
+        update a rule
+
+        :param sources: source/s for rule
+        :type sources: str, list[Element] str can be "any" or json
+        :param destinations: destination/s for rule
+        :type destinations: str, list[Element] str can be "any" or json
+        :param services: service/s for rule
+        :type services: str, list[Element] str can be "any" or json
+        :param bool validate: validate the policy before update; default True
+        :param dynamic_src_nat: str ip or Element for dest NAT
+        :type dynamic_src_nat: str,Element
+        :param tuple dynamic_src_nat_ports: starting and ending ports for PAT.
+            Default: (1024, 65535)
+        :param bool dynamic_src_nat_automatic_proxy: Is Automatic Proxy ARP enabled?
+        :param str static_src_nat: ip or element href of used for source NAT
+        :param str static_dst_nat: destination NAT IP address or element href
+        :param tuple static_dst_nat_ports: ports or port range used for original
+            and destination ports (only needed if a different destination port
+            is used and does not match the rules service port)
+        :param bool static_dst_nat_automatic_proxy: Is Automatic Proxy ARP enabled?
+        :return: href of this rule
+        :rtype: str
+        """
+
+        rule_values = self.update_targets(sources, destinations, services)
+
+        if dynamic_src_nat is not None or static_src_nat is not None or static_dst_nat is not None:
+            rule_values = self._update_nat(
+                rule_values=rule_values,
+                dynamic_src_nat=dynamic_src_nat,
+                dynamic_src_nat_ports=dynamic_src_nat_ports,
+                dynamic_src_nat_automatic_proxy=dynamic_src_nat_automatic_proxy,
+                static_src_nat=static_src_nat,
+                static_dst_nat=static_dst_nat,
+                static_dst_nat_ports=static_dst_nat_ports,
+                static_dst_nat_automatic_proxy=static_dst_nat_automatic_proxy)
+
+        rule_values.update(kwargs)
+
+        if not validate:
+            rule_values.update(params={"validate": False})
+        result = super(Rule, self).update(PolicyCommandFailed, **rule_values)
+        try:
+            del self._cache
+        except AttributeError:
+            pass
+        return result
 
 
 class NATValue(NestedDict):
@@ -597,49 +717,17 @@ class IPv4NATRule(RuleCommon, NATRule, SubElement):
         :rtype: IPv4NATRule
         """
         rule_values = self.update_targets(sources, destinations, services)
+
+        rule_values = self._update_nat(rule_values=rule_values,
+                                       dynamic_src_nat=dynamic_src_nat,
+                                       dynamic_src_nat_ports=dynamic_src_nat_ports,
+                                       static_src_nat=static_src_nat,
+                                       static_dst_nat=static_dst_nat,
+                                       static_dst_nat_ports=static_dst_nat_ports)
+
         rule_values.update(name=name, comment=comment, is_disabled=is_disabled)
 
         rule_values.update(used_on={"any": True} if used_on == "ANY" else element_resolver(used_on))
-
-        if dynamic_src_nat:
-            nat = DynamicSourceNAT()
-            start_port, end_port = dynamic_src_nat_ports
-            nat.update_field(dynamic_src_nat, start_port=start_port, end_port=end_port)
-            rule_values.update(options=nat)
-
-        elif static_src_nat:
-            sources = rule_values["sources"]
-            if ("any" in sources and sources["any"] is True) \
-                    or ("none" in sources and sources["none"] is True):
-                raise InvalidRuleValue(
-                    "Source field cannot be none or any for " "static source NAT."
-                )
-
-            nat = StaticSourceNAT()
-            nat.update_field(static_src_nat, original_value=sources.get("src")[0])
-            rule_values.update(options=nat)
-
-        if static_dst_nat:
-            destinations = rule_values["destinations"]
-            if ("any" in destinations and destinations["any"] is True) \
-                    or ("none" in destinations and destinations["none"] is True):
-                raise InvalidRuleValue(
-                    "Destination field cannot be none or any for " "destination NAT."
-                )
-
-            nat = StaticDestNAT()
-            original_port, translated_port = None, None
-            if static_dst_nat_ports:
-                original_port, translated_port = static_dst_nat_ports
-
-            nat.update_field(
-                static_dst_nat,
-                original_value=destinations.get("dst")[0],
-                original_port=original_port,
-                translated_port=translated_port,
-            )
-
-            rule_values.setdefault("options", {}).update(nat)
 
         if "options" not in rule_values:  # No NAT
             rule_values.update(options=LogOptions())

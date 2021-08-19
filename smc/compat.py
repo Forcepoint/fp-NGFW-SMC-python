@@ -18,6 +18,8 @@ if PY3:
 else:
     unicode = unicode
 
+PYTHON_v3_9 = sys.version_info >= (3, 9)
+
 
 def min_smc_version(version):
     """

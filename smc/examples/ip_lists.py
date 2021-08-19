@@ -37,6 +37,7 @@ Requirements:
 """
 from smc import session
 from smc.elements.network import IPList
+from smc_info import *
 
 
 def upload_as_zip(name, filename):
@@ -148,28 +149,34 @@ def create_iplist_with_data(name, iplist):
     return iplist
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
+    session.login(url=SMC_URL, api_key=API_KEY, verify=False, timeout=120, api_version=API_VERSION)
+    print("session OK")
 
-    session.login(url="http://172.18.1.26:8082", api_key="xxxxxxxxxxxxxxxxxxx", timeout=45)
+try:
+    # Create initial list
+    result = create_iplist_with_data(name="mylist", iplist=["123.123.123.123", "23.23.23.23"])
+    print("This is the href location for the newly created list: %s" % result.href)
 
-    # Create initial list programmatically
-    result = create_iplist_with_data(name="mylistlist", iplist=["123.123.123.123", "23.23.23.23"])
-    print("This is the href location for the newly created list: %s" % result)
+    print(download_as_text('mylist', filename='/tmp/iplist.txt'))
 
-    # print upload_as_text('mylist',
-    # '/Users/username/git/smc-python/src/smc/examples/ip_addresses')
+    print(download_as_zip('mylist', filename='/tmp/iplist.zip'))
 
-    # print upload_as_json('mylist', {'ip': ['1.1.1.1', '2.2.2.2', '3.3.3.3']})
+    upload_as_text('mylist', '/tmp/iplist.txt')
 
-    # print upload_as_zip('mylist',
-    # '/Users/username/git/smc-python/src/smc/examples/iplist.zip')
+    upload_as_json('mylist', {'ip': ['1.1.1.1', '2.2.2.2', '3.3.3.3']})
+    print(download_as_json('mylist'))
 
-    # print create_iplist(name='newlist')
+    upload_as_zip('mylist', '/tmp/iplist.zip')
+    print(download_as_json('mylist'))
 
-    # download_as_text('mylist', filename='/Users/username/iplist.txt')
+    print(create_iplist(name='newlist'))
 
-    # download_as_zip('mylist', filename='/Users/username/iplist.zip')
-
-    # print(download_as_json('mylist'))
-
+except Exception as e:
+    print(e)
+    exit(1)
+finally:
+    print("delete elements..")
+    IPList("mylist").delete()
+    IPList("newlist").delete()
     session.logout()
