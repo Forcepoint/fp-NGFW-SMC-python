@@ -586,7 +586,10 @@ class Session(object):
         params = {}
 
         if credential.provider_name.startswith("lms"):
-            params = dict(login=credential._login, pwd=credential._pwd)
+            if self.domain:
+                params = dict(login=credential._login, pwd=credential._pwd, domain=self.domain)
+            else:
+                params = dict(login=credential._login, pwd=credential._pwd)
         else:
             json.update(authenticationkey=credential._api_key)
 
