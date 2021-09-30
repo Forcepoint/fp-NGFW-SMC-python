@@ -9,10 +9,14 @@ Example script
 
 # Python Base Import
 from smc import session
-from smc.elements.network import Host
+from smc.core.engines import Layer3Firewall
+from smc.elements.network import Host, Network
 from smc.policy.ips import IPSPolicy, IPSSubPolicy
 from smc.policy.layer3 import FirewallSubPolicy, FirewallIPv6SubPolicy
 from smc.elements.service import TCPService
+from smc.policy.rule_elements import Action, Source
+from smc.vpn.elements import ExternalGateway
+from smc.vpn.policy import PolicyVPN
 from smc_info import *
 
 if __name__ == "__main__":
@@ -21,11 +25,6 @@ if __name__ == "__main__":
 
     print("session OK")
     try:
-
-        # Create hosts
-        host1 = Host.create("myHost1", "192.168.1.1")
-        host2 = Host.create("myHost2", "192.168.1.2")
-        host3 = Host.create("myHost3", "192.168.1.3")
 
         # Create a Sub Policy
         p = FirewallSubPolicy().create("mySubPolicy1")
@@ -39,6 +38,67 @@ if __name__ == "__main__":
             services=[TCPService("SSH")],
             action="discard",
         )
+
+        # Create external gateway used by PolicyVpn, its end-point and site
+        external_gateway = ExternalGateway.create("remoteside")
+        external_gateway.external_endpoint.create(name="remoteendpoint", address="2.2.2.2")
+        network = Network.create(name='remotenet', ipv4_network='172.18.10.0/24')
+        external_gateway.vpn_site.create("remote-site", [network.href])
+
+        fw = Layer3Firewall("Plano")
+        vpn = PolicyVPN.create("myVpn")
+        vpn.open()
+        vpn.add_central_gateway(fw.internal_gateway.internal_gateway.href)
+        vpn.add_satellite_gateway(external_gateway.href)
+        vpn.save()
+        vpn.close()
+
+        # action is a string.. still compatible with 6.5
+        rule_vpn = p.fw_ipv4_access_rules.create(
+            name="newrule_vpn",
+            sources=[Network("London Internal Network")],
+            destinations=[Network("net-172.31.14.0/24")],
+            services="any",
+            action="apply_vpn",
+            vpn_policy=vpn)
+
+        # Since API 6.6 action is a list
+        vpn_actions = Action()
+        vpn_actions.action = ['allow', 'apply_vpn']
+        p.fw_ipv4_access_rules.create(name='',
+                                      sources=[Network("London Internal Network")],
+                                      destinations=[Network("net-172.31.14.0/24")],
+                                      services='any', action=vpn_actions, vpn_policy=vpn)
+
+        # create rule using Source, Destination, Service and Action object
+        rule_action = Action()
+        rule_action.action = ["discard"]
+        rule_action.deep_inspection = True
+        rule_action.scan_detection = "on"
+        rule_source = Source()
+        rule_source.set_any()
+        rule_a = p.fw_ipv4_access_rules.create(
+            name="newrule_a",
+            sources=rule_source,
+            destinations="any",
+            services=[TCPService("SSH")],
+            action=rule_action,
+        )
+
+        # Create hosts
+        host1 = Host.create("myHost1", "192.168.1.1")
+        host2 = Host.create("myHost2", "192.168.1.2")
+        host3 = Host.create("myHost3", "192.168.1.3")
+
+        #  update rule using Source, Destination, Service and Action object
+        rule_action.action = ["allow"]
+        rule_source.unset_any()
+        rule_source.add_many([host1, host2])
+        rule_a.update(sources=rule_source,
+                      destinations="any",
+                      services=[TCPService("FTP")],
+                      action=rule_action)
+        print("After update {} action={}".format(rule_a, rule_a.action.action))
 
         # update the rule
         # can mix element and element.href
@@ -173,6 +233,9 @@ if __name__ == "__main__":
         exit(-1)
     finally:
         FirewallSubPolicy("mySubPolicy1").delete()
+        PolicyVPN("myVpn").delete()
+        ExternalGateway("remoteside").delete()
+        Network("remotenet").delete()
         FirewallSubPolicy("mySubPolicy2").delete()
         Host("myHost1").delete()
         Host("myHost2").delete()

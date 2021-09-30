@@ -155,6 +155,8 @@ class Task(SubElement):
 
         :rtype: str
         """
+        if self.in_progress:
+            raise IOError("Task is not finshed!")
         return self.get_relation("result")
 
     def update_status(self):

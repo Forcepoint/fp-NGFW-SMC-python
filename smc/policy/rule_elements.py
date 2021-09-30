@@ -320,10 +320,11 @@ class Action(NestedDict):
     def action(self):
         """
         Action set for this rule
-
-        :param str value: allow\\|discard\\|continue\\|refuse\\|jump\\|apply_vpn
+        Since SMC 6.6 actions have to be in list
+        format whereas in SMC < 6.6 they were string.
+        :param str|list value: allow\\|discard\\|continue\\|refuse\\|jump\\|apply_vpn
                           \\|enforce_vpn\\|forward_vpn\\|blacklist
-        :rtype: str
+        :rtype: str|list
         """
         return self.get("action")
 
@@ -630,7 +631,6 @@ class LogOptions(NestedDict):
                 log_accounting_info_mode=False,
                 log_closing_mode=True,
                 log_level="undefined",
-                log_payload_additionnal=False,
                 log_payload_excerpt=False,
                 log_payload_record=False,
                 log_severity=-1,
@@ -709,22 +709,6 @@ class LogOptions(NestedDict):
             self.update(log_level=value)
         if not self.log_accounting_info_mode:
             self.log_accounting_info_mode = True
-
-    @property
-    def log_payload_additional(self):
-        """
-        Stores packet payload extracted from the traffic. The collected
-        payload provides information for some of the additional log fields
-        depending on the type of traffic.
-
-        :param bool value: True, False
-        :return: bool
-        """
-        return self.get("log_payload_additionnal")
-
-    @log_payload_additional.setter
-    def log_payload_additional(self, value):
-        self.update(log_payload_additionnal=value)
 
     @property
     def log_payload_excerpt(self):

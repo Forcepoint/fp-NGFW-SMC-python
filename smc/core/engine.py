@@ -263,7 +263,7 @@ class Engine(Element):
         SMC is not a correct version this will return None.
         If setting a new geolocation, call update() after modification.
 
-        Exmaple::
+        Example::
 
             >>> from smc.elements.other import Geolocation
             >>> engine = Engine('azure')

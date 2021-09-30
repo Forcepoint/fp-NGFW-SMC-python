@@ -445,51 +445,60 @@ class RuleCommon(object):
         return params
 
     def update_targets(self, sources=None, destinations=None, services=None):
-        source = Source()
-        destination = Destination()
-        service = Service()
 
-        if sources is not None:
-            source.clear()
-            if isinstance(sources, str) and sources.lower() == "any":
-                source.set_any()
-            # still allow json as parameter
-            elif isinstance(sources, dict):
-                source.unset_any()
-                source.add_many(sources.get("src"))
-            else:
-                source.unset_any()
-                source.add_many(sources)
+        if isinstance(sources, Source):
+            source = sources
         else:
-            source.set_none()
+            source = Source()
+            if sources is not None:
+                source.clear()
+                if isinstance(sources, str) and sources.lower() == "any":
+                    source.set_any()
+                # still allow json as parameter
+                elif isinstance(sources, dict):
+                    source.unset_any()
+                    source.add_many(sources.get("src"))
+                else:
+                    source.unset_any()
+                    source.add_many(sources)
+            else:
+                source.set_none()
 
-        if destinations is not None:
-            destination.clear()
-            if isinstance(destinations, str) and destinations.lower() == "any":
-                destination.set_any()
-            # still allow json as parameter
-            elif isinstance(destinations, dict):
-                destination.unset_any()
-                destination.add_many(destinations.get("dst"))
-            else:
-                destination.unset_any()
-                destination.add_many(destinations)
+        if isinstance(destinations, Destination):
+            destination = destinations
         else:
-            destination.set_none()
+            destination = Destination()
+            if destinations is not None:
+                destination.clear()
+                if isinstance(destinations, str) and destinations.lower() == "any":
+                    destination.set_any()
+                # still allow json as parameter
+                elif isinstance(destinations, dict):
+                    destination.unset_any()
+                    destination.add_many(destinations.get("dst"))
+                else:
+                    destination.unset_any()
+                    destination.add_many(destinations)
+            else:
+                destination.set_none()
 
-        if services is not None:
-            service.clear()
-            if isinstance(services, str) and services.lower() == "any":
-                service.set_any()
-            # still allow json as parameter
-            elif isinstance(services, dict):
-                service.unset_any()
-                destination.add_many(destinations.get("service"))
-            else:
-                service.unset_any()
-                service.add_many(services)
+        if isinstance(services, Service):
+            service = services
         else:
-            service.set_none()
+            service = Service()
+            if services is not None:
+                service.clear()
+                if isinstance(services, str) and services.lower() == "any":
+                    service.set_any()
+                # still allow json as parameter
+                elif isinstance(services, dict):
+                    service.unset_any()
+                    destination.add_many(destinations.get("service"))
+                else:
+                    service.unset_any()
+                    service.add_many(services)
+            else:
+                service.set_none()
 
         e = {}
         if sources is not None:
@@ -518,12 +527,6 @@ class RuleCommon(object):
         return e
 
     def _get_action(self, action):
-        versioned_method = get_best_version(
-            ("6.5", self._get_action_6_5), ("6.6", self._get_action_6_6)
-        )
-        return versioned_method(action)
-
-    def _get_action_6_6(self, action):
         """
         Get the action field for a rule. In SMC 6.6 actions have to be in list
         format whereas in SMC < 6.6 they were string.
@@ -532,8 +535,16 @@ class RuleCommon(object):
         :rtype: Action
         :raises CreateRuleFailed: invalid rule based on rule
         """
+        versioned_method = get_best_version(
+            ("6.5", self._get_action_6_5), ("6.6", self._get_action_6_6)
+        )
+        return versioned_method(action)
+
+    def _get_action_6_6(self, action):
         if isinstance(action, Action):
             rule_action = action
+            if isinstance(action.action, str):
+                rule_action.action = [action.action]
         else:
             rule_action = Action()
             if isinstance(action, str):
@@ -566,6 +577,8 @@ class RuleCommon(object):
         """
         if isinstance(action, Action):
             rule_action = action
+            if isinstance(action.action, list):
+                rule_action.action = action.action[0]
         else:
             rule_action = Action()
             if isinstance(action, str):
@@ -687,16 +700,33 @@ class IPv4Rule(RuleCommon, Rule, SubElement):
         Create a layer 3 firewall rule
 
         .. versionchanged:: 0.7.0
-            Action field now requires a list of actions as strings when using SMC
-            version >= 6.6.0
+            Action field now requires a list of actions as strings when using API
+            version >= 6.6
+        Example::
+            Api version <=6.5 action is a string
+            rule_vpn = p.fw_ipv4_access_rules.create( name="newrule_vpn",
+                                                      sources=[Network("London Internal Network")],
+                                                      destinations=[Network("net-172.31.14.0/24")],
+                                                      services="any",
+                                                      action="apply_vpn",
+                                                      vpn_policy=vpn)
+            Api version >=6.6 action is a list
+            vpn_actions = Action()
+            vpn_actions.action = ['allow', 'apply_vpn']
+            p.fw_ipv4_access_rules.create(name='',
+                                          sources=[Network("London Internal Network")],
+                                          destinations=[Network("net-172.31.14.0/24")],
+                                          services='any',
+                                          action=vpn_actions,
+                                          vpn_policy=vpn)
 
         :param str name: name of rule
         :param sources: source/s for rule
-        :type sources: list[str, Element]
+        :type sources: Source, list[str, Element]
         :param destinations: destination/s for rule
-        :type destinations: list[str, Element]
+        :type destinations: Destination, list[str, Element]
         :param services: service/s for rule
-        :type services: list[str, Element]
+        :type services: Service, list[str, Element]
         :param action: allow,continue,discard,refuse,enforce_vpn,
             apply_vpn,forward_vpn, blacklist (default: allow)
         :type action: Action,str,list[str]
