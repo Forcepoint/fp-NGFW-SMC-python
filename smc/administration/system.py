@@ -21,6 +21,9 @@ To load the configuration for system, do::
 import time
 import logging
 from datetime import datetime
+
+from smc.administration.upcoming_event import UpcomingEvents, UpcomingEventsPolicy, \
+    UpcomingEventIgnoreSettings
 from smc.elements.other import prepare_blacklist
 from smc.base.model import SubElement, Element, ElementCreator
 from smc.administration.updates import EngineUpgrade, UpdatePackage
@@ -328,34 +331,24 @@ class System(SubElement):
             self.make_request(
                 method="create",
                 resource="import_elements",
-                files={"import_file": open(import_file, "rb")},
+                files={"import_file": open(import_file, "rb")}
             )
         )
         in_progress = import_follower.data.in_progress
         progress = import_follower.progress
         while in_progress is True:
             time.sleep(1)
-            logger.info(
-                "[{}] XML Import task => {}%".format(
-                    "{:%H:%M:%S.%f}".format(datetime.now())[:-3], progress
-                )
-            )
+            logger.info("XML import task progress: {}%".format(progress))
             in_progress = import_follower.update_status().data.in_progress
             progress = import_follower.update_status().progress
             succeed = import_follower.update_status().success
             last_message = import_follower.update_status().last_message
 
         if not succeed:
-            logger.info(
-                "[{}] XML Import task failed:{}".format(
-                    "{:%H:%M:%S.%f}".format(datetime.now())[:-3], last_message
-                )
-            )
+            logger.error("XML Import task failed: {}".format(last_message))
             raise ActionCommandFailed(last_message)
 
-        logger.info(
-            "[{}] XML Import task succeed".format("{:%H:%M:%S.%f}".format(datetime.now())[:-3])
-        )
+        logger.info("XML import task succeeded")
 
     def force_unlock(self, element):
         return self.make_request(
@@ -374,6 +367,75 @@ class System(SubElement):
         :raises ActionCommandFailed: failure to retrieve resource
         """
         return self.make_request(resource="mgt_integration_configuration")
+
+    def upcoming_event(self):
+        """
+        Allows to retrieve the upcoming events.
+
+        :return: UpcomingEvents
+        """
+        return UpcomingEvents(self.make_request(resource="upcoming_event"))
+
+    def upcoming_event_policy(self):
+        """
+        Allows to retrieve the upcoming events.
+
+        :return: UpcomingEventPolicy
+        """
+        return UpcomingEventsPolicy(self.make_request(resource="upcoming_event_policy"))
+
+    def update_upcoming_event_policy(self, upcoming_event_policy):
+        """
+        Allows to change the upcoming event policy.
+        As a note, only super users are able to perform such operation.
+
+        :param upcoming_event_policy: UpcomingEventsPolicy to update
+        :return None
+        """
+        self.make_request(
+            method="update",
+            resource="upcoming_event_policy",
+            json=self.create_upcoming_event_policy_payload(upcoming_event_policy))
+
+    @staticmethod
+    def create_upcoming_event_policy_payload(upcoming_event_policy):
+        json = {"entries": []}
+        entries = []
+        for entry in upcoming_event_policy.upcoming_event_policy:
+            entries.append(entry.data)
+        json.update(entries=entries)
+        return json
+
+    def upcoming_event_ignore_settings(self):
+        """
+        Allows to retrieve the upcoming event ignore settings.
+
+        :return: UpcomingEventIgnoreSettings
+        """
+        return UpcomingEventIgnoreSettings(
+            self.make_request(resource="upcoming_event_ignore_settings"))
+
+    def update_upcoming_event_ignore_settings(self, situations_to_ignore):
+        """
+        Allows to change the upcoming event ignore settings for the current administrator.
+        As a note, all upcoming events linked to the situation will be filtered.
+
+        :param list situations_to_ignore: list of Situations to ignore
+        :return None
+        """
+        self.make_request(
+            method="update",
+            resource="upcoming_event_ignore_settings",
+            json=self.create_upcoming_event_ignore_settings_payload(situations_to_ignore))
+
+    @staticmethod
+    def create_upcoming_event_ignore_settings_payload(situations_to_ignore):
+        json = {"entries": []}
+        entries = []
+        for situation in situations_to_ignore:
+            entries.append(situation.href)
+        json.update(entries=entries)
+        return json
 
 
 class AdminDomain(Element):
