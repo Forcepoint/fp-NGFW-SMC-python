@@ -29,8 +29,12 @@ uncomment the following line below and set the logging level
 
 from smc import session
 from smc.core.engines import FirewallCluster
+from smc.core.general import NTPSettings
 from smc.elements.helpers import zone_helper
 import logging
+
+from smc.elements.network import Router
+from smc.elements.servers import NTPServer
 from smc_info import *
 
 logging.getLogger()
@@ -41,6 +45,17 @@ if __name__ == "__main__":
     print("session OK")
 
 try:
+    # Create NTP server
+    new_ntp_server = NTPServer().create(name="myNTPServer",
+                                        comment="NTP Server created by the SMC API",
+                                        address="192.168.1.200",
+                                        ntp_auth_key_type="none"
+                                        )
+
+    # create Layer3 FW using NTPSettings object
+    ntp = NTPSettings.create(ntp_enable=True,
+                             ntp_servers=[new_ntp_server])
+
     # Create the Firewall Cluster
     engine = FirewallCluster.create(
         name="mycluster",
@@ -55,6 +70,7 @@ try:
             {"address": "1.1.1.3", "network_value": "1.1.1.0/24", "nodeid": 2},
             {"address": "1.1.1.4", "network_value": "1.1.1.0/24", "nodeid": 3},
         ],
+        ntp_settings=ntp,
         domain_server_address=["1.1.1.1"],
         zone_ref=zone_helper("Internal"),
         enable_antivirus=True,
@@ -97,6 +113,11 @@ try:
         if result:
             print("Successfully wrote initial configuration for node: {}, to file: {}".format(
                 node.name, node.name + ".cfg"))
+
+except BaseException as e:
+    print("ex={}".format(e))
+    exit(-1)
 finally:
     FirewallCluster("mycluster").delete()
+    NTPServer("myNTPServer").delete()
     session.logout()

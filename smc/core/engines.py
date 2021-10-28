@@ -55,6 +55,7 @@ class Layer3Firewall(Engine):
         ospf_profile=None,
         comment=None,
         snmp=None,
+        ntp_settings=None,
         extra_opts=None,
         engine_type=None,
         **kw
@@ -155,6 +156,11 @@ class Layer3Firewall(Engine):
 
             snmp_agent.update(snmp_interface=add_snmp(interfaces, snmp.get("snmp_interface", [])))
 
+        # convert ntp_settings from extra_opts to parameter for _create function
+        if extra_opts is not None and "ntp_settings" in extra_opts:
+            ntp_settings = extra_opts['ntp_settings']
+            del extra_opts['ntp_settings']
+
         try:
             engine = super(Layer3Firewall, cls)._create(
                 name=name,
@@ -172,6 +178,7 @@ class Layer3Firewall(Engine):
                 enable_ospf=enable_ospf,
                 ospf_profile=ospf_profile,
                 snmp_agent=snmp_agent if snmp else None,
+                ntp_settings=ntp_settings,
                 comment=comment,
                 **extra_opts if extra_opts else {}
             )
@@ -200,6 +207,7 @@ class Layer3Firewall(Engine):
         sidewinder_proxy_enabled=False,
         ospf_profile=None,
         snmp=None,
+        ntp_settings=None,
         comment=None,
         extra_opts=None,
         engine_type=None,
@@ -239,6 +247,7 @@ class Layer3Firewall(Engine):
             behind NAT (created if not found)
         :param bool enable_ospf: whether to turn OSPF on within engine
         :param str ospf_profile: optional OSPF profile to use on engine, by ref
+        :param NTPSettings ntp_settings: NTP settings
         :param dict extra_opts: extra options as a dict to be passed to the top level engine
         :param kw: optional keyword arguments specifying additional interfaces
         :raises CreateEngineFailed: Failure to create with reason
@@ -281,6 +290,7 @@ class Layer3Firewall(Engine):
             enable_ospf=enable_ospf,
             ospf_profile=ospf_profile,
             snmp=snmp,
+            ntp_settings=ntp_settings,
             comment=comment,
             engine_type=engine_type,
             extra_opts=extra_opts,
@@ -799,6 +809,7 @@ class FirewallCluster(Engine):
         enable_gti=False,
         comment=None,
         snmp=None,
+        ntp_settings=None,
         extra_opts=None,
         **kw
     ):
@@ -840,6 +851,11 @@ class FirewallCluster(Engine):
 
             snmp_agent.update(snmp_interface=add_snmp(interfaces, snmp.get("snmp_interface", [])))
 
+        # convert ntp_settings from extra_opts to parameter for _create function
+        if extra_opts is not None and "ntp_settings" in extra_opts:
+            ntp_settings = extra_opts['ntp_settings']
+            del extra_opts['ntp_settings']
+
         try:
             engine = super(FirewallCluster, cls)._create(
                 name=name,
@@ -853,6 +869,7 @@ class FirewallCluster(Engine):
                 enable_antivirus=enable_antivirus,
                 default_nat=default_nat,
                 snmp_agent=snmp_agent if snmp else None,
+                ntp_settings=ntp_settings,
                 comment=comment,
                 **extra_opts if extra_opts else {}
             )
@@ -885,6 +902,7 @@ class FirewallCluster(Engine):
         enable_gti=False,
         comment=None,
         snmp=None,
+        ntp_settings=None,
         extra_opts=None,
         **kw
     ):
@@ -1043,7 +1061,8 @@ class FirewallCluster(Engine):
             enable_gti=enable_gti,
             comment=comment,
             snmp=snmp,
-            **extra_opts if extra_opts else {}
+            ntp_settings=ntp_settings,
+            extra_opts=extra_opts
         )
 
 

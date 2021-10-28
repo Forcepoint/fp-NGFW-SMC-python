@@ -24,20 +24,27 @@ try:
     print("Retrieve Neighbors using websocket library")
 
     ws = create_connection(
-        WS_URL + "/"+str(API_VERSION)+"/monitoring/session/socket",
+        "{}/{}/monitoring/session/socket".format(WS_URL, str(API_VERSION)),
         cookie=session.session_id
     )
+
     query = {
         "query": {"definition": "NEIGHBORS", "target": ENGINENAME},
         "fetch": {},
         "format": {"type": "texts"},
     }
-    ws.send(json.dumps(query))
-    result = ws.recv()
-    print("Received '%s'" % result)
-    result = ws.recv()
-    print("Received '%s'" % result)
-    ws.close()
+
+    try:
+        ws.send(json.dumps(query))
+        result = ws.recv()
+        print("Received '{}'".format(result))
+        fetch_id = json.loads(result)['fetch']
+        result = ws.recv()
+        print("Received '{}'".format(result))
+    finally:
+        ses_mon_abort_query = {"abort": fetch_id}
+        ws.send(json.dumps(ses_mon_abort_query))
+        ws.close()
 
     print("")
     print("Retrieve IPv6 Neighbors Data using smc_monitoring")
@@ -48,20 +55,14 @@ try:
 
     print("Retrieve all Neighbor elements using smc_monitoring")
     query = NeighborQuery(ENGINENAME)
-    for element in query.fetch_as_element(query_timeout=10):
-        print(
-            element.node_id
-            + " "
-            + element.neighbor_state
-            + " "
-            + element.neighbor_interface
-            + " "
-            + element.neighbor_protocol
-            + " "
-            + element.neighbor_l3_data
-            + "->"
-            + element.neighbor_l2_data
-        )
+    for element in query.fetch_as_element(max_recv=1):
+        print("{} {} {} {} {}->{}".format(element.node_id,
+                                          element.neighbor_state,
+                                          element.neighbor_interface,
+                                          element.neighbor_protocol,
+                                          element.neighbor_l3_data,
+                                          element.neighbor_l2_data
+                                          ))
 except BaseException as e:
     print(e)
     exit(-1)

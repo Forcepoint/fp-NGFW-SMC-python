@@ -147,6 +147,51 @@ class SNMP(object):
         return "{0}(enabled={1})".format(self.__class__.__name__, self.status)
 
 
+class NTPSettings(object):
+    """
+    This represents the definition of NTP settings.
+    """
+    def __init__(self, engine=None):
+        self.engine = engine
+        if engine is None:
+            self.data = {}
+
+    @classmethod
+    def create(cls, ntp_enable, ntp_servers):
+        """
+        Create a new defintiion of NTPSettings
+        :param bool ntp_enable: is NTP enabled
+        :param list(NTPServer) ntp_servers: define one or more NTP Servers.
+        """
+        list_ntp_server_href = [server.href for server in ntp_servers]
+        cls.data = {"ntp_settings": {
+                        "ntp_enable": ntp_enable,
+                        "ntp_server_ref": list_ntp_server_href
+                        }}
+        return cls
+
+    @property
+    def ntp_enable(self):
+        """
+        Is NTP enabled? (required)
+
+        :rtype: bool
+        """
+        return self.engine.data["ntp_settings"].ntp_enable \
+            if self.engine is not None else self.data.get("ntp_enable")
+
+    @property
+    def ntp_servers(self):
+        """
+        Define one or more NTP Servers.
+
+        :rtype: list(NTPServer)
+        """
+        return [Element.from_href(ntp) for ntp in self.engine.data["ntp_settings"].ntp_server_ref] \
+            if self.engine is not None else \
+            [Element.from_href(ntp) for ntp in self.data["ntp_settings"].ntp_server_ref]
+
+
 class DNSRelay(object):
     """
     DNS Relay allows the engine to provide DNS caching or specific

@@ -143,7 +143,7 @@ if __name__ == "__main__":
         Services: Any
         Action: enforce_vpn
         Log Options:
-            log_payload_additionnal = False
+            log_payload_additionnal = False # SMC Version below 6.11
             log_level = undefined
             log_closing_mode = True
             log_payload_record = False

@@ -893,3 +893,89 @@ class ElasticsearchCluster(ContactAddressMixin, Element):
 #             'port': port, 'comment': comment}
 #         data = ElementCache(data=json)
 #         return type(cls.__name__, (cls,), {'data': data})()
+
+class NTPServer(Element):
+    """
+    This represents an NTP server: A Network Element that represents an NTP instance of server.
+    """
+
+    typeof = "ntp"
+
+    @property
+    def address(self):
+        """
+        The NTP address (Required)
+        """
+        return self.data.get("ntp_host_name")
+
+    @property
+    def ntp_host_name(self):
+        """
+        The NTP Host Name (Not Required)
+        """
+        return self.data.get("ntp_host_name")
+
+    @property
+    def ntp_auth_key_type(self):
+        """
+        The NTP Authentication Key Type (Required)
+        Possible values are:
+        - none
+        - md5
+        - sha1
+        - sha256
+        """
+        return self.data.get("ntp_auth_key_type")
+
+    @property
+    def ntp_auth_key_id(self):
+        """
+        The NTP Authentication Key ID (Not Required)
+        value between 1 - 65534
+        """
+        return self.data.get("ntp_auth_key_id")
+
+    @property
+    def ntp_auth_key(self):
+        """
+        The NTP Authentication Key (Not Required)
+        """
+        return self.data.get("ntp_auth_key")
+
+    @classmethod
+    def create(
+            cls,
+            name,
+            address,
+            ntp_host_name=None,
+            ntp_auth_key_type="none",
+            ntp_auth_key_id=None,
+            ntp_auth_key=None,
+            comment=None
+    ):
+        """
+        Create NTP server
+
+        :param str name: name for the Element
+        :param str ntp_host_name: NTP server name to use
+        :param str ntp_auth_key_type:The NTP Authentication Key Type (Required)
+        possible values are (none, md5, sha1, sha256)
+        :param str ntp_auth_key_id:The NTP Authentication Key ID (Not Required)
+        value between 1 - 65534
+        :param str ntp_auth_key:The NTP Authentication Key (Not Required)
+        :param str address: The NTP address (Required)
+        :param str comment: comment for the element
+
+        :raises CreateElementFailed: Failed to create with reason
+        :rtype: NTPServer
+        """
+        ntp_server_json = {
+            "address": address,
+            "comment": comment,
+            "name": name,
+            "ntp_host_name": ntp_host_name,
+            "ntp_auth_key_type": ntp_auth_key_type,
+            "ntp_auth_key_id": ntp_auth_key_id,
+            "ntp_auth_key": ntp_auth_key,
+        }
+        return ElementCreator(cls, ntp_server_json)

@@ -70,7 +70,6 @@ if __name__ == "__main__":
                'log_accounting_info_mode': False,
                'log_closing_mode': True,
                'log_level': 'undefined',
-               'log_payload_additionnal': False,
                'log_payload_excerpt': False,
                'log_payload_record': False,
                'log_severity': -1}

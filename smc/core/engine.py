@@ -27,7 +27,8 @@ from smc.routing.bgp import DynamicRouting
 from smc.routing.ospf import OSPFProfile
 from smc.core.route import Antispoofing, Routing, Route, PolicyRoute
 from smc.core.contact_address import ContactAddressCollection
-from smc.core.general import DNSRelay, Layer2Settings, DefaultNAT, SNMP, RankedDNSAddress
+from smc.core.general import DNSRelay, Layer2Settings, DefaultNAT, SNMP, RankedDNSAddress, \
+    NTPSettings
 from smc.core.addon import (
     AntiVirus,
     FileReputation,
@@ -96,6 +97,7 @@ class Engine(Element):
         ospf_profile=None,
         snmp_agent=None,
         comment=None,
+        ntp_settings=None,
         **kw
     ):
         """
@@ -110,6 +112,7 @@ class Engine(Element):
         :param int nodes: number of nodes for engine
         :param str log_server_ref: href of log server
         :param list domain_server_address: dns addresses
+        :param ntp_settings: ntp settings
         """
         node_list = []
         for nodeid in range(1, nodes + 1):  # start at nodeid=1
@@ -178,6 +181,12 @@ class Engine(Element):
                 "dynamic_routing": {"ospfv2": {"enabled": True, "ospfv2_profile_ref": ospf_profile}}
             }
             base_cfg.update(ospf)
+
+        if ntp_settings is not None:
+            if isinstance(ntp_settings, dict):
+                base_cfg.update(ntp_settings=ntp_settings)
+            else:
+                base_cfg.update(ntp_settings.data)
 
         base_cfg.update(kw, comment=comment)  # Add rest of kwargs
         return base_cfg
@@ -336,6 +345,14 @@ class Engine(Element):
             "SNMP is not supported directly on this engine type. If this "
             "is a virtual engine, SNMP is configured on the master engine."
         )
+
+    @property
+    def ntp_settings(self):
+        """
+        NTP settings definition for the engine
+        :rtype: NTPSettings
+        """
+        return NTPSettings(self)
 
     @property
     def antivirus(self):
@@ -669,7 +686,7 @@ class Engine(Element):
             for record in query.fetch_as_element(**kw):
                 yield record
 
-    def add_route(self, gateway, network, payload=None):
+    def add_route(self, gateway=None, network=None, payload=None):
         """
         Add a route to engine. Specify gateway and network.
         If this is the default gateway, use a network address of
