@@ -56,6 +56,7 @@ class Layer3Firewall(Engine):
         comment=None,
         snmp=None,
         ntp_settings=None,
+        timezone=None,
         extra_opts=None,
         engine_type=None,
         **kw
@@ -161,6 +162,11 @@ class Layer3Firewall(Engine):
             ntp_settings = extra_opts['ntp_settings']
             del extra_opts['ntp_settings']
 
+        # convert timezone from extra_opts to parameter for _create function
+        if extra_opts is not None and "timezone" in extra_opts:
+            timezone = extra_opts['timezone']
+            del extra_opts['timezone']
+
         try:
             engine = super(Layer3Firewall, cls)._create(
                 name=name,
@@ -179,6 +185,7 @@ class Layer3Firewall(Engine):
                 ospf_profile=ospf_profile,
                 snmp_agent=snmp_agent if snmp else None,
                 ntp_settings=ntp_settings,
+                timezone=timezone,
                 comment=comment,
                 **extra_opts if extra_opts else {}
             )
@@ -208,6 +215,7 @@ class Layer3Firewall(Engine):
         ospf_profile=None,
         snmp=None,
         ntp_settings=None,
+        timezone=None,
         comment=None,
         extra_opts=None,
         engine_type=None,
@@ -292,6 +300,7 @@ class Layer3Firewall(Engine):
             snmp=snmp,
             ntp_settings=ntp_settings,
             comment=comment,
+            timezone=timezone,
             engine_type=engine_type,
             extra_opts=extra_opts,
         )
@@ -810,6 +819,7 @@ class FirewallCluster(Engine):
         comment=None,
         snmp=None,
         ntp_settings=None,
+        timezone=None,
         extra_opts=None,
         **kw
     ):
@@ -856,6 +866,11 @@ class FirewallCluster(Engine):
             ntp_settings = extra_opts['ntp_settings']
             del extra_opts['ntp_settings']
 
+        # convert timezone from extra_opts to parameter for _create function
+        if extra_opts is not None and "timezone" in extra_opts:
+            timezone = extra_opts['timezone']
+            del extra_opts['timezone']
+
         try:
             engine = super(FirewallCluster, cls)._create(
                 name=name,
@@ -871,6 +886,7 @@ class FirewallCluster(Engine):
                 snmp_agent=snmp_agent if snmp else None,
                 ntp_settings=ntp_settings,
                 comment=comment,
+                timezone=timezone,
                 **extra_opts if extra_opts else {}
             )
             engine.update(cluster_mode=cluster_mode)
@@ -903,6 +919,7 @@ class FirewallCluster(Engine):
         comment=None,
         snmp=None,
         ntp_settings=None,
+        timezone=None,
         extra_opts=None,
         **kw
     ):
@@ -1062,6 +1079,7 @@ class FirewallCluster(Engine):
             comment=comment,
             snmp=snmp,
             ntp_settings=ntp_settings,
+            timezone=timezone,
             extra_opts=extra_opts
         )
 

@@ -83,8 +83,9 @@ def send_request(user_session, method, request):
                 if logger.isEnabledFor(logging.DEBUG):
                     debug(response)
 
-                if response.status_code not in (200, 201, 202):
+                if response.status_code not in (200, 201, 202, 204):
                     # 202 is asynchronous response with follower link
+                    # 204 response contains no data but is OK
                     raise SMCOperationFailure(response)
 
             elif method == PUT:

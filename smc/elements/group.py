@@ -35,18 +35,18 @@ class GroupMixin(object):
         element = None
         try:
             element = cls.get(kwargs.get("name"))
-            was_modified = element.update_members(
-                kwargs.get("members", []), append_lists=append_lists, remove_members=remove_members
-            )
+            was_modified = element.update_members(append_lists=append_lists,
+                                                  remove_members=remove_members,
+                                                  **kwargs)
         except ElementNotFound:
-            element = cls.create(kwargs.get("name"), members=kwargs.get("members", []))
+            element = cls.create(**kwargs)
             was_created = True
 
         if with_status:
             return element, was_modified, was_created
         return element
 
-    def update_members(self, members, append_lists=False, remove_members=False):
+    def update_members(self, members, append_lists=False, remove_members=False, **kwargs):
         """
         Update group members with member list. Set append=True
         to append to existing members, or append=False to overwrite.
@@ -70,8 +70,14 @@ class GroupMixin(object):
                 element = list(set(elements))
 
             if element or remove_members:
-                self.update(element=element, append_lists=append_lists)
+                self.update(element=element, append_lists=append_lists, **kwargs)
                 return True
+            elif kwargs is not None:
+                self.update(**kwargs)
+            return True
+        elif kwargs is not None:
+            self.update(**kwargs)
+            return True
 
         return False
 

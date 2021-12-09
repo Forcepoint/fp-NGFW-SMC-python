@@ -128,7 +128,7 @@ class SerializedIterable(BaseIterable):
         super(SerializedIterable, self).__init__(items)
 
 
-class NestedDict(collections.MutableMapping):
+class NestedDict(collections.abc.MutableMapping):
     """
     Generic dict structure that can be used to objectify
     complex json. This dict allows attribute access for data

@@ -829,7 +829,8 @@ class ElasticsearchCluster(ContactAddressMixin, Element):
         Create a Elasticsearch Cluster Server element.
 
         :param str name: Name of Elasticsearch Cluster
-        :param list addresses: comma-separated list of one or more FQDNs or IP addresses
+        :param list,str addresses: str comma-separated list or list
+         of one or more FQDNs or IP addresses
         :param int port: Default port is 9200
         :param int es_retention_period: How much time logs will be kept
         30days default
@@ -857,7 +858,10 @@ class ElasticsearchCluster(ContactAddressMixin, Element):
             "comment": comment,
         }
 
-        addresses_lst = addresses.split(",")
+        if isinstance(addresses, str):
+            addresses_lst = addresses.split(",")
+        else:
+            addresses_lst = addresses
         json.update(addresses=addresses_lst)
         if location:
             location_href = Location(location).href

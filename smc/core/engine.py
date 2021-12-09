@@ -1,11 +1,12 @@
 from collections import namedtuple
+import pytz
 from smc.elements.helpers import domain_helper, location_helper
 from smc.base.model import Element, SubElement, lookup_class, ElementCreator
 from smc.api.exceptions import (
     UnsupportedEngineFeature,
     UnsupportedInterfaceType,
     EngineCommandFailed,
-    SMCConnectionError,
+    SMCConnectionError, CreateElementFailed,
 )
 from smc.core.node import Node
 from smc.core.resource import Snapshot, PendingChanges
@@ -98,6 +99,7 @@ class Engine(Element):
         snmp_agent=None,
         comment=None,
         ntp_settings=None,
+        timezone=None,
         **kw
     ):
         """
@@ -187,6 +189,16 @@ class Engine(Element):
                 base_cfg.update(ntp_settings=ntp_settings)
             else:
                 base_cfg.update(ntp_settings.data)
+
+        if timezone is not None:
+            # check timezone is valid
+            if timezone in pytz.all_timezones:
+                timezone = {"timezone": timezone}
+                base_cfg.update(timezone)
+            else:
+                raise CreateElementFailed(
+                    "Timezone is invalid:"+timezone
+                )
 
         base_cfg.update(kw, comment=comment)  # Add rest of kwargs
         return base_cfg
@@ -686,6 +698,12 @@ class Engine(Element):
             for record in query.fetch_as_element(**kw):
                 yield record
 
+    def remove_alternative_policies(self):
+        """
+        Remove all alternative policies on engine.
+        """
+        self.update(href=self.get_relation("remove_alternative_policies"), etag=None)
+
     def add_route(self, gateway=None, network=None, payload=None):
         """
         Add a route to engine. Specify gateway and network.
@@ -1172,6 +1190,50 @@ class Engine(Element):
             params={
                 "filter": policy,
                 "preserve_connections": preserve_connections,
+                "generate_snapshot": generate_snapshot,
+            },
+            timeout=timeout,
+            wait_for_finish=wait_for_finish,
+            **kw
+        )
+
+    def upload_alternative_slot(
+        self,
+        alternative_slot=None,
+        policy=None,
+        timeout=5,
+        wait_for_finish=False,
+        generate_snapshot=True,
+        **kw
+    ):
+        """
+        Upload policy to engine alternative slot. This is used when multiple
+        policies are required for an engine.
+        If an engine already has a policy and the intent is to re-push, then
+        use :py:func:`refresh` instead.
+        The policy argument can use a wildcard * to specify in the event a full
+        name is not known::
+
+            engine = Engine('myfw')
+            task = engine.upload_alternative_slot(1, 'Amazon*', wait_for_finish=True)
+            for message in task.wait():
+                print(message)
+
+        :param int alternative_slot: Slot of policy to upload to engine(1 to 3)
+        :param str policy: name of policy to upload to engine; if None, current
+            policy
+        :param bool wait_for_finish: poll the task waiting for status
+        :param int timeout: timeout between queries
+        :param bool generate_snapshot: flag to generate snapshot (True by default)
+        :raises TaskRunFailed: upload failed with reason
+        :rtype: TaskOperationPoller
+        """
+        return Task.execute(
+            self,
+            "upload",
+            params={
+                "alternative_slot": alternative_slot,
+                "filter": policy,
                 "generate_snapshot": generate_snapshot,
             },
             timeout=timeout,

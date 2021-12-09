@@ -32,8 +32,8 @@ from smc.core.engines import FirewallCluster
 from smc.core.general import NTPSettings
 from smc.elements.helpers import zone_helper
 import logging
+import pytz
 
-from smc.elements.network import Router
 from smc.elements.servers import NTPServer
 from smc_info import *
 
@@ -71,6 +71,7 @@ try:
             {"address": "1.1.1.4", "network_value": "1.1.1.0/24", "nodeid": 3},
         ],
         ntp_settings=ntp,
+        timezone="Europe/Paris",
         domain_server_address=["1.1.1.1"],
         zone_ref=zone_helper("Internal"),
         enable_antivirus=True,

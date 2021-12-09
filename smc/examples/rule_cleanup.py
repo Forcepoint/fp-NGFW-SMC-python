@@ -9,6 +9,11 @@ disable, update or print rule configurations.
 
 from smc.policy.layer3 import FirewallPolicy
 from smc.core.engine import Engine
+from smc import session
+from smc_info import SMC_URL, API_KEY, API_VERSION
+
+ENGINE = "Helsinki"
+POLICY = "HQ Policy"
 
 
 def get_firewall_policy(name=None):
@@ -28,16 +33,11 @@ def get_firewall_policy(name=None):
 
 if __name__ == "__main__":
 
-    from smc import session
+    session.login(url=SMC_URL, api_key=API_KEY, verify=False, timeout=120, api_version=API_VERSION)
 
-    session.login(
-        url="http://172.18.1.150:8082",
-        api_key="EiGpKD4QxlLJ25dbBEp20001",
-        timeout=30,
-        verify=False,
-        retry_on_busy=True,
-    )
+    print("session OK")
 
+try:
     """
     Obtain the policy based on it's type. This example uses a FirewallPolicy
     type but all policy types are supported, i.e: IPSPolicy or Layer2Policy; as
@@ -47,7 +47,7 @@ if __name__ == "__main__":
         to be handled separately.
     """
 
-    policy = FirewallPolicy.get("Standard Firewall Policy with Inspection")
+    policy = FirewallPolicy.get(POLICY)
     # policy = get_firewall_policy('Standard*') # <-- Wildcard will only
     # return first match
 
@@ -69,7 +69,7 @@ if __name__ == "__main__":
     :rtype: list(smc.policy.policy.RuleCounter)
     """
     print("Rule counters by engine\n------------------------")
-    for counter in policy.rule_counters(engine=Engine("sg_vm")):
+    for counter in policy.rule_counters(engine=Engine(ENGINE)):
         print(counter)
 
     """
@@ -100,21 +100,21 @@ if __name__ == "__main__":
 
     :rtype: list(smc.policy.policy.RuleCounter)
     """
-    for counter in policy.rule_counters(engine=Engine("sg_vm"), duration_type="one_week"):
+    for counter in policy.rule_counters(engine=Engine(ENGINE), duration_type="one_week"):
         print(counter)
 
     """
     Rule counters are namedtuples that have the following attributes, allowing you to
     retrieve the given rule from the RuleCounter object
     """
-    for counter in policy.rule_counters(engine=Engine("sg_vm"), duration_type="one_week"):
+    for counter in policy.rule_counters(engine=Engine(ENGINE), duration_type="one_week"):
         print(counter, counter.rule)
 
     """
     Obtain the rule reference for each counter and access the History
     of the rule
     """
-    for counter in policy.rule_counters(engine=Engine("sg_vm"), duration_type="one_week"):
+    for counter in policy.rule_counters(engine=Engine(ENGINE), duration_type="one_week"):
         rule = counter.rule  # smc.policy.rule.Rule
         history = rule.history  # smc.core.resource.History
         print("Rule: %s -> Last modified: %s" % (rule, history.last_modified))
@@ -124,7 +124,7 @@ if __name__ == "__main__":
     For this example, simply print the rule object and the parent policy it's associated with
 
     """
-    for counter in policy.rule_counters(engine=Engine("sg_vm"), duration_type="six_months"):
+    for counter in policy.rule_counters(engine=Engine(ENGINE), duration_type="six_months"):
         if counter.hits == 0:
             print("Disable: %s from policy: %s" % (counter.rule, counter.rule.parent_policy))
             # counter.rule.update(is_disabled=True, comment='Disabled due to 90
@@ -152,7 +152,7 @@ if __name__ == "__main__":
             log_severity = -1
         Comment: None
     """
-    for counter in policy.rule_counters(engine=Engine("sg_vm"), duration_type="six_months"):
+    for counter in policy.rule_counters(engine=Engine(ENGINE), duration_type="six_months"):
         if counter.hits == 0:
             rule = counter.rule
             print(
@@ -178,3 +178,8 @@ if __name__ == "__main__":
                 print("\t%s = %s" % (option, value))
             print("Comment: %s" % rule.comment)
             print("--------------------------------------")
+except Exception as e:
+    print(e)
+    exit(1)
+finally:
+    session.logout()

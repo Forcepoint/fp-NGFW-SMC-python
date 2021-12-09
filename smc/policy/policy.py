@@ -149,10 +149,8 @@ class Policy(Element):
             "duration": duration,
         }
 
-        return [
-            RuleCounter(**rule)
-            for rule in self.make_request(method="create", resource="rule_counter", json=json)
-        ]
+        rules = self.make_request(method="create", resource="rule_counter", json=json)
+        return [RuleCounter(**rule) for rule in rules] if rules is not None else []
 
 
 class InspectionPolicy(Policy):

@@ -26,18 +26,22 @@ try:
     new_ntp_server = SMCRequest(href=session.entry_points.get("ntp"), json=ntp_server_json).create()
     ntp_server = SMCRequest(href=new_ntp_server.href).read()
 
-    # create Layer3 FW
+    # create Layer3 FW with NTPServer and timezone
     ntp_server = SMCRequest(href=new_ntp_server.href).read()
     Layer3Firewall.create(name="myFw",
                           mgmt_ip="192.168.10.1",
                           mgmt_network="192.168.10.0/24",
                           extra_opts={"ntp_settings": {"ntp_enable": True,
-                                                       "ntp_server_ref": [new_ntp_server.href]}}
+                                                       "ntp_server_ref": [new_ntp_server.href]},
+                                      "timezone": "Europe/Paris"}
                           )
 
-    # Update NTP server settings for the Firewall
+    # Update NTP server settings and timezone for the Firewall
+    # Disable NTP Server
     engine = Layer3Firewall("myFw")
     merge_dicts(engine.data, {"ntp_settings": {"ntp_enable": False, "ntp_server_ref": []}})
+    # Remove timezone
+    engine.data.pop("timezone", None)
     engine.update(json=engine.data,
                   etag=engine.etag)
 

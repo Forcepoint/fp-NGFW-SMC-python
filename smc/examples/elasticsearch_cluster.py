@@ -25,24 +25,30 @@ Create an Elasticsearch Cluster
 
 from smc import session
 from smc.elements.servers import ElasticsearchCluster
+from smc_info import *
 
 
 if __name__ == '__main__':
+    session.login(url=SMC_URL, api_key=API_KEY, verify=False, timeout=120, api_version=API_VERSION)
+    print("session OK")
 
-    session.login(url='http://127.0.0.1:8082',
-                  api_key='aAAaa')
+    try:
+        es_server = ElasticsearchCluster.create(name='ES7',
+                                                addresses=['1.2.3.4', 'demo.dns.net'],
+                                                enable_cluster_sniffer=True,
+                                                es_replica_number=10,
+                                                es_retention_period=-1,
+                                                es_shard_number=2,
+                                                comment="ESPOWA!!!!",
+                                                tls_profile="APAC Sandbox TLS "
+                                                            "Profile",
+                                                use_internal_credentials=True)
+        es_server.add_contact_address('toto.titi.com', 'Default')
+        es_server.add_contact_address('3.5.5.5', 'LocationHQ')
 
-    es_server = ElasticsearchCluster.create(name='ES7',
-                                            addresses=['1.2.3.4', 'demo.dns.net'],
-                                            enable_cluster_sniffer=True,
-                                            es_replica_number=10,
-                                            es_retention_period=-1,
-                                            es_shard_number=2,
-                                            comment="ESPOWA!!!!",
-                                            tls_profile="APAC Sandbox TLS "
-                                                        "Profile",
-                                            use_internal_credentials=True)
-    es_server.add_contact_address('toto.titi.com', 'Default')
-    es_server.add_contact_address('3.5.5.5', 'LocationHQ')
-
-    session.logout()
+    except BaseException as e:
+        print("ex={}".format(e))
+        exit(-1)
+    finally:
+        ElasticsearchCluster("ES7").delete()
+        session.logout()
