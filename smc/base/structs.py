@@ -8,12 +8,6 @@ be more tolerant for abc in older collections / older python 2.7
 try:
     collectionsAbc = collections.abc
 except AttributeError:
-    collectionsAbc = collections"""
-be more tolerant for abc in older collections / older python 2.7
-"""
-try:
-    collectionsAbc = collections.abc
-except AttributeError:
     collectionsAbc = collections
 
 class BaseIterable(object):
