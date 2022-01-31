@@ -56,13 +56,13 @@ try:
     print("Retrieve all Neighbor elements using smc_monitoring")
     query = NeighborQuery(ENGINENAME)
     for element in query.fetch_as_element(max_recv=1):
-        print("{} {} {} {} {}->{}".format(element.node_id,
-                                          element.neighbor_state,
-                                          element.neighbor_interface,
-                                          element.neighbor_protocol,
-                                          element.neighbor_l3_data,
-                                          element.neighbor_l2_data
-                                          ))
+        print("{} {} {} {} {} {}->{}".format(element.first_fetch,
+                                             element.node_id,
+                                             element.neighbor_state,
+                                             element.neighbor_interface,
+                                             element.neighbor_protocol,
+                                             element.neighbor_l3_data,
+                                             element.neighbor_l2_data))
 except BaseException as e:
     print(e)
     exit(-1)

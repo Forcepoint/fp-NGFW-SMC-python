@@ -59,6 +59,7 @@ class Layer3Firewall(Engine):
         timezone=None,
         extra_opts=None,
         engine_type=None,
+        lldp_profile=None,
         **kw
     ):
         """
@@ -167,6 +168,11 @@ class Layer3Firewall(Engine):
             timezone = extra_opts['timezone']
             del extra_opts['timezone']
 
+        # convert lldp_profile from extra_opts to parameter for _create function
+        if extra_opts is not None and "lldp_profile_ref" in extra_opts:
+            lldp_profile = extra_opts['lldp_profile_ref']
+            del extra_opts['lldp_profile_ref']
+
         try:
             engine = super(Layer3Firewall, cls)._create(
                 name=name,
@@ -186,6 +192,7 @@ class Layer3Firewall(Engine):
                 snmp_agent=snmp_agent if snmp else None,
                 ntp_settings=ntp_settings,
                 timezone=timezone,
+                lldp_profile=lldp_profile,
                 comment=comment,
                 **extra_opts if extra_opts else {}
             )
@@ -220,6 +227,7 @@ class Layer3Firewall(Engine):
         extra_opts=None,
         engine_type=None,
         node_type="firewall_node",
+        lldp_profile=None,
         **kw
     ):
         """
@@ -256,6 +264,8 @@ class Layer3Firewall(Engine):
         :param bool enable_ospf: whether to turn OSPF on within engine
         :param str ospf_profile: optional OSPF profile to use on engine, by ref
         :param NTPSettings ntp_settings: NTP settings
+        :param LLDPProfile lldp_profile: LLDP Profile represents a set of attributes used for
+        configuring LLDP
         :param dict extra_opts: extra options as a dict to be passed to the top level engine
         :param kw: optional keyword arguments specifying additional interfaces
         :raises CreateEngineFailed: Failure to create with reason
@@ -303,6 +313,7 @@ class Layer3Firewall(Engine):
             timezone=timezone,
             engine_type=engine_type,
             extra_opts=extra_opts,
+            lldp_profile=lldp_profile
         )
 
     @classmethod
@@ -326,6 +337,7 @@ class Layer3Firewall(Engine):
         extra_opts=None,
         engine_type=None,
         node_type="firewall_node",
+        lldp_profile=None,
         **kw
     ):
         """
@@ -344,6 +356,8 @@ class Layer3Firewall(Engine):
         :param str location_ref: location by name for the engine
         :param str log_server_ref: log server reference, will use the default or first retrieved if
             not specified
+        :param LLDPProfile lldp_profile: LLDP Profile represents a set of attributes used for
+        configuring LLDP
         :param dict extra_opts: extra options as a dict to be passed to the top level engine
         :raises CreateElementFailed: failed to create engine
         :return: :py:class:`smc.core.engine.Engine`
@@ -391,6 +405,7 @@ class Layer3Firewall(Engine):
             comment=comment,
             engine_type=engine_type,
             extra_opts=extra_opts,
+            lldp_profile=lldp_profile
         )
 
 
@@ -507,6 +522,7 @@ class Layer2Firewall(Engine):
         enable_gti=False,
         comment=None,
         extra_opts=None,
+        lldp_profile=None,
         **kw
     ):
         """
@@ -525,6 +541,8 @@ class Layer2Firewall(Engine):
             (created if not found)
         :param bool enable_antivirus: (optional) Enable antivirus (required DNS)
                 :param bool enable_gti: (optional) Enable GTI
+        :param LLDPProfile lldp_profile: LLDP Profile represents a set of attributes used for
+        configuring LLDP
         :param dict extra_opts: extra options as a dict to be passed to the top level engine
         :raises CreateEngineFailed: Failure to create with reason
         :return: :py:class:`smc.core.engine.Engine`
@@ -562,7 +580,8 @@ class Layer2Firewall(Engine):
             nodes=1,
             enable_antivirus=enable_antivirus,
             comment=comment,
-            **extra_opts if extra_opts else {}
+            lldp_profile=lldp_profile,
+            **extra_opts if extra_opts else {},
         )
 
         try:
@@ -599,6 +618,7 @@ class IPS(Engine):
         enable_gti=False,
         comment=None,
         extra_opts=None,
+        lldp_profile=None,
         **kw
     ):
         """
@@ -617,6 +637,8 @@ class IPS(Engine):
             (created if not found)
         :param bool enable_antivirus: (optional) Enable antivirus (required DNS)
                 :param bool enable_gti: (optional) Enable GTI
+        :param LLDPProfile lldp_profile: LLDP Profile represents a set of attributes used for
+        configuring LLDP
         :param dict extra_opts: extra options as a dict to be passed to the top level engine
         :raises CreateEngineFailed: Failure to create with reason
         :return: :py:class:`smc.core.engine.Engine`
@@ -654,7 +676,8 @@ class IPS(Engine):
             nodes=1,
             enable_antivirus=enable_antivirus,
             comment=comment,
-            **extra_opts if extra_opts else {}
+            lldp_profile=lldp_profile,
+            **extra_opts if extra_opts else {},
         )
 
         try:
@@ -821,6 +844,7 @@ class FirewallCluster(Engine):
         ntp_settings=None,
         timezone=None,
         extra_opts=None,
+        lldp_profile=None,
         **kw
     ):
         """
@@ -871,6 +895,11 @@ class FirewallCluster(Engine):
             timezone = extra_opts['timezone']
             del extra_opts['timezone']
 
+        # convert lldp_profile_ref from extra_opts to parameter for _create function
+        if extra_opts is not None and "lldp_profile_ref" in extra_opts:
+            lldp_profile = extra_opts['lldp_profile_res']
+            del extra_opts['lldp_profile_ref']
+
         try:
             engine = super(FirewallCluster, cls)._create(
                 name=name,
@@ -887,7 +916,8 @@ class FirewallCluster(Engine):
                 ntp_settings=ntp_settings,
                 comment=comment,
                 timezone=timezone,
-                **extra_opts if extra_opts else {}
+                lldp_profile=lldp_profile,
+                ** extra_opts if extra_opts else {},
             )
             engine.update(cluster_mode=cluster_mode)
 
@@ -921,6 +951,7 @@ class FirewallCluster(Engine):
         ntp_settings=None,
         timezone=None,
         extra_opts=None,
+        lldp_profile=None,
         **kw
     ):
         """
@@ -959,6 +990,8 @@ class FirewallCluster(Engine):
         :param dict snmp: SNMP dict should have keys `snmp_agent` str defining name of SNMPAgent,
             `snmp_interface` which is a list of interface IDs, and optionally `snmp_location` which
             is a string with the SNMP location name.
+        :param LLDPProfile lldp_profile: LLDP Profile represents a set of attributes used for
+        configuring LLDP
         :param dict extra_opts: extra options as a dict to be passed to the top level engine
         :raises CreateEngineFailed: Failure to create with reason
         :return: :py:class:`smc.core.engine.Engine`
@@ -1080,7 +1113,8 @@ class FirewallCluster(Engine):
             snmp=snmp,
             ntp_settings=ntp_settings,
             timezone=timezone,
-            extra_opts=extra_opts
+            extra_opts=extra_opts,
+            lldp_profile=lldp_profile
         )
 
 
@@ -1107,6 +1141,7 @@ class MasterEngine(Engine):
         enable_antivirus=False,
         comment=None,
         extra_opts=None,
+        lldp_profile=None,
         **kw
     ):
         """
@@ -1121,6 +1156,8 @@ class MasterEngine(Engine):
         :param list domain_server_address: (optional) DNS server addresses
         :param bool enable_antivirus: (optional) Enable antivirus (required DNS)
                 :param bool enable_gti: (optional) Enable GTI
+        :param LLDPProfile lldp_profile: LLDP Profile represents a set of attributes used for
+        configuring LLDP
         :param dict extra_opts: extra options as a dict to be passed to the top level engine
         :raises CreateEngineFailed: Failure to create with reason
         :return: :py:class:`smc.core.engine.Engine`
@@ -1146,6 +1183,7 @@ class MasterEngine(Engine):
             nodes=1,
             enable_antivirus=enable_antivirus,
             comment=comment,
+            lldp_profile=lldp_profile,
             **extra_opts if extra_opts else {}
         )
 
@@ -1181,6 +1219,7 @@ class MasterEngineCluster(Engine):
         enable_antivirus=False,
         comment=None,
         extra_opts=None,
+        lldp_profile=None,
         **kw
     ):
         """
@@ -1196,6 +1235,8 @@ class MasterEngineCluster(Engine):
         :param list domain_server_address: (optional) DNS server addresses
         :param bool enable_antivirus: (optional) Enable antivirus (required DNS)
                 :param bool enable_gti: (optional) Enable GTI
+        :param LLDPProfile lldp_profile: LLDP Profile represents a set of attributes used for
+        configuring LLDP
         :param dict extra_opts: extra options as a dict to be passed to the top level engine
         :raises CreateEngineFailed: Failure to create with reason
         :return: :py:class:`smc.core.engine.Engine`
@@ -1234,6 +1275,7 @@ class MasterEngineCluster(Engine):
             nodes=len(nodes),
             enable_antivirus=enable_antivirus,
             comment=comment,
+            lldp_profile=lldp_profile,
             **extra_opts if extra_opts else {}
         )
 

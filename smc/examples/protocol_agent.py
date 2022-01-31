@@ -21,6 +21,7 @@ try:
     pa = ProtocolAgent("SMTP")
     service = TCPService().create("myTCPService",
                                   min_dst_port=45,
+                                  max_dst_port=50,
                                   protocol_agent=pa)
     proxy_service_value = service.protocol_agent_values.get('redir_cis')
     print(proxy_service_value)

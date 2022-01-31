@@ -11,6 +11,7 @@ from smc.api.exceptions import ModificationFailed
 from smc.base.util import element_resolver
 from smc.base.structs import NestedDict
 from smc.base.decorators import cached_property
+from smc.compat import is_api_version_less_than_or_equal
 
 
 class Category(Element):
@@ -518,4 +519,5 @@ def prepare_blacklist(
         )
 
     json.update(duration=duration)
+
     return json

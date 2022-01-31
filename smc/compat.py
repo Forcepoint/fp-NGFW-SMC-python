@@ -26,7 +26,7 @@ def min_smc_version(version):
     Is version at least the minimum provided
     Used for compatibility with selective functions
     """
-    return float(smc.session.api_version) >= version
+    return LooseVersion(smc.session.api_version) >= LooseVersion(version)
 
 
 def get_best_version(*versions):

@@ -305,7 +305,7 @@ class Rule(object):
                sources=None,
                destinations=None,
                services=None,
-               action="allow",
+               action=None,
                **kwargs):
         """
         update a rule
@@ -325,20 +325,21 @@ class Rule(object):
 
         rule_values = self.update_targets(sources, destinations, services)
 
-        # action still compatible with json
-        if isinstance(action, dict):
-            # Api 6.5 compatibility
-            if is_api_version_less_than_or_equal("6.5"):
-                if isinstance(action["action"], list):
-                    action["action"] = action["action"][0]
-            else:
-                if isinstance(action["action"], str):
-                    action["action"] = [action["action"]]
+        if action is not None:
+            # action still compatible with json
+            if isinstance(action, dict):
+                # Api 6.5 compatibility
+                if is_api_version_less_than_or_equal("6.5"):
+                    if isinstance(action["action"], list):
+                        action["action"] = action["action"][0]
+                else:
+                    if isinstance(action["action"], str):
+                        action["action"] = [action["action"]]
 
-            rule_values.update(action=action)
-        else:
-            rule_action = self._get_action(action)
-            rule_values.update(action=rule_action.data)
+                rule_values.update(action=action)
+            else:
+                rule_action = self._get_action(action)
+                rule_values.update(action=rule_action.data)
 
         rule_values.update(kwargs)
 

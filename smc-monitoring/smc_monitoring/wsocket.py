@@ -7,6 +7,7 @@ import threading
 import time
 from pprint import pformat
 from smc import session
+from smc.compat import PYTHON_v3_9
 
 import websocket
 
@@ -51,13 +52,14 @@ class SMCSocketProtocol(websocket.WebSocket):
     results and yield them back to the caller as a context manager.
     """
 
-    def __init__(self, query, query_timeout=None, sock_timeout=3, **kw):
+    def __init__(self, query, query_timeout=None, sock_timeout=3, inactivity_timeout=None, **kw):
         """
         Initialize the web socket.
 
         :param Query query: Query type from `smc_monitoring.monitors`
         :param int query_timeout: length of time to wait on recieving web
-            socket results.
+            socket results (total query time).
+        :param int inactivity_timeout: length of time before exiting if no new entry.
         :param int sock_timeout: length of time to wait on a select call
             before trying to receive data. For LogQueries, this should be
             short, i.e. 1 second. For other queries the default is 3 sec.
@@ -115,6 +117,7 @@ class SMCSocketProtocol(websocket.WebSocket):
 
         super(SMCSocketProtocol, self).__init__(sslopt=sslopt, **kw)
         self.query_timeout = query_timeout
+        self.inactivity_timeout = inactivity_timeout
         self.query = query
         self.fetch_id = None
         # Inner thread used to keep socket select alive
@@ -186,11 +189,13 @@ class SMCSocketProtocol(websocket.WebSocket):
             itr = 0
             if self.connected and self.query_timeout:
                 start = time.time()
+                inactivity_start = time.time()
             while self.connected:
-
-                r, w, e = select.select((self.sock,), (), (), 10.0)
+                r, w, e = select.select((self.sock,), (), (), self.sock_timeout)
 
                 if r:
+                    if self.inactivity_timeout:
+                        inactivity_start = time.time()
                     message = json.loads(self.recv())
 
                     if "fetch" in message:
@@ -205,7 +210,7 @@ class SMCSocketProtocol(websocket.WebSocket):
                         else:
                             num = len(message["records"])
 
-                        logger.debug("Query returned %s records.", num)
+                        logger.info("Query returned %s records.", num)
                         if self.max_recv:
                             itr += 1
 
@@ -223,7 +228,13 @@ class SMCSocketProtocol(websocket.WebSocket):
                 if self.query_timeout:
                     progress = time.time()
                     if self.query_timeout < int(progress - start):
-                        logger.info("Socket recieve timeout")
+                        logger.info("Socket receive query timeout")
+                        break
+
+                if self.inactivity_timeout:
+                    progress = time.time()
+                    if self.inactivity_timeout < int(progress - inactivity_start):
+                        logger.info("Socket receive inactivity timeout")
                         break
 
         except (Exception, KeyboardInterrupt, SystemExit, FetchAborted) as e:
@@ -242,7 +253,8 @@ class SMCSocketProtocol(websocket.WebSocket):
 
             if self.thread:
                 self.event.set()
-                while self.thread.isAlive():
+                while (not PYTHON_v3_9 and self.thread.isAlive()) or \
+                      (PYTHON_v3_9 and self.thread.is_alive()):
                     self.event.wait(1)
 
             logger.info("Closed web socket connection normally.")

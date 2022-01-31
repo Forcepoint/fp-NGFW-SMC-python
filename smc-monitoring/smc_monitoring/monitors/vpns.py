@@ -73,6 +73,11 @@ class VPNSAQuery(Query):
         Fetch the results and return as a VPNSecurityAssoc element.
         The original query is not modified.
 
+        :param int query_timeout: length of time to wait on recieving web
+            socket results (total query time).
+        :param int inactivity_timeout: length of time before exiting if no new entry.
+        :param int max_recv: for queries that are not 'live', set
+            this to supply a max number of receive iterations.
         :return: generator of elements
         :rtype: :class:`~VPNSecurityAssoc`
         """
@@ -83,6 +88,9 @@ class VPNSAQuery(Query):
 
         for list_of_results in clone.fetch_raw(**kw):
             for entry in list_of_results:
+                first_fetch = entry.get("first_fetch")
+                first_fetch = first_fetch if first_fetch else False
+                entry.update({"first_fetch": first_fetch})
                 yield VPNSecurityAssoc(**entry)
 
 
@@ -95,6 +103,16 @@ class VPNSecurityAssoc(object):
 
     def __init__(self, **data):
         self.vpn = data
+
+    @property
+    def first_fetch(self):
+        """
+        first fetch
+        True means entry is part of initial data at first fetch
+
+        :rtype: bool
+        """
+        return self.vpn.get("first_fetch")
 
     @property
     def href(self):

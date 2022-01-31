@@ -51,9 +51,10 @@ try:
 
     print("Retrieve all entries in routing table using smc_monitoring fetch_as_element")
     query = RoutingQuery(target=ENGINE_NAME)
-    # retrieve RoutingView elements
-    # Use max_recv to stop fetching elements after 1 block received
-    for element in query.fetch_as_element(max_recv=1):
+
+    # retrieve All RoutingView initial elements (first_fetch True)
+    # Use max_recv to stop fetching elements after 2mn query or 20s inactivity
+    for element in query.fetch_as_element(max_recv=0, query_timeout=120, inactivity_timeout=20):
         print(element)
 
 except BaseException as e:

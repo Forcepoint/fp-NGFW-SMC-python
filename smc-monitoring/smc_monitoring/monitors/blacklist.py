@@ -85,6 +85,11 @@ class BlacklistQuery(Query):
     def fetch_as_element(self, **kw):
         """
         Fetch the blacklist and return as an instance of Element.
+        :param int query_timeout: length of time to wait on recieving web
+            socket results (total query time).
+        :param int inactivity_timeout: length of time before exiting if no new entry.
+        :param int max_recv: for queries that are not 'live', set
+            this to supply a max number of receive iterations.
 
         :return: generator returning element instances
         :rtype: BlacklistEntry
@@ -107,6 +112,9 @@ class BlacklistQuery(Query):
             for entry in list_of_results:
                 data = entry.get("bldata")
                 data.update(**entry.get("blid"))
+                first_fetch = entry.get("first_fetch")
+                first_fetch = first_fetch if first_fetch else False
+                data.update({"first_fetch": first_fetch})
                 yield BlacklistEntry(**data)
 
 
@@ -135,6 +143,26 @@ class BlacklistEntry(object):
         :rtype: str
         """
         return self.blacklist.get("Blacklist Entry ID")
+
+    @property
+    def blacklist_entry_key(self):
+        """
+        Blacklist entry Key.
+        Needed to remove the entry
+
+        :rtype: str
+        """
+        return self.blacklist.get("BlacklistEntryId")
+
+    @property
+    def first_fetch(self):
+        """
+        first fetch
+        True means entry is part of initial data at first fetch
+
+        :rtype: bool
+        """
+        return self.blacklist.get("first_fetch")
 
     @property
     def timestamp(self):

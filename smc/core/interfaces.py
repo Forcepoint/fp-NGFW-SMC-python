@@ -42,7 +42,7 @@ from smc.core.sub_interfaces import (
     get_sub_interface,
     SubInterfaceCollection,
 )
-from smc.compat import string_types, is_api_version_less_than_or_equal
+from smc.compat import string_types, is_api_version_less_than_or_equal, min_smc_version
 from smc.elements.helpers import zone_helper, logical_intf_helper
 from smc.elements.network import Zone
 from smc.base.structs import BaseIterable
@@ -1678,6 +1678,18 @@ class PhysicalInterface(Interface):
         """
         return self.data.get("virtual_engine_vlan_ok")
 
+    @property
+    def lldp_mode(self):
+        """
+        Represents the LLDP Mode configuration on an interface.
+        Send is to advertise information about device itself.
+        Receive is to receive information about the neighbouring devices.
+        Disable is the default selection.
+        Supported values are: disabled, receive_only, send_and_receive, send_only
+        :rtype: str
+        """
+        return self.data.get("lldp_mode")
+
 
 class Layer2PhysicalInterface(PhysicalInterface):
     """
@@ -1873,8 +1885,13 @@ class Layer3PhysicalInterface(PhysicalInterface):
             if zone_ref:
                 self.data.update(zone_ref=zone_helper(zone_ref) if zone_ref else None)
 
-            if comment:
-                self.data.update(comment=comment)
+        if "lldp_mode" in _kw:
+            lldp_mode = _kw.pop("lldp_mode")
+            if min_smc_version("6.6") and lldp_mode is not None:
+                self.data.update(lldp_mode=lldp_mode)
+
+        if comment:
+            self.data.update(comment=comment)
 
         clz = NodeInterface if interface == "node_interface" else SingleNodeInterface
 
@@ -2023,6 +2040,11 @@ class ClusterPhysicalInterface(PhysicalInterface):
 
         if "comment" in _kw:
             self.data.update(comment=_kw.pop("comment"))
+
+        if "lldp_mode" in _kw:
+            lldp_mode = _kw.pop("lldp_mode")
+            if min_smc_version("6.6") and lldp_mode is not None:
+                self.data.update(lldp_mode=lldp_mode)
 
         interfaces = _kw.pop("interfaces", [])
         for interface in interfaces:

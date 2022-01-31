@@ -9,6 +9,7 @@ Example script
 
 # Python Base Import
 from smc import session
+from smc.compat import is_api_version_less_than_or_equal
 from smc.core.engines import Layer3Firewall
 from smc.elements.network import Host, Network
 from smc.policy.ips import IPSPolicy, IPSSubPolicy
@@ -17,7 +18,18 @@ from smc.elements.service import TCPService
 from smc.policy.rule_elements import Action, Source
 from smc.vpn.elements import ExternalGateway
 from smc.vpn.policy import PolicyVPN
-from smc_info import *
+from smc_info import SMC_URL, API_KEY, API_VERSION
+
+WRONG_RULE = "Wrong rule in assert!"
+
+
+def search_rule_by_name(policy, name):
+    for rule in policy.search_rule(name):
+        if rule.name == name:
+            return rule
+
+    return None
+
 
 if __name__ == "__main__":
 
@@ -99,6 +111,10 @@ if __name__ == "__main__":
                       services=[TCPService("FTP")],
                       action=rule_action)
         print("After update {} action={}".format(rule_a, rule_a.action.action))
+        if is_api_version_less_than_or_equal("6.5"):
+            assert search_rule_by_name(p, "newrule_a").action.action == "allow", WRONG_RULE
+        else:
+            assert search_rule_by_name(p, "newrule_a").action.action == ["allow"], WRONG_RULE
 
         # update the rule
         # can mix element and element.href
@@ -109,6 +125,7 @@ if __name__ == "__main__":
                      services=[TCPService("FTP")],
                      action="allow")
         print("After update {} src={} dst={}".format(rule1, rule1.sources, rule1.destinations))
+        assert search_rule_by_name(p, "newrule").destinations.dst[0] == host3, WRONG_RULE
 
         # Need to keep backward compatibility and let user inject json code or Elements or href
         # action can also be a list since Api 6.6
@@ -120,6 +137,7 @@ if __name__ == "__main__":
                                                                rule1.sources,
                                                                rule1.destinations,
                                                                rule1.action.action))
+        assert search_rule_by_name(p, "newrule").sources.src[0] == host1, WRONG_RULE
 
         # action can also be json injection both str and list are accepted
         rule1.update(sources={"src": [host1.href]},
@@ -130,6 +148,11 @@ if __name__ == "__main__":
                                                                rule1.sources,
                                                                rule1.destinations,
                                                                rule1.action.action))
+        if is_api_version_less_than_or_equal("6.5"):
+            assert search_rule_by_name(p, "newrule").action.action == "deny", WRONG_RULE
+        else:
+            assert search_rule_by_name(p, "newrule").action.action == ["deny"], WRONG_RULE
+
         # action can also be json injection both str and list are accepted
         rule1.update(sources={"src": [host1.href]},
                      destinations=[host3],
@@ -139,13 +162,32 @@ if __name__ == "__main__":
                                                                rule1.sources,
                                                                rule1.destinations,
                                                                rule1.action.action))
+        if is_api_version_less_than_or_equal("6.5"):
+            assert search_rule_by_name(p, "newrule").action.action == "deny", WRONG_RULE
+        else:
+            assert search_rule_by_name(p, "newrule").action.action == ["deny"], WRONG_RULE
 
         # search for the rule
-        rule1 = p.search_rule("newrule")
-        print("Search 'newrule': {} src={} dst={} action={}".format(rule1[0],
-                                                                    rule1[0].sources,
-                                                                    rule1[0].destinations,
-                                                                    rule1[0].action.action))
+        rule1 = search_rule_by_name(p, "newrule")
+
+        # update the rule
+        rule1.sources.set_any()
+        rule1.destinations.add(host2)
+        # Save rule1 in DB
+        rule1.save()
+
+        rule1 = search_rule_by_name(p, "newrule")
+        print("Search 'newrule': {} src={} dst={} action={}".format(rule1,
+                                                                    rule1.sources,
+                                                                    rule1.destinations,
+                                                                    rule1.action.action))
+        assert rule1.sources.is_any, WRONG_RULE
+        assert rule1.destinations.dst == [host2, host3], WRONG_RULE
+        if is_api_version_less_than_or_equal("6.5"):
+            assert rule1.action.action == "deny", WRONG_RULE
+        else:
+            assert rule1.action.action == ["deny"], WRONG_RULE
+
         # Create a second Sub Policy
         p2 = FirewallSubPolicy().create("mySubPolicy2")
 

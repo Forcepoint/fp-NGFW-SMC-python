@@ -289,6 +289,9 @@ class Query(object):
         :param int max_recv: max number of socket receive calls before
             returning from this query. If you want to wait longer for
             results before returning, increase max_iterations (default: 0)
+        :param int query_timeout: length of time to wait on recieving web
+            socket results (total query time).
+        :param int inactivity_timeout: length of time before exiting if no new entry.
         :return: list of query results
         :rtype: list(dict)
         """
@@ -306,6 +309,11 @@ class Query(object):
         greater than the default of 1. Keyword arguments available are kw in
         :meth:`.fetch_raw`.
 
+        :param int query_timeout: length of time to wait on recieving web
+            socket results (total query time).
+        :param int inactivity_timeout: length of time before exiting if no new entry.
+        :param int max_recv: for queries that are not 'live', set
+            this to supply a max number of receive iterations.
         :param formatter: Formatter type for data representation. Any type
             in :py:mod:`smc_monitoring.models.formatters`.
         :return: generator returning data in specified format

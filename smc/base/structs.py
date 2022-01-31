@@ -2,6 +2,13 @@
 Common structures
 """
 import collections
+"""
+be more tolerant for abc in older collections / older python 2.7
+"""
+try:
+    collectionsAbc = collections.abc
+except AttributeError:
+    collectionsAbc = collections
 
 
 class BaseIterable(object):
@@ -128,7 +135,7 @@ class SerializedIterable(BaseIterable):
         super(SerializedIterable, self).__init__(items)
 
 
-class NestedDict(collections.abc.MutableMapping):
+class NestedDict(collectionsAbc.MutableMapping):
     """
     Generic dict structure that can be used to objectify
     complex json. This dict allows attribute access for data

@@ -111,7 +111,7 @@ from smc.core.interfaces import (
 from smc.core.sub_interfaces import LoopbackClusterInterface, LoopbackInterface
 from smc.base.structs import BaseIterable
 from smc.api.exceptions import UnsupportedInterfaceType, InterfaceNotFound
-from smc.compat import get_best_version, is_api_version_less_than_or_equal
+from smc.compat import get_best_version, is_api_version_less_than_or_equal, min_smc_version
 
 
 def get_all_loopbacks(engine):
@@ -691,6 +691,7 @@ class PhysicalInterfaceCollection(InterfaceCollection):
                See :class:`smc.core.engine.VirtualResource.vfw_id`
         :param str virtual_resource_name: virtual resource name
                See :class:`smc.core.engine.VirtualResource.name`
+        :param str lldp_mode: disabled, receive_only, send_and_receive, send_only
         :raises EngineCommandFailed: failure creating interface
         :return: None
         """
@@ -723,6 +724,7 @@ class PhysicalInterfaceCollection(InterfaceCollection):
         virtual_resource_name=None,
         zone_ref=None,
         comment=None,
+        lldp_mode=None,
     ):
         if virtual_mapping is not None:
             virtual_resource_settings = [
@@ -735,6 +737,7 @@ class PhysicalInterfaceCollection(InterfaceCollection):
             engine=self._engine,
             interface_id=interface_id,
             zone_ref=zone_ref,
+            lldp_mode=lldp_mode,
             comment=comment,
             virtual_resource_settings=virtual_resource_settings,
         )
@@ -778,7 +781,8 @@ class PhysicalInterfaceCollection(InterfaceCollection):
         return self._engine.add_interface(interface)
 
     def add_layer3_interface(
-        self, interface_id, address, network_value, zone_ref=None, comment=None, **kw
+            self, interface_id, address, network_value, zone_ref=None, comment=None, lldp_mode=None,
+            **kw
     ):
         """
         Add a layer 3 interface on a non-clustered engine.
@@ -790,6 +794,7 @@ class PhysicalInterfaceCollection(InterfaceCollection):
         :param str address: ip address
         :param str network_value: network/cidr (12.12.12.0/24)
         :param str zone_ref: zone reference, can be name, href or Zone
+        :param str lldp_mode: disabled, receive_only, send_and_receive, send_only
         :param str comment: optional comment
         :param kw: keyword arguments are passed to the sub-interface during
             create time. If it is a single engine, the sub-interface type
@@ -809,6 +814,9 @@ class PhysicalInterfaceCollection(InterfaceCollection):
             "zone_ref": zone_ref,
             "comment": comment,
         }
+        if min_smc_version("6.6") and lldp_mode is not None:
+            interfaces["lldp_mode"] = lldp_mode
+
         interfaces.update(kw)
 
         if "single_fw" in self._engine.type:  # L2FW / IPS
@@ -1025,6 +1033,7 @@ class PhysicalInterfaceCollection(InterfaceCollection):
         cvi_mode="packetdispatch",
         zone_ref=None,
         comment=None,
+        lldp_mode=None,
         **kw
     ):
         """
@@ -1067,6 +1076,7 @@ class PhysicalInterfaceCollection(InterfaceCollection):
         :param list nodes: list of dictionary items identifying cluster nodes
         :param str cvi_mode: packetdispatch is recommended setting
         :param str zone_ref: zone reference, can be name, href or Zone
+        :param str lldp_mode: disabled, receive_only, send_and_receive, send_only
         :param kw: key word arguments are valid NodeInterface sub-interface
             settings passed in during create time. For example, 'backup_mgt=True'
             to enable this interface as the management backup.
@@ -1095,6 +1105,7 @@ class PhysicalInterfaceCollection(InterfaceCollection):
                 macaddress=macaddress,
                 zone_ref=zone_ref,
                 comment=comment,
+                lldp_mode=lldp_mode,
                 **kw
             )
 

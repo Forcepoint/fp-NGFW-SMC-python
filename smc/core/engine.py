@@ -1,5 +1,7 @@
 from collections import namedtuple
 import pytz
+
+from smc.core.lldp import LLDPProfile
 from smc.elements.helpers import domain_helper, location_helper
 from smc.base.model import Element, SubElement, lookup_class, ElementCreator
 from smc.api.exceptions import (
@@ -46,7 +48,8 @@ from smc.base.decorators import cacheable_resource
 from smc.administration.certificates.vpn import GatewayCertificate
 from smc.base.structs import BaseIterable
 from smc.elements.profiles import SNMPAgent
-from smc.compat import is_smc_version_less_than_or_equal, is_api_version_less_than_or_equal
+from smc.compat import is_smc_version_less_than_or_equal, is_api_version_less_than_or_equal, \
+    min_smc_version
 
 
 class Engine(Element):
@@ -100,6 +103,7 @@ class Engine(Element):
         comment=None,
         ntp_settings=None,
         timezone=None,
+        lldp_profile=None,
         **kw
     ):
         """
@@ -114,7 +118,9 @@ class Engine(Element):
         :param int nodes: number of nodes for engine
         :param str log_server_ref: href of log server
         :param list domain_server_address: dns addresses
-        :param ntp_settings: ntp settings
+        :param NTPSettings ntp_settings: ntp settings
+        :param LLDPProfile lldp_profile: LLDP Profile represents a set of attributes used for
+        configuring LLDP
         """
         node_list = []
         for nodeid in range(1, nodes + 1):  # start at nodeid=1
@@ -199,6 +205,13 @@ class Engine(Element):
                 raise CreateElementFailed(
                     "Timezone is invalid:"+timezone
                 )
+
+        if min_smc_version("6.6") and lldp_profile is not None:
+            if isinstance(lldp_profile, LLDPProfile):
+                base_cfg.update(lldp_profile_ref=lldp_profile.href)
+            # is already a href
+            else:
+                base_cfg.update(lldp_profile_ref=lldp_profile)
 
         base_cfg.update(kw, comment=comment)  # Add rest of kwargs
         return base_cfg
@@ -627,15 +640,17 @@ class Engine(Element):
         :param int duration: how long to blacklist in seconds
         :raises EngineCommandFailed: blacklist failed during apply
         :return: None
-
-        .. note:: This method is only valid for SMC version < 6.4. Use
-            :meth:`~blacklist_bulk` to add entries.
         """
+
+        json_bl_entry = prepare_blacklist(src, dst, duration, **kw)
+        if not is_api_version_less_than_or_equal("6.3"):
+            json_bl_entry = {"entries": [json_bl_entry]}
+
         self.make_request(
             EngineCommandFailed,
             method="create",
             resource="blacklist",
-            json=prepare_blacklist(src, dst, duration, **kw),
+            json=json_bl_entry,
         )
 
     def blacklist_bulk(self, blacklist):
@@ -1094,6 +1109,27 @@ class Engine(Element):
         :return: list of dict entries with href,name,type, or None
         """
         return SwitchInterfaceCollection(self)
+
+    @property
+    def lldp_profile(self):
+        """
+        It represents a set of attributes used for configuring LLDP(Link Layer Discovery Protocol).
+        LLDP information is advertised by devices at a fixed interval in the form of LLDP data units
+        represented by TLV structures.
+
+        :param value: LLDP Profile to assign engine. Can be str href, or LLDPProfile element.
+        :raises UpdateElementFailed: failure to update element
+        :return: LLDPProfile element or None
+        """
+        return Element.from_href(self.lldp_profile_ref)
+
+    @lldp_profile.setter
+    def lldp_profile(self, value):
+        if min_smc_version("6.6"):
+            if isinstance(value, LLDPProfile):
+                self.data.update(lldp_profile=value.href)
+            else:
+                self.data.update(lldp_profile=value)
 
     def add_interface(self, interface, **kw):
         """

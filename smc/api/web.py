@@ -111,7 +111,9 @@ def send_request(user_session, method, request):
                     raise SMCOperationFailure(response)
 
             elif method == DELETE:
-                response = session.delete(request.href, headers=request.headers)
+                response = session.delete(request.href,
+                                          params=request.params,
+                                          headers=request.headers)
 
                 counters.update(delete=1)
 
