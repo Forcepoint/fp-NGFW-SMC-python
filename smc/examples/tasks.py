@@ -13,6 +13,8 @@ import time
 from smc import session
 import logging
 
+from smc.administration.system import System
+from smc.api.common import SMCRequest
 from smc.core.engines import Layer3Firewall
 from smc.elements.service import TCPService
 from smc.policy.layer3 import FirewallPolicy
@@ -20,11 +22,28 @@ from smc_info import *
 
 logging.getLogger()
 
+
+def update_property(name, value):
+    for prop in System().system_properties():
+        if prop.get("name") == name:
+            ref = prop.get("href")
+            prop = SMCRequest(href=ref).read()
+            prop.json["value"] = value
+            request = SMCRequest(href=ref,
+                                 json=prop.json)
+            request.update()
+
+
 if __name__ == "__main__":
     session.login(url=SMC_URL, api_key=API_KEY, verify=False, timeout=120, api_version=API_VERSION)
     print("session OK")
 
 try:
+    # activate system property: enforce_change_management, self_approve_changes
+    # pending changes must be approved (@see approve_all()) before being refreshed
+    update_property("enforce_change_management", "true")
+    update_property("self_approve_changes", "true")
+
     plano = Layer3Firewall("Plano")
 
     # check for pending changes
@@ -60,9 +79,17 @@ try:
     assert nb_changes_after == nb_changes_before + 1, "Pending changes are not consistent!"
 
     # accept all pending changes if needed by configuration
-    # (@see Require approval for Changes in NGFW Engine Configuration)
-#    print("accept all pending changes..")
-#    plano.pending_changes.approve_all()
+    # (@see Global System Properties dialog:
+    # Require approval for Changes in NGFW Engine Configuration)
+    print("accept all pending changes..")
+    plano.pending_changes.approve_all()
+    # check for approver atttribute
+    for changes in plano.pending_changes.all():
+        print(changes, changes.approver)
+
+    print("check for pending changes after approve..")
+    for changes in plano.pending_changes.all():
+        print(changes, changes.resolve_element)
 
     # launch asynchronous refresh task
     print("run refresh policy task..")
@@ -74,6 +101,13 @@ try:
     print("task success:{}, progress:{}, last message:{}".format(task_follower.task.success,
                                                                  task_follower.task.progress,
                                                                  task_follower.task.last_message))
+
+    # validate refresh successful
+    assert task_follower.task.success, "Refresh failed!"
+
+    # wait for pending changes to be deleted on mgt server
+    print("wait 5s..")
+    time.sleep(5)
 
     nb_changes_after_refresh = 0
     for changes in plano.pending_changes.all():
