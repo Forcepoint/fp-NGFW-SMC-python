@@ -281,13 +281,14 @@ def create_collection(href, cls):
 
 def rule_collection(href, cls):
     """
-    Rule collections insert a ``create`` and ``create_rule_section`` method
+    Rule collections insert a ``create`` ``create_insert_point`` and ``create_rule_section`` method
     into the collection. This collection type is returned when accessing rules
     through a reference, as::
 
         policy = FirewallPolicy('mypolicy')
         policy.fw_ipv4_access_rules.create(....)
         policy.fw_ipv4_access_rules.create_rule_section(...)
+        policy.fw_ipv4_access_rules.create_insert_point(...)
 
     See the class types documentation, or use help()::
 
@@ -300,7 +301,10 @@ def rule_collection(href, cls):
     return type(
         cls.__name__,
         (SubElementCollection,),
-        {"create": meth, "create_rule_section": instance.create_rule_section},
+        {"create": meth,
+         "create_rule_section": instance.create_rule_section,
+         "create_insert_point": instance.create_insert_point
+         },
     )(href, cls)
 
 

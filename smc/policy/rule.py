@@ -423,6 +423,50 @@ class RuleCommon(object):
             json={"comment": name},
         )
 
+    def create_insert_point(self, name, insert_point_type="normal",
+                            add_pos=None, after=None, before=None):
+        """
+        Create an insert point in a Template Firewall Policy. If no position or
+        before/after is specified, the insert point will be placed at the top
+
+        Create an insert point for the relevant template policy::
+
+            policy = FirewallPolicy('mypolicy')
+            policy.fw_ipv4_access_rules.create_insert_point(name="my insert point",
+                                                            insert_point_type="normal",
+                                                            after=section.tag)
+
+        :param str name: name of the insert point
+        :param str insert_point_type: type of the insert point:
+            - "automatic": automatic rules insert point
+            - "normal": normal insert point
+        :param int add_pos: position to insert the rule, starting with position 1.
+            If the position value is greater than the number of rules, the rule is
+            inserted at the bottom. If add_pos is not provided, rule is inserted in
+            position 1. Mutually exclusive with ``after`` and ``before`` params.
+        :param str after: Rule tag to add this insert point after. Mutually exclusive with
+            ``before`` and 'add_pos' params.
+        :param str before: Rule tag to add this insert point before. Mutually exclusive with
+            ``after`` and 'add_pos' params.
+        :raises CreateRuleFailed: rule creation failure
+        :return: the created ipv4 rule
+        :rtype: IPv4Rule, IPv6Rule..
+        """
+        href = self.href
+        params = None
+        if add_pos is not None:
+            href = self.add_at_position(add_pos)
+        elif before or after:
+            params = self.add_before_after(before, after)
+
+        return ElementCreator(
+            self.__class__,
+            exception=CreateRuleFailed,
+            href=href,
+            params=params,
+            json={"name": name, "type": insert_point_type}
+        )
+
     def add_at_position(self, pos):
         if pos <= 0:
             pos = 1

@@ -223,3 +223,9 @@ def import_submodules(package, recursive=True):
         if recursive and is_pkg:
             results.update(import_submodules(full_name))
     return results
+
+
+def extract_self(link_list):
+    for keys in link_list:
+        if keys.get("rel") == "self":
+            return keys.get("href")

@@ -20,7 +20,6 @@ To load the configuration for system, do::
 """
 import time
 import logging
-from datetime import datetime
 
 from smc.administration.upcoming_event import UpcomingEvents, UpcomingEventsPolicy, \
     UpcomingEventIgnoreSettings
@@ -29,7 +28,7 @@ from smc.base.model import SubElement, Element, ElementCreator
 from smc.administration.updates import EngineUpgrade, UpdatePackage
 from smc.administration.license import Licenses
 from smc.administration.tasks import Task
-from smc.base.util import millis_to_utc
+from smc.base.util import millis_to_utc, extract_self
 from smc.base.collection import sub_collection
 from smc.api.common import fetch_entry_point
 from smc.api.exceptions import ResourceNotFound, ActionCommandFailed
@@ -105,8 +104,32 @@ class System(SubElement):
         """
         return sub_collection(self.get_relation("update_package"), UpdatePackage)
 
-    def update_package_import(self):
-        pass
+    def update_package_import(self, import_update_package_file):
+        """
+        Import update package into SMC. Specify the fully qualified path
+        to the update package file.
+
+        :param str import_update_package_file: system level path to update package file
+        :return: list imported UpdatePackage
+        """
+        update_packages_elements = []
+        with open(import_update_package_file, "rb") as file:
+            update_packages = self.make_request(
+                               method="create",
+                               resource="import_package",
+                               files={"package_file": file},
+                               raw_result=True
+                               )
+
+            logger.info("import update package task succeeded")
+            for update in update_packages.json:
+                href = extract_self(update.get("link"))
+                update_package = UpdatePackage(href=href,
+                                               name=update.get("name"),
+                                               type="update_package")
+                update_packages_elements.append(update_package)
+
+        return update_packages_elements
 
     def engine_upgrade(self):
         """

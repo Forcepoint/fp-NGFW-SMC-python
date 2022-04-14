@@ -176,8 +176,38 @@ class StringValue(Value):
 
 
 class NumberValue(Value):
-    pass
+    """
+    Number value match.
+
+    Search for port in source fields::
+
+    query = LogQuery(fetch_size=10)
+    query.add_in_filter(FieldValue(LogField.SPORT), [NumberValue(7000, 7001)])
+
+    :param value: number definitions
+    :type value: list or int
+    """
+
+    def __init__(self, *values):
+        value = [{"type": "number", "value": value} for value in values]
+        super(NumberValue, self).__init__(value)
 
 
 class TranslatedValue(Value):
-    pass
+    """
+    Internal SMC filter format value match.
+    To use with "translated" filter
+
+    Search for port in destination fields::
+
+    query = LogQuery(fetch_size=10)
+    query_filter = QueryFilter("translated")
+    query_filter.update_filter(TranslatedValue("$Dport == 22 OR $Dport == 25").value)
+    query.update_filter(query_filter)
+
+    :param value: specifies a string in the internal SMC filter format.
+    :type value: str
+    """
+
+    def __init__(self, value):
+        super(TranslatedValue, self).__init__(value)

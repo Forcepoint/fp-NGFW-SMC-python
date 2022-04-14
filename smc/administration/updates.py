@@ -107,6 +107,8 @@ class UpdatePackage(PackageMixin, SubElement):
 
     """
 
+    typeof = "update_package"
+
     @property
     def activation_date(self):
         """
