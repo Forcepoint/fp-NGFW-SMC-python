@@ -9,6 +9,7 @@ from smc.core.sub_interfaces import LoopbackInterface
 from smc.core.engine import Engine
 from smc.api.exceptions import CreateEngineFailed, CreateElementFailed, ElementNotFound
 from smc.base.model import ElementCreator
+from smc.compat import min_smc_version
 
 
 class Layer3Firewall(Engine):
@@ -51,6 +52,7 @@ class Layer3Firewall(Engine):
         enable_antivirus=False,
         enable_gti=False,
         sidewinder_proxy_enabled=False,
+        known_host_lists=[],
         enable_ospf=False,
         ospf_profile=None,
         comment=None,
@@ -60,6 +62,8 @@ class Layer3Firewall(Engine):
         extra_opts=None,
         engine_type=None,
         lldp_profile=None,
+        quic_enabled=True,
+        discard_quic_if_cant_inspect=True,
         **kw
     ):
         """
@@ -173,6 +177,11 @@ class Layer3Firewall(Engine):
             lldp_profile = extra_opts['lldp_profile_ref']
             del extra_opts['lldp_profile_ref']
 
+        # convert known_host_list from extra_opts to parameter for _create function
+        if extra_opts is not None and "known_host_lists_ref" in extra_opts:
+            known_host_lists = extra_opts["known_host_lists_ref"]
+            del extra_opts["known_host_lists_ref"]
+
         try:
             engine = super(Layer3Firewall, cls)._create(
                 name=name,
@@ -185,6 +194,7 @@ class Layer3Firewall(Engine):
                 enable_gti=enable_gti,
                 enable_antivirus=enable_antivirus,
                 sidewinder_proxy_enabled=sidewinder_proxy_enabled,
+                known_host_lists=known_host_lists,
                 default_nat=default_nat,
                 location_ref=location_ref,
                 enable_ospf=enable_ospf,
@@ -194,8 +204,16 @@ class Layer3Firewall(Engine):
                 timezone=timezone,
                 lldp_profile=lldp_profile,
                 comment=comment,
+                discard_quic_if_cant_inspect=discard_quic_if_cant_inspect,
                 **extra_opts if extra_opts else {}
             )
+
+            if min_smc_version("7.0"):
+                if quic_enabled:
+                    quic = {"quic_enabled": "true"}
+                else:
+                    quic = {"quic_enabled": "false"}
+                engine.update(quic)
 
             return ElementCreator(engine_type if engine_type else cls, json=engine)
 
@@ -219,6 +237,7 @@ class Layer3Firewall(Engine):
         location_ref=None,
         enable_ospf=False,
         sidewinder_proxy_enabled=False,
+        known_host_lists=[],
         ospf_profile=None,
         snmp=None,
         ntp_settings=None,
@@ -228,6 +247,8 @@ class Layer3Firewall(Engine):
         engine_type=None,
         node_type="firewall_node",
         lldp_profile=None,
+        quic_enabled=True,
+        discard_quic_if_cant_inspect=True,
         **kw
     ):
         """
@@ -259,6 +280,7 @@ class Layer3Firewall(Engine):
         :param bool enable_antivirus: (optional) Enable antivirus (required DNS)
         :param bool enable_gti: (optional) Enable GTI
         :param bool sidewinder_proxy_enabled: Enable Sidewinder proxy functionality
+        :param list known_host_lists: hrefs of ssh known host list objects (comma separated)
         :param str location_ref: location href or not for engine if needed to contact SMC
             behind NAT (created if not found)
         :param bool enable_ospf: whether to turn OSPF on within engine
@@ -268,6 +290,9 @@ class Layer3Firewall(Engine):
         configuring LLDP
         :param dict extra_opts: extra options as a dict to be passed to the top level engine
         :param kw: optional keyword arguments specifying additional interfaces
+        :param bool quic_enabled: (optional) include QUIC ports for web traffic
+        :param bool discard_quic_if_cant_inspect: (optional) discard or allow QUIC
+         if inspection is not possible
         :raises CreateEngineFailed: Failure to create with reason
         :return: :py:class:`smc.core.engine.Engine`
         """
@@ -303,6 +328,7 @@ class Layer3Firewall(Engine):
             nodes=1,
             enable_antivirus=enable_antivirus,
             sidewinder_proxy_enabled=sidewinder_proxy_enabled,
+            known_host_lists=known_host_lists,
             default_nat=default_nat,
             location_ref=location_ref,
             enable_ospf=enable_ospf,
@@ -313,7 +339,9 @@ class Layer3Firewall(Engine):
             timezone=timezone,
             engine_type=engine_type,
             extra_opts=extra_opts,
-            lldp_profile=lldp_profile
+            lldp_profile=lldp_profile,
+            quic_enabled=quic_enabled,
+            discard_quic_if_cant_inspect=discard_quic_if_cant_inspect
         )
 
     @classmethod
@@ -332,12 +360,15 @@ class Layer3Firewall(Engine):
         enable_gti=False,
         enable_antivirus=False,
         sidewinder_proxy_enabled=False,
+        known_host_lists=[],
         default_nat=False,
         comment=None,
         extra_opts=None,
         engine_type=None,
         node_type="firewall_node",
         lldp_profile=None,
+        quic_enabled=True,
+        discard_quic_if_cant_inspect=True,
         **kw
     ):
         """
@@ -359,6 +390,9 @@ class Layer3Firewall(Engine):
         :param LLDPProfile lldp_profile: LLDP Profile represents a set of attributes used for
         configuring LLDP
         :param dict extra_opts: extra options as a dict to be passed to the top level engine
+        :param bool quic_enabled: (optional) include QUIC ports for web traffic
+        :param bool discard_quic_if_cant_inspect: (optional) discard or allow QUIC
+         if inspection is not possible
         :raises CreateElementFailed: failed to create engine
         :return: :py:class:`smc.core.engine.Engine`
         """
@@ -400,13 +434,30 @@ class Layer3Firewall(Engine):
             nodes=1,
             enable_antivirus=enable_antivirus,
             sidewinder_proxy_enabled=sidewinder_proxy_enabled,
+            known_host_lists=known_host_lists,
             default_nat=default_nat,
             location_ref=location_ref,
             comment=comment,
             engine_type=engine_type,
             extra_opts=extra_opts,
-            lldp_profile=lldp_profile
+            lldp_profile=lldp_profile,
+            quic_enabled=quic_enabled,
+            discard_quic_if_cant_inspect=discard_quic_if_cant_inspect
         )
+
+    @property
+    def quic_enabled(self):
+        """
+        include QUIC ports for web traffic
+
+        :rtype: bool
+        """
+        return self.data.get("quic_enabled")
+
+    @quic_enabled.setter
+    def quic_enabled(self, value):
+        if min_smc_version("7.0"):
+            self.data["quic_enabled"] = value
 
 
 class CloudSGSingleFW(Layer3Firewall):
@@ -437,6 +488,7 @@ class CloudSGSingleFW(Layer3Firewall):
         enable_gti=False,
         enable_antivirus=False,
         sidewinder_proxy_enabled=False,
+        known_host_lists=[],
         default_nat=False,
         comment=None,
         extra_opts=None,
@@ -456,6 +508,7 @@ class CloudSGSingleFW(Layer3Firewall):
             enable_gti,
             enable_antivirus,
             sidewinder_proxy_enabled,
+            known_host_lists,
             default_nat,
             comment,
             extra_opts,
@@ -481,6 +534,7 @@ class CloudSGSingleFW(Layer3Firewall):
         location_ref=None,
         enable_ospf=False,
         sidewinder_proxy_enabled=False,
+        known_host_lists=[],
         ospf_profile=None,
         snmp=None,
         comment=None,
@@ -523,6 +577,7 @@ class Layer2Firewall(Engine):
         comment=None,
         extra_opts=None,
         lldp_profile=None,
+        discard_quic_if_cant_inspect=True,
         **kw
     ):
         """
@@ -543,6 +598,8 @@ class Layer2Firewall(Engine):
                 :param bool enable_gti: (optional) Enable GTI
         :param LLDPProfile lldp_profile: LLDP Profile represents a set of attributes used for
         configuring LLDP
+        :param bool discard_quic_if_cant_inspect: (optional) discard or allow QUIC
+         if inspection is not possible
         :param dict extra_opts: extra options as a dict to be passed to the top level engine
         :raises CreateEngineFailed: Failure to create with reason
         :return: :py:class:`smc.core.engine.Engine`
@@ -581,6 +638,7 @@ class Layer2Firewall(Engine):
             enable_antivirus=enable_antivirus,
             comment=comment,
             lldp_profile=lldp_profile,
+            discard_quic_if_cant_inspect=discard_quic_if_cant_inspect,
             **extra_opts if extra_opts else {},
         )
 
@@ -619,6 +677,7 @@ class IPS(Engine):
         comment=None,
         extra_opts=None,
         lldp_profile=None,
+        discard_quic_if_cant_inspect=True,
         **kw
     ):
         """
@@ -639,6 +698,8 @@ class IPS(Engine):
                 :param bool enable_gti: (optional) Enable GTI
         :param LLDPProfile lldp_profile: LLDP Profile represents a set of attributes used for
         configuring LLDP
+        :param bool discard_quic_if_cant_inspect: (optional) discard or allow QUIC
+         if inspection is not possible
         :param dict extra_opts: extra options as a dict to be passed to the top level engine
         :raises CreateEngineFailed: Failure to create with reason
         :return: :py:class:`smc.core.engine.Engine`
@@ -677,6 +738,7 @@ class IPS(Engine):
             enable_antivirus=enable_antivirus,
             comment=comment,
             lldp_profile=lldp_profile,
+            discard_quic_if_cant_inspect=discard_quic_if_cant_inspect,
             **extra_opts if extra_opts else {},
         )
 
@@ -725,6 +787,8 @@ class Layer3VirtualEngine(Engine):
         ospf_profile=None,
         comment=None,
         extra_opts=None,
+        quic_enabled=True,
+        discard_quic_if_cant_inspect=True,
         **kw
     ):
         """
@@ -743,6 +807,9 @@ class Layer3VirtualEngine(Engine):
         :param list interfaces: interfaces mappings passed in
         :param bool enable_ospf: whether to turn OSPF on within engine
         :param str ospf_profile: optional OSPF profile to use on engine, by ref
+        :param bool quic_enabled: (optional) include QUIC ports for web traffic
+        :param bool discard_quic_if_cant_inspect: (optional) discard or allow QUIC
+         if inspection is not possible
         :param dict extra_opts: extra options as a dict to be passed to the top level engine
         :raises CreateEngineFailed: Failure to create with reason
         :raises LoadEngineFailed: master engine not found
@@ -797,6 +864,7 @@ class Layer3VirtualEngine(Engine):
                 enable_ospf=enable_ospf,
                 ospf_profile=ospf_profile,
                 comment=comment,
+                discard_quic_if_cant_inspect=discard_quic_if_cant_inspect,
                 **extra_opts if extra_opts else {}
             )
 
@@ -804,11 +872,32 @@ class Layer3VirtualEngine(Engine):
             # Master Engine provides this service
             engine.pop("log_server_ref", None)
 
+        if min_smc_version("7.0"):
+            if quic_enabled:
+                quic = {"quic_enabled": "true"}
+            else:
+                quic = {"quic_enabled": "false"}
+            engine.update(quic)
+
         try:
             return ElementCreator(cls, json=engine)
 
         except CreateElementFailed as e:
             raise CreateEngineFailed(e)
+
+    @property
+    def quic_enabled(self):
+        """
+        include QUIC ports for web traffic
+
+        :rtype: bool
+        """
+        return self.data.get("quic_enabled")
+
+    @quic_enabled.setter
+    def quic_enabled(self, value):
+        if min_smc_version("7.0"):
+            self.data["quic_enabled"] = value
 
 
 class FirewallCluster(Engine):
@@ -845,6 +934,8 @@ class FirewallCluster(Engine):
         timezone=None,
         extra_opts=None,
         lldp_profile=None,
+        quic_enabled=True,
+        discard_quic_if_cant_inspect=True,
         **kw
     ):
         """
@@ -917,9 +1008,17 @@ class FirewallCluster(Engine):
                 comment=comment,
                 timezone=timezone,
                 lldp_profile=lldp_profile,
+                discard_quic_if_cant_inspect=discard_quic_if_cant_inspect,
                 ** extra_opts if extra_opts else {},
             )
             engine.update(cluster_mode=cluster_mode)
+
+            if min_smc_version("7.0"):
+                if quic_enabled:
+                    quic = {"quic_enabled": "true"}
+                else:
+                    quic = {"quic_enabled": "false"}
+                engine.update(quic)
 
             return ElementCreator(cls, json=engine)
 
@@ -952,6 +1051,8 @@ class FirewallCluster(Engine):
         timezone=None,
         extra_opts=None,
         lldp_profile=None,
+        quic_enabled=True,
+        discard_quic_if_cant_inspect=True,
         **kw
     ):
         """
@@ -992,6 +1093,9 @@ class FirewallCluster(Engine):
             is a string with the SNMP location name.
         :param LLDPProfile lldp_profile: LLDP Profile represents a set of attributes used for
         configuring LLDP
+        :param bool quic_enabled: (optional) include QUIC ports for web traffic
+        :param bool discard_quic_if_cant_inspect: (optional) discard or allow QUIC
+         if inspection is not possible
         :param dict extra_opts: extra options as a dict to be passed to the top level engine
         :raises CreateEngineFailed: Failure to create with reason
         :return: :py:class:`smc.core.engine.Engine`
@@ -1114,8 +1218,24 @@ class FirewallCluster(Engine):
             ntp_settings=ntp_settings,
             timezone=timezone,
             extra_opts=extra_opts,
-            lldp_profile=lldp_profile
+            lldp_profile=lldp_profile,
+            quic_enabled=quic_enabled,
+            discard_quic_if_cant_inspect=discard_quic_if_cant_inspect
         )
+
+    @property
+    def quic_enabled(self):
+        """
+        include QUIC ports for web traffic
+
+        :rtype: bool
+        """
+        return self.data.get("quic_enabled")
+
+    @quic_enabled.setter
+    def quic_enabled(self, value):
+        if min_smc_version("7.0"):
+            self.data["quic_enabled"] = value
 
 
 class MasterEngine(Engine):

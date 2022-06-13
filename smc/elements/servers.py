@@ -234,6 +234,8 @@ class NetflowCollector(NestedDict):
         netflow_collector_service,
         netflow_collector_version,
         filter=None,
+        tls_profile=None,
+        tlsIdentity=None,
     ):
         dc = dict(
             data_context=element_resolver(data_context),
@@ -242,6 +244,8 @@ class NetflowCollector(NestedDict):
             netflow_collector_port=netflow_collector_port,
             netflow_collector_service=netflow_collector_service,
             netflow_collector_version=netflow_collector_version,
+            tls_profile=tls_profile,
+            tlsIdentity=tlsIdentity
         )
         super(NetflowCollector, self).__init__(data=dc)
 
@@ -328,6 +332,27 @@ class NetflowCollector(NestedDict):
         """
         return self.data["netflow_collector_version"]
 
+    @property
+    def tls_profile(self):
+        """
+        TLS information required to establish TLS connection to SysLog servers
+        *Mandatory* when service is "tcp_with_tls"
+        :rtype: TlSProfile
+        """
+        return Element.from_href(self.get("tls_profile"))\
+            if self.get("tls_profile") is not None else None
+
+    @property
+    def tlsIdentity(self):
+        """
+        Field/value pair used to insure server identity when connecting to Sys Log server using TLS
+        *Optional* If not provided, server identity is not checked
+        This is ignored if service is not tcp_with_tls
+
+        :rtype:
+        """
+        return self.data["tlsIdentity"]
+
 
 class DataContext(Element):
     """
@@ -338,109 +363,6 @@ class DataContext(Element):
     @property
     def info_data_tag(self):
         return self.data.get("info_data_tag")
-
-
-class NetflowCollector(NestedDict):
-    """
-    Represents a Netflow collector.
-    This is a sub part of Log Server entity.
-    Log Servers can be configured to forward log data to external hosts. You can define which type
-    of log data you want to forward and in which format. You can also use Filters to specify in
-    detail which log data is forwarded.
-    """
-
-    def __init__(self, data_context, host, netflow_collector_port,
-                 netflow_collector_service, netflow_collector_version, filter=None):
-        dc = dict(data_context=element_resolver(data_context),
-                  filter=element_resolver(filter),
-                  host=element_resolver(host),
-                  netflow_collector_port=netflow_collector_port,
-                  netflow_collector_service=netflow_collector_service,
-                  netflow_collector_version=netflow_collector_version
-                  )
-        super(NetflowCollector, self).__init__(data=dc)
-
-    def __str__(self):
-        str = ""
-        str += "data_context = {}; ".format(self.data_context)
-        str += "filter = {}; ".format(self.filter)
-        str += "host = {}; ".format(self.host)
-        str += "netflow_collector_port = {}; ".format(self.netflow_collector_port)
-        str += "netflow_collector_service = {}; ".format(self.netflow_collector_service)
-        str += "netflow_collector_version = {}; ".format(self.netflow_collector_version)
-        return str
-
-    @property
-    def data_context(self):
-        """
-        The type of log data that is forwarded.
-        :rtype: DataContext
-        """
-        element_href = None
-        if self.get('data_context'):
-            element_href = Element.from_href(self.get('data_context'))
-        return element_href
-
-    @property
-    def filter(self):
-        """
-        An optional local filter that defines which log data is forwarded. The
-        local filter is only applied to the log data that matches the Log
-        Forwarding rule.
-        :rtype: FilterExpression
-        """
-        return Element.from_href(self.get('filter')) if self.get('filter') is not None else None
-
-    @property
-    def host(self):
-        """
-        The Host element that represents the target host to which the log
-        data is forwarded.
-        :rtype: Host
-        """
-        return Element.from_href(self.get('host')) if self.get('host') is not None else None
-
-    @property
-    def netflow_collector_port(self):
-        """
-        The Port that is used for log forwarding. The default port used by
-        IPFIX/NetFlow data collectors is 2055.<br/>
-        <b>Note!</b> If you have to define an Access rule that allows traffic to the
-        target host, make sure that the Port you select is also used as the
-        Port in the Access rule.
-        :rtype: int
-        """
-        return self.data['netflow_collector_port']
-
-    @property
-    def netflow_collector_service(self):
-        """
-        The network protocol for forwarding the log data (udp/tcp/tcp_with_tls).<br/>
-        <b>Note!</b> If you have to define an Access rule that allows traffic to the
-        target host, make sure that the Service you specify is also used as
-        the Service in the Access rule.
-        :rtype: str
-        """
-        return self.data['netflow_collector_service']
-
-    @property
-    def netflow_collector_version(self):
-        """
-        The format for forwarding the log data:
-        <ul>
-        <li><i>cef</i>: Logs are forwarded in CEF format.</li>
-        <li><i>csv</i>: Logs are forwarded in CSV format.</li>
-        <li><i>leef</i>: Logs are forwarded in LEEF format.</li>
-        <li><i>netflow_v11</i>: Logs are forwarded in NetFlow format.
-        The supported version is NetFlow v16.</li>
-        <li><i>ipfix</i>: Logs are forwarded in IPFIX (NetFlow v16) format.</li>
-        <li><i>xml</i>: Logs are forwarded in XML format.</li>
-        <li><i>esm</i>: Logs are forwarded in McAfee ESM format.</li>
-        </ul>
-        <b> Only csv, xml and esm are supported for Audit Forwarding from Mgt Server</b>
-        :rtype: str
-        """
-        return self.data['netflow_collector_version']
 
 
 class LogServer(ContactAddressMixin, Element):

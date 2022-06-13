@@ -226,8 +226,9 @@ class SessionManager(object):
         """
         Register a session
         """
-        if session.session_id:
-            self._sessions[session.name] = session
+        session_name = session.name
+        if session_name:
+            self._sessions[session_name] = session
 
     def _deregister(self, session):
         """
@@ -617,7 +618,7 @@ class Session(object):
         :return: python requests session
         :rtype: requests.Session
         """
-        _session = requests.session()  # empty session
+        _session = requests.sessions.session()  # empty session
         retry = Retry(
             total=MAX_RETRY,
             read=MAX_RETRY,
@@ -668,7 +669,7 @@ class Session(object):
         finally:
             self.entry_points.clear()
             self.manager._deregister(self)
-            self._session = None
+            requests.sessions.session().close()
             try:
                 delattr(self, "current_user")
             except AttributeError:
@@ -685,20 +686,15 @@ class Session(object):
         :raises SMCConnectionError: Problem re-authenticating using existing
             api credentials
         """
-        if self.session and self.session_id:  # Did session timeout?
+        if self.session and self.name:  # Did session timeout?
             logger.info(
                 "Session timed out, will try obtaining a new session using "
                 "previously saved credential information."
             )
-            # Preserve any custom session adapters attached to original session
-            transport_adapters = self.session.adapters
             self.logout()  # Force log out session just in case
             self.login(**self.copy())
             if self.session:
-                for req, transport in transport_adapters.items():
-                    self.session.mount(req, transport)
                 return
-            # return self.login(**self.copy())
         raise SMCConnectionError("Session expired and attempted refresh failed.")
 
     def switch_domain(self, domain):
@@ -890,7 +886,8 @@ def get_api_version(base_url, api_version=None, timeout=10, verify=True):
         major_max, minor_max = str(max_version).split(".")
         major_min, minor_min = str(min_version).split(".")
 
-        if int(major) >= int(major_max) and int(minor) > int(minor_max):
+        if (int(major) == int(major_max) and int(minor) > int(minor_max))\
+                or (int(major) > int(major_max)):
             max_version = major + "." + minor
 
         if int(major) <= int(major_min) and int(minor) < int(minor_min):

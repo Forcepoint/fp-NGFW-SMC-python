@@ -51,6 +51,7 @@ Examples of rule operations::
     >>> actions = Action()
     >>> actions.deep_inspection = True
     >>> actions.file_filtering=False
+    >>> actions.network_application_latency_monitoring=False
     ...
     >>> policy.fw_ipv4_access_rules.create(name='outbound',sources=[Alias('$$ Interface ID 1.net')],
                                            destinations='any',services='any',

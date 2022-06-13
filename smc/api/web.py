@@ -252,9 +252,9 @@ class SMCResult(object):
                 except ValueError:
                     result = None
                 # Search results return list, direct link fetch
-                # will return a dict or list
+                # will return a dict or list only if "result" is the unique element returned
                 if result:
-                    if "result" in result:
+                    if len(result) == 1 and "result" in result:
                         self.json = result.get("result")
                     else:
                         self.json = result

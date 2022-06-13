@@ -170,6 +170,48 @@ def log_target_types(all_logs=False, **kwargs):
     return log_types
 
 
+def server_directory(**kwargs):
+    """
+    create a server directory dict. This is used for export/archive logs
+    tasks.
+    The following kwargs can be overridden in the create constructor.
+
+    :param bool archive_mask: The bit mask of selected archive directories, -1 for all. default -1
+    :param bool only_archive:Indicates whether only the active directory is excluded.
+    :param LogServer / Server server: The server used for log retrieving.
+    :return: dict of server_directory
+    """
+    srv_directory = {
+            "archive_mask": -1,
+            "only_archive": False,
+            "server": None
+        }
+
+    for key, value in kwargs.items():
+        if key == "server":
+            srv_directory[key] = value.href
+        else:
+            srv_directory[key] = value
+
+    return srv_directory
+
+
+def server_directories_settings(srv_directories):
+    """
+    Server directories used to retrieve logs.. This is needed for export or archive logs
+    tasks.
+
+    :param list server_directories: list of server_directory
+    :return: dict of server_directories settings
+    """
+    server_directories = []
+
+    for srv_directory in srv_directories:
+        server_directories.append(srv_directory)
+
+    return {"server_directories": server_directories}
+
+
 class TaskSchedule(SubElement):
     """
     A task schedule is associated with a given task type that defines
@@ -771,3 +813,190 @@ class FetchCertificateRevocationTask(ScheduledTaskMixin, Element):
     """
 
     typeof = "fetch_certificate_revocation_task"
+
+
+class ExportLogTask(ScheduledTaskMixin, Element):
+    """
+    An export log task defines a way to export log data from the SMC.
+    When defining the task, you specify which servers to export from
+    (typically management AND log server/s), and which log types to
+    export.
+
+    .. note:: Log tasks currently support pre-defined time ranges such
+        as 'yesterday', 'last_week', etc. If creating custom time ranges
+        for tasks, use the SMC.
+    """
+
+    typeof = "export_log_task"
+
+    @classmethod
+    def create(
+            cls,
+            name,
+            servers=None,
+            time_range="yesterday",
+            file_name=None,
+            file_format="xml",
+            is_local_location=True,
+            filter_for_export=None,
+            all_logs=False,
+            overwrite_file_flag="overwrite",
+            server_directory_lst=None,
+            comment=None,
+            **kwargs
+    ):
+        """
+        Create a new export log task. Provide True to all_logs to export
+        all log types. Otherwise provide kwargs to specify each log by
+        type of interest.
+
+        :param str name: name for this task
+        :param servers: servers to back up. Servers must be instances of
+            management servers or log servers. If no value is provided, all
+            servers are backed up.
+        :type servers: list(ManagementServer or LogServer)
+        :param str time_range: specify a time range for the export. Valid
+            options are 'yesterday', 'last_full_week_sun_sat',
+            'last_full_week_mon_sun', 'last_full_month' (default 'yesterday')
+        :param str file_name: name of the file to export
+        :param str file_format: format of the file to export
+            options are:
+                ***csv***   export in CSV format.
+                ***xml***   export in XML format.
+                ***zip***   export in ZIP format.
+                ***cef***   export in CEF format.
+                ***leef***  export in LEEF format.
+                ***esm***   export in ESM format.
+                ***snoop*** export IPS recordings as SNOOP.
+                ***pcap***  export IPS recordings as PCAP.
+        :param FilterExpression filter_for_export: The Filter expression for the archive/export task
+            to be able to filter logs to consider. (default: FilterExpression('Match All')
+        :param bool all_logs: if True, all log types will be deleted. If this
+            is True, kwargs are ignored (default: False)
+        :param list server_directory_lst: see :func:`~server_directory`  for keyword
+            arguments and default values.
+        :param bool is_local_location: Flag to know if the archive/export file will be stored on
+            the log server or locally.
+        :param str overwrite_file_flag: The overwrite options:
+            ***append***: append option.
+            ***overwrite***: overwrite option.
+            ***use_number_in_file_name*** create an unique file with number as name.
+            ***fail_task***: fail the task.
+        :param kwargs: see :func:`~log_target_types` for keyword
+            arguments and default values.
+        :raises ElementNotFound: specified servers were not found
+        :raises CreateElementFailed: failure to create the task
+        :return: the task
+        :rtype: ExportLogTask
+        """
+        if not servers:
+            servers = [svr.href for svr in ManagementServer.objects.all()]
+            servers.extend([svr.href for svr in LogServer.objects.all()])
+        else:
+            servers = [svr.href for svr in servers]
+
+        json = {
+            "name": name,
+            "resources": servers,
+            "time_limit_type": time_range,
+            "start_time": 0,
+            "end_time": 0,
+            "file_name": file_name,
+            "file_format": file_format,
+            "is_local_location": is_local_location,
+            "overwrite_file_flag": overwrite_file_flag,
+            "filter_for_export": filter_for_export.href if filter_for_export is not None else None,
+            "comment": comment,
+        }
+
+        json.update(**log_target_types(all_logs, **kwargs))
+        json.update(**server_directories_settings(server_directory_lst))
+
+        return ElementCreator(cls, json)
+
+
+class ArchiveLogTask(ScheduledTaskMixin, Element):
+    """
+    An archive log task defines a way to archive log data from the SMC.
+    When defining the task, you specify which servers to archive
+    (typically management AND log server/s), and which log types to
+    archive.
+
+    .. note:: Log tasks currently support pre-defined time ranges such
+        as 'yesterday', 'last_week', etc. If creating custom time ranges
+        for tasks, use the SMC.
+    """
+
+    typeof = "archive_log_task"
+
+    @classmethod
+    def create(
+            cls,
+            name,
+            servers=None,
+            time_range="yesterday",
+            filter_for_export=None,
+            filter_for_delete=None,
+            delete_source_data=False,
+            all_logs=False,
+            server_directory_lst=None,
+            is_local_location=False,
+            comment=None,
+            **kwargs
+    ):
+        """
+        Create a new archive log task. Provide True to all_logs to archive
+        all log types. Otherwise provide kwargs to specify each log by
+        type of interest.
+
+        :param str name: name for this task
+        :param servers: servers to back up. Servers must be instances of
+            management servers or log servers. If no value is provided, all
+            servers are backed up.
+        :type servers: list(ManagementServer or LogServer)
+        :param str time_range: specify a time range for the archive. Valid
+            options are 'yesterday', 'last_full_week_sun_sat',
+            'last_full_week_mon_sun', 'last_full_month' (default 'yesterday')
+        :param FilterExpression filter_for_export: The Filter expression for the archive/export task
+            to be able to filter logs to consider. (default: FilterExpression('Match All')
+        :param FilterExpression filter_for_delete: The Filter expression for the archive/delete task
+            to be able to filter logs for deletion. (default: FilterExpression('Match None')
+        :param bool delete_source_data: Flag to know if after the archive operation,
+            logs need to be deleted.
+        :param bool all_logs: if True, all log types will be archived. If this
+            is True, kwargs are ignored (default: False)
+        :param list server_directory_lst: Server directories used to retrieve logs.
+            see :func:`~server_directory`  for keyword arguments and default values.
+        :param bool is_local_location: Flag to know if the archive/export file will be stored on
+            the log server or locally.
+        :param kwargs: see :func:`~log_target_types` for keyword
+            arguments and default values.
+        :raises ElementNotFound: specified servers were not found
+        :raises CreateElementFailed: failure to create the task
+        :return: the task
+        :rtype: ArchiveLogTask
+        """
+        if not servers:
+            servers = [svr.href for svr in ManagementServer.objects.all()]
+            servers.extend([svr.href for svr in LogServer.objects.all()])
+        else:
+            servers = [svr.href for svr in servers]
+
+        json = {
+            "name": name,
+            "resources": servers,
+            "time_limit_type": time_range,
+            "file_format": "unknown",
+            "start_time": 0,
+            "end_time": 0,
+            "is_local_location": is_local_location,
+            "filter_for_export": filter_for_export.href if filter_for_export is not None else None,
+            "filter_for_delete": filter_for_delete.href if filter_for_delete is not None else None,
+            "delete_source_data": delete_source_data,
+            "comment": comment,
+        }
+
+        json.update(**log_target_types(all_logs, **kwargs))
+        json.update(**server_directories_settings(server_directory_lst))
+
+        return ElementCreator(cls, json)

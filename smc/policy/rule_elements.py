@@ -380,6 +380,20 @@ class Action(NestedDict):
         self.update(deep_inspection=value)
 
     @property
+    def network_application_latency_monitoring(self):
+        """
+        Enable or Disable the Application Health Monitoring for the matching Traffic
+
+        :param bool value: True, False, None (inherit from continue rule)
+        :rtype: bool
+        """
+        return self.get("network_application_latency_monitoring")
+
+    @network_application_latency_monitoring.setter
+    def network_application_latency_monitoring(self, value):
+        self.update(network_application_latency_monitoring=value)
+
+    @property
     def file_filtering(self):
         """
         (IPv4 Only) Inspects matching traffic against the File Filtering policy.

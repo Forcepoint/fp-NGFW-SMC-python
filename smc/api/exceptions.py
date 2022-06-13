@@ -346,3 +346,9 @@ class UserElementNotFound(SMCException):
     Raised when attempting to find a user element that cannot be found in a
     mapped database (internal or external LDAP)
     """
+
+
+class NotMonitored(SMCException):
+    """
+    Raised when attempting get monitoring status for not monitored element
+    """

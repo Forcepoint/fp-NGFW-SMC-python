@@ -48,6 +48,7 @@ from smc.base.decorators import cacheable_resource
 from smc.administration.certificates.vpn import GatewayCertificate
 from smc.base.structs import BaseIterable
 from smc.elements.profiles import SNMPAgent
+from smc.elements.ssm import SSHKnownHostsLists
 from smc.compat import is_smc_version_less_than_or_equal, is_api_version_less_than_or_equal, \
     min_smc_version
 
@@ -95,6 +96,7 @@ class Engine(Element):
         enable_antivirus=False,
         enable_gti=False,
         sidewinder_proxy_enabled=False,
+        known_host_lists=[],
         default_nat=False,
         location_ref=None,
         enable_ospf=None,
@@ -104,6 +106,7 @@ class Engine(Element):
         ntp_settings=None,
         timezone=None,
         lldp_profile=None,
+        discard_quic_if_cant_inspect=True,
         **kw
     ):
         """
@@ -121,6 +124,8 @@ class Engine(Element):
         :param NTPSettings ntp_settings: ntp settings
         :param LLDPProfile lldp_profile: LLDP Profile represents a set of attributes used for
         configuring LLDP
+        :param bool discard_quic_if_cant_inspect: (optional) discard or allow QUIC
+         if inspection is not possible
         """
         node_list = []
         for nodeid in range(1, nodes + 1):  # start at nodeid=1
@@ -171,6 +176,13 @@ class Engine(Element):
 
         if sidewinder_proxy_enabled:
             base_cfg.update(sidewinder_proxy_enabled=True)
+            # We only want to set known host lists when SSM is enabled
+            if known_host_lists:
+                if isinstance(known_host_lists, list):
+                    base_cfg.update(known_host_lists_ref=known_host_lists)
+                else:
+                    split_known_host_lists = known_host_lists.split(",")
+                    base_cfg.update(known_host_lists_ref=split_known_host_lists)
 
         if default_nat:
             base_cfg.update(default_nat=True)
@@ -212,6 +224,13 @@ class Engine(Element):
             # is already a href
             else:
                 base_cfg.update(lldp_profile_ref=lldp_profile)
+
+        if min_smc_version("7.0"):
+            if discard_quic_if_cant_inspect:
+                discard_quic = {"discard_quic_if_cant_inspect": "true"}
+            else:
+                discard_quic = {"discard_quic_if_cant_inspect": "false"}
+            base_cfg.update(discard_quic)
 
         base_cfg.update(kw, comment=comment)  # Add rest of kwargs
         return base_cfg
@@ -433,6 +452,21 @@ class Engine(Element):
             return SidewinderProxy(self)
         raise UnsupportedEngineFeature(
             "Sidewinder Proxy requires a layer 3 engine and version >= v6.1."
+        )
+
+    @property
+    def known_host_lists(self):
+        """
+        Configure SSH known host lists on the engine. Can only be set
+        if Sidewinder Proxy is enabled.
+
+        :raises MissingRequiredInput: requires sidewinder proxy to be enabled
+        :rtype: KnownHostLists
+        """
+        if self.data["sidewinder_proxy_enabled"] and "known_host_lists_ref" in self.data:
+            return SSHKnownHostsLists(self)
+        raise MissingRequiredInput(
+            "SSH Known Host Lists require Sidewinder Proxy to be enabled."
         )
 
     @property
@@ -1130,6 +1164,23 @@ class Engine(Element):
                 self.data.update(lldp_profile=value.href)
             else:
                 self.data.update(lldp_profile=value)
+
+    @property
+    def discard_quic_if_cant_inspect(self):
+        """
+        Discard or allow QUIC if inspection is impossible
+
+        :rtype: bool
+        """
+        if not self.type.startswith("master"):
+            return self.data.get("discard_quic_if_cant_inspect")
+        raise UnsupportedEngineFeature(
+            "This engine type does not support discard_quic_if_cant_inspect.")
+
+    @discard_quic_if_cant_inspect.setter
+    def discard_quic_if_cant_inspect(self, value):
+        if min_smc_version("7.0"):
+            self.data["discard_quic_if_cant_inspect"] = value
 
     def add_interface(self, interface, **kw):
         """
