@@ -23,7 +23,9 @@ Then enable or disable::
 """
 from smc.base.model import Element
 from smc.base.structs import NestedDict
+from smc.compat import is_api_version_less_than
 from smc.elements.profiles import SandboxService, SandboxDataCenter
+from smc.elements.tags import TrustedCATag
 from smc.base.util import element_resolver
 
 # TODO: This module feels like a mess, too many code paths. Options can
@@ -470,7 +472,6 @@ class TLSInspection(object):
                 self.engine.server_credential.remove(href)
 
 
-'''
 class ClientInspection(object):
     def __init__(self, engine):
         self.engine = engine
@@ -482,32 +483,102 @@ class ClientInspection(object):
 
         :rtype: bool
         """
-        return getattr(self.engine, 'tls_client_protection', False)
+        if is_api_version_less_than('7.0'):
+            return self.engine.tls_client_protection is not None\
+                   and len(self.engine.tls_client_protection) > 0
+        else:
+            return self.engine.tls_client_protection is not None
 
-    def enable(self, client_protection_ca):
+    def enable(self, ca_for_signing, tls_trusted_ca_tags=None, tls_trusted_cas=None):
         """
         Enable client decryption. Provide a valid client protection
         CA that the engine will use to decrypt.
 
-        :param str,ClientProtectionCA client_protection_ca: href or
-            element
+        :param ca_for_signing: tls_signing_certificate_authority
+        :param tls_trusted_ca_tags: optional trusted_ca_tag array
+        :param tls_trusted_cas: optional tls_certificate_authority array
         :return: None
         """
-        self.engine.data.update(tls_client_protection=
-            [{'ca_for_signing_ref': element_resolver(client_protection_ca)}])
+        assert ca_for_signing is not None, "Please provide a ClientProtectionCA!"
+
+        if not tls_trusted_cas and not tls_trusted_ca_tags:
+            # put as default all trusted ca tags
+            tls_trusted_ca_tags = [TrustedCATag('All Trusted CAs')]
+
+        if is_api_version_less_than('7.0'):
+            self.engine.data.update(tls_client_protection=[
+                {'ca_for_signing_ref': element_resolver(ca_for_signing),
+                 'tls_trusted_ca_tag_ref': element_resolver(tls_trusted_ca_tags),
+                 'tls_trusted_ca_ref': element_resolver(tls_trusted_cas),
+                 'proxy_usage': 'tls_inspection'}])
+        else:
+            self.engine \
+                .data.update(tls_client_protection={
+                    'ca_for_signing_ref': element_resolver(ca_for_signing),
+                    'tls_trusted_ca_tag_ref': element_resolver(tls_trusted_ca_tags),
+                    'tls_trusted_ca_ref': element_resolver(tls_trusted_cas),
+                    'proxy_usage': 'tls_inspection'})
 
     def disable(self):
-        pass
+        """
+        Disable client decryption.
+
+        :return: None
+        """
+        self.engine.data.update(tls_client_protection=None)
 
     @property
-    def client_protection_ca(self):
+    def ca_for_signing(self):
         """
         Return the Client Protection Certificate Authority assigned
         to this engine. The CA is used to provide decryption services
         to outbound client connections.
 
-        :rtype: ClientProtectionCA
+        :rtype: ClientProtectionCA or None if not defined
         """
-        return Element.from_href(
-            self.engine.tls_client_protection)
-'''
+        if self.status:
+            if is_api_version_less_than('7.0'):
+                return Element.from_href(self.engine
+                                             .tls_client_protection[0]['ca_for_signing_ref'])
+            else:
+                return Element.from_href(self.engine
+                                             .tls_client_protection['ca_for_signing_ref'])
+        else:
+            return None
+
+    @property
+    def tls_trusted_ca_tags(self):
+        """
+        Return the TLS trusted CA tags.
+
+        :rtype: TrustedCATag array or [] if not defined
+        """
+        if self.status:
+            if is_api_version_less_than('7.0'):
+                return [Element.from_href(tag)
+                        for tag in self.engine.tls_client_protection[0]['tls_trusted_ca_tag_ref']]
+            else:
+                return [Element.from_href(tag)
+                        for tag in self.engine.tls_client_protection['tls_trusted_ca_tag_ref']]
+        else:
+            return []
+
+    @property
+    def tls_trusted_cas(self):
+        """
+        Return the TLS trusted CAs.
+
+        :rtype: TLSCertificateAuthority array or [] if not defined
+        """
+        if self.status:
+            if is_api_version_less_than('7.0'):
+                return [Element.from_href(ca)
+                        for ca in self.engine.tls_client_protection[0]['tls_trusted_ca_ref']]
+            else:
+                return [Element.from_href(ca)
+                        for ca in self.engine.tls_client_protection['tls_trusted_ca_ref']]
+        else:
+            return []
+
+    def __str__(self):
+        return 'ClientInspection for {}'.format(self.engine.name)

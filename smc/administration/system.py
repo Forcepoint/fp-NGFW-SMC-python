@@ -1,6 +1,6 @@
 """
 Module that controls aspects of the System itself, such as updating dynamic
-packages, updating engines, applying global blacklists, etc.
+packages, updating engines, applying global block lists, etc.
 
 To load the configuration for system, do::
 
@@ -23,6 +23,9 @@ import logging
 
 from smc.administration.upcoming_event import UpcomingEvents, UpcomingEventsPolicy, \
     UpcomingEventIgnoreSettings
+from smc.compat import is_api_version_less_than_or_equal, is_api_version_less_than
+from smc.elements.other import prepare_blacklist, prepare_block_list
+from smc.administration.system_properties import SystemProperty
 from smc.elements.other import prepare_blacklist
 from smc.base.model import SubElement, Element, ElementCreator
 from smc.administration.updates import EngineUpgrade, UpdatePackage
@@ -149,19 +152,75 @@ class System(SubElement):
         """
         return sub_collection(self.get_relation("engine_upgrade"), EngineUpgrade)
 
+    def system_properties(self):
+        """
+        List all global system properties available.
+
+        To find specific system property available from the returned
+        collection, use convenience methods:
+
+            system = System()
+            system_properties = system.system_properties()
+            system_properties.get_contains('enable_pci')
+
+        :rtype: SubElementCollection(SystemProperty)
+        """
+        return sub_collection(self.get_relation('system_properties'), SystemProperty)
+
+    def system_property(self, system_key):
+        """
+        Retrieve the global system property from its system key (unique id).
+        Otherwise BaseException.
+
+            system = System()
+            system_property = system.system_property(system_key=8)
+
+        :rtype: SystemProperty
+        """
+        return Element.from_href(self.get_relation('system_properties')+'/{}'.format(system_key))
+
+    def update_system_property(self, system_key, new_value):
+        """
+        Update the global system property from its system key (unique id)
+        with the specified value (str).
+        If the system property does not exist a BaseException is thrown.
+
+            system = System()
+            system.update_system_property(system_key=8, value="0")
+        """
+        return self.system_property(system_key=system_key).update(value=new_value)
+
     def uncommitted(self):
         pass
 
-    def system_properties(self):
-        """
-        List of all properties applied to the SMC
-
-        :raises ActionCommandFailed: failure to retrieve resource
-        """
-        return self.make_request(resource="system_properties")
-
     def clean_invalid_filters(self):
         pass
+
+    def block_list(self, src, dst, duration=3600, **kw):
+        """
+        Add block_list to all defined engines.
+        Use the cidr netmask at the end of src and dst, such as:
+        1.1.1.1/32, etc.
+
+        :param src: source of the entry
+        :param dst: destination of block list entry
+        :raises ActionCommandFailed: block list apply failed with reason
+        :return: None
+
+        .. seealso:: :class:`smc.core.engine.Engine.block_list`. Applying
+            a blacklist at the system level will be a global blacklist entry
+            versus an engine specific entry.
+
+        .. note:: If more advanced blacklist is required using source/destination
+            ports and protocols (udp/tcp), use kw to provide these arguments. See
+            :py:func:`smc.elements.other.prepare_blacklist` for more details.
+
+        .. note:: This method requires SMC version >= 7.0
+        """
+        json = {"entries": [prepare_block_list(src, dst, duration, **kw)]}
+        self.make_request(
+            method="create", resource="block_list", json=json
+        )
 
     def blacklist(self, src, dst, duration=3600, **kw):
         """
@@ -181,10 +240,22 @@ class System(SubElement):
         .. note:: If more advanced blacklist is required using source/destination
             ports and protocols (udp/tcp), use kw to provide these arguments. See
             :py:func:`smc.elements.other.prepare_blacklist` for more details.
+
+        .. note:: This method requires SMC version < 7.0
+        since this version, "blacklist" is renamed "block_list"
         """
+        if is_api_version_less_than("7.0"):
+            resource = "blacklist"
+            json = {"entries": [prepare_blacklist(src, dst, duration, **kw)]}
+        else:
+            resource = "block_list"
+            json = {"entries": [prepare_block_list(src, dst, duration, **kw)]}
+
         self.make_request(
-            method="create", resource="blacklist", json=prepare_blacklist(src, dst, duration, **kw)
-        )
+                method="create",
+                resource=resource,
+                json=json
+            )
 
     @property
     def licenses(self):

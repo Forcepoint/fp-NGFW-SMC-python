@@ -2,7 +2,7 @@ from smc.base.model import Element, ElementCreator
 from smc.base.structs import NestedDict
 from smc.api.exceptions import ElementNotFound, InvalidRuleValue
 from smc.base.util import element_resolver
-from smc.compat import is_api_version_less_than_or_equal
+from smc.compat import is_api_version_less_than_or_equal, is_api_version_less_than
 
 
 class RuleElement(object):
@@ -323,13 +323,19 @@ class Action(NestedDict):
         Since SMC 6.6 actions have to be in list
         format whereas in SMC < 6.6 they were string.
         :param str|list value: allow\\|discard\\|continue\\|refuse\\|jump\\|apply_vpn
-                          \\|enforce_vpn\\|forward_vpn\\|blacklist
+                          \\|enforce_vpn\\|forward_vpn\\|block_list
         :rtype: str|list
         """
         return self.get("action")
 
     @action.setter
     def action(self, value):
+        if not is_api_version_less_than("7.0"):
+            if isinstance(value, str) and value == "blacklist":
+                value = "block_list"
+            if isinstance(value, list):
+                # replace blacklist in action list
+                value = [action.replace("blacklist", "block_list") for action in value]
         self.update(action=value)
 
     @property
@@ -472,6 +478,51 @@ class Action(NestedDict):
     @sub_policy.setter
     def sub_policy(self, value):
         self.update(sub_policy=element_resolver(value))
+
+    @property
+    def valid_block_lister(self):
+        """
+        Used when ``action=block_list``.
+        If specified with block_list action, you want to restrict
+        allowed block listers for this rule. Block list entries are only accepted from the
+        components you specify (and from the engine command line).
+        NGFW Engines are always allowed to add entries to their own block lists.
+        If not specified with block_list action,
+        any block list entries are accepted from all components.
+
+        :rtype: list(Engine)
+        .. note:: This method requires SMC version >= 7.0
+        """
+        if "valid_block_lister" in self:
+            return [Element.from_href(element) for element in self.data.get("valid_block_lister")]
+
+    @valid_block_lister.setter
+    def valid_block_lister(self, values):
+        self.update(valid_block_lister=values)
+
+    @property
+    def valid_blacklister(self):
+        """
+        Used when ``action=blacklist``.
+        If specified with blacklist action, you want to restrict
+        allowed block listers for this rule. Black list entries are only accepted from the
+        components you specify (and from the engine command line).
+        NGFW Engines are always allowed to add entries to their own block lists.
+        If not specified with blacklist action,
+        any black list entries are accepted from all components.
+
+        :rtype: list(Engine)
+        .. note:: This method requires SMC version < 7.0
+        """
+        if "valid_blacklister" in self:
+            return [Element.from_href(element) for element in self.data.get("valid_blacklister")]
+
+    @valid_blacklister.setter
+    def valid_blacklister(self, values):
+        if is_api_version_less_than("7.0"):
+            self.update(valid_blacklister=values)
+        else:
+            self.update(valid_block_lister=values)
 
     @property
     def user_response(self):
@@ -656,7 +707,7 @@ class LogOptions(NestedDict):
     @property
     def application_logging(self):
         """
-        Stores information about Application use. You can log spplication
+        Stores information about Application use. You can log application
         use even if you do not use Applications for access control.
 
         :param str value: off\\|default\\|enforced
@@ -668,6 +719,38 @@ class LogOptions(NestedDict):
     def application_logging(self, value):
         if value in ("off", "default", "enforced"):
             self.update(application_logging=value)
+
+    @property
+    def url_category_logging(self):
+        """
+        Stores information about URL categories use.
+
+        :param str value: off\\|default\\|enforced
+        :return: str
+        """
+        return self.get("url_category_logging")
+
+    @url_category_logging.setter
+    def url_category_logging(self, value):
+        if value in ("off", "default", "enforced"):
+            self.update(url_category_logging=value)
+
+    @property
+    def endpoint_executable_logging(self):
+        """
+        Stores information about EndPoint Executable use. You can log
+        EndPoint Executable use even if you do not use EndPoint Executables
+        for accesscontrol.
+
+        :param str value: off\\|default\\|enforced
+        :return: str
+        """
+        return self.get("eia_executable_logging")
+
+    @endpoint_executable_logging.setter
+    def endpoint_executable_logging(self, value):
+        if value in ("off", "default", "enforced"):
+            self.update(eia_executable_logging=value)
 
     @property
     def log_accounting_info_mode(self):
@@ -725,6 +808,43 @@ class LogOptions(NestedDict):
             self.log_accounting_info_mode = True
 
     @property
+    def qos_class(self):
+        """
+        Matching QoS Classes.
+        The QoS Rules are linked to different types of traffic using the QoS
+        Classes. QoS Classes are matched to traffic in the Access rules
+        with the following actions:
+        - Access rules with the Allow action set a QoS Class for traffic
+          that matches the rules.
+        - Access rules with the Continue action set a QoS Class for all subsequent
+          matching rules that have no specific QoS Class defined.
+        - Access rules with the Use VPN action (Firewall only) set a QoS Class
+          for VPN traffic. Incoming VPN traffic may also match a normal Allow
+          rule after decryption. Otherwise, for outgoing traffic, encryption is done after
+          the QoS Policy is checked. For incoming traffic, decryption is done before the
+          QoS Policy is checked.
+        However, if you only want to read and use DSCP markers set by other devices,
+        the QoS Class is assigned according to the rules on the
+        DSCP Match/Mark tab of the QoS Policy.
+
+        :return: QoSClass
+        """
+        qos_class_ref = self.get("qos_class")
+        qos_class = None
+        if qos_class_ref:
+            qos_class = Element.from_href(qos_class_ref)
+
+        return qos_class
+
+    @qos_class.setter
+    def qos_class(self, value):
+        qos_class = None
+        if value:
+            qos_class = element_resolver(value)
+
+        self.update(qos_class=qos_class)
+
+    @property
     def log_payload_excerpt(self):
         """
         Stores an excerpt of the packet that matched. The maximum recorded
@@ -739,6 +859,71 @@ class LogOptions(NestedDict):
     @log_payload_excerpt.setter
     def log_payload_excerpt(self, value):
         self.update(log_payload_excerpt=value)
+
+    @property
+    def log_alert(self):
+        """
+        If Log Level is set to Alert, specifies the Alert that is sent. Specifying
+        different Alerts for different types of rules allows more fine-grained
+        alert escalation policies.
+
+        :return: AlertElement
+        """
+        log_alert_ref = self.get("log_alert")
+        log_alert = None
+        if log_alert_ref:
+            log_alert = Element.from_href(log_alert_ref)
+
+        return log_alert
+
+    @log_alert.setter
+    def log_alert(self, value):
+        alert = None
+        if value:
+            alert = element_resolver(value)
+
+        self.update(log_alert=alert)
+
+    @property
+    def log_compression(self):
+        """
+        Stores information about Compress Logs.
+
+        :param str value: off\\|only_access\\|also_inspection
+        :return: str
+        """
+        return self.get("log_compression")
+
+    @log_compression.setter
+    def log_compression(self, value):
+        if value in ("off", "only_access", "also_inspection"):
+            self.update(log_compression=value)
+
+    @property
+    def log_compression_max_burst_size(self):
+        """
+        If Compress Logs is selected, the max burst size.
+
+        :return: int. None if not defined.
+        """
+        return self.get("log_compression_max_burst_size")
+
+    @log_compression_max_burst_size.setter
+    def log_compression_max_burst_size(self, value):
+        self.update(log_compression_max_burst_size=value)
+
+    @property
+    def log_compression_max_log_rate(self):
+        """
+        If Compress Logs is selected, the max log rate.
+
+        :return: int. None if not defined.
+        """
+        return self.get("log_compression_max_log_rate")
+
+    @log_compression_max_log_rate.setter
+    def log_compression_max_log_rate(self, value):
+        self.update(log_compression_max_log_rate=value)
 
     @property
     def log_payload_record(self):
@@ -764,6 +949,10 @@ class LogOptions(NestedDict):
         """
         return self.get("log_severity")
 
+    @log_severity.setter
+    def log_severity(self, value):
+        self.update(log_severity=value)
+
     @property
     def user_logging(self):
         """
@@ -783,6 +972,17 @@ class LogOptions(NestedDict):
     def user_logging(self, value):
         if value in ("off", "default", "enforced"):
             self.update(user_logging=value)
+
+    def __str__(self):
+        return "{}(log_accounting_info_mode={}, log_closing_mode={}, log_level={}," \
+               " log_payload_excerpt={}, log_payload_record={}, log_severity= {})"\
+            .format(self.__class__.__name__,
+                    self.log_accounting_info_mode,
+                    self.log_closing_mode,
+                    self.log_level,
+                    self.log_payload_excerpt,
+                    self.log_payload_record,
+                    self.log_severity)
 
 
 class SourceVpn(NestedDict):

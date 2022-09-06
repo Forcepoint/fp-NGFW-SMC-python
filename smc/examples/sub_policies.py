@@ -9,7 +9,7 @@ Example script
 
 # Python Base Import
 from smc import session
-from smc.compat import is_api_version_less_than_or_equal
+from smc.compat import is_api_version_less_than_or_equal, is_api_version_less_than
 from smc.core.engines import Layer3Firewall
 from smc.elements.network import Host, Network
 from smc.policy.ips import IPSPolicy, IPSSubPolicy
@@ -49,6 +49,38 @@ if __name__ == "__main__":
             destinations="any",
             services=[TCPService("SSH")],
             action="discard",
+        )
+
+        print("Create Engine:myFW..")
+        engine = Layer3Firewall.create(name="myFw",
+                                       mgmt_ip="192.168.10.1",
+                                       mgmt_network="192.168.10.0/24")
+
+        if not is_api_version_less_than("7.0"):
+            print("Create block_list rule:")
+            # add apply block list action rule with restricted allowed block lister
+            block_list_action = Action()
+            block_list_action.action = ["block_list"]
+            block_list_action.valid_block_lister = [engine.href]
+            rule_block_list = p.fw_ipv4_access_rules.create(
+                    name="block_list_rule",
+                    sources="any",
+                    destinations="any",
+                    services=[TCPService("SSH")],
+                    action=block_list_action,
+                )
+
+        # check backward compatibility for blacklist renaming
+        print("Create blacklist rule:")
+        blacklist_action = Action()
+        blacklist_action.action = ["blacklist"]
+        blacklist_action.valid_blacklister = [engine.href]
+        rule_block_list = p.fw_ipv4_access_rules.create(
+            name="blacklist_rule",
+            sources="any",
+            destinations="any",
+            services=[TCPService("FTP")],
+            action=blacklist_action,
         )
 
         # Create external gateway used by PolicyVpn, its end-point and site
@@ -275,6 +307,7 @@ if __name__ == "__main__":
         exit(-1)
     finally:
         FirewallSubPolicy("mySubPolicy1").delete()
+        Layer3Firewall("myFw").delete()
         PolicyVPN("myVpn").delete()
         ExternalGateway("remoteside").delete()
         Network("remotenet").delete()

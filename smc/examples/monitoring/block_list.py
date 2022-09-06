@@ -1,7 +1,6 @@
 """
-Example script to show how to subscribe to BLACKLIST notifications using websocket library
+Example script to show how to subscribe to BLOCK LIST notifications using websocket library
 or smc_monitoring extension
-Since SMC>=7.0 BLACKLIST is renamed BLOCK_LIST
 """
 
 
@@ -17,14 +16,16 @@ import datetime
 from websocket import create_connection, WebSocketTimeoutException
 
 from smc import session
-from smc_monitoring.monitors.blacklist import BlacklistQuery
+from smc_monitoring.monitors.block_list import Block_listQuery
 
 from smc.administration.system import System
-from smc.compat import is_api_version_less_than
 from smc.core.engines import Layer3Firewall
-from smc.elements.other import Blacklist
+from smc.elements.other import Blocklist
 from smc.policy.layer3 import FirewallPolicy
 from smc_info import SMC_URL, API_KEY, API_VERSION, WS_URL
+from smc_monitoring.models.values import FieldValue, IPValue
+from smc_monitoring.models.filters import InFilter
+from smc_monitoring.models.constants import LogField
 
 WRONG_ENTRIES_SIZE = "Couldn't retrieve the expected number of entries!"
 NOT_ONLINE = "Node is not online!"
@@ -32,8 +33,8 @@ NOT_ONLINE = "Node is not online!"
 ENGINENAME = "myFw"
 RETRY_ONLINE = 20
 
-# Try with large number of blacklist entries
-NUMBER_BLACKLIST_ENTRIES = 300
+# Try with large number of block list entries
+NUMBER_BLOCK_LIST_ENTRIES = 300
 
 #     """ Define logger used in python file. """
 formatter = logging.Formatter('%(asctime)s:%(name)s.%(funcName)s:%(levelname)s: %(message)s')
@@ -45,16 +46,16 @@ logger.addHandler(console_handler)
 logger.propagate = False
 
 
-# create a blacklist entry each 5 second
-def add_blacklist_entry(idx, engine, nb_to_add=1):
+# create a block list entry each 5 second
+def add_block_list_entry(idx, engine, nb_to_add=1):
     print()
     print("Thread started: add new entries...")
     for i in range(nb_to_add):
-        # Add blacklist entry
+        # Add block list entry
         time.sleep(5)
         ip_src = "{}.{}.0.1/32".format(idx, i+1)
         print("Thread: add new entry:src={}".format(ip_src))
-        engine.blacklist(src=ip_src, dst="10.0.0.2/32")
+        engine.block_list(src=ip_src, dst="10.0.0.2/32")
     print("Thread terminated")
 
 
@@ -93,40 +94,37 @@ try:
 
     assert online, NOT_ONLINE
 
-    # Add blacklist to all defined engines.
-    print("{} => Add blacklist to all defined engines.."
+    # Add block_list to all defined engines.
+    print("{} => Add block_list to all defined engines.."
           .format(datetime.datetime.now().strftime("%H:%M:%S")))
-    System().blacklist("11.11.0.1/32", "11.11.0.2/32")
+    System().block_list("11.11.0.1/32", "11.11.0.2/32")
 
     engine = Layer3Firewall(ENGINENAME)
 
     # create 10 entries
-    print("{} => Add 10 blacklist entries to engine.."
+    print("{} => Add 10 block list entries to engine.."
           .format(datetime.datetime.now().strftime("%H:%M:%S")))
-    bl = Blacklist()
+    bl = Blocklist()
     for i in range(10):
         ip_src = "11.0.0.{}/32".format(i)
         print("{} => add entry:src={}".format(datetime.datetime.now().strftime("%H:%M:%S"), ip_src))
         bl.add_entry(src=ip_src, dst="10.0.0.2/32")
-    engine.blacklist_bulk(bl)
+    engine.block_list_bulk(bl)
 
     # wait time for entries to be added
     time.sleep(5)
 
     print()
-    print("{} => Retrieve Blacklist using websocket library"
+    print("{} => Retrieve Block list using websocket library"
           .format(datetime.datetime.now().strftime("%H:%M:%S")))
     ws = create_connection(
         "{}/{}/monitoring/session/socket".format(WS_URL, str(API_VERSION)),
         cookie=session.session_id,
         timeout=10
     )
-    if is_api_version_less_than("7.0"):
-        definition = "BLACKLIST"
-    else:
-        definition = "BLOCK_LIST"
+
     query = {
-        "query": {"definition": definition, "target": ENGINENAME},
+        "query": {"definition": "BLOCK_LIST", "target": ENGINENAME},
         "fetch": {},
         "format": {"type": "texts"},
     }
@@ -150,7 +148,7 @@ try:
                 print(e)
                 print("{} => add entry:src={}"
                       .format(datetime.datetime.now().strftime("%H:%M:%S"), "1.1.1.1/32"))
-                engine.blacklist(src="1.1.1.1/32", dst="100.0.0.1/32")
+                engine.block_list(src="1.1.1.1/32", dst="100.0.0.1/32")
             finally:
                 assert retry < 10, WRONG_ENTRIES_SIZE
                 retry += 1
@@ -166,28 +164,38 @@ try:
     print("{} => Retrieved:{} !".format(datetime.datetime.now().strftime("%H:%M:%S"), len(added)))
 
     # create 10 entries
-    print("{} => Add 10 blacklist entries to engine.."
+    print("{} => Add 10 block list entries to engine.."
           .format(datetime.datetime.now().strftime("%H:%M:%S")))
-    bl = Blacklist()
+    bl = Blocklist()
     for i in range(10):
         ip_src = "10.0.0.{}/32".format(i)
         print("{} => add entry:src={}".format(datetime.datetime.now().strftime("%H:%M:%S"), ip_src))
         bl.add_entry(src=ip_src, dst="100.0.0.2/32")
-    engine.blacklist_bulk(bl)
+    engine.block_list_bulk(bl)
 
     # wait time for entries to be added
     time.sleep(5)
 
+    print()
+    print("{} => Retrieve Block list Data using smc_monitoring fetch_batch and filters"
+          .format(datetime.datetime.now().strftime("%H:%M:%S")))
+    query = Block_listQuery(ENGINENAME)
+    query.add_or_filter([
+        InFilter(FieldValue(LogField.BLOCK_LISTENTRYSOURCEIP), [IPValue('10.0.0.1')]),
+        InFilter(FieldValue(LogField.BLOCK_LISTENTRYDESTINATIONIP), [IPValue('10.0.0.2')])])
+    for record in query.fetch_batch(max_recv=0, query_timeout=120, inactivity_timeout=20):
+        print("{} [filtered]=> {}".format(datetime.datetime.now().strftime("%H:%M:%S"), record))
+
     # create thread to simulate adding 10 new entries every five seconds
-    t1 = threading.Thread(target=add_blacklist_entry, args=(1, engine, 10))
+    t1 = threading.Thread(target=add_block_list_entry, args=(1, engine, 10))
     t1.start()
 
     print()
-    print("{} => Retrieve Blacklist Data using smc_monitoring fetch_batch while new entries"
+    print("{} => Retrieve Block list Data using smc_monitoring fetch_batch while new entries"
           " are received within inactivity delay (in this case all the entries since they are"
           " generated every 5 seconds)"
           .format(datetime.datetime.now().strftime("%H:%M:%S")))
-    query = BlacklistQuery(ENGINENAME)
+    query = Block_listQuery(ENGINENAME)
     for record in query.fetch_batch(max_recv=0, query_timeout=120, inactivity_timeout=20):
         print("{} => {}".format(datetime.datetime.now().strftime("%H:%M:%S"), record))
     print("{} => Retrieved !".format(datetime.datetime.now().strftime("%H:%M:%S")))
@@ -196,16 +204,16 @@ try:
     # create a large number of entries
     #
     print("{} => Add {} blacklist entries to engine.."
-          .format(datetime.datetime.now().strftime("%H:%M:%S"), NUMBER_BLACKLIST_ENTRIES))
-    bl = Blacklist()
-    nb_block = math.floor(NUMBER_BLACKLIST_ENTRIES / 250)
+          .format(datetime.datetime.now().strftime("%H:%M:%S"), NUMBER_BLOCK_LIST_ENTRIES))
+    bl = Blocklist()
+    nb_block = math.floor(NUMBER_BLOCK_LIST_ENTRIES / 250)
     for k in range(nb_block):
         print("{} => add 250 entries block {}..."
               .format(datetime.datetime.now().strftime("%H:%M:%S"), k))
         for i in range(250):
             ip_src = "{}.0.0.{}/32".format(30+k, i)
             bl.add_entry(src=ip_src, dst="10.0.0.2/32")
-    nb_entries = NUMBER_BLACKLIST_ENTRIES - nb_block * 250
+    nb_entries = NUMBER_BLOCK_LIST_ENTRIES - nb_block * 250
     print("{} => add {} entries block {}..."
           .format(datetime.datetime.now().strftime("%H:%M:%S"), nb_entries, k+1))
     for i in range(nb_entries):
@@ -216,15 +224,15 @@ try:
     #
     # Retrieve all entries:
     # use max_recv=0, inactivity_timeout=20
-    print("{} => Retrieve all BlacklistEntry elements using smc_monitoring fetch_as_element"
+    print("{} => Retrieve all BlocklistEntry elements using smc_monitoring fetch_as_element"
           .format(datetime.datetime.now().strftime("%H:%M:%S")))
-    query = BlacklistQuery(ENGINENAME)
+    query = Block_listQuery(ENGINENAME)
     count = 0
     for element in query.fetch_as_element(max_recv=0, inactivity_timeout=20):
         print("{} => {} {} {} {} {} {}".format(datetime.datetime.now().strftime("%H:%M:%S"),
                                                element.first_fetch,
-                                               element.blacklist_id,
-                                               element.blacklist_entry_key,
+                                               element.block_list_id,
+                                               element.block_list_entry_key,
                                                element.engine,
                                                element.href,
                                                element.source,
@@ -244,12 +252,12 @@ except BaseException as e:
 
 finally:
     # remove blacklist entries
-    print("Remove blacklist entries..")
-    query = BlacklistQuery(ENGINENAME)
+    print("Remove block list entries..")
+    query = Block_listQuery(ENGINENAME)
     for element in query.fetch_as_element(max_recv=0, query_timeout=5):
-        print("Remove {}".format(element.blacklist_entry_key))
+        print("Remove {}".format(element.block_list_entry_key))
         element.delete()
-    engine.blacklist_flush()
+    engine.block_list_flush()
     engine.delete()
     FirewallPolicy("myPolicy1").delete()
 

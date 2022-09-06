@@ -119,6 +119,22 @@ class LogField:
     BLACKLISTENTRYDESTINATIONPORTRANGE = 126
     BLACKLISTENTRYDURATION = 127  #: Blacklist entry duration
     BLACKLISTER = 128  #: Blacklister
+    # BLOCK_LIST renaming
+    BLOCK_LISTENTRYID = 117  #: None
+    BLOCK_LISTENTRYSOURCEIP = 118  #: block_list entry source IP address
+    BLOCK_LISTENTRYSOURCEIPMASK = 119  #: block_list entry source IP address mask
+    BLOCK_LISTENTRYDESTINATIONIP = 120  #: block_list entry destination IP address
+    #: block_list entry destination IP address mask
+    BLOCK_LISTENTRYDESTINATIONIPMASK = 121
+    BLOCK_LISTENTRYPROTOCOL = 122  #: block_list entry IP protocol
+    BLOCK_LISTENTRYSOURCEPORT = 123  #: block_list entry source port
+    BLOCK_LISTENTRYSOURCEPORTRANGE = 124  #: block_list entry source port range end
+    BLOCK_LISTENTRYDESTINATIONPORT = 125  #: block_list entry destination port
+    #: block_list entry destination port range end
+    BLOCK_LISTENTRYDESTINATIONPORTRANGE = 126
+    BLOCK_LISTENTRYDURATION = 127  #: block_list entry duration
+    BLOCK_LISTER = 128  #: block_lister
+
     QOSCLASS = 129  #: QoS Class
     DSCPMARK = 130  #: DSCP Mark
     QOSPRIORITY = 131  #: QoS Priority
@@ -153,6 +169,12 @@ class LogField:
     BLACKLISTENTRYSOURCEIPPREFIXLEN = 172
     BLACKLISTENTRYDESTINATIONIPPREFIXLEN = (
         173  #: Blacklist entry destination IP address prefix length
+    )
+    # BLOCK_LIST renaming
+    #: block_list entry source IP address prefix length
+    BLOCK_LISTENTRYSOURCEIPPREFIXLEN = 172
+    BLOCK_LISTENTRYDESTINATIONIPPREFIXLEN = (
+        173  #: block_list entry destination IP address prefix length
     )
     SFPINGRESS = 900  #: SFP_INGRESS
     IKEDHGROUP = 901  #: Diffie-Hellman Group
@@ -222,6 +244,8 @@ class LogField:
     NUMRESETRESPONSES = 367  #: Number of reset responses performed by this engine
     NUMDISCARDRESPONSES = 368  #: Number of discard responses performed by this engine
     NUMBLACKLISTRESPONSES = 369  #: Number of blacklist responses performed by this engine
+    # BLACKLIST renaming
+    NUMBLOCK_LISTRESPONSES = 369  #: Number of block_list responses performed by this engine
     SENSORINTERFACEKEY = 370  #: Sensor interface key
     SENSORTRAFFIC = 372  #: Sensor traffic
     SENSORTRAFFICPROCESSEDPACKETS = 373  #: Processed Packets

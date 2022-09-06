@@ -23,7 +23,7 @@ from smc.core.collection import (
     SwitchInterfaceCollection,
 )
 from smc.administration.tasks import Task
-from smc.elements.other import prepare_blacklist
+from smc.elements.other import prepare_block_list, prepare_blacklist
 from smc.elements.network import Alias
 from smc.vpn.elements import VPNSite
 from smc.routing.bgp import DynamicRouting
@@ -39,6 +39,7 @@ from smc.core.addon import (
     UrlFiltering,
     Sandbox,
     TLSInspection,
+    ClientInspection
 )
 from smc.elements.servers import LogServer
 from smc.base.collection import create_collection, sub_collection
@@ -50,7 +51,7 @@ from smc.base.structs import BaseIterable
 from smc.elements.profiles import SNMPAgent
 from smc.elements.ssm import SSHKnownHostsLists
 from smc.compat import is_smc_version_less_than_or_equal, is_api_version_less_than_or_equal, \
-    min_smc_version
+    min_smc_version, is_api_version_less_than
 
 
 class Engine(Element):
@@ -541,6 +542,23 @@ class Engine(Element):
         return TLSInspection(self)
 
     @property
+    def client_inspection(self):
+        """
+        Client TLS Inspection settings manage certificates assigned to the
+        engine for TLS client decryption (outbound). In order to enable either, you must
+        first assign certificates to the engine.
+        Example of adding ClientInspection to an engine::
+
+            >>> engine = Engine('myfirewall')
+            >>> tls = ClientInspection('client.test.local')
+            >>> engine.client_inspection.enable(tls)
+            >>> engine.update()
+
+        :rtype: ClientInspection
+        """
+        return ClientInspection(self)
+
+    @property
     def ospf(self):
         return self.dynamic_routing.ospf
 
@@ -674,33 +692,96 @@ class Engine(Element):
         :param int duration: how long to blacklist in seconds
         :raises EngineCommandFailed: blacklist failed during apply
         :return: None
+
+        .. note:: This method requires SMC version >= 6.4 and SMC version <7.0
+        since this version, "blacklist" is renamed "block_list"
         """
 
         json_bl_entry = prepare_blacklist(src, dst, duration, **kw)
         if not is_api_version_less_than_or_equal("6.3"):
             json_bl_entry = {"entries": [json_bl_entry]}
 
+        if is_api_version_less_than("7.0"):
+            resource = "blacklist"
+        else:
+            resource = "block_list"
+
         self.make_request(
             EngineCommandFailed,
             method="create",
-            resource="blacklist",
+            resource=resource,
             json=json_bl_entry,
+        )
+
+    def block_list(self, src, dst, duration=3600, **kw):
+        """
+        Add block_list entry to engine node by name. For block_list to work,
+        you must also create a rule with action "Apply Blocklist".
+
+        :param src: source address, with cidr, i.e. 10.10.10.10/32 or 'any'
+        :param dst: destination address with cidr, i.e. 1.1.1.1/32 or 'any'
+        :param int duration: how long to block list in seconds
+        :raises EngineCommandFailed: block list failed during apply
+        :return: None
+        .. note:: This method requires SMC version >= 7.0
+        """
+
+        json_bl_entry = prepare_block_list(src, dst, duration, **kw)
+        if not is_api_version_less_than_or_equal("6.3"):
+            json_bl_entry = {"entries": [json_bl_entry]}
+
+        self.make_request(
+            EngineCommandFailed,
+            method="create",
+            resource="block_list",
+            json=json_bl_entry,
+        )
+
+    def block_list_bulk(self, block_list):
+        """
+        Add block_list entries to the engine node in bulk. For block_list to work,
+        you must also create a rule with action "Apply Blocklist".
+        First create your block_list entries using :class:`smc.elements.other.Blocklist`
+        then provide the block_list to this method.
+
+        :param Blocklist block_list : pre-configured block_list entries
+
+        .. note:: This method requires SMC version >= 7.0
+        """
+        self.make_request(
+            EngineCommandFailed, method="create", resource="block_list", json=block_list.entries
         )
 
     def blacklist_bulk(self, blacklist):
         """
         Add blacklist entries to the engine node in bulk. For blacklist to work,
         you must also create a rule with action "Apply Blacklist".
-        First create your blacklist entries using :class:`smc.elements.other.Blacklist`
+        First create your block_list entries using :class:`smc.elements.other.Blacklist`
         then provide the blacklist to this method.
 
-        :param blacklist Blacklist: pre-configured blacklist entries
+        :param Blacklist blacklist : pre-configured blacklist entries
 
-        .. note:: This method requires SMC version >= 6.4
+        .. note:: This method requires SMC version >= 6.4 and SMC version <7.0
+        since this version, "blacklist" is renamed "block_list"
         """
-        self.make_request(
-            EngineCommandFailed, method="create", resource="blacklist", json=blacklist.entries
-        )
+        if is_api_version_less_than("7.0"):
+            resource = "blacklist"
+        else:
+            resource = "block_list"
+
+            self.make_request(
+                EngineCommandFailed, method="create", resource=resource, json=blacklist.entries
+            )
+
+    def block_list_flush(self):
+        """
+        Flush entire block list for engine
+
+        :raises EngineCommandFailed: flushing block list failed with reason
+        :return: None
+        .. note:: This method requires SMC version >= 7.0
+        """
+        self.make_request(EngineCommandFailed, method="delete", resource="flush_block_list")
 
     def blacklist_flush(self):
         """
@@ -708,8 +789,49 @@ class Engine(Element):
 
         :raises EngineCommandFailed: flushing blacklist failed with reason
         :return: None
+        .. note:: This method requires SMC version < 7.0
+        since this version, "blacklist" is renamed "block_list"
         """
-        self.make_request(EngineCommandFailed, method="delete", resource="flush_blacklist")
+        if is_api_version_less_than("7.0"):
+            self.make_request(EngineCommandFailed, method="delete", resource="flush_blacklist")
+        else:
+            self.make_request(EngineCommandFailed, method="delete", resource="flush_block_list")
+
+    def block_list_show(self, **kw):
+        """
+        .. versionadded:: 0.5.6
+            Requires pip install smc-python-monitoring
+
+        Block list show requires that you install the smc-python-monitoring
+        package. To obtain Blocklist entries from the engine you need to
+        use this extension to plumb the websocket to the session. If you
+        need more granular controls over the block_list such as filtering by
+        source and destination address, use the smc-python-monitoring
+        package directly.
+        Blocklist entries that are returned from this generator have a
+        delete() method that can be called to simplify removing entries.
+        A simple query would look like::
+
+            for bl_entry in engine.block_list_show():
+                print(bl_entry)
+
+        :param kw: keyword arguments passed to block list query. Common setting
+            is to pass max_recv=20, which specifies how many "receive" batches
+            will be retrieved from the SMC for the query. At most, 200 results
+            can be returned in a single query. If max_recv=5, then 1000 results
+            can be returned if they exist. If less than 1000 events are available,
+            the call will be blocking until 5 receives has been reached.
+        :return: generator of results
+        :rtype: :class:`smc_monitoring.monitors.blocklist.BlocklistEntry`
+        """
+        try:
+            from smc_monitoring.monitors.blocklist import BlocklistQuery
+        except ImportError:
+            pass
+        else:
+            query = BlocklistQuery(self.name)
+            for record in query.fetch_as_element(**kw):
+                yield record
 
     def blacklist_show(self, **kw):
         """
@@ -717,7 +839,7 @@ class Engine(Element):
             Requires pip install smc-python-monitoring
 
         Blacklist show requires that you install the smc-python-monitoring
-        package. To obtain blacklist entries from the engine you need to
+        package. To obtain Blacklist entries from the engine you need to
         use this extension to plumb the websocket to the session. If you
         need more granular controls over the blacklist such as filtering by
         source and destination address, use the smc-python-monitoring
@@ -737,13 +859,20 @@ class Engine(Element):
             the call will be blocking until 5 receives has been reached.
         :return: generator of results
         :rtype: :class:`smc_monitoring.monitors.blacklist.BlacklistEntry`
+
+        .. note:: This method requires SMC version < 7.0
+        since this version, "blacklist" is renamed "block_list"
         """
         try:
             from smc_monitoring.monitors.blacklist import BlacklistQuery
         except ImportError:
             pass
         else:
-            query = BlacklistQuery(self.name)
+            if is_api_version_less_than("7.0"):
+                query = BlacklistQuery(self.name)
+            else:
+                query = BlocklistQuery(self.name)
+
             for record in query.fetch_as_element(**kw):
                 yield record
 

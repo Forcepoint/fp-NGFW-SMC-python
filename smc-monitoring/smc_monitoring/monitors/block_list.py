@@ -1,27 +1,27 @@
 """
-Blacklist Query provides the ability to view current blacklist entries in the
+Block_list Query provides the ability to view current block_list entries in the
 SMC by target. Target is defined as the cluster or engine. Retrieved results
 will have a reference to the entry and hence be possible to remove the entry.
 ::
 
-    query = BlacklistQuery('sg_vm')
+    query = BlockListQuery('sg_vm')
     query.format.timezone('CST')
 
 Optionally add an "InFilter" to restrict search to a specific field::
 
     query.add_in_filter(
-        FieldValue(LogField.BLACKLISTENTRYSOURCEIP), [IPValue('2.2.2.2')])
+        FieldValue(LogField.BLOCK_LISTENTRYSOURCEIP), [IPValue('2.2.2.2')])
 
 An InFilter can also use a network based syntax::
 
     query.add_in_filter(
-        FieldValue(LogField.BLACKLISTENTRYSOURCEIP), [IPValue('2.2.2.0/24')])
+        FieldValue(LogField.BLOCK_LISTENTRYSOURCEIP), [IPValue('2.2.2.0/24')])
 
 Or combine filters using "AndFilter" or "OrFilter". Find an entry with
 source IP 2.2.2.2 OR 2.2.2.5::
 
-    ip1 = InFilter(FieldValue(LogField.BLACKLISTENTRYSOURCEIP), [IPValue('2.2.2.2')])
-    ip2 = InFilter(FieldValue(LogField.BLACKLISTENTRYSOURCEIP), [IPValue('2.2.2.5')])
+    ip1 = InFilter(FieldValue(LogField.BLOCK_LISTENTRYSOURCEIP), [IPValue('2.2.2.2')])
+    ip2 = InFilter(FieldValue(LogField.BLOCK_LISTENTRYSOURCEIP), [IPValue('2.2.2.5')])
     query.add_or_filter([in_filter, or_filter])
 
 Get the results of the query in the default TableFormat::
@@ -29,11 +29,11 @@ Get the results of the query in the default TableFormat::
     for entry in query.fetch_batch():
         print(entry)
 
-Delete any blacklist entries with a source IP within a network range of 3.3.3.0/24::
+Delete any block_list entries with a source IP within a network range of 3.3.3.0/24::
 
-        query = BlacklistQuery('sg_vm')
+        query = BlockListQuery('sg_vm')
         query.add_in_filter(
-            FieldValue(LogField.BLACKLISTENTRYSOURCEIP), [IPValue('3.3.3.0/24')])
+            FieldValue(LogField.BLOCK_LISTENTRYSOURCEIP), [IPValue('3.3.3.0/24')])
 
         for record in query.fetch_as_element():  # <-- must get as element to obtain delete() method
             record.delete()
@@ -44,15 +44,14 @@ Delete any blacklist entries with a source IP within a network range of 3.3.3.0/
 from smc_monitoring.models.query import Query
 from smc_monitoring.models.formats import TextFormat, CombinedFormat, DetailedFormat
 from smc_monitoring.models.constants import LogField
-from smc_monitoring.monitors.block_list import BlockListQuery
 from smc.base.model import prepared_request
 from smc.api.exceptions import DeleteElementFailed
-from smc.compat import is_api_version_less_than
+from smc.compat import is_api_version_less_than_or_equal
 
 
-class BlacklistQuery(Query):
+class BlockListQuery(Query):
     """
-    Query existing blacklist entries for a given cluster/engine.
+    Query existing block_list entries for a given cluster/engine.
     It is generally recommended to set your local timezone when making a
     query to convert the timestamp into a relevant format.
 
@@ -68,29 +67,25 @@ class BlacklistQuery(Query):
     location = "/monitoring/session/socket"
     field_ids = [
         LogField.TIMESTAMP,
-        LogField.BLACKLISTER,
-        LogField.BLACKLISTENTRYSOURCEIP,
-        LogField.BLACKLISTENTRYDESTINATIONIP,
+        LogField.BLOCK_LISTER,
+        LogField.BLOCK_LISTENTRYSOURCEIP,
+        LogField.BLOCK_LISTENTRYDESTINATIONIP,
         LogField.PROTOCOL,
-        LogField.BLACKLISTENTRYDURATION,
+        LogField.BLOCK_LISTENTRYDURATION,
         LogField.NODEID,
         LogField.SENDERDOMAIN,
-        LogField.BLACKLISTENTRYID,
+        LogField.BLOCK_LISTENTRYID,
     ]
 
     def __init__(self, target, timezone=None, **kw):
-
-        if is_api_version_less_than("7.0"):
-            super(BlacklistQuery, self).__init__("BLACKLIST", target, **kw)
-        else:
-            super(BlacklistQuery, self).__init__("BLOCK_LIST", target, **kw)
+        super(BlockListQuery, self).__init__("BLOCK_LIST", target, **kw)
 
         if timezone is not None:
             self.format.set_resolving(timezone=timezone)
 
     def fetch_as_element(self, **kw):
         """
-        Fetch the blacklist and return as an instance of Element.
+        Fetch the block_list and return as an instance of Element.
         :param int query_timeout: length of time to wait on recieving web
             socket results (total query time).
         :param int inactivity_timeout: length of time before exiting if no new entry.
@@ -98,7 +93,7 @@ class BlacklistQuery(Query):
             this to supply a max number of receive iterations.
 
         :return: generator returning element instances
-        :rtype: BlacklistEntry
+        :rtype: BlockListEntry
         """
         clone = self.copy()
         # Replace all filters with a combined filter
@@ -109,7 +104,7 @@ class BlacklistQuery(Query):
 
         # Resolve the entry ID to match SMC
         blid = TextFormat(field_format="pretty")
-        blid.field_ids([LogField.BLACKLISTENTRYID])
+        blid.field_ids([LogField.BLOCK_LISTENTRYID])
 
         combined = CombinedFormat(bldata=bldata, blid=blid)
         clone.update_format(combined)
@@ -121,44 +116,44 @@ class BlacklistQuery(Query):
                 first_fetch = entry.get("first_fetch")
                 first_fetch = first_fetch if first_fetch else False
                 data.update({"first_fetch": first_fetch})
-                yield BlacklistEntry(**data)
+                yield BlockListEntry(**data)
 
 
-class BlacklistEntry(object):
+class BlockListEntry(object):
     """
-    A blacklist entry represents an entry in the engines kernel table
+    A block_list entry represents an entry in the engines kernel table
     indicating that a source/destination/port/protocol mapping is currently
-    being blocked by the engine. To remove a blacklist entry from an engine,
+    being blocked by the engine. To remove a block_list entry from an engine,
     retrieve all entries as element and remove the entry of interest by
     called ``delete`` on the element.
 
-    The simplest way to use search filters with a blacklist entry is to
-    examine the BlacklistQuery ``field_ids`` and use these constant fields
+    The simplest way to use search filters with a block_list entry is to
+    examine the BlockListQuery ``field_ids`` and use these constant fields
     as InFilter definitions on the query.
     """
 
     def __init__(self, **kw):
-        self.blacklist = kw
+        self.block_list = kw
 
     @property
-    def blacklist_id(self):
+    def block_list_id(self):
         """
-        Blacklist entry ID. Useful if you want to locate the entry
+        Block_list entry ID. Useful if you want to locate the entry
         within the Management Client.
 
         :rtype: str
         """
-        return self.blacklist.get("Blacklist Entry ID")
+        return self.block_list.get("Blacklist Entry ID")
 
     @property
-    def blacklist_entry_key(self):
+    def block_list_entry_key(self):
         """
-        Blacklist entry Key.
+        Block_list entry Key.
         Needed to remove the entry
 
         :rtype: str
         """
-        return self.blacklist.get("BlacklistEntryId")
+        return self.block_list.get("BlacklistEntryId")
 
     @property
     def first_fetch(self):
@@ -168,73 +163,69 @@ class BlacklistEntry(object):
 
         :rtype: bool
         """
-        return self.blacklist.get("first_fetch")
+        return self.block_list.get("first_fetch")
 
     @property
     def timestamp(self):
         """
-        Timestamp when this blacklist entry was added.
+        Timestamp when this block_list entry was added.
 
         :rtype: str
         """
-        return self.blacklist.get("Timestamp")
+        return self.block_list.get("Timestamp")
 
     @property
     def engine(self):
         """
-        The engine for this blacklist entry.
+        The engine for this block_list entry.
 
         :rtype: str
         """
-        return self.blacklist.get("NodeId")
+        return self.block_list.get("NodeId")
 
     @property
     def href(self):
         """
-        The href for this blacklist entry. This is the reference to the
+        The href for this block_list entry. This is the reference to the
         entry for deleting the entry.
 
         :rtype: str
         """
-        if is_api_version_less_than("7.0"):
-            ref = "blacklist_href"
-        else:
-            ref = "block_list_href"
-        return self.blacklist.get(ref)
+        return self.block_list.get("block_list_href")
 
     @property
     def source(self):
         """
-        Source address/netmask for this blacklist entry.
+        Source address/netmask for this block_list entry.
 
         :rtype: str
         """
         return "{}/{}".format(
-            self.blacklist.get("BlacklistEntrySourceIp"),
-            self.blacklist.get("BlacklistEntrySourceIpPrefixlen"),
+            self.block_list.get("BlacklistEntrySourceIp"),
+            self.block_list.get("BlacklistEntrySourceIpPrefixlen"),
         )
 
     @property
     def destination(self):
         """
-        Destination network/netmask for this blacklist entry.
+        Destination network/netmask for this block_list entry.
 
         :rtype: str
         """
         return "{}/{}".format(
-            self.blacklist.get("BlacklistEntryDestinationIp"),
-            self.blacklist.get("BlacklistEntryDestinationIpPrefixlen"),
+            self.block_list.get("BlacklistEntryDestinationIp"),
+            self.block_list.get("BlacklistEntryDestinationIpPrefixlen"),
         )
 
     @property
     def protocol(self):
         """
-        Specified protocol for the blacklist entry. If none is specified,
+        Specified protocol for the block_list entry. If none is specified,
         'ANY' is returned.
 
         :rtype: str
         """
-        proto = self.blacklist.get("BlacklistEntryProtocol")
+        proto = self.block_list.get("BlacklistEntryProtocol")
         if proto is None:
             return "ANY"
         return proto
@@ -242,39 +233,39 @@ class BlacklistEntry(object):
     @property
     def source_ports(self):
         """
-        Source ports for this blacklist entry. If no ports are specified (i.e. ALL
+        Source ports for this block_list entry. If no ports are specified (i.e. ALL
         ports), 'ANY' is returned.
 
         :rtype: str
         """
-        start_port = self.blacklist.get("BlacklistEntrySourcePort")
+        start_port = self.block_list.get("BlacklistEntrySourcePort")
         if start_port is not None:
             return "{}-{}".format(start_port,
-                                  self.blacklist.get("BlacklistEntrySourcePortRange"))
+                                  self.block_list.get("BlacklistEntrySourcePortRange"))
         return "ANY"
 
     @property
     def dest_ports(self):
         """
-        Destination ports for this blacklist entry. If no ports are specified,
+        Destination ports for this block_list entry. If no ports are specified,
         'ANY' is returned.
 
         :rtype: str
         """
-        start_port = self.blacklist.get("BlacklistEntryDestinationPort")
+        start_port = self.block_list.get("BlacklistEntryDestinationPort")
         if start_port is not None:
             return "{}-{}".format(start_port,
-                                  self.blacklist.get("BlacklistEntryDestinationPortRange"))
+                                  self.block_list.get("BlacklistEntryDestinationPortRange"))
         return "ANY"
 
     @property
     def duration(self):
         """
-        Duration for the blacklist entry.
+        Duration for the block_list entry.
 
         :rtype: int
         """
-        return int(self.blacklist.get("BlacklistEntryDuration"))
+        return int(self.block_list.get("BlacklistEntryDuration"))
 
     def delete(self):
         """
@@ -288,7 +279,7 @@ class BlacklistEntry(object):
     def __str__(self):
         return "{0}(id={1},src={2},dst={3})".format(
             self.__class__.__name__,
-            self.blacklist_id,
+            self.block_list_id,
             self.source,
             self.destination)
 

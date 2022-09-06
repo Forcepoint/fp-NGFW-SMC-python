@@ -94,6 +94,7 @@ to match within a Text File Stream::
     >>>
 
 """
+from smc.api.exceptions import CreateElementFailed, ElementNotFound
 from smc.base.model import (
     Element,
     ElementRef,
@@ -102,9 +103,7 @@ from smc.base.model import (
     ElementCache,
     ElementCreator,
 )
-from smc.api.exceptions import CreateElementFailed, ElementNotFound
 from smc.elements.other import SituationTag
-
 
 SEVERITY = {10: "critical", 7: "high", 4: "low", 1: "information"}
 

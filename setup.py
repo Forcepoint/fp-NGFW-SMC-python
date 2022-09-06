@@ -29,7 +29,7 @@ setup(name='fp-NGFW-SMC-python',
       packages=find_packages(exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
       install_requires=[
         'requests>=2.12.0',
-        'pytz==2021.1'
+        'pytz>=2021.1'
       ],
       include_package_data=True,
       classifiers=[

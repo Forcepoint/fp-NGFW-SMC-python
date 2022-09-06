@@ -181,6 +181,15 @@ class Rule(object):
         return Action(self)
 
     @cacheable_resource
+    def options(self):
+        """
+        Options for this rule.
+
+        :rtype: LogOptions
+        """
+        return LogOptions(self)
+
+    @cacheable_resource
     def authentication_options(self):
         """
         Read only authentication options field
@@ -270,16 +279,6 @@ class Rule(object):
         """
         return Service(self)
 
-    @cacheable_resource
-    def options(self):
-        """
-        Rule based options for logging. Enabling and
-        disabled specific log settings.
-
-        :rtype: LogOptions
-        """
-        return LogOptions(self)
-
     @property
     def parent_policy(self):
         """
@@ -341,6 +340,10 @@ class Rule(object):
             else:
                 rule_action = self._get_action(action)
                 rule_values.update(action=rule_action.data)
+
+        if 'options' in kwargs and 'endpoint_executable_logging' in kwargs['options']:
+            kwargs['options']['eia_executable_logging'] = \
+                kwargs['options'].pop('endpoint_executable_logging')
 
         rule_values.update(kwargs)
 
@@ -718,6 +721,7 @@ class IPv4Rule(RuleCommon, Rule, SubElement):
         "enforce_vpn",
         "forward_vpn",
         "blacklist",
+        "block_list"
     )
 
     def create(
@@ -880,7 +884,7 @@ class IPv4Layer2Rule(RuleCommon, Rule, SubElement):
     """
 
     typeof = "layer2_ipv4_access_rule"
-    _actions = ("allow", "continue", "discard", "refuse", "jump", "blacklist")
+    _actions = ("allow", "continue", "discard", "refuse", "jump", "blacklist", "block_list")
 
     def create(
         self,

@@ -8,9 +8,6 @@ from .__version__ import __author__, __author_email__, __license__
 
 
 manager = SessionManager.create()
-atexit.register(manager.close_all)
-
-
 session = manager.get_default_session()
 
 

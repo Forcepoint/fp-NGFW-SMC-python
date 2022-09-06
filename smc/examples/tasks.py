@@ -23,26 +23,16 @@ from smc_info import *
 logging.getLogger()
 
 
-def update_property(name, value):
-    for prop in System().system_properties():
-        if prop.get("name") == name:
-            ref = prop.get("href")
-            prop = SMCRequest(href=ref).read()
-            prop.json["value"] = value
-            request = SMCRequest(href=ref,
-                                 json=prop.json)
-            request.update()
-
-
 if __name__ == "__main__":
     session.login(url=SMC_URL, api_key=API_KEY, verify=False, timeout=120, api_version=API_VERSION)
     print("session OK")
 
 try:
+    system = System()
     # activate system property: enforce_change_management, self_approve_changes
     # pending changes must be approved (@see approve_all()) before being refreshed
-    update_property("enforce_change_management", "true")
-    update_property("self_approve_changes", "true")
+    system.update_system_property(system_key=50, new_value="true")
+    system.update_system_property(system_key=51, new_value="true")
 
     plano = Layer3Firewall("Plano")
 

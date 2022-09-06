@@ -3,15 +3,12 @@ Other element types that treated more like generics, or that can be applied in
 different areas within the SMC. They will not independently be created as standalone
 objects and will be more generic container classes that define the required json when
 used by API functions or methods.
-For example, Blacklist can be applied to an engine directly or system wide. This class
-will define the format when calling blacklist functions.
+For example, blocklist can be applied to an engine directly or system wide. This class
+will define the format when calling blocklist functions.
 """
-from smc.base.model import Element, ElementCreator, ElementList
-from smc.api.exceptions import ModificationFailed
-from smc.base.util import element_resolver
-from smc.base.structs import NestedDict
 from smc.base.decorators import cached_property
-from smc.compat import is_api_version_less_than_or_equal
+from smc.base.model import Element, ElementCreator, ElementList
+from smc.base.structs import NestedDict
 
 
 class Category(Element):
@@ -362,12 +359,13 @@ class ContactAddress(NestedDict):
         )
 
 
-class Blacklist(object):
+class Blocklist(object):
     """
-    Blacklist provides a simple container to add multiple blacklist
-    entries. Pass an instance of this to :class:`smc.core.engine.blacklist_bulk`
+    Blocklist provides a simple container to add multiple block_list
+    entries. Pass an instance of this to :class:`smc.core.engine.block_list_bulk`
     to upload to the engine.
 
+    .. note:: This method requires SMC version >= 7.0
     """
 
     def __init__(self):
@@ -384,6 +382,77 @@ class Blacklist(object):
         dst_port1=None,
         dst_port2=None,
         dst_proto="predefined_tcp",
+    ):
+        """
+        Create a blocklist entry.
+
+        A blocklist can be added directly from the engine node, or from
+        the system context. If submitting from the system context, it becomes
+        a global blocklist. This will return the properly formatted json
+        to submit.
+
+        :param src: source address, with cidr, i.e. 10.10.10.10/32 or 'any'
+        :param dst: destination address with cidr, i.e. 1.1.1.1/32 or 'any'
+        :param int duration: length of time to blocklist
+
+        Both the system and engine context blocklist allow kw to be passed
+        to provide additional functionality such as adding source and destination
+        ports or port ranges and specifying the protocol. The following parameters
+        define the ``kw`` that can be passed.
+
+        The following example shows creating an engine context blocklist
+        using additional kw::
+
+            engine.block_list('1.1.1.1/32', '2.2.2.2/32', duration=3600,
+                src_port1=1000, src_port2=1500, src_proto='predefined_udp',
+                dst_port1=3, dst_port2=3000, dst_proto='predefined_udp')
+
+        :param int src_port1: start source port to limit blocklist
+        :param int src_port2: end source port to limit blocklist
+        :param str src_proto: source protocol. Either 'predefined_tcp'
+            or 'predefined_udp'. (default: 'predefined_tcp')
+        :param int dst_port1: start dst port to limit blocklist
+        :param int dst_port2: end dst port to limit blocklist
+        :param str dst_proto: dst protocol. Either 'predefined_tcp'
+            or 'predefined_udp'. (default: 'predefined_tcp')
+
+        .. note:: if blocking a range of ports, use both src_port1 and
+            src_port2, otherwise providing only src_port1 is adequate. The
+            same applies to dst_port1 / dst_port2. In addition, if you provide
+            src_portX but not dst_portX (or vice versa), the undefined port
+            side definition will default to all ports.
+        """
+        self.entries.setdefault("entries", []).append(
+            prepare_block_list(
+                src, dst, duration, src_port1, src_port2, src_proto, dst_port1, dst_port2, dst_proto
+            )
+        )
+
+
+class Blacklist(object):
+    """
+    Blacklist provides a simple container to add multiple blacklist
+    entries. Pass an instance of this to :class:`smc.core.engine.blacklist_bulk`
+    to upload to the engine.
+
+    .. note:: This method requires SMC version < 7.0
+    since this version, "blacklist" is renamed "block_list"
+    """
+
+    def __init__(self):
+        self.entries = {}
+
+    def add_entry(
+            self,
+            src,
+            dst,
+            duration=3600,
+            src_port1=None,
+            src_port2=None,
+            src_proto="predefined_tcp",
+            dst_port1=None,
+            dst_port2=None,
+            dst_proto="predefined_tcp",
     ):
         """
         Create a blacklist entry.
@@ -495,6 +564,8 @@ def prepare_blacklist(
         same applies to dst_port1 / dst_port2. In addition, if you provide
         src_portX but not dst_portX (or vice versa), the undefined port
         side definition will default to all ports.
+
+        .. note:: This method requires SMC version < 7.0
     """
 
     json = {}
@@ -521,3 +592,67 @@ def prepare_blacklist(
     json.update(duration=duration)
 
     return json
+
+
+def prepare_block_list(
+        src,
+        dst,
+        duration=3600,
+        src_port1=None,
+        src_port2=None,
+        src_proto="predefined_tcp",
+        dst_port1=None,
+        dst_port2=None,
+        dst_proto="predefined_tcp",
+):
+    """
+    Create a block_list entry.
+
+    A blocklist can be added directly from the engine node, or from
+    the system context. If submitting from the system context, it becomes
+    a global blocklist. This will return the properly formatted json
+    to submit.
+
+    :param src: source address, with cidr, i.e. 10.10.10.10/32 or 'any'
+    :param dst: destination address with cidr, i.e. 1.1.1.1/32 or 'any'
+    :param int duration: length of time to blocklist
+
+    Both the system and engine context blocklist allow kw to be passed
+    to provide additional functionality such as adding source and destination
+    ports or port ranges and specifying the protocol. The following parameters
+    define the ``kw`` that can be passed.
+
+    The following example shows creating an engine context blocklist
+    using additional kw::
+
+        engine.block_list('1.1.1.1/32', '2.2.2.2/32', duration=3600,
+            src_port1=1000, src_port2=1500, src_proto='predefined_udp',
+            dst_port1=3, dst_port2=3000, dst_proto='predefined_udp')
+
+    :param int src_port1: start source port to limit blocklist
+    :param int src_port2: end source port to limit blocklist
+    :param str src_proto: source protocol. Either 'predefined_tcp'
+        or 'predefined_udp'. (default: 'predefined_tcp')
+    :param int dst_port1: start dst port to limit blocklist
+    :param int dst_port2: end dst port to limit blocklist
+    :param str dst_proto: dst protocol. Either 'predefined_tcp'
+        or 'predefined_udp'. (default: 'predefined_tcp')
+
+    .. note:: if blocking a range of ports, use both src_port1 and
+        src_port2, otherwise providing only src_port1 is adequate. The
+        same applies to dst_port1 / dst_port2. In addition, if you provide
+        src_portX but not dst_portX (or vice versa), the undefined port
+        side definition will default to all ports.
+
+    .. note:: This method requires SMC version >= 7.0
+    """
+    return prepare_blacklist(src=src,
+                             dst=dst,
+                             duration=duration,
+                             src_port1=src_port1,
+                             src_port2=src_port2,
+                             src_proto=src_proto,
+                             dst_port1=dst_port1,
+                             dst_port2=dst_port2,
+                             dst_proto=dst_proto
+                             )

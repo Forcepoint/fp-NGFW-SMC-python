@@ -58,3 +58,7 @@ def is_smc_version_less_than_or_equal(check_version):
 
 def is_api_version_less_than_or_equal(check_version):
     return LooseVersion(smc.session.api_version) <= LooseVersion(check_version)
+
+
+def is_api_version_less_than(check_version):
+    return LooseVersion(smc.session.api_version) < LooseVersion(check_version)
