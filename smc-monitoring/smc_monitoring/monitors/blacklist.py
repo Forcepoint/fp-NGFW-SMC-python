@@ -47,7 +47,7 @@ from smc_monitoring.models.constants import LogField
 from smc_monitoring.monitors.block_list import BlockListQuery
 from smc.base.model import prepared_request
 from smc.api.exceptions import DeleteElementFailed
-from smc.compat import is_api_version_less_than
+from smc.compat import is_api_version_less_than, is_smc_version_less_than
 
 
 class BlacklistQuery(Query):
@@ -80,7 +80,7 @@ class BlacklistQuery(Query):
 
     def __init__(self, target, timezone=None, **kw):
 
-        if is_api_version_less_than("7.0"):
+        if is_smc_version_less_than("7.0"):
             super(BlacklistQuery, self).__init__("BLACKLIST", target, **kw)
         else:
             super(BlacklistQuery, self).__init__("BLOCK_LIST", target, **kw)

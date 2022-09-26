@@ -22,12 +22,14 @@ class PackageMixin(object):
         """
         return Task.execute(self, "download", timeout=timeout, wait_for_finish=wait_for_finish)
 
-    def activate(self, resource=None, timeout=3, wait_for_finish=False):
+    def activate(self, resource=None, force_upgrade=False, timeout=3, wait_for_finish=False):
         """
         Activate this package on the SMC
 
         :param list resource: node href's to activate on. Resource is only
                required for software upgrades
+        :param query parameter 'force_upgrade' flag to know if we need to force
+               the upgrade (for instance trusted certificate has expired)
         :param int timeout: timeout between queries
         :raises TaskRunFailed: failure during activation (downloading, etc)
         :rtype: TaskOperationPoller
@@ -35,6 +37,7 @@ class PackageMixin(object):
         return Task.execute(
             self,
             "activate",
+            params={"force_upgrade": force_upgrade},
             json={"resource": resource},
             timeout=timeout,
             wait_for_finish=wait_for_finish,

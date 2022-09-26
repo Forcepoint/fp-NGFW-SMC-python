@@ -16,7 +16,7 @@ import datetime
 from websocket import create_connection, WebSocketTimeoutException
 
 from smc import session
-from smc_monitoring.monitors.block_list import Block_listQuery
+from smc_monitoring.monitors.block_list import BlockListQuery
 
 from smc.administration.system import System
 from smc.core.engines import Layer3Firewall
@@ -31,7 +31,7 @@ WRONG_ENTRIES_SIZE = "Couldn't retrieve the expected number of entries!"
 NOT_ONLINE = "Node is not online!"
 
 ENGINENAME = "myFw"
-RETRY_ONLINE = 20
+RETRY_ONLINE = 30
 
 # Try with large number of block list entries
 NUMBER_BLOCK_LIST_ENTRIES = 300
@@ -74,6 +74,16 @@ try:
         node.initial_contact()
         node.bind_license()
 
+    # wait time for engine to be online
+    online = False
+    retry = 0
+    while not online and retry < RETRY_ONLINE:
+        status = engine.nodes[0].status().monitoring_state
+        online = status == "READY"
+        print("{} =>state={}".format(datetime.datetime.now().strftime("%H:%M:%S"), status))
+        time.sleep(5)
+        retry += 1
+
     print("{} =>create and upload policy..".format(datetime.datetime.now().strftime("%H:%M:%S")))
     policy = FirewallPolicy().create("myPolicy1")
 
@@ -87,9 +97,10 @@ try:
     online = False
     retry = 0
     while not online and retry < RETRY_ONLINE:
-        online = engine.nodes[0].status().monitoring_state == "READY"
-        print("{} =>On line={}".format(datetime.datetime.now().strftime("%H:%M:%S"), online))
-        time.sleep(3)
+        status = engine.nodes[0].status().monitoring_state
+        online = status == "READY"
+        print("{} =>state={}".format(datetime.datetime.now().strftime("%H:%M:%S"), status))
+        time.sleep(5)
         retry += 1
 
     assert online, NOT_ONLINE
@@ -179,7 +190,7 @@ try:
     print()
     print("{} => Retrieve Block list Data using smc_monitoring fetch_batch and filters"
           .format(datetime.datetime.now().strftime("%H:%M:%S")))
-    query = Block_listQuery(ENGINENAME)
+    query = BlockListQuery(ENGINENAME)
     query.add_or_filter([
         InFilter(FieldValue(LogField.BLOCK_LISTENTRYSOURCEIP), [IPValue('10.0.0.1')]),
         InFilter(FieldValue(LogField.BLOCK_LISTENTRYDESTINATIONIP), [IPValue('10.0.0.2')])])
@@ -195,7 +206,7 @@ try:
           " are received within inactivity delay (in this case all the entries since they are"
           " generated every 5 seconds)"
           .format(datetime.datetime.now().strftime("%H:%M:%S")))
-    query = Block_listQuery(ENGINENAME)
+    query = BlockListQuery(ENGINENAME)
     for record in query.fetch_batch(max_recv=0, query_timeout=120, inactivity_timeout=20):
         print("{} => {}".format(datetime.datetime.now().strftime("%H:%M:%S"), record))
     print("{} => Retrieved !".format(datetime.datetime.now().strftime("%H:%M:%S")))
@@ -226,7 +237,7 @@ try:
     # use max_recv=0, inactivity_timeout=20
     print("{} => Retrieve all BlocklistEntry elements using smc_monitoring fetch_as_element"
           .format(datetime.datetime.now().strftime("%H:%M:%S")))
-    query = Block_listQuery(ENGINENAME)
+    query = BlockListQuery(ENGINENAME)
     count = 0
     for element in query.fetch_as_element(max_recv=0, inactivity_timeout=20):
         print("{} => {} {} {} {} {} {}".format(datetime.datetime.now().strftime("%H:%M:%S"),
@@ -253,10 +264,11 @@ except BaseException as e:
 finally:
     # remove blacklist entries
     print("Remove block list entries..")
-    query = Block_listQuery(ENGINENAME)
+    query = BlockListQuery(ENGINENAME)
     for element in query.fetch_as_element(max_recv=0, query_timeout=5):
         print("Remove {}".format(element.block_list_entry_key))
         element.delete()
+    engine = Layer3Firewall(ENGINENAME)
     engine.block_list_flush()
     engine.delete()
     FirewallPolicy("myPolicy1").delete()

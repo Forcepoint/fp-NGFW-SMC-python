@@ -23,7 +23,8 @@ import logging
 
 from smc.administration.upcoming_event import UpcomingEvents, UpcomingEventsPolicy, \
     UpcomingEventIgnoreSettings
-from smc.compat import is_api_version_less_than_or_equal, is_api_version_less_than
+from smc.compat import is_api_version_less_than_or_equal, is_api_version_less_than, \
+    is_smc_version_less_than
 from smc.elements.other import prepare_blacklist, prepare_block_list
 from smc.administration.system_properties import SystemProperty
 from smc.elements.other import prepare_blacklist
@@ -133,6 +134,44 @@ class System(SubElement):
                 update_packages_elements.append(update_package)
 
         return update_packages_elements
+
+    def engine_upgrade_import(self, import_engine_upgrade_file, force_import=False):
+        """
+        Import upgrade package into SMC. Specify the fully qualified path
+        to the upgrade package file.
+
+        :param str import_engine_upgrade_file: system level path to upgrade package file
+        :param boolean force_import: force import when certificate that signed
+        the zip file has expired.
+        :return: list imported EngineUpgrade
+        """
+        engine_upgrade_element = []
+        with open(import_engine_upgrade_file, "rb") as file:
+            engine_upgrades = self.make_request(
+                method="create",
+                resource="import_upgrade",
+                files={"upgrade_file": file},
+                raw_result=True,
+                params={'force_import': force_import}
+            )
+            logger.info("import engine upgrade task succeeded, engine_upgrade_file : {}"
+                        .format(import_engine_upgrade_file))
+            # check smc version and process api response with compatible version
+            if is_smc_version_less_than("7.0"):
+                for upgrade in engine_upgrades.json:
+                    href = extract_self(engine_upgrades.json[upgrade]["link"])
+                    engine_upgrade = EngineUpgrade(href=href,
+                                                   name=engine_upgrades.json[upgrade]["name"],
+                                                   type="engine_upgrade")
+                    engine_upgrade_element.append(engine_upgrade)
+            else:
+                for upgrade in engine_upgrades.json:
+                    href = extract_self(upgrade["link"])
+                    engine_upgrade = EngineUpgrade(href=href,
+                                                   name=upgrade["name"],
+                                                   type="engine_upgrade")
+                    engine_upgrade_element.append(engine_upgrade)
+        return engine_upgrade_element
 
     def engine_upgrade(self):
         """

@@ -20,7 +20,7 @@ from smc import session
 from smc_monitoring.monitors.blacklist import BlacklistQuery
 
 from smc.administration.system import System
-from smc.compat import is_api_version_less_than
+from smc.compat import is_smc_version_less_than
 from smc.core.engines import Layer3Firewall
 from smc.elements.other import Blacklist
 from smc.policy.layer3 import FirewallPolicy
@@ -30,7 +30,7 @@ WRONG_ENTRIES_SIZE = "Couldn't retrieve the expected number of entries!"
 NOT_ONLINE = "Node is not online!"
 
 ENGINENAME = "myFw"
-RETRY_ONLINE = 20
+RETRY_ONLINE = 30
 
 # Try with large number of blacklist entries
 NUMBER_BLACKLIST_ENTRIES = 300
@@ -73,6 +73,16 @@ try:
         node.initial_contact()
         node.bind_license()
 
+    # wait time for engine to be online
+    online = False
+    retry = 0
+    while not online and retry < RETRY_ONLINE:
+        status = engine.nodes[0].status().monitoring_state
+        online = status == "READY"
+        print("{} =>state={}".format(datetime.datetime.now().strftime("%H:%M:%S"), status))
+        time.sleep(5)
+        retry += 1
+
     print("{} =>create and upload policy..".format(datetime.datetime.now().strftime("%H:%M:%S")))
     policy = FirewallPolicy().create("myPolicy1")
 
@@ -86,9 +96,10 @@ try:
     online = False
     retry = 0
     while not online and retry < RETRY_ONLINE:
-        online = engine.nodes[0].status().monitoring_state == "READY"
-        print("{} =>On line={}".format(datetime.datetime.now().strftime("%H:%M:%S"), online))
-        time.sleep(3)
+        status = engine.nodes[0].status().monitoring_state
+        online = status == "READY"
+        print("{} =>state={}".format(datetime.datetime.now().strftime("%H:%M:%S"), status))
+        time.sleep(5)
         retry += 1
 
     assert online, NOT_ONLINE
@@ -121,7 +132,7 @@ try:
         cookie=session.session_id,
         timeout=10
     )
-    if is_api_version_less_than("7.0"):
+    if is_smc_version_less_than("7.0"):
         definition = "BLACKLIST"
     else:
         definition = "BLOCK_LIST"
@@ -249,6 +260,7 @@ finally:
     for element in query.fetch_as_element(max_recv=0, query_timeout=5):
         print("Remove {}".format(element.blacklist_entry_key))
         element.delete()
+    engine = Layer3Firewall(ENGINENAME)
     engine.blacklist_flush()
     engine.delete()
     FirewallPolicy("myPolicy1").delete()

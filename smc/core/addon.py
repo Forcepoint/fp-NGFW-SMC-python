@@ -472,6 +472,81 @@ class TLSInspection(object):
                 self.engine.server_credential.remove(href)
 
 
+class ZTNAConnector:
+    """
+    Enable ZTNA Connector on the engine.
+
+        engine.ztna_connector.enable(bgkey="xxx:yyy:zzz", datacenter="ddd")
+        engine.update()
+
+    Disable ZTNA Connector:
+
+        engine.ztna_connector.disable()
+        engine.update()
+
+    .. note:: You must call engine.update() to commit any changes.
+    """
+
+    def __init__(self, engine):
+        self.engine = engine
+
+    def enable(self, bgkey, datacenter, auto_update):
+        """
+        Enable ZTNA Connector on the engine.
+
+        :param str bgkey: connector installer key
+        :param str datacenter: datacenter accessed via this connector
+        :param bool auto_update: install automatically the latest version
+        """
+        self.engine.data.update(ztna_connector_settings={
+            "bgkey": bgkey,
+            "datacenter": datacenter,
+            "auto_update": auto_update
+        })
+
+    def disable(self):
+        """
+        Disable ZTNA Connector on the engine.
+        """
+        self.engine.data.pop("ztna_connector_settings", None)
+
+    @property
+    def status(self):
+        """
+        Return the status (enabled/disabled) of ZTNA Connector on the engine
+
+        :rtype: bool
+        """
+        return "ztna_connector_settings" in self.engine.data
+
+    @property
+    def bgkey(self):
+        "get ztna installation key or None"
+        if not self.status:
+            return None
+        settings = self.engine.data.get("ztna_connector_settings")
+        return settings.get("bgkey")
+
+    @property
+    def datacenter(self):
+        "get ztna datacenter or None"
+        if not self.status:
+            return None
+        settings = self.engine.data.get("ztna_connector_settings")
+        return settings.get("datacenter")
+
+    @property
+    def auto_update(self):
+        "get ztna auto_update or None"
+        if not self.status:
+            return None
+        settings = self.engine.data.get("ztna_connector_settings")
+        return settings.get("auto_update")
+
+    def __repr__(self):
+        return "{0}(enabled={1})".format(self.__class__.__name__, self.status)
+
+
 class ClientInspection(object):
     def __init__(self, engine):
         self.engine = engine

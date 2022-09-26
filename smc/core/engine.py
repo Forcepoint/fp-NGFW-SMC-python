@@ -39,7 +39,8 @@ from smc.core.addon import (
     UrlFiltering,
     Sandbox,
     TLSInspection,
-    ClientInspection
+    ClientInspection,
+    ZTNAConnector,
 )
 from smc.elements.servers import LogServer
 from smc.base.collection import create_collection, sub_collection
@@ -487,6 +488,18 @@ class Engine(Element):
             "Enabling URL Filtering should be done on the Master Engine, not "
             "directly on the virtual engine."
         )
+
+    @property
+    def ztna_connector(self):
+        if not min_smc_version("7.0"):
+            raise UnsupportedEngineFeature("Need at least 7.0 version of the SMC")
+
+        if self.type not in ("single_fw", "fw_cluster", "virtual_fw"):
+            raise UnsupportedEngineFeature(
+                "Enabling ZTNA Connector should be done only on single_fw, "
+                "fw_cluster or virtual_fw")
+
+        return ZTNAConnector(self)
 
     @property
     def sandbox(self):
