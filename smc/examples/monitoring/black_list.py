@@ -9,10 +9,13 @@ Since SMC>=7.0 BLACKLIST is renamed BLOCK_LIST
 import json
 import logging
 import math
+import ssl
 import sys
 import threading
 import time
 import datetime
+import smc.examples
+
 
 from websocket import create_connection, WebSocketTimeoutException
 
@@ -130,7 +133,9 @@ try:
     ws = create_connection(
         "{}/{}/monitoring/session/socket".format(WS_URL, str(API_VERSION)),
         cookie=session.session_id,
-        timeout=10
+        timeout=10,
+        socket=session.sock,
+        sslopt={"cert_reqs": ssl.CERT_NONE}
     )
     if is_smc_version_less_than("7.0"):
         definition = "BLACKLIST"

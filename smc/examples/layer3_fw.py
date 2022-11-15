@@ -1,15 +1,16 @@
 """
 Example of how to create a layer3 Firewall in SMC
 """
+import smc.examples
 
 from smc import session
 from smc.base.util import merge_dicts
 from smc.administration.certificates.tls import ClientProtectionCA
 from smc.core.engines import Layer3Firewall
 from smc.core.general import NTPSettings
-from smc.elements.servers import NTPServer
-from smc_info import *
-
+from smc.elements.profiles import DNSRelayProfile
+from smc.elements.servers import NTPServer, DNSServer
+from smc_info import SMC_URL, API_KEY, API_VERSION
 
 engine_name = "myFw"
 
@@ -38,6 +39,17 @@ try:
 
     # Update NTP server settings for the Firewall
     engine = Layer3Firewall(engine_name)
+    engine.physical_interface.add_layer3_interface(interface_id=1,
+                                                   address="10.10.10.1",
+                                                   network_value="10.10.10.0/24")
+    server = DNSServer.create(name="mydnsserver", address="10.0.0.1")
+    engine.dns.add(['8.8.8.8', server])
+    engine.update()
+
+    profile = DNSRelayProfile("dnsrules")
+    profile.hostname_mapping.add([("hostname1,hostname2", "1.1.1.1")])
+    engine.dns_relay.enable(interface_id=1, dns_relay_profile=profile)
+
     ntp = NTPSettings.create(ntp_enable=False,
                              ntp_servers=[])
     merge_dicts(engine.data, ntp.data)
@@ -48,8 +60,19 @@ try:
     engine.client_inspection.enable(tls)
     engine.update()
 
-    assert engine.client_inspection.status,\
+    assert engine.client_inspection.status, \
         "{} L3 fw should have client protection settings".format(engine_name)
+
+    engine.sandbox.enable(license_key="licenceKey",
+                          license_token="licenseToken")
+    engine.update()
+    assert engine.sandbox.status, \
+        "{} L3 fw should have sandbox settings".format(engine_name)
+
+    engine.sandbox.disable()
+    engine.update()
+    assert not engine.sandbox.status, \
+        "{} L3 fw should have sandbox disabled".format(engine_name)
 
 except BaseException as e:
     print("ex={}".format(e))
@@ -59,4 +82,6 @@ finally:
     Layer3Firewall("myFw").delete()
     NTPServer("myNTPServer").delete()
     ClientProtectionCA("client.test.local").delete()
+    DNSServer("mydnsserver").delete()
+    DNSRelayProfile("dnsrules").delete()
     session.logout()

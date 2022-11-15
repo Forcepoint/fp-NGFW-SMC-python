@@ -1,6 +1,7 @@
 """
 Example of how to create and use Link Layer Discovery Protocol
 """
+import smc.examples
 
 from smc import session
 from smc.core.engines import Layer3Firewall, FirewallCluster

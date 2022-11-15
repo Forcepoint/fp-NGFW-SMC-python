@@ -10,8 +10,10 @@ Example script to show how to use HA Management
 # Python Base Import
 import sys
 import time
+import smc.examples
 
 from smc import session
+from smc.api.exceptions import HaCommandException
 from smc.core.ha_management import HAManagement
 from smc.elements.servers import ManagementServer
 
@@ -77,8 +79,10 @@ try:
     assert info.active_server is not None, "No active server !"
 
     # try to set active the already active server.. receive an http error 400
-    result = ha.set_active(info.active_server)
-    assert result.status_code == 400, "Don't receive error when activating active server"
+    try:
+        result = ha.set_active(info.active_server)
+    except HaCommandException as ex:
+        assert ex.response.status_code == 400, "Don't receive error when activating active server"
 
     # swap active server with first standby server
     stb_servers = info.standby_servers
@@ -117,8 +121,12 @@ try:
     mgt_server = ManagementServer("Management Server")
     retry = 0
     while code == 400 and retry < 20:
-        result = ha.set_active(mgt_server)
-        code = result.status_code
+        try:
+            result = ha.set_active(mgt_server)
+            code = result.status_code
+        except HaCommandException as ex:
+            print("Exception in HA_Management, msg : {}".format(ex.smcresult.msg))
+            code = ex.code
         print("try activate {}=>{}".format(mgt_server, result))
         retry += 1
         time.sleep(10)
@@ -155,7 +163,8 @@ try:
     diag_status = check_diag_issue(DIAGNOSTIC_ERRORS)
     assert diag_status, "Stand by server should be excluded !"
 
-
+except HaCommandException as ex:
+    print("Exception in HA_Management, msg : {}".format(ex.smcresult.msg))
 except Exception as e:
     print(e)
 finally:

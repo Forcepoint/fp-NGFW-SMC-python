@@ -2,6 +2,7 @@
 Example of creating an aggregated interface
 """
 
+import smc.examples
 
 from smc.core.engines import Layer3Firewall
 from smc import session

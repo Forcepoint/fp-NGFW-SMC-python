@@ -7,6 +7,8 @@ Example script to show how to use SourceVpn
 """
 
 # Python Base Import
+import smc.examples
+
 from smc import session
 from smc.base.util import element_resolver
 from smc.elements.alerts import CustomAlert

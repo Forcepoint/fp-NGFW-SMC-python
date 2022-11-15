@@ -6,6 +6,10 @@ or smc_monitoring extension and to use filters
 
 # Python Base Import
 import json
+import ssl
+import smc.examples
+
+
 from websocket import create_connection
 
 from smc import session
@@ -27,7 +31,9 @@ try:
 
     ws = create_connection(
         "{}/{}/monitoring/log/socket".format(WS_URL, str(API_VERSION)),
-        cookie=session.session_id
+        cookie=session.session_id,
+        socket=session.sock,
+        sslopt={"cert_reqs": ssl.CERT_NONE}
     )
 
     # show how to use operator "or" with  source port = 22, 25
@@ -57,6 +63,7 @@ try:
         fetch_id = json.loads(result)['fetch']
         result = ws.recv()
         print("Received '{}'".format(result))
+
     finally:
         ses_mon_abort_query = {"abort": fetch_id}
         ws.send(json.dumps(ses_mon_abort_query))

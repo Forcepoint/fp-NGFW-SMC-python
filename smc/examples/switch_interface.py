@@ -8,8 +8,9 @@ Needs Demo mode
 """
 
 # Python Base Import
+import smc.examples
+
 from smc import session
-from smc.compat import is_api_version_less_than_or_equal
 from smc.core.engines import Layer3Firewall
 from smc_info import *
 

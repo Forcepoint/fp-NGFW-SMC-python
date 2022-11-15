@@ -5,6 +5,8 @@ Example script to show system properties usage.
 # Python Base Import
 
 # Python SMC Import
+import smc.examples
+
 from smc import session
 from smc.administration.system import System
 from smc_info import *

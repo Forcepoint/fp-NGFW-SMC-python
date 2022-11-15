@@ -4,22 +4,26 @@ Middle tier helper module to wrap CRUD operations and catch exceptions
 SMCRequest is the general data structure that is sent to the send_request
 method in smc.api.web.SMCConnection to submit the data to the SMC.
 """
+import smc
 from smc.api.web import send_request
 from smc.api.exceptions import SMCOperationFailure, SMCConnectionError, SessionManagerNotFound
 
 
 def _get_session(session_manager=None):
-    if not session_manager:
-        session_manager = getattr(SMCRequest, "_session_manager")
     try:
-        return (
-            session_manager.get_default_session()
-            if not session_manager._session_hook
-            else session_manager._session_hook(session_manager)
-        )
-
+        if not session_manager:
+            session_manager = getattr(SMCRequest, "_session_manager")
     except AttributeError:
         raise SessionManagerNotFound
+
+    if session_manager._session_hook:
+        return session_manager._session_hook(session_manager)
+
+    try:
+        session_name = smc.session_name.name
+    except AttributeError:
+        session_name = None
+    return smc.get_session_by_user(session_name)
 
 
 class SMCRequest(object):

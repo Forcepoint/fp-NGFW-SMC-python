@@ -7,6 +7,7 @@ Example script to show how to use UpdatePackage object.
 
 # Python Base Import
 import logging
+import smc.examples
 
 # Python SMC Import
 import time
@@ -35,8 +36,6 @@ def refresh_update_package(update_package_to_refresh, state):
 
 if __name__ == "__main__":
 
-    logging.getLogger()
-    logging.basicConfig(level=logging.INFO, format=FORMAT, datefmt="%H:%M:%S")
     session.login(url=SMC_URL, api_key=API_KEY, verify=False, timeout=120, api_version=API_VERSION)
 
     print("session OK")

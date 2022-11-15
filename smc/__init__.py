@@ -1,5 +1,6 @@
-import atexit
 import logging
+import threading
+
 from smc.api.session import SessionManager
 from smc.base.util import import_submodules
 
@@ -7,15 +8,23 @@ from .__version__ import __description__, __url__, __version__
 from .__version__ import __author__, __author_email__, __license__
 
 
+# session name to be used per thread
+session_name = threading.local()
+
 manager = SessionManager.create()
 session = manager.get_default_session()
 
 
 def get_session_by_user(user):
     """
-    Get a session specifically by the user name
+    Get a session specifically by it's name
+    or new Session if not found in manager
+    or default session (first found in manager)
     """
-    return manager.get_session(user)
+    if user:
+        return manager.get_session(user)
+    else:
+        return manager.get_default_session()
 
 
 # Set default logging handler to avoid "No handler found" warnings.

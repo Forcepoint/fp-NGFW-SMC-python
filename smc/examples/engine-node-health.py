@@ -6,6 +6,8 @@ Example script to show how to use Engine Node health
 """
 
 # Python Base Import
+import smc.examples
+
 from smc import session
 from smc.core.engines import Layer3VirtualEngine, Layer3Firewall
 from smc.core.waiters import NodeStatusWaiter

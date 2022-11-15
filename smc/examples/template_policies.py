@@ -8,6 +8,8 @@ Example script for template policy
 """
 
 # Python Base Import
+import smc.examples
+
 from smc import session
 from smc.policy.layer3 import FirewallTemplatePolicy
 from smc.elements.service import TCPService

@@ -5,6 +5,8 @@ Example script to show monitoring status usage.
 # Python Base Import
 
 # Python SMC Import
+import smc.examples
+
 from smc import session
 from smc.administration.monitoring_status import MonitoringStatus
 from smc.compat import min_smc_version

@@ -22,6 +22,7 @@ Create an Elasticsearch Cluster
         :param str tls_credentials: tls credentials name to use
 
 """
+import smc.examples
 
 from smc import session
 from smc.elements.servers import ElasticsearchCluster

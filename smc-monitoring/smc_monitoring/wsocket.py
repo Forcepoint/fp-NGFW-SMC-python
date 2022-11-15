@@ -75,7 +75,7 @@ class SMCSocketProtocol(websocket.WebSocket):
             for verifying the server with the root CA is based on whether the
             'verify' setting has been provided with a path to the root CA file.
         """
-        if not session.session or not session.session.cookies:
+        if not session.session:
             raise SessionNotFound(
                 "No SMC session found. You must first "
                 "obtain an SMC session through session.login before making "
@@ -126,10 +126,19 @@ class SMCSocketProtocol(websocket.WebSocket):
         self.sock_timeout = sock_timeout
 
     def __enter__(self):
-        self.connect(
-            url=session.web_socket_url +
-            self.query.location,
-            cookie=session.session_id)
+        if session.session_id is None:
+            sock = session.sock
+            if sock is None:
+                # Need to obtain new socket
+                session.refresh()
+            self.connect(
+                url=session.web_socket_url + self.query.location,
+                socket=session.sock)
+        else:
+            self.connect(
+                url=session.web_socket_url + self.query.location,
+                cookie=session.session_id)
+
         if self.connected:
             self.settimeout(self.sock_timeout)
             self.on_open()

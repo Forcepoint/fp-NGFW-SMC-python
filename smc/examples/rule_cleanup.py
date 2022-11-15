@@ -7,6 +7,8 @@ shows a variety of options that can be used to do finer tune searches and
 disable, update or print rule configurations.
 """
 
+import smc.examples
+
 from smc.policy.layer3 import FirewallPolicy
 from smc.core.engine import Engine
 from smc import session

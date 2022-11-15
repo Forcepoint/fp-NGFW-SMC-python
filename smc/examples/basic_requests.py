@@ -2,6 +2,7 @@
 Example to show how to use SMCRequest to create, update and delete data in SMC
 this is low level interface and can be used for elements not yet supported
 """
+import smc.examples
 
 from smc import session
 from smc.api.common import SMCRequest

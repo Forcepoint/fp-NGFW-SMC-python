@@ -3,7 +3,7 @@ Example of creating a Master Engine and 8 virtual engines. Each virtual engine i
 Master Engine interfaces and a unique VLAN.
 This example is based on SMC 6.5.x
 """
-
+import smc.examples
 
 from smc.core.engines import MasterEngine, Layer3VirtualEngine
 from smc.elements.network import Router, Network

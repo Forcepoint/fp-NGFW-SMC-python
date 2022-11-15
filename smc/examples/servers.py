@@ -7,11 +7,9 @@ Example script to show how to use Servers
 """
 
 # Python Base Import
-import logging
-import sys
 import time
-
 import requests
+import smc.examples
 
 from smc import session
 from smc.administration.certificates.tls import TLSServerCredential, TLSCryptographySuite, \
@@ -65,14 +63,6 @@ def update_mgt_server(secure=False):
 
 
 if __name__ == "__main__":
-    formatter = logging.Formatter('%(asctime)s:%(name)s.%(funcName)s:%(levelname)s: %(message)s')
-    console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setFormatter(formatter)
-    logger = logging.getLogger()
-    logger.setLevel(logging.DEBUG)
-    logger.addHandler(console_handler)
-    logger.propagate = False
-
     session.login(url=SMC_URL, api_key=API_KEY, verify=False, timeout=120, api_version=API_VERSION)
     print("session OK")
 

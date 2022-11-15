@@ -35,6 +35,8 @@ Requirements:
 * Forcepoint NGFW Management Center >= 6.2
 
 """
+import smc.examples
+
 from smc import session
 from smc.elements.network import IPList
 from smc_info import *

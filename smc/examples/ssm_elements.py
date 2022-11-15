@@ -1,11 +1,12 @@
 """
 Example to show how to use create and delete SSM element objects in the SMC
 """
+import smc.examples
 
 from smc import session
 from smc.core.engines import Layer3Firewall
 from smc.elements.ssm import *
-
+from smc_info import SMC_URL, API_KEY, API_VERSION
 
 if __name__ == "__main__":
     session.login(url=SMC_URL, api_key=API_KEY, verify=False, timeout=120, api_version=API_VERSION)

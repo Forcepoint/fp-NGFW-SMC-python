@@ -4,9 +4,12 @@ Session module for tracking existing connection state to SMC
 import copy
 import json
 import logging
+import ssl
+
 import requests
 import collections
 
+import smc
 # import smc.api.web
 from smc.api.web import send_request, counters
 from smc.api.entry_point import Resource
@@ -22,7 +25,7 @@ from smc.api.exceptions import (
     SMCOperationFailure,
 )
 from smc.base.model import ElementFactory
-from requests.adapters import HTTPAdapter
+from requests.adapters import HTTPAdapter, PoolManager
 from urllib3 import Retry
 
 # requests.packages.urllib3.disable_warnings()
@@ -45,30 +48,6 @@ HTTP_METHODS_SUPPORTING_AUTO_RETRY = [
 ]
 
 logger = logging.getLogger(__name__)
-
-
-'''
-#from requests.adapters import HTTPAdapter
-#from requests.packages.urllib3.poolmanager import PoolManager
-class SSLAdapter(HTTPAdapter):
-    """
-    An HTTPS Transport Adapter that uses an arbitrary SSL version.
-    Version should be a valid protocol from python ssl library.
-    """
-    def __init__(self, ssl_version=None, **kwargs):
-        self.ssl_version = ssl_version
-
-        super(SSLAdapter, self).__init__(**kwargs)
-
-    def init_poolmanager(self, connections, maxsize, block=False):
-        self.poolmanager = PoolManager(
-            num_pools=connections,
-            maxsize=maxsize,
-            block=block,
-            ssl_version=self.ssl_version)
-'''
-
-# from threading import local
 
 
 class SessionManager(object):
@@ -207,7 +186,8 @@ class SessionManager(object):
         :raises SessionNotFound: session was not found in manager
         :rtype: Session
         """
-        return self._sessions.get(user, Session())
+        session = self._sessions.get(user)
+        return session if session else Session()
 
     #         raise SessionNotFound('Session specified by name: %s does not currently '
     #             'exist.' % user)
@@ -226,9 +206,11 @@ class SessionManager(object):
         """
         Register a session
         """
-        session_name = session.name
-        if session_name:
-            self._sessions[session_name] = session
+        user_name = session.name
+        smc.session_name.name = "{}-{}".format(user_name, session.api_version)
+        if user_name:
+            self._sessions[smc.session_name.name] = session
+        return smc.session_name.name
 
     def _deregister(self, session):
         """
@@ -236,6 +218,16 @@ class SessionManager(object):
         """
         if session in self:
             self._sessions.pop(self._get_session_key(session), None)
+
+
+class SSLAdapter(HTTPAdapter):
+
+    def init_poolmanager(self, connections, maxsize, block=False):
+        self.poolmanager = PoolManager(
+            num_pools=connections,
+            maxsize=maxsize,
+            block=block,
+            ssl_version=ssl.PROTOCOL_TLSv1_2)
 
 
 class Session(object):
@@ -266,6 +258,7 @@ class Session(object):
         self.in_atomic_block = False
         # Transactions that are within the given atomic block
         self.transactions = []
+        smc.session_name.name = None
 
     @property
     def manager(self):
@@ -329,6 +322,15 @@ class Session(object):
     @property
     def session(self):
         return self._session
+
+    @property
+    def sock(self):
+        """
+        get new secure socket from the pool
+
+        :rtype: SSLSocket
+        """
+        return self._connpool._get_conn().sock
 
     @property
     def session_id(self):
@@ -484,6 +486,8 @@ class Session(object):
         :param bool retry_on_busy: pass as kwarg with boolean if you want to add retries
             if the SMC returns HTTP 503 error during operation. You can also optionally customize
             this behavior and call :meth:`.set_retry_on_busy`
+        :return: user session name in SessionManager
+        :rtype: str
         :raises ConfigLoadError: loading cfg from ~.smcrc fails
 
         For SSL connections, you can disable validation of the SMC SSL certificate by setting
@@ -564,15 +568,13 @@ class Session(object):
         # Load entry points
         load_entry_points(self)
 
-        # Put session in manager
-        self.manager._register(self)
-
         logger.debug(
             "Login succeeded for admin: %s in domain: %s, session: %s",
             self.name,
             self.domain,
             self.session_id,
         )
+        return self.manager._register(self)
 
     def __repr__(self):
         return "Session(name=%s,domain=%s)" % (self.name, self.domain)
@@ -618,7 +620,7 @@ class Session(object):
         :return: python requests session
         :rtype: requests.Session
         """
-        _session = requests.sessions.session()  # empty session
+        _session = requests.sessions.Session()  # empty session
         retry = Retry(
             total=MAX_RETRY,
             read=MAX_RETRY,
@@ -628,11 +630,13 @@ class Session(object):
             status_forcelist=ERROR_CODES_SUPPORTING_AUTO_RETRY,
         )
         adapter = HTTPAdapter(max_retries=retry)
+        ssladapter = SSLAdapter(max_retries=retry)
         _session.mount("http://", adapter)
-        _session.mount("https://", adapter)
+        _session.mount("https://", ssladapter)
 
         response = _session.post(**request)
         logger.info("Using SMC API version: %s", self.api_version)
+        self._connpool = ssladapter.get_connection(request.get("url"))
 
         if response.status_code != 200:
             raise SMCConnectionError(

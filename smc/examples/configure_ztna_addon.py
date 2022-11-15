@@ -3,6 +3,8 @@ example to configure ztna addon
 """
 
 import sys
+import smc.examples
+
 from smc import session
 from smc.core.engines import Layer3Firewall
 from smc_info import SMC_URL, API_KEY, API_VERSION

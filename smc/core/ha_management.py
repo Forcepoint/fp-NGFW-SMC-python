@@ -26,6 +26,7 @@ To get the HA Diagnostics, do::
     ...
 """
 from smc.api.common import fetch_entry_point, SMCRequest, _get_session
+from smc.api.exceptions import HaCommandException
 from smc.base.model import Element
 
 
@@ -185,6 +186,16 @@ class HAManagement(object):
     def __init__(self):
         self.entry = fetch_entry_point("ha")
 
+    @staticmethod
+    def check_status(response):
+        """
+        Check the response status code and raise HaCommandException.
+        :param Response response: API Response
+        :raise: HaCommandException: if status code is not 200
+        """
+        if response.status_code != 200:
+            raise HaCommandException(response)
+
     def get_ha(self):
         """
         :return: HA Information
@@ -216,11 +227,13 @@ class HAManagement(object):
         """
         session = _get_session(SMCRequest._session_manager)
         params = {"force": force, "server_name": ""+server.name}
-        return session.session.post(
+        response = session.session.post(
             url=self.entry+"/set_active",
             headers={"Content-Type": "application/json"},
             params=params,
         )
+        self.check_status(response)
+        return response
 
     def set_standby(self, server, force=False):
         """
@@ -240,11 +253,13 @@ class HAManagement(object):
         """
         session = _get_session(SMCRequest._session_manager)
         params = {"force": force, "server_name": ""+server.name}
-        return session.session.post(
+        response = session.session.post(
             url=self.entry+"/set_standby",
             headers={"Content-Type": "application/json"},
             params=params,
         )
+        self.check_status(response)
+        return response
 
     def full_replication(self, server, force=False):
         """
@@ -259,11 +274,13 @@ class HAManagement(object):
         """
         session = _get_session(SMCRequest._session_manager)
         params = {"force": force, "server_name": ""+server.name}
-        return session.session.post(
+        response = session.session.post(
             url=self.entry+"/full_replication",
             headers={"Content-Type": "application/json"},
             params=params,
         )
+        self.check_status(response)
+        return response
 
     def exclude(self, server, force=False):
         """
@@ -278,11 +295,13 @@ class HAManagement(object):
         """
         session = _get_session(SMCRequest._session_manager)
         params = {"force": force, "server_name": ""+server.name}
-        return session.session.post(
+        response = session.session.post(
             url=self.entry+"/exclude",
             headers={"Content-Type": "application/json"},
             params=params,
         )
+        self.check_status(response)
+        return response
 
     def diagnostic(self, deep=False, exclude_info=False, global_timeout=0, server_timeout=0):
         """

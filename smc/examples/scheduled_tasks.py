@@ -8,16 +8,14 @@ Example of how to use scheduled tasks
 """
 import time
 
-from smc import session
-import logging
+import smc.examples
 
+from smc import session
 from smc.administration.scheduled_tasks import RefreshPolicyTask, ExportLogTask, DeleteLogTask, \
     server_directory, ArchiveLogTask
 from smc.core.engine import Engine
 from smc.elements.servers import ManagementServer
 from smc_info import SMC_URL, API_KEY, API_VERSION
-
-logging.getLogger()
 
 
 if __name__ == "__main__":

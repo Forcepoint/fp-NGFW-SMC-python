@@ -1,6 +1,8 @@
 """
 Create a policy with nat rules
 """
+import smc.examples
+
 from smc import session
 from smc.elements.service import TCPService
 from smc.policy.layer3 import FirewallPolicy

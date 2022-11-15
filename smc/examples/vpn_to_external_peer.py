@@ -8,6 +8,8 @@ Sites are defined to identify the remote networks protected behind the VPN peer
 network.
 
 """
+import smc.examples
+
 from smc import session
 from smc.elements.network import Network
 from smc.core.engines import Engine, Layer3Firewall

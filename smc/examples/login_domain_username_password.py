@@ -1,6 +1,8 @@
 import logging
 import time
 import traceback
+import smc.examples
+
 from smc import session
 from smc.elements.servers import LogServer
 from smc.api.exceptions import UpdateElementFailed

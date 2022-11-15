@@ -8,10 +8,13 @@ or smc_monitoring extension
 import json
 import logging
 import math
+import ssl
 import sys
 import threading
 import time
 import datetime
+import smc.examples
+
 
 from websocket import create_connection, WebSocketTimeoutException
 
@@ -131,7 +134,9 @@ try:
     ws = create_connection(
         "{}/{}/monitoring/session/socket".format(WS_URL, str(API_VERSION)),
         cookie=session.session_id,
-        timeout=10
+        timeout=10,
+        socket=session.sock,
+        sslopt={"cert_reqs": ssl.CERT_NONE}
     )
 
     query = {

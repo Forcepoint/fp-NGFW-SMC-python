@@ -9,18 +9,15 @@ Example of how to use asynchronous tasks
 -check pending changes
 """
 import time
+import smc.examples
 
 from smc import session
-import logging
-
 from smc.administration.system import System
 from smc.api.common import SMCRequest
 from smc.core.engines import Layer3Firewall
 from smc.elements.service import TCPService
 from smc.policy.layer3 import FirewallPolicy
 from smc_info import *
-
-logging.getLogger()
 
 
 if __name__ == "__main__":

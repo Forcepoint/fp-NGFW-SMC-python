@@ -12,6 +12,8 @@ Example script to show how to use EngineUpgrade object.
 import logging
 import sys
 import re
+import smc.examples
+
 # Python SMC Import
 from os.path import exists
 from smc import session

@@ -6,6 +6,10 @@ or smc_monitoring extension
 
 # Python Base Import
 import json
+import ssl
+import smc.examples
+
+
 from websocket import create_connection
 
 from smc import session
@@ -25,7 +29,10 @@ try:
 
     ws = create_connection(
         "{}/{}/monitoring/session/socket".format(WS_URL, str(API_VERSION)),
-        cookie=session.session_id
+        cookie=session.session_id,
+        socket=session.sock,
+        sslopt={"cert_reqs": ssl.CERT_NONE}
+
     )
 
     query = {

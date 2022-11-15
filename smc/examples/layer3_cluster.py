@@ -26,19 +26,16 @@ uncomment the following line below and set the logging level
 (recommend ERROR unless troubleshooting)::
     logging.basicConfig(level=logging.ERROR)
 """
+import smc.examples
 
 from smc import session
 from smc.core.engines import FirewallCluster
 from smc.core.general import NTPSettings
 from smc.elements.helpers import zone_helper
-import logging
-import pytz
 
 from smc.elements.servers import NTPServer
 from smc_info import *
 
-logging.getLogger()
-# logging.basicConfig(level=logging.ERROR)
 
 if __name__ == "__main__":
     session.login(url=SMC_URL, api_key=API_KEY, verify=False, timeout=120, api_version=API_VERSION)

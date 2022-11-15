@@ -2,6 +2,8 @@
 Example of how to create a group
 """
 
+import smc.examples
+
 from smc import session
 from smc.elements.group import Group
 from smc.elements.servers import NTPServer

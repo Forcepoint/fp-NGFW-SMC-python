@@ -7,6 +7,8 @@ log server must be running
 - enable ldap replication
 """
 import time
+import smc.examples
+
 
 from smc import session
 from smc.core.engines import FirewallCluster

@@ -8,6 +8,8 @@ Example script to show upcoming event usage.
 # Python Base Import
 
 # Python SMC Import
+import smc.examples
+
 from smc import session
 from smc.administration.system import System
 from smc.elements.situations import Situation

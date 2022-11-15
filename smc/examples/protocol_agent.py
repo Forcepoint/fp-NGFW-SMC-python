@@ -6,6 +6,8 @@ Example script to show how to use Protocol Agent
 """
 
 # Python Base Import
+import smc.examples
+
 from smc import session
 from smc.elements.protocols import ProtocolAgent
 from smc.elements.servers import ProxyServer

@@ -1,4 +1,6 @@
 #!/usr/bin/python
+import smc.examples
+
 from smc.core.engine import Engine
 from smc.core.engines import CloudSGSingleFW
 from smc import session

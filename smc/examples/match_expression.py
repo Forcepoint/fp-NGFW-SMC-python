@@ -8,7 +8,8 @@ Example script to show how to use MatchExpression, Expression
 """
 
 # Python Base Import
-import sys
+import smc.examples
+
 from smc import session
 from smc.core.engine import Engine
 from smc.elements.network import Expression

@@ -352,3 +352,11 @@ class NotMonitored(SMCException):
     """
     Raised when attempting get monitoring status for not monitored element
     """
+
+
+class HaCommandException(SMCOperationFailure):
+    """
+    HAManagement will have some commands that are specifically executed, such as asset_active,
+    set_standby, and full_replication. If the SMC API returns an error and wraps the response,
+    this exception will be thrown.
+    """

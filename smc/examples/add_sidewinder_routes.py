@@ -46,12 +46,11 @@ route add route=10.6.4.0/255.255.255.0 gateway=10.12.127.33 distance=1 descripti
 
 """
 import re
-import logging
+import smc.examples
+
+
 from smc import session
 from smc.core.engine import Engine
-
-logging.getLogger()
-# logging.basicConfig(level=logging.DEBUG)
 
 filename = "/Users/username/statis routes.txt"
 firewall = "mcafee2"
@@ -77,15 +76,15 @@ if __name__ == "__main__":
             for match in re.finditer("route=(.*) gateway=(.*) distance.*?", line, re.S):
                 network = mask_convertor(match.group(1))
                 gateway = match.group(2)
-                print "Adding route to network: {}, via gateway: {}".format(network, gateway)
+                print("Adding route to network: {}, via gateway: {}".format(network, gateway))
 
                 result = engine.add_route(gateway, str(network))
                 if not result.href:
-                    print "Failed adding network: {} with gateway: {}, reason: {}".format(
+                    print("Failed adding network: {} with gateway: {}, reason: {}".format(
                         network, gateway, result.msg
-                    )
+                    ))
                 else:
-                    print "Success adding route to network: {} via gateway: {}".format(
+                    print("Success adding route to network: {} via gateway: {}".format(
                         network, gateway
-                    )
+                    ))
     session.logout()

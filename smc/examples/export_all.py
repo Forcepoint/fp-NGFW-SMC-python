@@ -8,7 +8,7 @@ Example script to export all elements.
 # Python Base Import
 import logging
 import zipfile
-import sys
+import smc.examples
 
 # Python SMC Import
 from smc import session
@@ -19,9 +19,6 @@ from smc_info import *
 
 if __name__ == "__main__":
 
-    FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
-    logging.getLogger()
-    logging.basicConfig(level=logging.INFO, format=FORMAT, datefmt="%H:%M:%S")
     session.login(url=SMC_URL, api_key=API_KEY, verify=False, timeout=120, api_version=API_VERSION)
 
     print("session OK")

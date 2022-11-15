@@ -9,6 +9,7 @@ from smc.api.exceptions import (
     FetchElementFailed,
 )
 from smc.base.util import element_resolver
+from smc.compat import is_smc_version_less_than
 
 
 class Host(Element):
@@ -732,10 +733,13 @@ class Alias(Element):
         :return: alias resolving values
         :rtype: list
         """
-        if not self.resolved_value:
-            result = self.make_request(
-                ElementNotFound, href=self.get_relation("resolve"), params={"for": engine}
-            )
-
-            self.resolved_value = result.get("resolved_value")
+        result = self.make_request(ElementNotFound, href=self.get_relation("resolve"),
+                                   params={"for": engine})
+        if is_smc_version_less_than("7.0") or 'translated_element' not in result:
+            self.resolved_value = result.get('resolved_value')
+        else:
+            self.resolved_value = list(
+                filter(lambda resolved_element: resolved_element.name != 'NONE',
+                       map(lambda element: Element.from_href(element),
+                           result.get("translated_element"))))
         return self.resolved_value

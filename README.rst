@@ -33,13 +33,12 @@ Some of the functionality you get with the SMC Python API:
 Requirements
 ------------
 
-Python 2.7
-
-Python 3.5, 3.6
+Python >= 2.7 or >= 3.5
 
 Requests >= 2.12.0
+Websocket >= 0.2.1
 
-Security Management Center version 6.0, 6.1, 6.1.1, 6.1.2, 6.2, 6.2.1, 6.3.x, 6.4.x, 6.5.x, 6.6.x, 6.7.x
+Security Management Center version >= 6.0
 
 Getting Started
 ---------------
@@ -102,6 +101,13 @@ Available extensions:
 * `smc-python-monitoring <https://badge.fury.io/py/fp-NGFW-SMC-python-monitoring>`__: Monitoring for SMC connections, blacklists, users, VPNs, alerts, etc. In addition this package provides the ability to 'subscribe' to administrative event modifications.
 
 Extensions are found in the base smc-python repository as namespace packages and each is housed in it's own sub-directory of this base package.
+
+Pull Requests
+*************
+
+Pull requests are accepted and welcome but they could not be merged as are.
+Indeed, we are using internal repository in order to validate and integrate these changes.
+But they could be released later on following our road map.
 
 Documentation
 -------------

@@ -3,6 +3,8 @@ Example script to show how to use Multilink Element
 """
 
 # Python Base Import
+import smc.examples
+
 from smc import session
 from smc.elements.netlink import StaticNetlink, MultilinkMember, Multilink
 from smc.elements.network import Network, Router

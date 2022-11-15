@@ -360,8 +360,8 @@ class Sandbox(NestedDict):
         Disable the sandbox on this engine.
         """
         self.engine.data.update(sandbox_type="none")
-        self.pop("cloud_sandbox_settings", None)  # pre-6.3
-        self.pop("sandbox_settings", None)
+        self.engine.data.pop("cloud_sandbox_settings", None)  # pre-6.3
+        self.engine.data.pop("sandbox_settings", None)
 
     def enable(
         self,
@@ -381,7 +381,7 @@ class Sandbox(NestedDict):
 
         :param str license_key: license key for specific engine
         :param str license_token: license token for specific engine
-        :param str sandbox_type: 'local_sandbox' or 'cloud_sandbox'
+        :param str sandbox_type: 'local_sandbox', 'cloud_sandbox', 'forcepoint_sandbox' or 'atd'
         :param str,SandboxService service: a sandbox service element from SMC. The service
             defines which location the engine is in and which data centers to use.
             The default is to use the 'US Data Centers' profile if undefined.
