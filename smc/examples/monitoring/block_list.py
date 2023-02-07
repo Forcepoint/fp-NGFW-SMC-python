@@ -1,3 +1,14 @@
+#  Licensed under the Apache License, Version 2.0 (the "License"); you may
+#  not use this file except in compliance with the License. You may obtain
+#  a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#  License for the specific language governing permissions and limitations
+#  under the License.
 """
 Example script to show how to subscribe to BLOCK LIST notifications using websocket library
 or smc_monitoring extension
@@ -67,6 +78,7 @@ if __name__ == '__main__':
     print("session OK")
 
 try:
+    smc_system = System()
     print("{} => Create Engine:{}..".format(datetime.datetime.now().strftime("%H:%M:%S"),
                                             ENGINENAME))
     engine = Layer3Firewall.create(name=ENGINENAME,
@@ -111,7 +123,7 @@ try:
     # Add block_list to all defined engines.
     print("{} => Add block_list to all defined engines.."
           .format(datetime.datetime.now().strftime("%H:%M:%S")))
-    System().block_list("11.11.0.1/32", "11.11.0.2/32")
+    smc_system.block_list("11.11.0.1/32", "11.11.0.2/32")
 
     engine = Layer3Firewall(ENGINENAME)
 
@@ -193,6 +205,22 @@ try:
     time.sleep(5)
 
     print()
+
+    # create 5 entries to all defined engies
+    print("{} => Add 5 block list entries to all defined engines.."
+          .format(datetime.datetime.now().strftime("%H:%M:%S")))
+    bl = Blocklist()
+    for i in range(5):
+        ip_src = "10.0.0.{}/32".format(i)
+        print("{} => add entry:src={}".format(datetime.datetime.now().strftime("%H:%M:%S"), ip_src))
+        bl.add_entry(src=ip_src, dst="100.0.0.2/32")
+    smc_system.block_list_bulk(bl)
+
+    # wait time for entries to be added
+    time.sleep(5)
+
+    print()
+
     print("{} => Retrieve Block list Data using smc_monitoring fetch_batch and filters"
           .format(datetime.datetime.now().strftime("%H:%M:%S")))
     query = BlockListQuery(ENGINENAME)
@@ -271,8 +299,12 @@ finally:
     print("Remove block list entries..")
     query = BlockListQuery(ENGINENAME)
     for element in query.fetch_as_element(max_recv=0, query_timeout=5):
-        print("Remove {}".format(element.block_list_entry_key))
-        element.delete()
+        try:
+            print("Remove {}".format(element.block_list_entry_key))
+            element.delete()
+        except (BaseException, ):
+            print("Remove {} failed but let's continue...".format(element.block_list_entry_key))
+            pass
     engine = Layer3Firewall(ENGINENAME)
     engine.block_list_flush()
     engine.delete()

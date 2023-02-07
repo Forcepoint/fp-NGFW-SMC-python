@@ -1,3 +1,14 @@
+#  Licensed under the Apache License, Version 2.0 (the "License"); you may
+#  not use this file except in compliance with the License. You may obtain
+#  a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#  License for the specific language governing permissions and limitations
+#  under the License.
 """
 Rule module is a base class for all access control and NAT rules.
 
@@ -653,6 +664,37 @@ class RuleCommon(object):
 
         return rule_action
 
+    def is_locked(self):
+        """
+        Locked flag for this rule.
+        """
+        return self.data.get("locked", None)
+
+    def lock(self, reason_for=None):
+        """
+        .. Requires SMC version >= 6.10.10 or >= 7.0.2 or >= 7.1.0
+
+        Locks this rule with an optional reason.
+
+        :raises ResourceNotFound: If not running on supported SMC version
+        """
+        if reason_for:
+            return self.make_request(method="update",
+                                     resource="lock",
+                                     params={"reason_for": reason_for})
+        else:
+            return self.make_request(method="update", resource="lock")
+
+    def unlock(self):
+        """
+        .. Requires SMC version >= 6.10.10 or >= 7.0.2 or >= 7.1.0
+
+        Unlocks this rule.
+
+        :raises ResourceNotFound: If not running on supported SMC version
+        """
+        return self.make_request(method="update", resource="unlock")
+
 
 class IPv4Rule(RuleCommon, Rule, SubElement):
     """
@@ -721,7 +763,8 @@ class IPv4Rule(RuleCommon, Rule, SubElement):
         "enforce_vpn",
         "forward_vpn",
         "blacklist",
-        "block_list"
+        "block_list",
+        "forced_next_hop"
     )
 
     def create(
@@ -778,7 +821,7 @@ class IPv4Rule(RuleCommon, Rule, SubElement):
         :param services: service/s for rule
         :type services: Service, list[str, Element]
         :param action: allow,continue,discard,refuse,enforce_vpn,
-            apply_vpn,forward_vpn, blacklist (default: allow)
+            apply_vpn,forward_vpn, blacklist, forced_next_hop (default: allow)
         :type action: Action,str,list[str]
         :param LogOptions log_options: LogOptions object
         :param ConnectionTracking connection_tracking: custom connection tracking settings

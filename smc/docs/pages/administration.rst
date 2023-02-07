@@ -1,7 +1,7 @@
 Administration
 --------------
 
-Administration provides an interface to system level admin tasks such as 
+Administration provides an interface to system level administration tasks such as
 creating administrators, updating the SMC with dynamic updates, updating NGFW Engines with engine
 upgrades, running tasks, etc.
 

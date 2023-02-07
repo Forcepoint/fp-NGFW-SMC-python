@@ -15,7 +15,8 @@ Or optionally clone: smc-python_:
 
 Dependencies on this library are:
 
-* requests
+* requests (REST calls)
+* websocket-client (websocket calls for smc-monitoring)
 
 If installation is required on a non-internet facing machine, you will have to download
 smc-python and dependencies manually and install by running python setup install.

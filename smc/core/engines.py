@@ -1,3 +1,15 @@
+#  Licensed under the Apache License, Version 2.0 (the "License"); you may
+#  not use this file except in compliance with the License. You may obtain
+#  a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#  License for the specific language governing permissions and limitations
+#  under the License.
+
 from smc.core.interfaces import (
     ClusterPhysicalInterface,
     TunnelInterface,
@@ -1262,6 +1274,8 @@ class MasterEngine(Engine):
         comment=None,
         extra_opts=None,
         lldp_profile=None,
+        cluster_mode="standby",
+        reverse_connection=False,
         **kw
     ):
         """
@@ -1275,16 +1289,20 @@ class MasterEngine(Engine):
         :param str log_server_ref: (optional) href to log_server instance
         :param list domain_server_address: (optional) DNS server addresses
         :param bool enable_antivirus: (optional) Enable antivirus (required DNS)
-                :param bool enable_gti: (optional) Enable GTI
+        :param bool enable_gti: (optional) Enable GTI
+        :param dict extra_opts: extra options as a dict to be passed to the top level engine
         :param LLDPProfile lldp_profile: LLDP Profile represents a set of attributes used for
         configuring LLDP
-        :param dict extra_opts: extra options as a dict to be passed to the top level engine
+        :param str cluster_mode: Defines whether the clustered engines are all online balancing the
+            traffic or whether one node is online at a time and the other engines are used as backup
+        :param boolean reverse_connection: Reverse connection.
         :raises CreateEngineFailed: Failure to create with reason
         :return: :py:class:`smc.core.engine.Engine`
         """
         interface = {
             "interface_id": mgmt_interface,
-            "interfaces": [{"nodes": [{"address": mgmt_ip, "network_value": mgmt_network}]}],
+            "interfaces": [{"nodes": [{"address": mgmt_ip, "network_value": mgmt_network,
+                                       "reverse_connection": reverse_connection}]}],
             "zone_ref": zone_ref,
             "comment": comment,
         }
@@ -1307,7 +1325,7 @@ class MasterEngine(Engine):
             **extra_opts if extra_opts else {}
         )
 
-        engine.update(master_type=master_type, cluster_mode="standby")
+        engine.update(master_type=master_type, cluster_mode=cluster_mode)
 
         try:
             return ElementCreator(cls, json=engine)
@@ -1340,6 +1358,8 @@ class MasterEngineCluster(Engine):
         comment=None,
         extra_opts=None,
         lldp_profile=None,
+        cluster_mode="standby",
+        reverse_connection=False,
         **kw
     ):
         """
@@ -1354,10 +1374,13 @@ class MasterEngineCluster(Engine):
         :param str log_server_ref: (optional) href to log_server instance
         :param list domain_server_address: (optional) DNS server addresses
         :param bool enable_antivirus: (optional) Enable antivirus (required DNS)
-                :param bool enable_gti: (optional) Enable GTI
+        :param bool enable_gti: (optional) Enable GTI
+        :param dict extra_opts: extra options as a dict to be passed to the top level engine
         :param LLDPProfile lldp_profile: LLDP Profile represents a set of attributes used for
         configuring LLDP
-        :param dict extra_opts: extra options as a dict to be passed to the top level engine
+        :param str cluster_mode: Defines whether the clustered engines are all online balancing the
+            traffic or whether one node is online at a time and the other engines are used as backup
+        :param boolean reverse_connection: Reverse connection.
         :raises CreateEngineFailed: Failure to create with reason
         :return: :py:class:`smc.core.engine.Engine`
 
@@ -1377,7 +1400,7 @@ class MasterEngineCluster(Engine):
 
         interface = {
             "interface_id": mgmt_interface,
-            "interfaces": [{"nodes": nodes}],
+            "interfaces": [{"nodes": nodes, "reverse_connection": reverse_connection}],
             "macaddress": macaddress,
         }
 
@@ -1399,7 +1422,7 @@ class MasterEngineCluster(Engine):
             **extra_opts if extra_opts else {}
         )
 
-        engine.update(master_type=master_type, cluster_mode="standby")
+        engine.update(master_type=master_type, cluster_mode=cluster_mode)
 
         try:
             return ElementCreator(cls, json=engine)

@@ -1,6 +1,15 @@
+#  Licensed under the Apache License, Version 2.0 (the "License"); you may
+#  not use this file except in compliance with the License. You may obtain
+#  a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#  License for the specific language governing permissions and limitations
+#  under the License.
 """
-.. versionadded:: 0.5.6
-    Requires engine version >=6.3, SMC >=6.3
 
 Interface Policies are applied at the engine level when layer 3 single
 engines or cluster layer 3 engines have layer 2 interfaces. The configuration

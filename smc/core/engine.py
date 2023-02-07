@@ -1,7 +1,20 @@
+#  Licensed under the Apache License, Version 2.0 (the "License"); you may
+#  not use this file except in compliance with the License. You may obtain
+#  a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#  License for the specific language governing permissions and limitations
+#  under the License.
+
 from collections import namedtuple
 import pytz
 
 from smc.core.lldp import LLDPProfile
+from smc.core.policy import AutomaticRulesSettings
 from smc.elements.helpers import domain_helper, location_helper
 from smc.base.model import Element, SubElement, lookup_class, ElementCreator
 from smc.api.exceptions import (
@@ -29,6 +42,7 @@ from smc.vpn.elements import VPNSite
 from smc.routing.bgp import DynamicRouting
 from smc.routing.ospf import OSPFProfile
 from smc.core.route import Antispoofing, Routing, Route, PolicyRoute
+from smc.core.session_monitoring import SessionMonitoringResult
 from smc.core.contact_address import ContactAddressCollection
 from smc.core.general import DNSRelay, Layer2Settings, DefaultNAT, SNMP, RankedDNSAddress, \
     NTPSettings
@@ -45,7 +59,7 @@ from smc.core.addon import (
 from smc.elements.servers import LogServer
 from smc.base.collection import create_collection, sub_collection
 from smc.base.util import element_resolver
-from smc.administration.access_rights import AccessControlList
+from smc.administration.access_rights import AccessControlList, Permission
 from smc.base.decorators import cacheable_resource
 from smc.administration.certificates.vpn import GatewayCertificate
 from smc.base.structs import BaseIterable
@@ -401,6 +415,23 @@ class Engine(Element):
         return NTPSettings(self)
 
     @property
+    def automatic_rules_settings(self):
+        """
+        Represents the container for all automatic rules settings for a cluster.
+        Example of using automatic rules settings:
+            >>> engine = Engine("testme")
+            >>> automatic_rules_settings=engine.automatic_rules_settings
+            >>> update_automatic_rules_settings(allow_auth_traffic=False, allow_no_nat=False)
+            >>> engine.update()
+            >>> engine.automatic_rules_settings.allow_auth_traffic
+                False
+            >>> engine.automatic_rules_settings.allow_listening_interfaces_to_dns_relay_port
+                True
+        :rtype: AutomaticRulesSettings
+        """
+        return AutomaticRulesSettings(self)
+
+    @property
     def antivirus(self):
         """
         AntiVirus engine settings. Note that for virtual engines
@@ -658,6 +689,31 @@ class Engine(Element):
         for acl in acls["granted_access_control_list"]:
             yield (acl_map(acl))
 
+    @permissions.setter
+    def permissions(self, permissions):
+        """
+            update the permissions for this engine instance.
+        Example to update permission:
+            >>> algiers = Engine('Algiers')
+            >>> all_elements_acl = AccessControlList('ALL Elements')
+            >>> all_fws_acl = AccessControlList('ALL Firewalls')
+            >>> permissions_object = Permission.create(elements=[all_elements_acl, all_fws_acl],\
+             role=None, domain=algiers.href)
+            >>> algiers.permissions = permissions_object
+
+        :param permissions: permissions object
+        """
+        etag = self.make_request(UnsupportedEngineFeature, resource="permissions",
+                                 raw_result=True).etag.strip('"')
+        granted_element = [element.href for element in
+                           list(permissions.granted_elements)]
+
+        json = {'cluster_ref': permissions.granted_domain_ref,
+                'granted_access_control_list': granted_element,
+                'role_containers': permissions.role_ref}
+        self.make_request(UnsupportedEngineFeature, resource="permissions", method="update",
+                          json=json, etag=etag)
+
     @property
     def pending_changes(self):
         """
@@ -765,14 +821,14 @@ class Engine(Element):
             EngineCommandFailed, method="create", resource="block_list", json=block_list.entries
         )
 
-    def blacklist_bulk(self, blacklist):
+    def blacklist_bulk(self, block_list):
         """
-        Add blacklist entries to the engine node in bulk. For blacklist to work,
-        you must also create a rule with action "Apply Blacklist".
+        Add block list entries to the engine node in bulk. For block list to work,
+        you must also create a rule with action "Apply Block List".
         First create your block_list entries using :class:`smc.elements.other.Blacklist`
-        then provide the blacklist to this method.
+        then provide the block list to this method.
 
-        :param Blacklist blacklist : pre-configured blacklist entries
+        :param Blacklist block_list : pre-configured block list entries
 
         .. note:: This method requires SMC version >= 6.4 and SMC version <7.0
         since this version, "blacklist" is renamed "block_list"
@@ -782,9 +838,10 @@ class Engine(Element):
         else:
             resource = "block_list"
 
-            self.make_request(
-                EngineCommandFailed, method="create", resource=resource, json=blacklist.entries
-            )
+        self.make_request(EngineCommandFailed,
+                          method="create",
+                          resource=resource,
+                          json=block_list.entries)
 
     def block_list_flush(self):
         """
@@ -895,6 +952,45 @@ class Engine(Element):
         """
         self.update(href=self.get_relation("remove_alternative_policies"), etag=None)
 
+    def query_route(self, source_ref=None, destination_ref=None, source_ip=None,
+                    destination_ip=None):
+        """
+        Allows querying a route for the specific supported engine Options:
+        A. Using Query Parameters:
+            source_ip: the IP Address A.B.C.D corresponding to the source query ip address.
+            destination_ip: the IP Address A.B.C.D corresponding to the destination query ip address
+        B. Using payload to be able to specify source network element uri
+            and/or destination network element uri.
+        Find route for source to destination using ip address
+            >>> engine = Engine('Plano')
+            >>> engine.query_route(source_ip='0.0.0.0', destination_ip= '0.0.0.0')
+            [Routing(name=Interface 1,level=None,type=routing), Routing(name=net-172.31.14.0/24,
+            level=None,type=routing), Routing(name=AT&T Plano Router,level=None,type=routing),
+             Routing(name=Any network,level=None,type=routing)]
+        Find the route using query route with ref
+            >>> list_of_routing = list(Host.objects.all())
+            >>> host1 = list_of_routing[0]
+            >>> host2 = list_of_routing[1]
+            >>> engine.query_route(source_ref=host1.href, destination_ref=host2.href)
+        :param str source_ref: specify source network element uri
+        :param str destination_ref: destination network element uri
+        :param str source_ip: source ip address
+        :param str destination_ip: destination ip address
+        :return list(Routing): the result pages containing the result routing.
+        """
+        json = {}
+        if source_ref:
+            json.update(source_ref=source_ref)
+        if destination_ref:
+            json.update(destination_ref=destination_ref)
+        if source_ip:
+            json.update(source_ip=source_ip)
+        if destination_ip:
+            json.update(destination_ip=destination_ip)
+        result = self.make_request(EngineCommandFailed, method="read", resource="query_route",
+                                   json=json)
+        return [Routing(routing) for entry in result for routing in entry['entry']]
+
     def add_route(self, gateway=None, network=None, payload=None):
         """
         Add a route to engine. Specify gateway and network.
@@ -992,6 +1088,39 @@ class Engine(Element):
         except SMCConnectionError:
             raise EngineCommandFailed("Timed out waiting for routes")
 
+    def get_session_monitoring(self, sesmon_type, full=True):
+        """
+        Available for all SMC API Versions but only for SMC Version above 7.1 (7.1 included)
+
+        Return session monitoring for the requested session monitoring type  for the engine
+        Find all routes for engine resource::
+
+        :param sesmon_type requested session monitoring type. Possible value are defined
+                           in session_monitoring.EngineSessionMonitoringType
+        :optional param full ( default value is true ). When set to false, juste retrieve
+                            the log key of each entry ( timestamp, component id, event id ).
+        :raises EngineCommandFailed : session monitoring result cannot be retrieved
+        :return: list of session monitoring entries : session_monitoring.SessionMonitoringResult
+        :rtype: SerializedIterable(Route)
+
+        Example:
+
+        from smc.core.session_monitoring import EngineSessionMonitoringType
+        engine.get_session_monitoring(EngineSessionMonitoringType.CONNECTION)
+        """
+        if not min_smc_version("7.1"):
+            raise UnsupportedEngineFeature("Need at least 7.1 version of the SMC")
+        try:
+            params = None
+            if not full:
+                params = dict()
+                params["full"] = False
+            result = self.make_request(EngineCommandFailed, resource=sesmon_type, params=params)
+
+            return SessionMonitoringResult(sesmon_type, result)
+        except SMCConnectionError:
+            raise EngineCommandFailed("Timed out waiting for routes")
+
     @property
     def antispoofing(self):
         """
@@ -1027,6 +1156,109 @@ class Engine(Element):
         :rtype: InternalGateway
         """
         return self.vpn
+
+    @property
+    def all_vpns(self):
+        """
+        Engine level all VPN gateway information.
+        Example:
+            >>> list_of_all_internal_gateways=engine.all_vpns
+            >>> first_vpn_instance= list_of_all_internal_gateways[0]
+            >>> first_vpn_instance.name
+        :raises UnsupportedEngineFeature: internal gateway is only supported on layer 3
+            engine types.
+        :return: list of engine internal gateways
+        :rtype: List of All VPN Gateway Configuration
+        """
+        result = self.make_request(UnsupportedEngineFeature,
+                                   resource="internal_gateway")
+        return [VPN(self, InternalGateway(**gateway)) for gateway in result]
+
+    def create_internal_gateway(self, name, antivirus=None,
+                                auto_certificate=None, auto_site_content=None,
+                                dhcp_relay=None, end_point=None, firewall=None,
+                                gateway_profile=None,
+                                ssl_vpn_portal_setting=None,
+                                ssl_vpn_proxy=None,
+                                ssl_vpn_tunneling=None, trust_all_cas=None,
+                                trusted_certificate_authorities=None,
+                                vpn_client_mode=None, **kwargs):
+        """
+        Create internal gateway
+        Example of creating internal gateway:
+            >>> engine.create_internal_gateway("test")
+        :param str name: Name of the internal gateway
+        :param str antivirus: Antivirus
+        :param str auto_certificate: Automated RSA Certificate Management
+        :param str auto_site_content: Indicates whether the site content is
+            automatically generated from the routing view.
+        :param str dhcp_relay: DHCP Relay.
+        :param str end_point: List of end-points.
+        :param str firewall: Firewall
+        :param str gateway_profile: Gateway Profile
+        :param str ssl_vpn_portal_setting: SSL VPN Settings for the Portal.
+        :param str ssl_vpn_proxy: vpn proxy
+        :param str ssl_vpn_tunneling: SSL VPN Settings for the VPN Client.
+        :param str trust_all_cas: Indicates if the EndPoint trust all VPN Certificate Authorities.
+        :param str trusted_certificate_authorities: List of trusted VPN Certificate Authorities.
+            Valid only if the EndPoint does not trust all VPN CAs.
+        :param str vpn_client_mode: VPN Client Mode
+            accepted values given below:
+            *no
+            *ipsec
+            *ssl
+            *both
+        :raises UnsupportedEngineFeature: internal gateway is only supported on layer 3 engine types
+        :return: None
+        :rtype: None
+        """
+        json = {"name": name}
+        if antivirus:
+            json.update(antivirus=antivirus)
+
+        if auto_certificate:
+            json.update(auto_certificate=auto_certificate)
+
+        if auto_site_content:
+            json.update(auto_site_content=auto_site_content)
+
+        if dhcp_relay:
+            json.update(dhcp_relay=dhcp_relay)
+
+        if end_point:
+            json.update(end_point=end_point)
+
+        if firewall:
+            json.update(firewall=firewall)
+        if gateway_profile:
+            json.update(gateway_profile=gateway_profile)
+
+        if ssl_vpn_portal_setting:
+            json.update(ssl_vpn_portal_setting=ssl_vpn_portal_setting)
+
+        if ssl_vpn_proxy:
+            json.update(ssl_vpn_proxy=ssl_vpn_proxy)
+
+        if ssl_vpn_tunneling:
+            json.update(ssl_vpn_tunneling=ssl_vpn_tunneling)
+        if trust_all_cas:
+            json.update(trust_all_cas=trust_all_cas)
+
+        if trusted_certificate_authorities:
+            json.update(
+                trusted_certificate_authorities=trusted_certificate_authorities)
+
+        if vpn_client_mode:
+            json.update(vpn_client_mode=vpn_client_mode)
+        if kwargs:
+            json.update(**kwargs)
+
+        self.make_request(
+            UnsupportedEngineFeature,
+            method="create",
+            resource="internal_gateway",
+            json=json,
+        )
 
     @cacheable_resource
     def vpn(self):
@@ -1631,10 +1863,14 @@ class VPN(object):
     endpoint.
     """
 
-    def __init__(self, engine):
+    def __init__(self, engine, internal_gateway=None):
         self.engine = engine
-        result = self.engine.make_request(UnsupportedEngineFeature, resource="internal_gateway")
-        self.internal_gateway = InternalGateway(**result[0])
+        if internal_gateway:
+            self.internal_gateway = internal_gateway
+        else:
+            result = self.engine.make_request(UnsupportedEngineFeature,
+                                              resource="internal_gateway")
+            self.internal_gateway = InternalGateway(**result[0])
 
     def rename(self, name):
         """
@@ -1644,6 +1880,15 @@ class VPN(object):
         :return: None
         """
         self.internal_gateway.rename(name)  # Engine update changes this ETag
+
+    def remove(self):
+        """
+        Rename the internal gateway.
+
+        :param str name: new name for internal gateway
+        :return: None
+        """
+        self.internal_gateway.delete()  # Engine update changes this ETag
 
     @property
     def name(self):
@@ -1758,7 +2003,7 @@ class VPN(object):
         :rtype: list
         """
         return [
-            GatewayCertificate(**cert)
+            GatewayCertificate.from_href(cert.get('href'))
             for cert in self.internal_gateway.make_request(resource="gateway_certificate")
         ]
 
@@ -1816,7 +2061,18 @@ class InternalGateway(SubElement):
             False
             >>> vpn.vpn_client.vpn_client_mode
             u'ipsec'
-
+        Introduced all_vpns property to get list all vpn instances, Each vpn instance associated
+        only one internal gateway to make code backward compatible.
+            >>> list_of_all_internal_gateways=engine.all_vpns
+            >>> first_vpn_instance= list_of_all_internal_gateways[0]
+            >>> first_vpn_instance.name
+            u'dingo Primary'
+            >>> first_vpn_instance.vpn_client.firewall
+            False
+            >>> first_vpn_instance.vpn_client.antivirus
+            False
+            >>> first_vpn_instance.vpn_client.vpn_client_mode
+            u'ipsec'
         Enable client AV and windows FW::
 
             engine.vpn.vpn_client.update(
@@ -1832,6 +2088,12 @@ class InternalGateway(SubElement):
     def rename(self, name):
         self._del_cache()  # Engine update changes this ETag
         self.update(name="{} Primary".format(name))
+
+    def remove(self):
+        """
+        Remove Internal Gateway from this engine.
+        """
+        self.delete()
 
     @property
     def internal_endpoint(self):

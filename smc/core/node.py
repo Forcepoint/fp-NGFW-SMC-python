@@ -1,3 +1,15 @@
+#  Licensed under the Apache License, Version 2.0 (the "License"); you may
+#  not use this file except in compliance with the License. You may obtain
+#  a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#  License for the specific language governing permissions and limitations
+#  under the License.
+
 """
 Node level actions for an engine. Once an engine is loaded, all methods
 and resources are available to that particular engine.
@@ -283,8 +295,9 @@ class Node(SubElement):
             this node
         :rtype: ApplianceInfo
         """
-        if "appliance_info" in self.data:
-            return ApplianceInfo(**self.data["appliance_info"])
+        result = self.from_href(self.href)
+        if "appliance_info" in result.data:
+            return ApplianceInfo(**result.data["appliance_info"])
         else:
             raise NodeCommandFailed("Appliance information is not available on this engine")
 

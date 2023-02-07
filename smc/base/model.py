@@ -1,3 +1,14 @@
+#  Licensed under the Apache License, Version 2.0 (the "License"); you may
+#  not use this file except in compliance with the License. You may obtain
+#  a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#  License for the specific language governing permissions and limitations
+#  under the License.
 """
 Classes representing basic models for data obtained or retrieved from the SMC
 
@@ -861,6 +872,37 @@ class Element(ElementBase):
         from smc.core.resource import History
 
         return History(**self.make_request(resource="history"))
+
+    def is_locked(self):
+        """
+        Locked flag for element
+        """
+        return self.data.get("locked", None)
+
+    def lock(self, reason_for=None):
+        """
+        .. Requires SMC version >= 6.10.10 or >= 7.0.2 or >= 7.1.0
+
+        Locks this element with an optional reason.
+
+        :raises ResourceNotFound: If not running on supported SMC version
+        """
+        if reason_for:
+            return self.make_request(method="update",
+                                     resource="lock",
+                                     params={"reason_for": reason_for})
+        else:
+            return self.make_request(method="update", resource="lock")
+
+    def unlock(self):
+        """
+        .. Requires SMC version >= 6.10.10 or >= 7.0.2 or >= 7.1.0
+
+        Unlocks this element.
+
+        :raises ResourceNotFound: If not running on supported SMC version
+        """
+        return self.make_request(method="update", resource="unlock")
 
     def duplicate(self, name):
         """

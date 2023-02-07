@@ -1,3 +1,14 @@
+#  Licensed under the Apache License, Version 2.0 (the "License"); you may
+#  not use this file except in compliance with the License. You may obtain
+#  a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#  License for the specific language governing permissions and limitations
+#  under the License.
 """
 BGP Module representing BGP settings for Forcepoint NGFW layer 3 engines. BGP can be
 enabled and run on either single/cluster layer 3 firewalls or virtual engines.
@@ -168,6 +179,32 @@ class BGP(object):
         :return: str or None
         """
         return self.data.get("router_id")
+
+    @property
+    def bmp_router_id(self):
+        """
+        Get the BMP router ID for this BGP configuration.
+        Directly linked to 'bmp_router_id_type' attribute:
+         - [0-255]:[0-65535]: AS Number : dedicated number
+         - V.X.Y.Z:[0-255]: IPv4 Address : AS Number
+         - [0-65535]:[0-255]: AS Number : dedicated number
+
+        :return: str or None
+        """
+        return self.data.get("bmp_router_id")
+
+    @property
+    def bmp_router_id_type(self):
+        """
+        Get the BMP router ID type for this BGP configuration.
+        Accepted values:
+         - 0: [0-255]:[0-65535] format
+         - 1: V.X.Y.Z:[0-255] format
+         - 2: [0-65535]:[0-255] format
+
+        :return: str or None
+        """
+        return self.data.get("bmp_router_id_type")
 
     @property
     def status(self):
@@ -419,6 +456,9 @@ class BGPProfile(Element):
         internal_distance=200,
         local_distance=200,
         subnet_distance=None,
+        bmp_port=None,
+        bmp_address=None,
+        bmp_connect_through_master=None
     ):
         """
         Create a custom BGP Profile
@@ -430,6 +470,10 @@ class BGPProfile(Element):
         :param int local_distance: local administrative distance (aggregation) (1-255)
         :param list subnet_distance: configure specific subnet's with respective distances
         :type tuple subnet_distance: (subnet element(Network), distance(int))
+        :param int bmp_port: the BMP port (1-65535)
+        :param str bmp_address: the BMP address (IPv4 or IPv6 or FQDN)
+        :param bool bmp_connect_through_master: flag to indicate the BMP connection will be
+        performed from a master
         :raises CreateElementFailed: reason for failure
         :return: instance with meta
         :rtype: BGPProfile
@@ -440,6 +484,9 @@ class BGPProfile(Element):
             "internal": internal_distance,
             "local": local_distance,
             "port": port,
+            "bmp_port": bmp_port,
+            "bmp_address": bmp_address,
+            "bmp_connect_through_master": bmp_connect_through_master
         }
 
         if subnet_distance:
@@ -460,6 +507,36 @@ class BGPProfile(Element):
         :rtype: int
         """
         return self.data.get("port")
+
+    @property
+    def bmp_port(self):
+        """
+        Specified port for BGP BMP
+
+        :return: value of BGP BMP port
+        :rtype: int
+        """
+        return self.data.get("bmp_port")
+
+    @property
+    def bmp_address(self):
+        """
+        Specified IPv4 or IPv6 or FQDN address for BGP BMP
+
+        :return: value of BGP BMP address
+        :rtype: str
+        """
+        return self.data.get("bmp_address")
+
+    @property
+    def bmp_connect_through_master(self):
+        """
+        Specified flag if the BGP BMP connection will be through a master
+
+        :return: flag for BGP BMP connection
+        :rtype: bool
+        """
+        return self.data.get("bmp_connect_through_master")
 
     @property
     def external_distance(self):

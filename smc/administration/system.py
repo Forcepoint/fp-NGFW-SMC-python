@@ -1,3 +1,14 @@
+#  Licensed under the Apache License, Version 2.0 (the "License"); you may
+#  not use this file except in compliance with the License. You may obtain
+#  a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#  License for the specific language governing permissions and limitations
+#  under the License.
 """
 Module that controls aspects of the System itself, such as updating dynamic
 packages, updating engines, applying global block lists, etc.
@@ -18,24 +29,28 @@ To load the configuration for system, do::
     UpdatePackage(name=Update Package 887)
 
 """
-import time
 import logging
+import time
 
+from smc.administration.license import Licenses
+from smc.administration.system_properties import SystemProperty
+from smc.administration.tasks import Task
 from smc.administration.upcoming_event import UpcomingEvents, UpcomingEventsPolicy, \
     UpcomingEventIgnoreSettings
-from smc.compat import is_api_version_less_than_or_equal, is_api_version_less_than, \
-    is_smc_version_less_than
-from smc.elements.other import prepare_blacklist, prepare_block_list
-from smc.administration.system_properties import SystemProperty
-from smc.elements.other import prepare_blacklist
-from smc.base.model import SubElement, Element, ElementCreator
 from smc.administration.updates import EngineUpgrade, UpdatePackage
-from smc.administration.license import Licenses
-from smc.administration.tasks import Task
-from smc.base.util import millis_to_utc, extract_self
-from smc.base.collection import sub_collection
 from smc.api.common import fetch_entry_point
-from smc.api.exceptions import ResourceNotFound, ActionCommandFailed
+from smc.api.exceptions import ResourceNotFound, ActionCommandFailed, ElementNotFound, \
+    EngineCommandFailed
+from smc.base.collection import sub_collection
+from smc.base.model import SubElement, Element, ElementCreator
+from smc.base.util import millis_to_utc, extract_self
+from smc.compat import is_api_version_less_than, \
+    is_smc_version_less_than
+from smc.elements.other import prepare_blacklist
+from smc.elements.other import prepare_block_list
+from smc.core.session_monitoring import SessionMonitoringResult
+from smc.compat import is_smc_version_less_than_or_equal, is_api_version_less_than_or_equal, \
+    min_smc_version, is_api_version_less_than
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +106,23 @@ class System(SubElement):
         :return: None
         """
         self.make_request(method="delete", resource="empty_trash_bin")
+
+    def find_system_element(self, element_type, system_key):
+        """
+        Search an element from its system key and its type
+
+        :param element_type is the element type
+        :param system_key is the system key of the element
+        :raises ElementNotFound if the system element cannot be found
+        """
+        system_ref = self.make_request(resource="find_system_element",
+                                       params={"element_type": element_type,
+                                               "system_key": system_key})
+        if not system_ref:
+            raise ElementNotFound("System element from {}/{} has not been found."
+                                  .format(element_type, system_key))
+        # consider the first result entry
+        return Element.from_meta(**system_ref[0])
 
     def update_package(self):
         """
@@ -259,6 +291,21 @@ class System(SubElement):
         json = {"entries": [prepare_block_list(src, dst, duration, **kw)]}
         self.make_request(
             method="create", resource="block_list", json=json
+        )
+
+    def block_list_bulk(self, block_list):
+        """
+        Add block_list entries to all defined engines in bulk. For block_list to work,
+        you must also create a rule with action "Apply Blocklist".
+        First create your block_list entries using :class:`smc.elements.other.Blocklist`
+        then provide the block_list to this method.
+
+        :param Blocklist block_list : pre-configured block_list entries
+
+        .. note:: This method requires SMC version >= 7.0
+        """
+        self.make_request(
+            EngineCommandFailed, method="create", resource="block_list", json=block_list.entries
         )
 
     def blacklist(self, src, dst, duration=3600, **kw):
@@ -441,6 +488,59 @@ class System(SubElement):
             params={"recursive": True, "type": typeof, "exclude_trashed": exclude_trashed},
         )
 
+    def export_ldif_elements(
+            self,
+            filename="export_ldif_elements.zip",
+            timeout=5,
+            max_tries=36
+    ):
+        """
+        Export internal LDAP elements in LDIF format from SMC.
+
+        :param filename: Name of file for export
+        :raises TaskRunFailed: failure during export with reason
+        :rtype: DownloadTask
+        """
+        return Task.download(
+            self,
+            "export_ldif_elements",
+            filename,
+            timeout=timeout,
+            max_tries=max_tries
+        )
+
+    def import_ldif_elements(self, filename):
+        """
+        Import LDIF elements into SMC. Specify the fully qualified path
+        to the import ldif file.
+
+        :param str filename: LDIF file containing internal LDAP entries
+        :raises: ActionCommandFailed
+        :return: None
+        """
+        import_ldif_follower = Task(
+            self.make_request(
+                method="create",
+                resource="import_ldif_elements",
+                files={"import_file": open(filename, "rb")}
+            )
+        )
+        in_progress = import_ldif_follower.data.in_progress
+        progress = import_ldif_follower.progress
+        while in_progress is True:
+            time.sleep(1)
+            logger.info("LDIF import task progress: {}%".format(progress))
+            in_progress = import_ldif_follower.update_status().data.in_progress
+            progress = import_ldif_follower.update_status().progress
+            succeed = import_ldif_follower.update_status().success
+            last_message = import_ldif_follower.update_status().last_message
+
+        if not succeed:
+            logger.error("LDIF Import task failed: {}".format(last_message))
+            raise ActionCommandFailed(last_message)
+
+        logger.info("LDIF import task succeeded")
+
     def active_alerts_ack_all(self):
         """
         Acknowledge all active alerts in the SMC. Only valid for
@@ -577,10 +677,19 @@ class AdminDomain(Element):
     based segmentation within SMC. If domains are in use, you can
     log in directly to a domain to modify contents within that domain.
 
-    Find all available domains::
+    Find all available domains:
 
         >>> list(AdminDomain.objects.all())
         [AdminDomain(name=Shared Domain)]
+        >>> admindomain_obj = AdminDomain(name=mydomain)
+        >>> admindomain_obj.announcement_enabled
+            True
+        >>> admindomain_obj.announcement_message
+            test
+        >>> admindomain_obj.update(announcement_enabled=False)
+        >>> admindomain_obj.announcement_enabled
+            False
+
 
     .. note:: Admin Domains require and SMC license.
     """
@@ -588,21 +697,130 @@ class AdminDomain(Element):
     typeof = "admin_domain"
 
     @classmethod
-    def create(cls, name, comment=None):
+    def create(cls,
+               name,
+               announcement_enabled=False,
+               announcement_message=None,
+               contact_email=None,
+               contact_number=None,
+               category_filter_system=True,
+               show_not_categorized=True,
+               user_alert_check=[],
+               comment=None
+               ):
         """
         Create a new Admin Domain element for SMC objects.
 
         Example::
 
-            >>> AdminDomain.create(name='mydomain', comment='mycomment')
+            >>> admindomain_obj=AdminDomain.create(name='mydomain',announcement_enabled=True, \
+                announcement_message='test', comment='mycomment')
             >>> AdminDomain(name=mydomain)
 
         :param str name: name of domain
+        :param bool announcement_enabled: Enable or disable display of announcement message
+        :param str announcement_message: Announcement message to be displayed before the login
+            window
+        :param str contact_email: contact email
+        :param str contact_number: contact phone number
+        :param bool category_filter_system: Flag to know if we need to show system elements.
+            By default, true.
+        :param bool show_not_categorized: Flag to know if we need to show not categorized.
+            By default, true.
+        :param list user_alert_check: The list of User alert checks.
         :param str comment: optional comment
         :raises CreateElementFailed: failed creating element with reason
         :return: instance with meta
         :rtype: AdminDomain
         """
-        json = {"name": name, "comment": comment}
-
+        json = {"name": name, "announcement_enabled": announcement_enabled,
+                "category_filter_system": category_filter_system,
+                "show_not_categorized": show_not_categorized, "comment": comment}
+        if announcement_message:
+            json.update(announcement_message=announcement_message)
+        if contact_email:
+            json.update(contact_email=contact_email)
+        if contact_number:
+            json.update(contact_number=contact_number)
+        if user_alert_check:
+            json.update(user_alert_check=user_alert_check)
         return ElementCreator(cls, json)
+
+    @property
+    def contact_email(self):
+        return self.data.contact_email
+
+    @property
+    def contact_number(self):
+        """
+        Contact Number
+        :rtype: str
+        """
+        return self.data.contact_number
+
+    @property
+    def announcement_enabled(self):
+        """
+        Display flag of announcement message
+        :rtype: bool
+        """
+        return self.data.announcement_enabled
+
+    @property
+    def announcement_message(self):
+        """
+        Announcement message to be displayed before the login window.
+        :rtype: str
+        """
+        return self.data.announcement_message
+
+    @property
+    def category_filter_system(self):
+        """
+        Flag to know if we need to show system elements
+        :@rtype: bool
+        """
+        return self.data.category_filter_system
+
+    @property
+    def show_not_categorized(self):
+        """
+        Flag to know if we need to show not categorized.
+        :rtype: bool
+        """
+        return self.data.show_not_categorized
+
+    @property
+    def user_alert_check(self):
+        """
+        The list of User alert checks.
+        :rtype: list(UserAlertCheck)
+        """
+        return self.data.user_alert_check
+
+    def get_active_alerts(self, full=True):
+        """
+        Available for all SMC API Versions but only for SMC Version above 7.1 (7.1 included)
+
+        Return active alerts for the requested domain
+
+        :optional param full ( default value is true ). When set to false, juste retrieve the log
+                            key of each entry ( timestamp, component id, event id ).
+
+        :return: list of alert monitoring entries : session_monitoring.SessionMonitoringResult
+        :rtype: SerializedIterable(Route)
+        """
+        if not min_smc_version("7.1"):
+            raise UnsupportedEngineFeature("Need at least 7.1 version of the SMC")
+        try:
+            params = None
+            if not full:
+                params = dict()
+                params["full"] = False
+            result = self.make_request(EngineCommandFailed,
+                                       resource="alert_monitoring",
+                                       params=params)
+
+            return SessionMonitoringResult("alert_monitoring", result)
+        except SMCConnectionError:
+            raise EngineCommandFailed("Timed out waiting for alerts")

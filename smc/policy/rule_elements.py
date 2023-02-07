@@ -1,8 +1,21 @@
+#  Licensed under the Apache License, Version 2.0 (the "License"); you may
+#  not use this file except in compliance with the License. You may obtain
+#  a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#  License for the specific language governing permissions and limitations
+#  under the License.
+
 from smc.base.model import Element, ElementCreator
 from smc.base.structs import NestedDict
 from smc.api.exceptions import ElementNotFound, InvalidRuleValue
 from smc.base.util import element_resolver
-from smc.compat import is_api_version_less_than_or_equal, is_api_version_less_than
+from smc.compat import is_api_version_less_than_or_equal, \
+    is_api_version_less_than, is_smc_version_less_than
 
 
 class RuleElement(object):
@@ -323,7 +336,7 @@ class Action(NestedDict):
         Since SMC 6.6 actions have to be in list
         format whereas in SMC < 6.6 they were string.
         :param str|list value: allow\\|discard\\|continue\\|refuse\\|jump\\|apply_vpn
-                          \\|enforce_vpn\\|forward_vpn\\|block_list
+                          \\|enforce_vpn\\|forward_vpn\\|block_list\\|forced_next_hop
         :rtype: str|list
         """
         return self.get("action")
@@ -390,14 +403,46 @@ class Action(NestedDict):
         """
         Enable or Disable the Application Health Monitoring for the matching Traffic
 
-        :param bool value: True, False, None (inherit from continue rule)
+        :param bool value: True, False, None (inherit from continue rule) in 7.0
+        :param str value: true, false, probing, None (inherit from continue rule) in 7.1 and above
         :rtype: bool
         """
         return self.get("network_application_latency_monitoring")
 
     @network_application_latency_monitoring.setter
     def network_application_latency_monitoring(self, value):
-        self.update(network_application_latency_monitoring=value)
+        # Added condition to fix SMC-46648
+        if not is_smc_version_less_than("7.0"):
+            self.update(network_application_latency_monitoring=value)
+
+    @property
+    def forced_next_hop_ip(self):
+        """
+        If action includes forced_next_hop, specify the forced next hop IP address.
+
+        :rtype: str ip address
+        """
+        return self.get("forced_next_hop_ip")
+
+    @forced_next_hop_ip.setter
+    def forced_next_hop_ip(self, value):
+        if not is_smc_version_less_than("7.1"):
+            self.update(forced_next_hop_ip=value)
+
+    @property
+    def forced_next_hop_element(self):
+        """
+        If action includes forced_next_hop, specify the forced next hop element.
+
+        :rtype: NetworkElement
+        """
+        if "forced_next_hop_element" in self:
+            return Element.from_href(self.get("forced_next_hop_element"))
+
+    @forced_next_hop_element.setter
+    def forced_next_hop_element(self, value):
+        if not is_smc_version_less_than("7.1"):
+            self.update(forced_next_hop_element=element_resolver(value))
 
     @property
     def file_filtering(self):

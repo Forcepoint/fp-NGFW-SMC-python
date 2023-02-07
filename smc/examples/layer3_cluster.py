@@ -1,3 +1,14 @@
+#  Licensed under the Apache License, Version 2.0 (the "License"); you may
+#  not use this file except in compliance with the License. You may obtain
+#  a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#  License for the specific language governing permissions and limitations
+#  under the License.
 """
 Example of how to create a 3 node cluster in SMC
 Before any operations can be done on the SMC, you must first call login, and remember to call logout
@@ -74,6 +85,7 @@ try:
         enable_antivirus=True,
         enable_gti=True,
         default_nat=True,
+        extra_opts={"is_cert_auto_renewal": True},
     )
 
     engine.physical_interface.add_layer3_cluster_interface(
@@ -111,7 +123,7 @@ try:
         if result:
             print("Successfully wrote initial configuration for node: {}, to file: {}".format(
                 node.name, node.name + ".cfg"))
-
+    assert engine.is_cert_auto_renewal, "Failed to pass attribute using extra_opts"
 except BaseException as e:
     print("ex={}".format(e))
     exit(-1)

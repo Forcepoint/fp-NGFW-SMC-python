@@ -1,3 +1,14 @@
+#  Licensed under the Apache License, Version 2.0 (the "License"); you may
+#  not use this file except in compliance with the License. You may obtain
+#  a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#  License for the specific language governing permissions and limitations
+#  under the License.
 """
 Example of how to create a layer3 Firewall in SMC
 """
@@ -13,6 +24,8 @@ from smc.elements.servers import NTPServer, DNSServer
 from smc_info import SMC_URL, API_KEY, API_VERSION
 
 engine_name = "myFw"
+MESSAGE_FOR_DNS_DELAY = "Failed to check the allow_listening_interfaces_to_dns_relay_port."
+MESSAGE_FOR_DNS_RESOLVER = "Failed to check the allow_connections_to_dns_resolvers."
 
 if __name__ == "__main__":
     session.login(url=SMC_URL, api_key=API_KEY, verify=False, timeout=120, api_version=API_VERSION)
@@ -34,7 +47,8 @@ try:
     Layer3Firewall.create(name=engine_name,
                           mgmt_ip="192.168.10.1",
                           mgmt_network="192.168.10.0/24",
-                          ntp_settings=ntp
+                          ntp_settings=ntp,
+                          extra_opts={"is_cert_auto_renewal": True}
                           )
 
     # Update NTP server settings for the Firewall
@@ -73,6 +87,26 @@ try:
     engine.update()
     assert not engine.sandbox.status, \
         "{} L3 fw should have sandbox disabled".format(engine_name)
+    assert engine.is_cert_auto_renewal, "Failed to pass attribute using extra_opts"
+
+    assert engine.automatic_rules_settings.allow_auth_traffic, "Failed to get allow_auth_traffic."
+    engine.automatic_rules_settings.update_automatic_rules_settings(allow_auth_traffic=False)
+    assert engine.automatic_rules_settings.allow_listening_interfaces_to_dns_relay_port, \
+        MESSAGE_FOR_DNS_DELAY
+    assert engine.automatic_rules_settings.allow_connections_to_dns_resolvers, \
+        MESSAGE_FOR_DNS_RESOLVER
+    engine.automatic_rules_settings.update_automatic_rules_settings(
+        allow_listening_interfaces_to_dns_relay_port=False)
+    engine.automatic_rules_settings.update_automatic_rules_settings(
+        allow_connections_to_dns_resolvers=False)
+    engine.update()
+
+    assert not engine.automatic_rules_settings.allow_auth_traffic, "Failed to update " \
+                                                                   "allow_auth_traffic"
+    assert not engine.automatic_rules_settings.allow_listening_interfaces_to_dns_relay_port, \
+        MESSAGE_FOR_DNS_DELAY
+    assert not engine.automatic_rules_settings.allow_connections_to_dns_resolvers, \
+        MESSAGE_FOR_DNS_RESOLVER
 
 except BaseException as e:
     print("ex={}".format(e))

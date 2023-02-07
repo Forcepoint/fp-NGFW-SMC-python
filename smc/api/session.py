@@ -1,3 +1,14 @@
+#  Licensed under the Apache License, Version 2.0 (the "License"); you may
+#  not use this file except in compliance with the License. You may obtain
+#  a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#  License for the specific language governing permissions and limitations
+#  under the License.
 """
 Session module for tracking existing connection state to SMC
 """
@@ -243,6 +254,8 @@ class Session(object):
     it. This results in a single persistent connection to the SMC that will
     be re-used as needed.
     """
+    # SMC-46756 makes max_pool configurable
+    DEFAULT_POOL_MAXSIZE = requests.adapters.DEFAULT_POOLSIZE
 
     def __init__(self, manager=None):
         self._params = {}  # Retrieved from login
@@ -455,6 +468,8 @@ class Session(object):
         verify=True,
         alt_filepath=None,
         domain=None,
+        pool_maxsize=None,
+        max_retry=None,
         **kwargs
     ):
         """
@@ -486,6 +501,8 @@ class Session(object):
         :param bool retry_on_busy: pass as kwarg with boolean if you want to add retries
             if the SMC returns HTTP 503 error during operation. You can also optionally customize
             this behavior and call :meth:`.set_retry_on_busy`
+        :param int pool_maxsize: The maximum number of connections to save in the pool.
+        :param int max_retry: The maximum number of retry.
         :return: user session name in SessionManager
         :rtype: str
         :raises ConfigLoadError: loading cfg from ~.smcrc fails
@@ -508,6 +525,11 @@ class Session(object):
             providing the api_key in the login call.
         """
         params = {}
+        '''
+        The global variable MAX_RETRY is hardcoded to 5. The request framework makes use of this
+        value. It can be overridden by passing the max_retry parameter in the login method.
+        '''
+        global MAX_RETRY
         if not url or (not api_key and not (login and pwd)):
             try:  # First try load from file
                 params = (
@@ -557,7 +579,15 @@ class Session(object):
         retry_on_busy = extra_args.pop("retry_on_busy", False)
 
         request = self._build_auth_request(verify_ssl, **extra_args)
+        if pool_maxsize:
+            Session.DEFAULT_POOL_MAXSIZE = pool_maxsize
 
+        '''
+        SMC-47064 If the max_retry parameter is passed in the login method,
+        it overrides the hardcoded value of MAX_RETRY.
+        '''
+        if max_retry:
+            MAX_RETRY = max_retry
         # This will raise if session login fails...
         self._session = self._get_session(request)
         self.session.verify = verify_ssl
@@ -629,11 +659,12 @@ class Session(object):
             method_whitelist=HTTP_METHODS_SUPPORTING_AUTO_RETRY,
             status_forcelist=ERROR_CODES_SUPPORTING_AUTO_RETRY,
         )
-        adapter = HTTPAdapter(max_retries=retry)
-        ssladapter = SSLAdapter(max_retries=retry)
+        adapter = HTTPAdapter(max_retries=retry,
+                              pool_maxsize=Session.DEFAULT_POOL_MAXSIZE)
+        ssladapter = SSLAdapter(max_retries=retry,
+                                pool_maxsize=Session.DEFAULT_POOL_MAXSIZE)
         _session.mount("http://", adapter)
         _session.mount("https://", ssladapter)
-
         response = _session.post(**request)
         logger.info("Using SMC API version: %s", self.api_version)
         self._connpool = ssladapter.get_connection(request.get("url"))

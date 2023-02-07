@@ -1,3 +1,14 @@
+#  Licensed under the Apache License, Version 2.0 (the "License"); you may
+#  not use this file except in compliance with the License. You may obtain
+#  a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#  License for the specific language governing permissions and limitations
+#  under the License.
 """
 Module that controls aspects of the getting Monitoring Status
 To get Monitoring Status for VPN and tunnels, do::
@@ -19,6 +30,8 @@ import logging
 from smc.api.common import fetch_entry_point, SMCRequest
 from smc.api.exceptions import NotMonitored
 from smc.base.model import Element
+from smc.compat import min_smc_version
+from smc.core.resource import History
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +74,9 @@ class MonitoringStatus(object):
 
     def __init__(self, **data):
         for d, v in data.items():
+            # Made the code SMC 7.1 compatible
+            if min_smc_version('7.1') and d == 'child':
+                setattr(self, 'result', v)
             setattr(self, d, v)
 
     @property
@@ -132,6 +148,20 @@ class MonitoringStatus(object):
         """
         return self._result
 
+    @property
+    def history(self):
+        """
+        This function returns a history object.
+        :return: history object.
+        :rtype: History
+        """
+        if min_smc_version('7.1'):
+            for link_dict in self.link:
+                if link_dict['rel'] == 'history':
+                    history_link = link_dict['href']
+                    result = SMCRequest(method="create", href=history_link).create()
+                    return History(**result.json)
+
     @result.setter
     def result(self, value):
         self._result = value
@@ -169,11 +199,12 @@ class MonitoringStatus(object):
         :raises NotMonitored: the element is not monitored
         :rtype: MonitoringStatus
         """
-        monitoring_json = {"value": href}
-        rq = SMCRequest(method="create",
-                        json=monitoring_json,
-                        href=fetch_entry_point("monitoring_status"))
-        result = rq.create()
+        if min_smc_version('7.1') and 'monitoring_status' in href:
+            result = SMCRequest(method="read", href=href).read()
+        else:
+            monitoring_json = {"value": href}
+            result = SMCRequest(method="create", json=monitoring_json,
+                                href=fetch_entry_point("monitoring_status")).create()
         if result.code == 400:
             raise NotMonitored(result.msg)
         status = MonitoringStatus.__get_status_type(result.json)

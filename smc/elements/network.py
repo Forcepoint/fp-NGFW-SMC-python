@@ -1,6 +1,18 @@
+#  Licensed under the Apache License, Version 2.0 (the "License"); you may
+#  not use this file except in compliance with the License. You may obtain
+#  a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#  License for the specific language governing permissions and limitations
+#  under the License.
 """
 Module representing network elements used within the SMC
 """
+
 from smc.base.model import Element, ElementCreator
 from smc.api.exceptions import (
     MissingRequiredInput,
@@ -9,6 +21,7 @@ from smc.api.exceptions import (
     FetchElementFailed,
 )
 from smc.base.util import element_resolver
+from smc.api.common import fetch_entry_point
 from smc.compat import is_smc_version_less_than
 
 
@@ -109,6 +122,10 @@ class AddressRange(Element):
         json = {"name": name, "ip_range": ip_range, "comment": comment}
 
         return ElementCreator(cls, json)
+
+    @classmethod
+    def any(cls):
+        return Element.from_href(fetch_entry_point("address_range")+'/0')
 
 
 class Router(Element):
@@ -631,19 +648,58 @@ class Alias(Element):
         self.resolved_value = []  #: resolved value for alias
 
     @classmethod
-    def create(cls, name, comment=None):
+    def create(cls, name, comment=None, default_values=None, alias_values=None):
         """
         Create an alias.
 
         :param str name: name of alias
         :param str comment: comment for this alias
+        :param list(Element) default_values: the default translated values
+        :param dict alias_values: the dedicated translated values for specified engines
+               {Engine1: [Element1, Element2], Engine2: [Element3]}
         :raises CreateElementFailed: create failed with reason
         :rtype: Alias
         """
-        return ElementCreator(cls, json={"name": name, "comment": comment})
+        alias_json_content = {"name": name,
+                              "comment": comment}
+        if default_values:
+            d_values = cls.__convert_default_values(default_values=default_values)
+            alias_json_content["default_alias_value"] = d_values
+        if alias_values:
+            a_values = cls.__convert_alias_values(alias_values=alias_values)
+            alias_json_content["alias_value"] = a_values
+
+        return ElementCreator(cls,
+                              json=alias_json_content)
 
     @classmethod
-    def update_or_create(cls, name, engine, translation_values=None, with_status=False):
+    def __convert_default_values(cls, default_values=None):
+        parsed_default_values = None
+        if default_values:
+            parsed_default_values = element_resolver(default_values) if default_values else []
+
+        return parsed_default_values
+
+    @classmethod
+    def __convert_alias_values(cls, alias_values=None):
+        parsed_alias_values = None
+        if alias_values:
+            parsed_alias_values = []
+            for engine, translated_values in alias_values.items():
+                resolved_tvs = element_resolver(translated_values) if translated_values else []
+                parsed_alias_values.append({'cluster_ref': engine.href,
+                                            'translated_element': resolved_tvs})
+
+        return parsed_alias_values
+
+    @classmethod
+    def update_or_create(cls,
+                         name,
+                         engine=None,
+                         translation_values=None,
+                         with_status=False,
+                         default_values=None,
+                         alias_values=None):
         """
         Update or create an Alias and it's mappings.
 
@@ -654,6 +710,9 @@ class Alias(Element):
         :param bool with_status: if set to True, a 3-tuple is returned with
             (Element, modified, created), where the second and third tuple
             items are booleans indicating the status
+        :param list(Element) default_values: the default translated values
+        :param dict alias_values: the dedicated translated values for specified engines
+               {Engine1: [Element1, Element2], Engine2: [Element3]}
         :raises ElementNotFound: specified engine or translation values are not
             found in the SMC
         :raises UpdateElementFailed: update failed with reason
@@ -663,37 +722,44 @@ class Alias(Element):
         updated, created = False, False
         alias = cls.get(name, raise_exc=False)
         if not alias:
-            alias = cls.create(name)
+            alias = cls.create(name, default_values=default_values, alias_values=alias_values)
             created = True
-
-        elements = element_resolver(translation_values) if translation_values else []
-
-        if not created:  # possible update
-            # Does alias already exist with a value
-            alias_value = [
-                _alias
-                for _alias in engine.data.get("alias_value", [])
-                if _alias.get("alias_ref") == alias.href
-            ]
-
-            if alias_value:
-                if not elements:
-                    alias_value[0].update(translated_element=None)
-                    updated = True
-                else:
-                    t_values = alias_value[0].get("translated_element")
-                    if set(t_values) ^ set(elements):
-                        t_values[:] = elements
-                        updated = True
-
-        if elements and (created or not updated):
-            engine.data.setdefault("alias_value", []).append(
-                {"alias_ref": alias.href, "translated_element": elements}
-            )
+        elif default_values or alias_values:
+            d_values = cls.__convert_default_values(default_values=default_values)
+            a_values = cls.__convert_alias_values(alias_values=alias_values)
+            alias.update(default_alias_value=d_values,
+                         alias_value=a_values)
             updated = True
 
-        if updated:
-            engine.update()
+        if engine:
+            elements = element_resolver(translation_values) if translation_values else []
+
+            if not created:  # possible update
+                # Does alias already exist with a value
+                alias_value = [
+                    _alias
+                    for _alias in engine.data.get("alias_value", [])
+                    if _alias.get("alias_ref") == alias.href
+                ]
+
+                if alias_value:
+                    if not elements:
+                        alias_value[0].update(translated_element=None)
+                        updated = True
+                    else:
+                        t_values = alias_value[0].get("translated_element")
+                        if set(t_values) ^ set(elements):
+                            t_values[:] = elements
+                            updated = True
+
+            if elements and (created or not updated):
+                engine.data.setdefault("alias_value", []).append(
+                    {"alias_ref": alias.href, "translated_element": elements}
+                )
+                updated = True
+
+            if updated:
+                engine.update()
 
         if with_status:
             return alias, updated, created

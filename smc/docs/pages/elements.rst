@@ -163,7 +163,7 @@ Functions or methods that modify
 --------------------------------
 
 Some functions or element methods may make modifications to an element depending on the
-operation. These functions are documented and will also be decorated with and ``autcommit``
+operation. These functions are documented and will also be decorated with and ``autocommit``
 decorator.
 This allows you to queue changes locally before submitting them to the Management Server by calling
 ``update``. To override this behavior, you can either pass ``autocommit=True`` to these functions or set

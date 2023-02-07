@@ -1,12 +1,22 @@
+#  Licensed under the Apache License, Version 2.0 (the "License"); you may
+#  not use this file except in compliance with the License. You may obtain
+#  a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#  License for the specific language governing permissions and limitations
+#  under the License.
 """
 VPN Certificates are used by NGFW to identify the engines for VPN clients
 and other VPN related connections. Each gateway certificate is signed by
 a VPN CA and uses the default internal CA by default.
 """
-
 from smc.base.model import Element, ElementCreator, SubElement, ElementRef
 from smc.administration.certificates.tls_common import ImportExportCertificate
-from smc.api.exceptions import CertificateError
+from smc.api.exceptions import CertificateError, SMCOperationFailure
 from smc.base.util import element_resolver
 
 
@@ -88,15 +98,87 @@ class GatewayCertificate(SubElement):
         )
 
     @property
+    def valid_from(self):
+        """
+        The date of gateway certificate valid from.
+        :return: Date of valid from gateway certificate
+        :rtype: str
+        """
+        return self.data.valid_from
+
+    @property
     def certificate(self):
         return self.certificate_base64
 
     def renew(self):
-        pass
+        """
+        Call renew link from gateway certificate
+        :return: message, detail, status or nothing
+        :rtype: str
+        """
+        return self.make_request(SMCOperationFailure, resource="renew")
+
+    @classmethod
+    def delete(self, name=None):
+        """
+        Delete a gateway certificate by it's name.
+
+        :param str name: name of the gateway certificate to remove
+        :raises ElementNotFound: element specified does not exist
+        """
+
+        return self.delete(self, name)
+
+    @property
+    def public_key_algorithm(self):
+        """
+        The Public Key Algorithm.Can be one of the following:
+        * dsa
+        * rsa
+        * ecdsa
+        :return: name of public key algorithm
+        :rtype: str
+        """
+        return self.data.public_key_algorithm
+
+    @property
+    def signature_algorithm(self):
+        """
+        The Signature Algorithm.Can be one of the following:
+        * dsa_sha_1
+        * dsa_sha_224
+        * dsa_rsa_256
+        * rsa_md5
+        * rsa_sha_1
+        * rsa_sha_256
+        * rsa_sha_384
+        * rsa_sha_512
+        * ecdsa_sha_1
+        * ecdsa_sha_256
+        * ecdsa_sha_384
+        * ecdsa_sha_512
+        :return: name of signature algorithm
+        :rtype: str
+        """
+        return self.data.signature_algorithm
+
+    @property
+    def subject_alt_name(self):
+        """
+        Subject alt name
+        :return: list of subject_alt_name
+        :rtype: list(subject_alt_name)
+        """
+        return self.data.subject_alt_name
 
     @property
     def expiration(self):
-        pass
+        """
+        Gateway certificate expiration date
+        :return: certificate expiration date
+        :rtype: str
+        """
+        return self.expiration_date
 
     def export_certificate(self):
         pass
