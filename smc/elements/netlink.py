@@ -263,6 +263,7 @@ class DynamicNetlink(Element):
     def create(
         cls,
         name,
+        connection_type=None,
         input_speed=None,
         learn_dns_automatically=True,
         output_speed=None,
@@ -278,6 +279,7 @@ class DynamicNetlink(Element):
         Create a Dynamic Netlink.
 
         :param str name: name of netlink Element
+        :param connection_type: default QoS connection type. By default, we put Active.
         :param int input_speed: input speed in Kbps, used for ratio-based
             load-balancing
         :param int output_speed: output speed in Kbps,  used for ratio-based
@@ -314,6 +316,14 @@ class DynamicNetlink(Element):
             "active_mode_timeout": active_mode_timeout,
             "learn_dns_server_automatically": learn_dns_automatically,
         }
+        # connection_type_ref available since
+        # SMC6.8 api>=6.8
+        if not is_api_version_less_than_or_equal("6.7"):
+            if not connection_type:
+                # by default, Active is used
+                json.update(connection_type_ref=element_resolver(ConnectionType("Active")))
+            else:
+                json.update(connection_type_ref=element_resolver(connection_type))
 
         return ElementCreator(cls, json)
 
@@ -587,3 +597,10 @@ class MultilinkMember(object):
         return "MultilinkMember(netlink={},netlink_role={},ip_range={})".format(
             self.netlink, self.netlink_role, self.ip_range
         )
+
+
+class LinkType(Element):
+    """
+    This represents the Link Type.
+    """
+    typeof = "link_type"

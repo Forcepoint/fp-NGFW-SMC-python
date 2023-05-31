@@ -40,14 +40,13 @@ setup(name='fp-NGFW-SMC-python',
       license=about['__license__'],
       packages=find_packages(exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
       install_requires=[
-        'requests>=2.12.0',
-        'pytz>=2021.1'
+        'requests>=2.31.0',
+        'pytz>=2022.6'
       ],
       include_package_data=True,
       classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Programming Language :: Python",
-        "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3.5",
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3",

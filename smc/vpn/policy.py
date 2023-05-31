@@ -18,7 +18,7 @@ from smc.api.exceptions import (
     ElementNotFound,
 )
 from smc.base.collection import sub_collection
-from smc.vpn.elements import VPNProfile, VPNSite
+from smc.vpn.elements import VPNProfile, VPNSite, LinkUsageProfile
 from smc.base.decorators import cached_property
 from smc.base.util import element_resolver
 from smc.core.engine import InternalEndpoint
@@ -45,26 +45,33 @@ class PolicyVPN(Element):
 
     typeof = "vpn"
     vpn_profile = ElementRef("vpn_profile")
+    link_usage_profile = ElementRef("link_usage_profile")
 
     @classmethod
-    def create(cls, name, nat=False, mobile_vpn_toplogy_mode=None, vpn_profile=None):
+    def create(cls, name, nat=False, mobile_vpn_topology_mode=None, vpn_profile=None,
+               link_usage_profile=None):
         """
         Create a new policy based VPN
 
         :param name: name of vpn policy
         :param bool nat: whether to apply NAT to the VPN (default False)
-        :param mobile_vpn_toplogy_mode: whether to allow remote vpn
+        :param mobile_vpn_topology_mode: whether to allow remote vpn
         :param VPNProfile vpn_profile: reference to VPN profile, or uses default
+        :param LinkUsageProfile link_usage_profile: reference to link usage profile of set
         :rtype: PolicyVPN
         """
         vpn_profile = element_resolver(vpn_profile) or VPNProfile("VPN-A Suite").href
 
         json = {
-            "mobile_vpn_topology_mode": mobile_vpn_toplogy_mode,
+            "mobile_vpn_topology_mode": mobile_vpn_topology_mode,
             "name": name,
             "nat": nat,
             "vpn_profile": vpn_profile,
         }
+
+        if link_usage_profile:
+            link_usage_profile = element_resolver(link_usage_profile)
+            json.update(link_usage_profile=link_usage_profile)
 
         try:
             return ElementCreator(cls, json)

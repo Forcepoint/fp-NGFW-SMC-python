@@ -12,20 +12,24 @@
 """
 Module that represents server based configurations
 """
+from smc.api.common import SMCRequest, _get_session
+from smc.api.exceptions import CreateElementFailed, SMCOperationFailure, CertificateImportError, \
+    CertificateExportError, CertificateError
 from smc.base.model import SubElement, ElementCreator, Element, ElementRef
 from smc.base.structs import NestedDict
 from smc.elements.helpers import location_helper
 from smc.elements.other import ContactAddress, Location
-from smc.api.exceptions import CreateElementFailed
-from smc.base.util import element_resolver
+from smc.base.util import element_resolver, save_to_file
 from smc.administration.certificates import tls
+from smc.administration.certificates.tls_common import pem_as_string
+from smc.core.external_pki import PkiCertificateSettings, PkiCertificateInfo
 
 
 class MultiContactAddress(SubElement):
     """
     A MultiContactAddress is a location and contact address pair which
     can have multiple addresses. Server elements such as Management
-    and Log Server can have configured locations with mutliple addresses
+    and Log Server can have configured locations with multiple addresses
     per location.
 
     Use this server reference to create, add or remove contact addresses
@@ -214,6 +218,23 @@ class ManagementServer(ContactAddressMixin, Element):
     """
 
     typeof = "mgt_server"
+
+    def restart_web_access(self):
+        """
+        Restart Web Access on Mgt Server.
+        :raises SMCOperationFailure: failed to restart SMC Web Access
+        :return: None
+        """
+
+        session = _get_session(SMCRequest._session_manager)
+        response = session.session.put(
+            url=self.href+"/restart_web_access"
+        )
+
+        if response.status_code != 200:
+            raise SMCOperationFailure(response)
+
+        return 0
 
 
 class DataContext(Element):
@@ -437,6 +458,91 @@ class LogServer(ContactAddressMixin, Element):
             self.update()
 
         return changed
+
+    def pki_certificate_settings(self):
+        """
+        Get the certificate info of this component when working with External PKI.
+
+        :rtype: PkiCertificateSettings
+        """
+        if "external_pki_certificate_settings" in self.data:
+            return PkiCertificateSettings(self)
+        raise UnsupportedEngineFeature(
+            "External PKI certificate settings are only supported when using "
+            "external PKI installation mode."
+        )
+
+    def pki_export_certificate_request(self, filename=None):
+        """
+        Export the certificate request for the component when working with an External PKI.
+        This can return None if the component does not have a certificate request.
+
+        :raises CertificateExportError: error exporting certificate
+        :rtype: str or None
+        """
+        result = self.make_request(
+            CertificateExportError, raw_result=True, resource="pki_export_certificate_request"
+        )
+
+        if filename is not None:
+            save_to_file(filename, result.content)
+            return
+
+        return result.content
+
+    def pki_import_certificate(self, certificate):
+        """
+        Import a valid certificate. Certificate can be either a file path
+        or a string of the certificate. If string certificate, it must include
+        the -----BEGIN CERTIFICATE----- string.
+
+        :param str certificate: fully qualified path or string
+        :raises CertificateImportError: failure to import cert with reason
+        :raises IOError: file not found, permissions, etc.
+        :return: None
+        """
+        self.make_request(
+            CertificateImportError,
+            method="create",
+            resource="pki_import_certificate",
+            headers={"content-type": "multipart/form-data"},
+            files={
+                # decode certificate or use it as it is
+                "signed_certificate": open(certificate, "rb")
+                if not pem_as_string(certificate)
+                else certificate
+            },
+        )
+
+    def pki_renew_certificate(self):
+        """
+        Start renewal process on component when using external PKI mode.
+        It generates new private key and prepare a new certificate request.
+        """
+        self.make_request(
+            CertificateError,
+            method="update",
+            resource="pki_start_certificate_renewal",
+        )
+
+    def pki_certificate_info(self):
+        """
+        Get the certificate info of this component when working with External PKI.
+        This can return None if the component does not directly have a certificate.
+
+        :rtype: PkiCertificateInfo
+        """
+        result = self.make_request(
+            CertificateError, resource="pki_certificate_info"
+        )
+        return PkiCertificateInfo(result)
+
+    def pki_delete_certificate_request(self):
+        """
+        Delete the certificate request if any is defined for this component.
+        """
+        self.make_request(method="delete",
+                          resource="pki_delete_certificate_request")
 
 
 class HttpProxy(Element):

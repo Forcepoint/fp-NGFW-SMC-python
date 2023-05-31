@@ -53,6 +53,7 @@ an LDAP domain called 'myldapdomain'.
 
 """
 
+from smc.administration.certificates import tls
 from smc.base.model import ElementCreator, Element, ElementRef, ElementList
 from smc.api.exceptions import CreateElementFailed
 from smc.base.structs import NestedDict
@@ -69,6 +70,208 @@ class AuthenticationMethod(Element):
     """
 
     typeof = "authentication_service"
+
+    @property
+    def method_type(self):
+        """
+        Return Authentication Method Type
+        :rtype: str
+        """
+        return self.data.get('type')
+
+    @classmethod
+    def create_saml(
+            cls,
+            name,
+            idp_metadata_url,
+            service_provider_id,
+            name_id_policy_format=None,
+            username_attribute=None,
+            tls_profile=None,
+            tls_credentials=None,
+            **kwargs
+    ):
+        """
+        Create SAML authentication method using basic settings. You can also provide additional
+        kwargs documented in the class description::
+
+        AuthenticationMethod.create_saml(name='someMethod',
+                idp_metadata_url='http://idp/metadata',
+                service_provider_id='smc',
+                name_id_policy_format='EmailAddress'
+                username_attribute='preferred_username'
+                tls_profile='My TLS Profile',
+                tls_credentials='My TLS Credentials')
+
+                :param str name: name of AD element for display
+                :param str idp_metadata_url: Identity Provider Metadata URL
+                :param str service_provider_id: Service Provider ID (as configured in IdP)
+                :param str name_id_policy_format: NameID Policy Format
+                                (possible values: Persistent, Unspecified, Transient, EmailAddress)
+                :param str username_attribute: Username Attribute Name
+                :param int tls_profile: tls_profile by element of str href.
+                                        Used during communication with IdP
+                :param str tls_credentials: tls_credentials by element of str href.
+                                       Used for decrypting SAML response and signing SAML requests
+                :raises CreateElementFailed: failed creating element
+                :rtype: AuthenticationMethod
+        """
+        json = {
+            "name": name,
+            "type": "saml",
+            "saml_metadata_file": idp_metadata_url,
+            "saml_service_provider_id": service_provider_id,
+            "saml_name_id_policy_format": name_id_policy_format,
+            "saml_user_attribute": username_attribute
+        }
+
+        if tls_profile:
+            tls_profile_ref = tls.TLSProfile(tls_profile).href
+            json.update(saml_tls_profile_ref=tls_profile_ref)
+        if tls_credentials:
+            tls_credentials_ref = tls.TLSServerCredential(tls_credentials).href
+            json.update(saml_tls_credentials_ref=tls_credentials_ref)
+
+        json.update(kwargs)
+        return ElementCreator(cls, json)
+
+    @property
+    def saml_metadata_url(self):
+        """
+        Return SAML Metadata URL
+        :rtype: str or None
+        """
+        return self.data.get('saml_metadata_file')
+
+    @saml_metadata_url.setter
+    def saml_metadata_url(self, saml_metadata_file):
+        """
+        Update SAML Metadata URL
+        """
+        self.data['saml_metadata_file'] = saml_metadata_file
+
+    @property
+    def saml_service_provider_id(self):
+        """
+        Return SAML Service Provider Identifier
+        :rtype: str or None
+        """
+        return self.data.get('saml_service_provider_id')
+
+    @saml_service_provider_id.setter
+    def saml_service_provider_id(self, saml_service_provider_id):
+        """
+        Update SAML Service Provider Identifier
+        """
+        self.data['saml_service_provider_id'] = saml_service_provider_id
+
+    @property
+    def saml_name_id_policy_format(self):
+        """
+        Return SAML NameID Policy Format
+        :rtype: str or None
+        """
+        return self.data.get('saml_name_id_policy_format')
+
+    @saml_name_id_policy_format.setter
+    def saml_name_id_policy_format(self, saml_name_id_policy_format):
+        """
+        Update SAML NameID Policy Format
+        """
+        self.data['saml_name_id_policy_format'] = saml_name_id_policy_format
+
+    @classmethod
+    def create_openid(
+            cls,
+            name,
+            discovery_url,
+            client_id,
+            client_secret,
+            username_attribute=None,
+            trusted_ca=None,
+            **kwargs
+    ):
+        """
+        Create OpenID authentication method using basic settings. You can also provide additional
+        kwargs documented in the class description::
+
+        AuthenticationMethod.create_openid(name='someMethod',
+                discovery_url='http://openid/metadata',
+                client_id='some id',
+                client_secret='some secret'
+                username_attribute='preferred_username'
+                trusted_ca='My Trusted CA')
+
+                :param str name: name of AD element for display
+                :param str discovery_url: OpenID Server discovery URL
+                :param str client_id: Client Identifier
+                :param str client_secret: Client password
+                :param str username_attribute: Username Attribute Name
+                :param int trusted_ca: trusted_ca by element of str href.
+                                       Used during communication with OpenID Server
+                :raises CreateElementFailed: failed creating element
+                :rtype: AuthenticationMethod
+        """
+        json = {
+            "name": name,
+            "type": "openid",
+            "open_id_url": discovery_url,
+            "open_id_client_id": client_id,
+            "open_id_secret": client_secret,
+            "open_id_user_attribute": username_attribute
+        }
+
+        if trusted_ca:
+            trusted_ca_ref = tls.TLSCertificateAuthority(trusted_ca).href
+            json.update(open_id_trusted_cert_ref=trusted_ca_ref)
+
+        json.update(kwargs)
+        return ElementCreator(cls, json)
+
+    @property
+    def open_id_url(self):
+        """
+        Return OpenID URL
+        :rtype: str or None
+        """
+        return self.data.get('open_id_url')
+
+    @open_id_url.setter
+    def open_id_url(self, open_id_url):
+        """
+        Update OpenID URL
+        """
+        self.data['open_id_url'] = open_id_url
+
+    @property
+    def open_id_client_id(self):
+        """
+        Return OpenID Client Identifier
+        :rtype: str or None
+        """
+        return self.data.get('open_id_client_id')
+
+    @open_id_client_id.setter
+    def open_id_client_id(self, open_id_client_id):
+        """
+        Update OpenID Client Identifier
+        """
+        self.data['open_id_client_id'] = open_id_client_id
+
+    @property
+    def open_id_user_attribute(self):
+        """
+        Return OpenID User Attribute Name
+        :rtype: str or None
+        """
+        return self.data.get('open_id_user_attribute')
+
+    @open_id_user_attribute.setter
+    def open_id_user_attribute(self, open_id_user_attribute):
+        """
+        Update OpenID User Attribute Name
+        """
+        self.data['open_id_user_attribute'] = open_id_user_attribute
 
 
 class DomainController(NestedDict):

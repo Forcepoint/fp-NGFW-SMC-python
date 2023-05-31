@@ -27,6 +27,37 @@ class QoSPolicy(Element):
     typeof = "qos_policy"
 
 
+class LinkSelection(object):
+    def __init__(self, bandwidth=0, jitter=0, latency=0, packet_loss=0, stability=0):
+        self.bandwidth = bandwidth
+        self.jitter = jitter
+        self.latency = latency
+        self.packet_loss = packet_loss
+        self.stability = stability
+        link_selection_json = {}
+        link_selection_json.update(jitter=jitter)
+        link_selection_json.update(latency=latency)
+        link_selection_json.update(bandwidth=bandwidth)
+        link_selection_json.update(packet_loss=packet_loss)
+        link_selection_json.update(stability=stability)
+        self.link_selection = link_selection_json
+
+    def jitter(self):
+        return self.jitter
+
+    def latency(self):
+        return self.latency
+
+    def bandwidth(self):
+        return self.bandwidth
+
+    def packet_loss(self):
+        return self.packet_loss
+
+    def stability(self):
+        return self.stability
+
+
 class QoSClass(Element):
     """
     This represents a QoS Class.
@@ -39,16 +70,29 @@ class QoSClass(Element):
     typeof = "qos_class"
 
     @classmethod
-    def create(cls, name, comment=None):
+    def create(cls, name, comment=None, lsv_override=None, link_selection=None):
         """
         Create the QoS Class.
 
         :param str name: name of QoS Class
         :param str comment: optional comment
+        :param bool lsv_override: optional can be True or False
+        :param object link_selection : optional value to override link selection value
         :raises CreateElementFailed: failed creating element with reason
         :return: instance with meta
         :rtype: QoSClass
         """
         json = {"name": name, "comment": comment}
-
+        link_selection = link_selection
+        if lsv_override:
+            json.update(lsv_override=lsv_override)
+        if link_selection:
+            json.update(link_selection=link_selection.link_selection)
         return ElementCreator(cls, json)
+
+    @property
+    def link_selection(self):
+        """
+        link_selection
+        """
+        return self.data.get("link_selection")

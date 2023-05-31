@@ -211,7 +211,8 @@ class InternalUser(UserElement):
 
     @classmethod
     def create(
-        cls, name, user_group=None, activation_date=None, expiration_date=None, comment=None
+            cls, name, user_group=None, activation_date=None, expiration_date=None,
+            authentication_method=[], password=None, pre_shared_key=None, comment=None
     ):
         """
         Create an internal user.
@@ -226,6 +227,10 @@ class InternalUser(UserElement):
             Activation date only supports year and month/day
         :param datetime expiration_date: expiration date as datetime object.
             Expiration date only supports year and month/day
+        :param list(authentication_method) authentication_method: list of authentication method.
+        :param str password: The password in case of password authentication method.
+        :param str pre_shared_key: The Pre-Shared key in case of pre shared key authentication
+        method.
         :param str comment: optional comment
         :raises ElementNotFound: thrown if group specified does not exist
         :rtype: InternalUser
@@ -242,8 +247,29 @@ class InternalUser(UserElement):
 
         if user_group:
             json.update(user_group=element_resolver(user_group))
-
+        if authentication_method:
+            json.update(authentication_method=element_resolver(authentication_method))
+            if password:
+                json.update(password=password)
+            if pre_shared_key:
+                json.update(pre_shared_key=pre_shared_key)
         return ElementCreator(cls, json)
+
+    @property
+    def user_group(self):
+        """
+        InternalUserGroup associated with internal user.
+        :rtype: list
+        """
+        return [Element.from_href(group) for group in self.data.get("user_group")]
+
+    @property
+    def authentication_method(self):
+        """
+        List of authentication method for specific internal user.
+        :rtype: list
+        """
+        return [Element.from_href(method) for method in self.data.get("authentication_method")]
 
 
 class InternalUserGroup(Browseable, UserElement):
@@ -267,7 +293,7 @@ class InternalUserGroup(Browseable, UserElement):
     @classmethod
     def create(cls, name, member=None, comment=None):
         """
-        Create an internal group. An internal group will always be attached
+        Create an internal user group. An internal group will always be attached
         to the default (and only) InternalUserDomain within the SMC.
 
         Example of creating an internal user group::

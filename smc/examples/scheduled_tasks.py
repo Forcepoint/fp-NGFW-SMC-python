@@ -24,13 +24,15 @@ import smc.examples
 
 from smc import session
 from smc.administration.scheduled_tasks import RefreshPolicyTask, ExportLogTask, DeleteLogTask, \
-    server_directory, ArchiveLogTask, RemoteUpgradeTask
+    server_directory, ArchiveLogTask, RemoteUpgradeTask, ServerBackupTask
 from smc.core.engine import Engine
 from smc.core.engines import Layer3Firewall
-from smc.elements.servers import ManagementServer
+from smc.elements.servers import ManagementServer, LogServer
 from smc_info import SMC_URL, API_KEY, API_VERSION
 RETRY_ONLINE = 30
 ENGINE_NAME = 'test_engine'
+NOT_CREATED_MSG = "Fail to create server backup task"
+TASK_NAME = 'backup_task_test'
 
 if __name__ == "__main__":
     session.login(url=SMC_URL, api_key=API_KEY, verify=False, timeout=120, api_version=API_VERSION)
@@ -142,6 +144,13 @@ try:
     else:
         print("Engine upgrade zip file path is missing from command line.")
 
+    backup_task = ServerBackupTask.create(name=TASK_NAME,
+                                          servers=[ManagementServer(name='Management Server')])
+    assert backup_task.name == TASK_NAME and backup_task.servers, NOT_CREATED_MSG
+    print("ServerBackupTask '{}' created successfully.".format(TASK_NAME))
+    backup_task.update(
+        resources=[ManagementServer(name='Management Server').href, LogServer("Log Server").href])
+    print("ServerBackupTask '{}' updated successfully with LogServer.".format(TASK_NAME))
 except BaseException as e:
     print(e)
     exit(-1)
@@ -152,4 +161,6 @@ finally:
     ArchiveLogTask("myarchivelogtask").delete()
     if execute_remote_upgrade:
         RemoteUpgradeTask("remote_upgrade_test").delete()
+    ServerBackupTask(TASK_NAME).delete()
+    print("ServerBackupTask '{}' deleted successfully.".format(TASK_NAME))
     session.logout()

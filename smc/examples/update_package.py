@@ -55,6 +55,8 @@ if __name__ == "__main__":
 
         system = System()
 
+        next_update = None
+
         logging.info("retrieve all update packages in desc order")
         for update in system.update_package():
             logging.info(update)
@@ -82,6 +84,9 @@ if __name__ == "__main__":
             # refresh next_update after activation ( needed to refresh "state" attribute)
             refresh_update_package(next_update, "active")
             assert next_update.state.lower() == "active", NOT_ACTIVATED_ERR
+
+        else:
+            print("The latest update package is already installed")
 
         # this part is not run in robot tests
         logging.info("Import update package from file")

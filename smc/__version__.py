@@ -10,7 +10,7 @@
 #  License for the specific language governing permissions and limitations
 #  under the License.
 
-__version__ = '1.0.21'
+__version__ = '1.0.22'
 __author__ = 'Forcepoint'
 __description__ = 'Python based API to Forcepoint NGFW Management Center'
 __url__ = 'http://github.com/Forcepoint/fp-NGFW-SMC-python'

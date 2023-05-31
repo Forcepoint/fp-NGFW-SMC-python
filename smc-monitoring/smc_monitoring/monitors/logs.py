@@ -176,6 +176,10 @@ class LogQuery(Query):
         if "quantity" in self.request["fetch"]:
             return self.request["fetch"]["quantity"]
 
+    def get_record(self, results):
+        if "records" in results and results["records"]:
+            return results["records"]
+
     def fetch_raw(self):
         """
         Execute the query and return by batches.

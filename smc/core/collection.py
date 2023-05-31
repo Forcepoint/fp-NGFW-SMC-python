@@ -331,6 +331,147 @@ class InterfaceCollection(BaseIterable):
 
         return interface, modified, created
 
+    def add_layer3_vlan_interface(self, *args, **kwargs):
+        """
+        Add a Layer 3 VLAN interface. Optionally specify an address and network if
+        assigning an IP to the VLAN. This method will also assign an IP address to
+        an existing VLAN, or add an additional address to an existing VLAN. This
+        method may commonly be used on a Master Engine to create VLANs for virtual
+        firewall engines.
+
+        Example of creating a VLAN and passing kwargs to define a DHCP server
+        service on the VLAN interface::
+
+            engine = Engine('engine1')
+            engine.physical_interface.add_layer3_vlan_interface(interface_id=20, vlan_id=20,
+                address='20.20.20.20', network_value='20.20.20.0/24', comment='foocomment',
+                dhcp_server_on_interface={
+                    'default_gateway': '20.20.20.1',
+                    'default_lease_time': 7200,
+                    'dhcp_address_range': '20.20.20.101-20.20.20.120',
+                    'dhcp_range_per_node': [],
+                    'primary_dns_server': '8.8.8.8'})
+
+        :param str,int interface_id: interface identifier
+        :param int vlan_id: vlan identifier
+        :param str address: optional IP address to assign to VLAN
+        :param str network_value: network cidr if address is specified. In
+            format: 10.10.10.0/24.
+        :param str zone_ref: zone to use, by name, href, or Zone
+        :param str comment: optional comment for VLAN level of interface
+        :param int virtual_mapping: virtual engine mapping id
+               See :class:`smc.core.engine.VirtualResource.vfw_id`
+        :param str virtual_resource_name: name of virtual resource
+               See :class:`smc.core.engine.VirtualResource.name`
+        :param dict kw: keyword arguments are passed to top level of VLAN interface,
+            not the base level physical interface. This is useful if you want to
+            pass in a configuration that enables the DHCP server on a VLAN for example.
+        :raises EngineCommandFailed: failure creating interface
+        :return: None
+        """
+        versioned_method = get_best_version(
+            ("6.5", self._add_layer3_vlan_interface_65), ("6.6", self._add_layer3_vlan_interface_66)
+        )
+        return versioned_method(*args, **kwargs)
+
+    def _add_layer3_vlan_interface_65(
+            self,
+            interface_id,
+            vlan_id,
+            address=None,
+            network_value=None,
+            virtual_mapping=None,
+            virtual_resource_name=None,
+            zone_ref=None,
+            comment=None,
+            **kw
+    ):
+
+        interfaces = {
+            "nodes": [{"address": address, "network_value": network_value}]
+            if address and network_value
+            else [],
+            "zone_ref": zone_ref,
+            "virtual_mapping": virtual_mapping,
+            "virtual_resource_name": virtual_resource_name,
+            "comment": comment,
+        }
+        interfaces.update(**kw)
+        _interface = {"interface_id": interface_id, "interfaces": [interfaces]}
+
+        if "single_fw" in self._engine.type:  # L2FW / IPS
+            _interface.update(interface="single_node_interface")
+
+        try:
+            interface = self._engine.interface.get(interface_id)
+            vlan = interface.vlan_interface.get(vlan_id)
+            # Interface exists, so we need to update but check if VLAN already
+            # exists
+            if vlan is None:
+                interfaces.update(vlan_id=vlan_id)
+                interface._add_interface(**_interface)
+            else:
+                _interface.update(interface_id="{}.{}".format(interface_id, vlan_id))
+                vlan._add_interface(**_interface)
+            return interface.update()
+
+        except InterfaceNotFound:
+            interfaces.update(vlan_id=vlan_id)
+            interface = Layer3PhysicalInterface(**_interface)
+            return self._engine.add_interface(interface, **kw)
+
+    def _add_layer3_vlan_interface_66(
+            self,
+            interface_id,
+            vlan_id,
+            address=None,
+            network_value=None,
+            virtual_mapping=None,
+            virtual_resource_name=None,
+            zone_ref=None,
+            comment=None,
+            **kw
+    ):
+
+        if virtual_mapping is not None:
+            virtual_resource_settings = [
+                {"virtual_mapping": virtual_mapping, "virtual_resource_name": virtual_resource_name}
+            ]
+        else:
+            virtual_resource_settings = []
+        interfaces = {
+            "nodes": [{"address": address, "network_value": network_value}]
+            if address and network_value
+            else [],
+            "zone_ref": zone_ref,
+            "virtual_resource_settings": virtual_resource_settings,
+            "comment": comment,
+        }
+
+        interfaces.update(**kw)
+        _interface = {"interface_id": interface_id, "interfaces": [interfaces]}
+
+        if "single_fw" in self._engine.type:  # L2FW / IPS
+            _interface.update(interface="single_node_interface")
+
+        try:
+            interface = self._engine.interface.get(interface_id)
+            vlan = interface.vlan_interface.get(vlan_id)
+            # Interface exists, so we need to update but check if VLAN already
+            # exists
+            if vlan is None:
+                interfaces.update(vlan_id=vlan_id)
+                interface._add_interface(**_interface)
+            else:
+                _interface.update(interface_id="{}.{}".format(interface_id, vlan_id))
+                vlan._add_interface(**_interface)
+            return interface.update()
+
+        except InterfaceNotFound:
+            interfaces.update(vlan_id=vlan_id)
+            interface = Layer3PhysicalInterface(**_interface)
+            return self._engine.add_interface(interface)
+
 
 class SwitchInterfaceCollection(InterfaceCollection):
     """
@@ -714,6 +855,7 @@ class PhysicalInterfaceCollection(InterfaceCollection):
         interface_id,
         virtual_mapping=None,
         virtual_resource_name=None,
+        virtual_engine_vlan_ok=None,
         zone_ref=None,
         comment=None,
     ):
@@ -724,6 +866,7 @@ class PhysicalInterfaceCollection(InterfaceCollection):
             comment=comment,
             virtual_resource_name=virtual_resource_name,
             virtual_mapping=virtual_mapping,
+            virtual_engine_vlan_ok=virtual_engine_vlan_ok
         )
 
         return self._engine.add_interface(interface)
@@ -733,6 +876,7 @@ class PhysicalInterfaceCollection(InterfaceCollection):
         interface_id,
         virtual_mapping=None,
         virtual_resource_name=None,
+        virtual_engine_vlan_ok=None,
         zone_ref=None,
         comment=None,
         lldp_mode=None,
@@ -751,6 +895,7 @@ class PhysicalInterfaceCollection(InterfaceCollection):
             lldp_mode=lldp_mode,
             comment=comment,
             virtual_resource_settings=virtual_resource_settings,
+            virtual_engine_vlan_ok=virtual_engine_vlan_ok,
         )
 
         return self._engine.add_interface(interface)
@@ -892,147 +1037,6 @@ class PhysicalInterfaceCollection(InterfaceCollection):
         :param str comment: optional comment
         """
         pass
-
-    def add_layer3_vlan_interface(self, *args, **kwargs):
-        """
-        Add a Layer 3 VLAN interface. Optionally specify an address and network if
-        assigning an IP to the VLAN. This method will also assign an IP address to
-        an existing VLAN, or add an additional address to an existing VLAN. This
-        method may commonly be used on a Master Engine to create VLANs for virtual
-        firewall engines.
-
-        Example of creating a VLAN and passing kwargs to define a DHCP server
-        service on the VLAN interface::
-
-            engine = Engine('engine1')
-            engine.physical_interface.add_layer3_vlan_interface(interface_id=20, vlan_id=20,
-                address='20.20.20.20', network_value='20.20.20.0/24', comment='foocomment',
-                dhcp_server_on_interface={
-                    'default_gateway': '20.20.20.1',
-                    'default_lease_time': 7200,
-                    'dhcp_address_range': '20.20.20.101-20.20.20.120',
-                    'dhcp_range_per_node': [],
-                    'primary_dns_server': '8.8.8.8'})
-
-        :param str,int interface_id: interface identifier
-        :param int vlan_id: vlan identifier
-        :param str address: optional IP address to assign to VLAN
-        :param str network_value: network cidr if address is specified. In
-            format: 10.10.10.0/24.
-        :param str zone_ref: zone to use, by name, href, or Zone
-        :param str comment: optional comment for VLAN level of interface
-        :param int virtual_mapping: virtual engine mapping id
-               See :class:`smc.core.engine.VirtualResource.vfw_id`
-        :param str virtual_resource_name: name of virtual resource
-               See :class:`smc.core.engine.VirtualResource.name`
-        :param dict kw: keyword arguments are passed to top level of VLAN interface,
-            not the base level physical interface. This is useful if you want to
-            pass in a configuration that enables the DHCP server on a VLAN for example.
-        :raises EngineCommandFailed: failure creating interface
-        :return: None
-        """
-        versioned_method = get_best_version(
-            ("6.5", self._add_layer3_vlan_interface_65), ("6.6", self._add_layer3_vlan_interface_66)
-        )
-        return versioned_method(*args, **kwargs)
-
-    def _add_layer3_vlan_interface_65(
-        self,
-        interface_id,
-        vlan_id,
-        address=None,
-        network_value=None,
-        virtual_mapping=None,
-        virtual_resource_name=None,
-        zone_ref=None,
-        comment=None,
-        **kw
-    ):
-
-        interfaces = {
-            "nodes": [{"address": address, "network_value": network_value}]
-            if address and network_value
-            else [],
-            "zone_ref": zone_ref,
-            "virtual_mapping": virtual_mapping,
-            "virtual_resource_name": virtual_resource_name,
-            "comment": comment,
-        }
-        interfaces.update(**kw)
-        _interface = {"interface_id": interface_id, "interfaces": [interfaces]}
-
-        if "single_fw" in self._engine.type:  # L2FW / IPS
-            _interface.update(interface="single_node_interface")
-
-        try:
-            interface = self._engine.interface.get(interface_id)
-            vlan = interface.vlan_interface.get(vlan_id)
-            # Interface exists, so we need to update but check if VLAN already
-            # exists
-            if vlan is None:
-                interfaces.update(vlan_id=vlan_id)
-                interface._add_interface(**_interface)
-            else:
-                _interface.update(interface_id="{}.{}".format(interface_id, vlan_id))
-                vlan._add_interface(**_interface)
-            return interface.update()
-
-        except InterfaceNotFound:
-            interfaces.update(vlan_id=vlan_id)
-            interface = Layer3PhysicalInterface(**_interface)
-            return self._engine.add_interface(interface, **kw)
-
-    def _add_layer3_vlan_interface_66(
-        self,
-        interface_id,
-        vlan_id,
-        address=None,
-        network_value=None,
-        virtual_mapping=None,
-        virtual_resource_name=None,
-        zone_ref=None,
-        comment=None,
-        **kw
-    ):
-
-        if virtual_mapping is not None:
-            virtual_resource_settings = [
-                {"virtual_mapping": virtual_mapping, "virtual_resource_name": virtual_resource_name}
-            ]
-        else:
-            virtual_resource_settings = []
-        interfaces = {
-            "nodes": [{"address": address, "network_value": network_value}]
-            if address and network_value
-            else [],
-            "zone_ref": zone_ref,
-            "virtual_resource_settings": virtual_resource_settings,
-            "comment": comment,
-        }
-
-        interfaces.update(**kw)
-        _interface = {"interface_id": interface_id, "interfaces": [interfaces]}
-
-        if "single_fw" in self._engine.type:  # L2FW / IPS
-            _interface.update(interface="single_node_interface")
-
-        try:
-            interface = self._engine.interface.get(interface_id)
-            vlan = interface.vlan_interface.get(vlan_id)
-            # Interface exists, so we need to update but check if VLAN already
-            # exists
-            if vlan is None:
-                interfaces.update(vlan_id=vlan_id)
-                interface._add_interface(**_interface)
-            else:
-                _interface.update(interface_id="{}.{}".format(interface_id, vlan_id))
-                vlan._add_interface(**_interface)
-            return interface.update()
-
-        except InterfaceNotFound:
-            interfaces.update(vlan_id=vlan_id)
-            interface = Layer3PhysicalInterface(**_interface)
-            return self._engine.add_interface(interface)
 
     def add_layer3_cluster_interface(
         self,

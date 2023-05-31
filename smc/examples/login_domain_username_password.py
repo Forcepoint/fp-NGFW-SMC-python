@@ -10,19 +10,21 @@
 #  License for the specific language governing permissions and limitations
 #  under the License.
 """
-Example script to show how to use Administration Domains and Administrators.
+Example script to show how to use Administration Domains, Administrators and WebPortalAdminUser.
 """
 
 import logging
 import time
 import traceback
-import smc.examples
-
 from smc import session
+from smc.administration.reports import ReportDesign
+from smc.core.engines import IPS
 from smc.elements.servers import LogServer
 from smc.api.exceptions import UpdateElementFailed
 from smc.administration.system import AdminDomain
-from smc.elements.user import AdminUser, ApiClient
+from smc.elements.tags import FilterExpressionTag
+from smc.elements.user import AdminUser, ApiClient, WebPortalAdminUser
+from smc.policy.layer3 import FirewallSubPolicy, FirewallTemplatePolicy
 from smc_info import *
 
 logging.getLogger()
@@ -31,11 +33,16 @@ logging.basicConfig(level=logging.INFO)
 error_update = "Element reference breaks domain boundary restriction"
 domain_name = "domain_test"
 admin_name = "admin_test"
+web_admin_test = "web_admin_test"
 admin_password = "MySuperPassword2021!"
 admin_user_lock_error = "Failed to Lock Admin User"
 admin_user_unlock_error = "Failed to Unlock Admin User"
 announcement_message = "Test Message"
 access_attribute_error = "Failed to access AdminDomain's attribute"
+failed_update_web_user = "Failed to update web portal admin user"
+receive_error_value = "Receive incorrect values"
+access_attribute_error = "Failed to access AdminDomain's attribute."
+pwd_meta_data_error = "Failed to get password meta data error."
 
 if __name__ == "__main__":
 
@@ -62,6 +69,46 @@ if __name__ == "__main__":
                                                                  'category_filter_system')
         domain_obj.update(announcement_enabled=True)
         assert domain_obj.announcement_enabled, "Failed to update AdminDomain"
+
+        # WebPortalAdminUser
+        if WebPortalAdminUser.objects.filter(web_admin_test, exact_match=True):
+            WebPortalAdminUser(web_admin_test).delete()
+        # create web portal admin user
+        sub_policy = list(FirewallSubPolicy.objects.all())[0]
+        print("Accessing sub policy : {}".format(sub_policy))
+        filter_tag = list(FilterExpressionTag.objects.all())[0]
+        print("Accessing filter tag : {}".format(filter_tag))
+        report_design = list(ReportDesign.objects.all())[0]
+        print("Accessing report design : {}".format(report_design))
+        template_policy = list(FirewallTemplatePolicy.objects.all())[0]
+        print("Accessing template policy : {}".format(template_policy))
+        engine = list(IPS.objects.all())[0]
+        admin = WebPortalAdminUser.create(web_admin_test, log_service_enabled=True,
+                                          policy_service_enabled=True, report_service_enabled=True,
+                                          granted_template_policy=[template_policy],
+                                          granted_report_design=[report_design],
+                                          granted_sub_policy=[sub_policy],
+                                          filter_tag=[filter_tag.href], show_inspection_policy=True,
+                                          show_main_policy=True, show_only_ip_addresses=True,
+                                          show_sub_policy=True, show_template_policy=True,
+                                          show_upload_comment=True, show_upload_history=True)
+        print("WebPortalAdminUser created successfully.")
+        assert admin.log_service_enabled and admin.policy_service_enabled and admin. \
+            report_service_enabled, receive_error_value
+        # update some attributes
+        admin.update(log_service_enabled=False, policy_service_enabled=False,
+                     report_service_enabled=False)
+        assert not admin.log_service_enabled and not admin.policy_service_enabled and not \
+            admin.report_service_enabled, failed_update_web_user
+        admin.update(granted_engine=[engine.href])
+        assert admin.granted_engine, "Failed to update granted engine."
+        print("Updated WebPortalAdminUser successfully.")
+        # change password
+        admin.change_password(admin_password)
+        # disable web admin user
+        # admin.enable_disable()
+        # assert not WebPortalAdminUser(web_admin_test).enabled, failed_update_web_user
+
         # Create new SMC Admin
         if AdminUser.objects.filter(name=admin_name):
             AdminUser(admin_name).enable_disable()
@@ -71,6 +118,8 @@ if __name__ == "__main__":
 
         admin = AdminUser.create(admin_name, superuser=True)
         admin.change_password(admin_password)
+        # check password meta data
+        assert admin.password_meta_data.creation_date, pwd_meta_data_error
         # Lock Admin User
         AdminUser(admin_name).lock()
         assert AdminUser(admin_name).is_locked(), admin_user_lock_error
@@ -113,5 +162,9 @@ if __name__ == "__main__":
         time.sleep(1)
         AdminUser(admin_name).delete()
         logging.info("AdminUser [%s] has been deleted", admin_name)
+
+        # Delete Web Admin User
+        WebPortalAdminUser(web_admin_test).delete()
+        logging.info("WebPortalAdminUser [%s] has been deleted", web_admin_test)
 
         session.logout()

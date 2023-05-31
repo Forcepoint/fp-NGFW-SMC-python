@@ -15,7 +15,7 @@ Current versions are validated using:
 
 * Forcepoint NGFW Management Center >=6.0
 * Python >= 3.5
-* Requests >= 2.12.0
-* Websocket-client >= 1.4.2
+* Requests >= 2.31.0
+* Websocket-client >= 1.5.0
 
 

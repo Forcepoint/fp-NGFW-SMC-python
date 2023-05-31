@@ -13,6 +13,7 @@
 from collections import namedtuple
 import pytz
 
+from smc.core.advanced_settings import LogModeration
 from smc.core.lldp import LLDPProfile
 from smc.core.policy import AutomaticRulesSettings
 from smc.elements.helpers import domain_helper, location_helper
@@ -38,7 +39,7 @@ from smc.core.collection import (
 from smc.administration.tasks import Task
 from smc.elements.other import prepare_block_list, prepare_blacklist
 from smc.elements.network import Alias
-from smc.vpn.elements import VPNSite
+from smc.vpn.elements import VPNSite, LinkUsageProfile
 from smc.routing.bgp import DynamicRouting
 from smc.routing.ospf import OSPFProfile
 from smc.core.route import Antispoofing, Routing, Route, PolicyRoute
@@ -62,11 +63,133 @@ from smc.base.util import element_resolver
 from smc.administration.access_rights import AccessControlList, Permission
 from smc.base.decorators import cacheable_resource
 from smc.administration.certificates.vpn import GatewayCertificate
-from smc.base.structs import BaseIterable
+from smc.base.structs import BaseIterable, NestedDict
 from smc.elements.profiles import SNMPAgent
 from smc.elements.ssm import SSHKnownHostsLists
 from smc.compat import is_smc_version_less_than_or_equal, is_api_version_less_than_or_equal, \
     min_smc_version, is_api_version_less_than
+
+
+class LinkUsageExceptionRules(NestedDict):
+    def __init__(self, destinations=None, services=None, sources=None, isp_link_ref=None,
+                 comment=None):
+        """
+        LinkUsageExceptionRules
+        Set to engine if Link usage profile is set to engine in routing
+
+        :param list destinations: list of destinations
+        :param list services: list of services
+        :param list sources: list of sources
+        :param object isp_link: object type can be static netlink, dynamic netlink,
+         Outbound multilink or Server Pool
+        :param str comment: simple comment
+        Example:
+
+        :raises Errors
+        :return: None
+        """
+        if sources == "any":
+            sources = {"any": True}
+        if destinations == "any":
+            destinations = {"any": True}
+        if services == "any":
+            services = {"any": True}
+        if type(sources) is list:
+            value_list = []
+            for val in sources:
+                v = element_resolver(val)
+                value_list.append(v)
+            sources_json = {}
+            sources_json.update(src=value_list)
+            sources = sources_json
+        if type(services) is list:
+            value_list = []
+            for val in services:
+                v = element_resolver(val)
+                value_list.append(v)
+            services_json = {}
+            services_json.update(service=value_list)
+            services = services_json
+        if type(destinations) is list:
+            value_list = []
+            for val in destinations:
+                v = element_resolver(val)
+                value_list.append(v)
+            destinations_json = {}
+            destinations_json.update(dst=value_list)
+            destinations = destinations_json
+        dc = dict(
+            sources=sources,
+            destinations=destinations,
+            services=services,
+            isp_link_ref=element_resolver(isp_link_ref),
+            comment=comment
+        )
+        super(LinkUsageExceptionRules, self).__init__(data=dc)
+
+    @property
+    def isp_link_ref(self):
+        """
+        isp_link
+        :rtype: isp_link
+        """
+        return (
+            self.get("isp_link_ref")
+         )
+
+    @isp_link_ref.setter
+    def isp_link_ref(self, value):
+        self.update(isp_link_ref=value)
+
+    @property
+    def comment(self):
+        """
+        comment.
+        :rtype: str
+        """
+        return self.get("comment")
+
+    @comment.setter
+    def comment(self, value):
+        self.update(comment=value)
+
+    @property
+    def destinations(self):
+        return self.get("destinations")
+
+    @destinations.setter
+    def destinations(self, value):
+        if value == "any":
+            value = {"any": "true"}
+            self.update(destinations=value)
+        else:
+            value_list = []
+            for val in value:
+                v = element_resolver(val)
+                value_list.append(v)
+            destinations_json = {}
+            destinations_json(dst=value_list)
+            self.update(destinations=destinations_json)
+
+    @property
+    def sources(self):
+        return self.get("sources")
+
+    @sources.setter
+    def sources(self, value):
+        if value == "any":
+            value = {"any": "true"}
+        self.update(sources=value)
+
+    @property
+    def services(self):
+        return self.get("services")
+
+    @services.setter
+    def services(self, value):
+        if value == "any":
+            value = {"any": "true"}
+        self.update(services=value)
 
 
 class Engine(Element):
@@ -106,6 +229,7 @@ class Engine(Element):
         node_type,
         physical_interfaces,
         nodes=1,
+        nodes_definition=[],
         loopback_ndi=None,
         log_server_ref=None,
         domain_server_address=None,
@@ -122,6 +246,7 @@ class Engine(Element):
         ntp_settings=None,
         timezone=None,
         lldp_profile=None,
+        link_usage_profile=None,
         discard_quic_if_cant_inspect=True,
         **kw
     ):
@@ -135,6 +260,7 @@ class Engine(Element):
         :param str node_type: comes from class attribute of engine type
         :param dict physical_interfaces: physical interface list of dict
         :param int nodes: number of nodes for engine
+        :param list nodes_definition: list of definition for each node
         :param str log_server_ref: href of log server
         :param list domain_server_address: dns addresses
         :param NTPSettings ntp_settings: ntp settings
@@ -145,7 +271,19 @@ class Engine(Element):
         """
         node_list = []
         for nodeid in range(1, nodes + 1):  # start at nodeid=1
-            node_list.append(Node._create(name, node_type, nodeid, loopback_ndi))
+            node_name = name + " node " + str(nodeid)
+            if nodes_definition and nodes_definition.__len__() > 0:
+                node_definition = nodes_definition[nodeid-1]
+                node_name = node_definition.pop("name", node_name)
+                comment = node_definition.pop("comment", None)
+                disable = node_definition.pop("disable", False)
+                settings = node_definition.pop("external_pki_certificate_settings", None)
+                node_list.append(Node._create(node_name, node_type, nodeid, loopback_ndi,
+                                              settings,
+                                              disable,
+                                              comment))
+            else:
+                node_list.append(Node._create(node_name, node_type, nodeid, loopback_ndi))
 
         domain_server_list = []
         if domain_server_address:
@@ -218,6 +356,13 @@ class Engine(Element):
             }
             base_cfg.update(ospf)
 
+        if link_usage_profile:
+            if isinstance(LinkUsageProfile, link_usage_profile):
+                base_cfg.update(link_usage_profile_ref=link_usage_profile.href)
+            # is already a href
+            else:
+                base_cfg.update(link_usage_profile_ref=link_usage_profile)
+
         if ntp_settings is not None:
             if isinstance(ntp_settings, dict):
                 base_cfg.update(ntp_settings=ntp_settings)
@@ -231,7 +376,7 @@ class Engine(Element):
                 base_cfg.update(timezone)
             else:
                 raise CreateElementFailed(
-                    "Timezone is invalid:"+timezone
+                    "Timezone is invalid:" + timezone
                 )
 
         if min_smc_version("6.6") and lldp_profile is not None:
@@ -430,6 +575,87 @@ class Engine(Element):
         :rtype: AutomaticRulesSettings
         """
         return AutomaticRulesSettings(self)
+
+    @property
+    def connection_timeout(self):
+        """
+        This is definition of timeout by protocol or by TCP connection state. You can define general
+        timeouts for removing idle connections from the state table, including non-TCP
+        communications that are handled like connections. The timeout prevents wasting engine
+        resources on storing information about abandoned connections. Timeouts are a normal way to
+        clear traffic information with protocols that have no closing mechanism.Timeouts do not
+        affect active connections. The connections are kept in the state table as long as the
+        interval of packets within a connection is shorter than the timeouts set.
+        Example of using idle time out settings:
+            >>> engine = Engine("testme")
+            >>> connection_timeout=engine.connection_timeout
+            >>> connection_timeout.add('tcp_syn_seen',120)
+            >>> engine.connection_timeout.data
+                {'connection_timeout': [{'protocol': 'tcp', 'timeout': 1800}, {'protocol': 'udp',
+                'timeout': 50}, {'protocol': 'icmp', 'timeout': 5}, {'protocol': 'other', 'timeout':
+                 180}, {'protocol': 'tcp_syn_seen', 'timeout': 120}]}
+            >>> engine.update()
+            >>> engine.connection_timeout.data
+            >>> connection_timeout.remove('tcp_syn_seen')
+                {'connection_timeout': [{'protocol': 'tcp', 'timeout': 1800}, {'protocol': 'udp',
+                'timeout': 50}, {'protocol': 'icmp', 'timeout': 5}, {'protocol': 'other', 'timeout':
+                 180}]}
+        :rtype: IdleTimeout
+        """
+        return IdleTimeout(self)
+
+    @property
+    def local_log_storage(self):
+        """
+        Local Log Storage Settings for not virtual engines.
+        Example of using local log storage settings:
+            >>> engine = Engine("testme")
+            >>> local_log_storage=engine.local_log_storage
+            >>> local_log_storage.local_log_storage_activated
+                True
+            >>> local_log_storage.lls_max_time
+                10
+            >>> local_log_storage.update(lls=20_max_time)
+            >>> engine.update()
+            >>> local_log_storage=engine.local_log_storage
+            >>> local_log_storage.lls_max_time
+                20
+        :rtype LocalLogStorageSettings
+        """
+        if self.type == "virtual_fw":
+            raise UnsupportedEngineFeature(
+                "Local Log Storage settings are not supported on virtual engines.")
+
+        return LocalLogStorageSettings(self)
+
+    @property
+    def log_moderation(self):
+        """
+        This is the definition of Log Compression for the engine or for an interface. You can also
+        configure Log Compression to save resources on the engine. By default, each generated
+        Antispoofing and Discard log entry is logged separately and displayed as a separate entry in
+        the Logs view. Log Compression allows you to define the maximum number of separately logged
+        entries.When the defined limit is reached, a single Antispoofing log entry or Discard log
+        entry is logged. The single entry contains information on the total number of the generated
+        Antispoofing log entries or Discard log entries. After this, logging returns to normal and
+        all the generated entries are once more logged and displayed separately.
+        Example of using log moderation settings:
+            >>> engine = Engine("testme")
+            >>> log_moderation_obj=engine.log_moderation
+            >>> log_moderation_obj.get(1)["rate"]
+                100
+            >>> log_moderation_obj.get(1)["burst"]
+                1000
+            >>> log_moderation_obj.add(rate=200,burst=1100,log_event=2)
+            >>> engine.update(log_spooling_policy='discard')
+            >>> log_moderation_obj=engine.log_moderation
+            >>> log_moderation_obj.get(2)["rate"]
+                200
+            >>> log_moderation_obj.get(2)["burst"]
+                1100
+        :rtype LogModeration
+        """
+        return LogModeration(self)
 
     @property
     def antivirus(self):
@@ -730,6 +956,62 @@ class Engine(Element):
             "Pending changes is an unsupported feature on this engine: {}".format(self.type)
         )
 
+    @property
+    def lbfilters(self):
+        """
+        Load balancing filter list
+        :raises UnsupportedEngineFeature: Invalid engine type
+        :rtype: list LBFilter
+        """
+        if self.type.endswith("cluster"):
+            return [LBFilter(**lbfilter) for lbfilter in self.data.data["lbfilter"]]
+        raise UnsupportedEngineFeature(
+            "Available only for cluster engine"
+        )
+
+    @lbfilters.setter
+    def lbfilters(self, lbfilter):
+        """
+        Update the lbfilter list for this engine instance.
+        Load balancing filter list
+        :param list LBFilter lbfilter: Load balancing filter list
+        :raises UnsupportedEngineFeature: Invalid engine type
+        """
+        if self.type.endswith("cluster"):
+            self.data.data["lbfilter"] = []
+            for filter in lbfilter:
+                self.data.data["lbfilter"].append(filter.data)
+        else:
+            raise UnsupportedEngineFeature(
+                "Available only for cluster engine"
+            )
+
+    @property
+    def lbfilter_useports(self):
+        """
+        Load Balancing Filter use ports
+        :raises UnsupportedEngineFeature: Invalid engine type
+        :rtype: bool
+        """
+        if self.type.endswith("cluster"):
+            return self.data.data["lbfilter_useports"]
+        raise UnsupportedEngineFeature(
+            "Available only for cluster engine"
+        )
+
+    @lbfilter_useports.setter
+    def lbfilter_useports(self, lbfilter_useports):
+        """
+        Update the lbfilter_useports value for this engine instance.
+        :param bool useports: the use ports value
+        """
+        if self.type.endswith("cluster"):
+            self.data.data["lbfilter_useports"] = lbfilter_useports
+        else:
+            raise UnsupportedEngineFeature(
+                "Available only for cluster engine"
+            )
+
     def alias_resolving(self):
         """
         Alias definitions with resolved values as defined on this engine.
@@ -952,6 +1234,54 @@ class Engine(Element):
         """
         self.update(href=self.get_relation("remove_alternative_policies"), etag=None)
 
+    @property
+    def link_usage_exception_rules(self):
+        """
+        A collection of link_usage_exception_rules
+
+        :rtype: list(LinkUsageExceptionRules)
+        """
+        return [LinkUsageExceptionRules(**nc) for nc in self.data.get("link_usage_exception_rules",
+                                                                      [])]
+
+    def add_link_usage_exception_rules(self, link_usage_exception_rules):
+        """
+        Add link_usage_exception_rules/s to this engine.
+
+        :param link_usage_exception_rules: link_usage_exception_rules/s to add to engine
+        :type link_usage_exception_rules: list(link_usage_exception_rules)
+        :raises UpdateElementFailed: failed updating engine
+        :return: None
+        """
+        if "link_usage_exception_rules" not in self.data:
+            self.data["link_usage_exception_rules"] = {"link_usage_exception_rules": []}
+
+        for p in link_usage_exception_rules:
+            self.data["link_usage_exception_rules"].append(p.data)
+        self.update()
+
+    def remove_link_usage_exception_rules(self, link_usage_exception_rules):
+        """
+        Remove a link_usage_exception_rules from this engine.
+
+        :param link_usage_exception_rules link_usage_exception_rules: element to remove
+        :return: remove element if it exists and return bool
+        :rtype: bool
+        """
+        _link_usage_exception_rules = []
+        changed = False
+        for nf in self.link_usage_exception_rules:
+            if nf != link_usage_exception_rules:
+                _link_usage_exception_rules.append(nf.data)
+            else:
+                changed = True
+
+        if changed:
+            self.data["link_usage_exception_rules"] = _link_usage_exception_rules
+            self.update()
+
+        return changed
+
     def query_route(self, source_ref=None, destination_ref=None, source_ip=None,
                     destination_ip=None):
         """
@@ -1108,7 +1438,7 @@ class Engine(Element):
         from smc.core.session_monitoring import EngineSessionMonitoringType
         engine.get_session_monitoring(EngineSessionMonitoringType.CONNECTION)
         """
-        if not min_smc_version("7.1"):
+        if is_smc_version_less_than_or_equal("7.0"):
             raise UnsupportedEngineFeature("Need at least 7.1 version of the SMC")
         try:
             params = None
@@ -1540,6 +1870,24 @@ class Engine(Element):
                 self.data.update(lldp_profile=value)
 
     @property
+    def link_usage_profile(self):
+        """
+        Represent link usage profile
+        :param value: Link usage profile to assign engine. Can be str href,
+        or LinkUsageProfile element.
+        :raises UpdateElementFailed: failure to update element
+        :return: LinkUsageProfile element or None
+        """
+        return Element.from_href(self.link_usage_profile_ref)
+
+    @link_usage_profile.setter
+    def link_usage_profile(self, value):
+        if isinstance(value, LinkUsageProfile):
+            self.data.update(link_usage_profile_ref=value.href)
+        else:
+            self.data.update(link_usage_profile_ref=value)
+
+    @property
     def discard_quic_if_cant_inspect(self):
         """
         Discard or allow QUIC if inspection is impossible
@@ -1584,12 +1932,12 @@ class Engine(Element):
         self._del_cache()
 
     def refresh(
-        self,
-        timeout=3,
-        wait_for_finish=False,
-        preserve_connections=True,
-        generate_snapshot=True,
-        **kw
+            self,
+            timeout=3,
+            wait_for_finish=False,
+            preserve_connections=True,
+            generate_snapshot=True,
+            **kw
     ):
         """
         Refresh existing policy on specified device. This is an asynchronous
@@ -1614,13 +1962,13 @@ class Engine(Element):
         return Task.execute(self, "refresh", timeout=timeout, wait_for_finish=wait_for_finish, **kw)
 
     def upload(
-        self,
-        policy=None,
-        timeout=5,
-        wait_for_finish=False,
-        preserve_connections=True,
-        generate_snapshot=True,
-        **kw
+            self,
+            policy=None,
+            timeout=5,
+            wait_for_finish=False,
+            preserve_connections=True,
+            generate_snapshot=True,
+            **kw
     ):
         """
         Upload policy to engine. This is used when a new policy is required
@@ -1659,13 +2007,13 @@ class Engine(Element):
         )
 
     def upload_alternative_slot(
-        self,
-        alternative_slot=None,
-        policy=None,
-        timeout=5,
-        wait_for_finish=False,
-        generate_snapshot=True,
-        **kw
+            self,
+            alternative_slot=None,
+            policy=None,
+            timeout=5,
+            wait_for_finish=False,
+            generate_snapshot=True,
+            **kw
     ):
         """
         Upload policy to engine alternative slot. This is used when multiple
@@ -2008,12 +2356,12 @@ class VPN(object):
         ]
 
     def generate_certificate(
-        self,
-        common_name,
-        public_key_algorithm="rsa",
-        signature_algorithm="rsa_sha_512",
-        key_length=2048,
-        signing_ca=None,
+            self,
+            common_name,
+            public_key_algorithm="rsa",
+            signature_algorithm="rsa_sha_512",
+            key_length=2048,
+            signing_ca=None,
     ):
         """
         Generate an internal gateway certificate used for VPN on this engine.
@@ -2201,13 +2549,13 @@ class VirtualResource(SubElement):
     typeof = "virtual_resource"
 
     def create(
-        self,
-        name,
-        vfw_id,
-        domain="Shared Domain",
-        show_master_nic=False,
-        connection_limit=0,
-        comment=None,
+            self,
+            name,
+            vfw_id,
+            domain="Shared Domain",
+            show_master_nic=False,
+            connection_limit=0,
+            comment=None,
     ):
         """
         Create a new virtual resource. Called through engine
@@ -2277,3 +2625,233 @@ class VirtualResource(SubElement):
         :rtype: int
         """
         return self.data.get("vfw_id")
+
+
+class LBFilter(NestedDict):
+    """
+    This represents the Load Balancing Filter.
+    """
+
+    def __init__(self, action, ip_descriptor, replace_ip,  nodeid, ignore_other=False,
+                 nat_enforce=False, use_ipsec=False, use_ports=False):
+        data = {"action": action, "ignore_other": ignore_other, "ip_descriptor": ip_descriptor,
+                "nat_enforce": nat_enforce, "nodeid": nodeid, "replace_ip": replace_ip,
+                "use_ipsec": use_ipsec, "use_ports": use_ports}
+        super(LBFilter, self).__init__(data=data)
+
+    @classmethod
+    def create(cls, nodeid, ip_descriptor, replace_ip,
+               action="replace", ignore_other=False, nat_enforce=False,
+               use_ipsec=False, use_ports=False):
+        """
+        Create a LB Filter.
+
+        :param int nodeid: Node Id in case of node action
+        :param str ip_descriptor: Represents the IPNetwork or the IPAddressRange
+        :param str replace_ip: Address in case of replace action.
+        :param str action: Action for the filter.
+                           possible values are: none, replace, node, select_none, replace_offset
+        :param bool ignore_other: Tell that other entries might not be concerned.
+        :param bool nat_enforce: Tells NAT to enforce translated packet headers
+                                 to the same hash value to the matching packet.
+        :param bool use_ipsec: Tells the engine that this entry has to be handled with
+                               special care because part of VPN
+        :param bool use_ports: Defines whether to use port numbers
+                               when calculating the hash value for the packet.
+
+        :rtype: LBFilter
+        """
+        return LBFilter(action=action, ignore_other=ignore_other, ip_descriptor=ip_descriptor,
+                        nat_enforce=nat_enforce, nodeid=nodeid, replace_ip=replace_ip,
+                        use_ipsec=use_ipsec, use_ports=use_ports)
+
+    @property
+    def action(self):
+        """
+        Action for the filter.
+        possible values are: none, replace, node, select_none, replace_offset
+        :rtype: str
+        """
+        return self.get("action")
+
+    @action.setter
+    def action(self, value):
+        self.update(action=value)
+
+    @property
+    def ip_descriptor(self):
+        """
+        Represents the IPNetwork or the IPAddressRange
+
+        :rtype: str
+        """
+        return self.get("ip_descriptor")
+
+    @ip_descriptor.setter
+    def ip_descriptor(self, value):
+        self.update(ip_descriptor=value)
+
+    @property
+    def replace_ip(self):
+        """
+        Address in case of replace action.
+
+        :rtype: str
+        """
+        return self.get("replace_ip")
+
+    @replace_ip.setter
+    def replace_ip(self, value):
+        self.update(replace_ip=value)
+
+    @property
+    def use_ipsec(self):
+        """
+        Tells the engine that this entry has to be handled with
+        special care because part of VPN
+
+        :rtype: bool
+        """
+        return self.get("use_ipsec")
+
+    @use_ipsec.setter
+    def use_ipsec(self, value):
+        self.update(use_ipsec=value)
+
+    @property
+    def use_ports(self):
+        """
+        Defines whether to use port numbers
+        when calculating the hash value for the packet.
+
+        :rtype: bool
+        """
+        return self.get("use_ports")
+
+    @use_ports.setter
+    def use_ports(self, value):
+        self.update(use_ports=value)
+
+    @property
+    def nat_enforce(self):
+        """
+        Tells NAT to enforce translated packet headers
+        to the same hash value to the matching packet.
+
+        :rtype: bool
+        """
+        return self.get("nat_enforce")
+
+    @nat_enforce.setter
+    def nat_enforce(self, value):
+        self.update(nat_enforce=value)
+
+    @property
+    def ignore_other(self):
+        """
+        Tell that other entries might not be concerned.
+
+        :rtype: bool
+        """
+        return self.get("ignore_other")
+
+    @ignore_other.setter
+    def ignore_other(self, value):
+        self.update(ignore_other=value)
+
+
+class IdleTimeout(NestedDict):
+    """
+    This is definition of timeout by protocol or by TCP connection state. You can define general
+    timeouts for removing idle connections from the state table, including non-TCP communications
+    that are handled like connections. The timeout prevents wasting engine resources on storing
+    information about abandoned connections. Timeouts are a normal way to clear traffic information
+    with protocols that have no closing mechanism.Timeouts do not affect active connections.
+    The connections are kept in the state table as long as the interval of packets within a
+    connection is shorter than the timeouts set.
+    """
+    default_protocol_values = {"tcp": 1800, "udp": 50, "icmp": 5, "other": 180, "tcp_closing": 60,
+                               "tcp_syn_seen": 15, "tcp_fin_wait_1": 60, "tcp_fin_wait_2": 60,
+                               "tcp_time_wait": 60, "tcp_close_wait": 60, "tcp_last_ack": 10,
+                               "tcp_syn_ack_seen": 15, "tcp_time_wait_ack": 60,
+                               "tcp_closing_ack": 60, "tcp_close_wait_ack": 60,
+                               "tcp_last_ack_wait": 10, "tcp_syn_fin_seen": 15,
+                               "tcp_syn_return": 15,
+                               "ipsec_established": 72
+                               }
+
+    def __init__(self, engine):
+        ars = {"connection_timeout": engine.data.get("connection_timeout", {})}
+        super(IdleTimeout, self).__init__(data=ars)
+
+    def add(self, name, timeout=None):
+        """
+        Add a timeout setting for the new protocol.
+        :param str name: name of the protocol.
+        :param int timeout: timeout value.
+        """
+        if name in self.default_protocol_values:
+            if not timeout:
+                timeout = self.default_protocol_values[name]
+            self.data.get('connection_timeout').append({'protocol': name, 'timeout': timeout})
+        else:
+            raise ("Invalid protocol found : {}".format(name))
+
+    def remove(self, name):
+        """
+        Remove the timeout setting for specific protocols on the engine.
+        :param str name: namr of the protocol to be removed.
+        """
+        for protocol in self.data.get('connection_timeout'):
+            if name == protocol['protocol']:
+                self.data['connection_timeout'].remove(protocol)
+                break
+
+    def _contains(self, name):
+        """
+        Check if specific protocol settings are present in the engine.
+        :param str name: name of protocol.
+        """
+        for protocol in self.data.get('connection_timeout'):
+            if name == protocol['protocol']:
+                return True
+        return False
+
+
+class LocalLogStorageSettings(NestedDict):
+    """
+    Local Log Storage Settings for not virtual engines.
+    """
+
+    def __init__(self, engine):
+        ars = engine.data.get("local_log_storage", {})
+        super(LocalLogStorageSettings, self).__init__(data=ars)
+
+    @property
+    def lls_guaranteed_free_percent(self):
+        """
+        Minimum amount of spool space that must be left available for other uses in percentage
+        """
+        return self.data.get("lls_guaranteed_free_percent")
+
+    @property
+    def lls_guaranteed_free_size_in_mb(self):
+        """
+        Minimum amount of spool space that must be left available for other uses in MegaBytes
+        """
+        return self.data.get("lls_guaranteed_free_size_in_mb")
+
+    @property
+    def lls_max_time(self):
+        """
+        The maximum amount of hours before the stored logs are deleted.
+        """
+        return self.data.get("lls_max_time")
+
+    @property
+    def local_log_storage_activated(self):
+        """
+        Activate the Local Log Storage feature. At least one of the Guaranteed free disk partition
+        values must be set up.
+        """
+        return self.data.get("local_log_storage_activated")

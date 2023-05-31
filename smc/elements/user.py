@@ -62,6 +62,9 @@ Set an initial password for the Admin User::
 from smc.base.model import Element, ElementCreator
 from smc.api.exceptions import ModificationFailed
 from smc.administration.access_rights import Permission
+from smc.base.structs import NestedDict
+from smc.base.util import element_resolver
+from smc.administration.user_auth import servers
 
 
 class UserMixin(object):
@@ -183,6 +186,7 @@ class AdminUser(UserMixin, Element):
         can_use_api=True,
         console_superuser=False,
         allowed_to_login_in_shared=True,
+        auth_method=None,
         comment=None,
     ):
         """
@@ -200,8 +204,10 @@ class AdminUser(UserMixin, Element):
         :param bool allowed_to_login_in_shared: can this user log in to the
             shared domain
         :param bool superuser: is a super administrator
+        :param auth_method: authentication method
         :param bool enabled: is account enabled
         :param list engine_target: engine to allow remote access to
+        :param comment: object comment
         :raises CreateElementFailed: failure creating element with reason
         :return: instance with meta
         :rtype: AdminUser
@@ -220,6 +226,10 @@ class AdminUser(UserMixin, Element):
             "can_use_api": can_use_api,
             "comment": comment,
         }
+
+        if auth_method:
+            auth_method_ref = servers.AuthenticationMethod(auth_method).href
+            json.update(auth_method=auth_method_ref)
 
         return ElementCreator(cls, json)
 
@@ -246,6 +256,16 @@ class AdminUser(UserMixin, Element):
             resource="change_engine_password",
             params={"password": password},
         )
+
+    @property
+    def password_meta_data(self):
+        """
+        Provides creation_date and expiration_date of the password for AdminUser,ApiClient and
+        WebPortalAdminUser.
+        :return: PasswordMetaData : PasswordMetaData contains creation_date and expiration_date.
+        """
+        pwd_meta_data = self.make_request(resource="pwd_meta_data")
+        return PasswordMetaData(pwd_meta_data)
 
 
 class ApiClient(UserMixin, Element):
@@ -276,3 +296,189 @@ class ApiClient(UserMixin, Element):
         json = {"enabled": enabled, "name": name, "superuser": superuser}
 
         return ElementCreator(cls, json)
+
+
+class PasswordMetaData(NestedDict):
+    """
+    Represents the password meta-data for AdminUser, ApiClient and WebPortalAdminUser. it provides
+    creation_date and expiration_date of the password for AdminUser,ApiClient and WebPortalAdminUser
+    """
+    typeof = "pwd_meta_data"
+
+    def __init__(self, value):
+        super(PasswordMetaData, self).__init__(data=value)
+
+
+class WebPortalAdminUser(UserMixin, Element):
+    """
+    This represents a Web Portal User.It is an element that defines the details of a single person
+     that is allowed to log on to the Web Portal,
+     the Browser-based service that allows users to view logs, Policy Snapshots, and reports
+
+    Create a Web Portal Admin User::
+
+        >>> WebPortalAdminUser.create(name='admin')
+
+    If modifications are required after you can access the admin and
+    make changes::
+
+        admin = WebPortalAdminUser('admin')
+        admin.change_password('mynewpassword1')
+        admin.enable_disable()
+    """
+    typeof = "web_portal_user"
+
+    @classmethod
+    def create(
+            cls,
+            name,
+            enabled=True,
+            granted_engine=None,
+            console_superuser=False,
+            log_service_enabled=True,
+            policy_service_enabled=True,
+            report_service_enabled=True,
+            show_inspection_policy=True,
+            show_main_policy=True,
+            show_only_ip_addresses=True,
+            show_sub_policy=True,
+            show_template_policy=False,
+            show_upload_comment=True,
+            show_upload_history=True,
+            granted_template_policy=None,
+            granted_sub_policy=None,
+            granted_report_design=None,
+            filter_tag=None,
+            comment=None
+    ):
+        """
+        Create a web portal admin user account.
+
+        .. versionadded:: 0.6.2
+            Added can_use_api, console_superuser, and allowed_to_login_in_shared.
+            Requires SMC >= SMC 6.4
+
+        :param str name: name of account
+        :param bool enabled: is account enabled
+        :param list granted_engine: The list of Granted Engines
+        :param bool console_superuser: can this user sudo via SSH/console.
+        :param bool log_service_enabled: check if the log service enabled?
+        :param bool policy_service_enabled: check if the policy service enabled.
+        :param bool report_service_enabled: Is the report service enabled?
+        :param bool show_inspection_policy: Should we display the inspection policy?
+        :param bool show_main_policy: Should we display the main policy?
+        :param bool show_only_ip_addresses: Should we display only the IP Addresses of elements?
+        :param bool show_sub_policy: Should we display the sub policy?
+        :param bool show_template_policy: Should we display the template policy?
+        :param bool show_upload_comment: Should we display the upload comment?
+        :param bool show_upload_history: Should we display the upload history?
+        :param list granted_template_policy: The list of Granted Template Policies.
+            null value means ANY.
+        :param list granted_sub_policy: The list of Granted Sub Policies.
+            null value means ANY
+        :param list granted_report_design: The list of Granted Report Designs.
+            null value means ANY.
+        :param list filter_tag: The list of Filter expression tags for the log browsing.
+            null value means ANY.
+        :param str comment: comment,
+        :raises CreateElementFailed: failure creating element with reason
+        :return: instance with meta
+        :rtype: WebPortalAdminUser
+        """
+        engines = [] if granted_engine is None else element_resolver(granted_engine)
+        policy = [] if granted_template_policy is None else element_resolver(
+            granted_template_policy)
+        sub_policy = [] if granted_sub_policy is None else element_resolver(granted_sub_policy)
+        report_design = [] if granted_report_design is None else element_resolver(
+            granted_report_design)
+        tag = [] if filter_tag is None else element_resolver(filter_tag)
+        json = {
+            "name": name,
+            "enabled": enabled,
+            "console_superuser": console_superuser,
+            "log_service_enabled": log_service_enabled,
+            "policy_service_enabled": policy_service_enabled,
+            "report_service_enabled": report_service_enabled,
+            "show_inspection_policy": show_inspection_policy,
+            "show_main_policy": show_main_policy,
+            "show_only_ip_addresses": show_only_ip_addresses,
+            "show_sub_policy": show_sub_policy,
+            "show_template_policy": show_template_policy,
+            "show_upload_comment": show_upload_comment,
+            "show_upload_history": show_upload_history,
+            "granted_engine": engines,
+            "granted_template_policy": policy,
+            "granted_sub_policy": sub_policy,
+            "granted_report_design": report_design,
+            "filter_tag": tag,
+            "comment": comment,
+        }
+        return ElementCreator(cls, json)
+
+    @property
+    def enabled(self):
+        return self.data.get("enabled")
+
+    @property
+    def granted_engine(self):
+        return self.data.get("granted_engine")
+
+    @property
+    def console_superuser(self):
+        return self.data.get("console_superuser")
+
+    @property
+    def log_service_enabled(self):
+        return self.data.get("log_service_enabled")
+
+    @property
+    def policy_service_enabled(self):
+        return self.data.get("policy_service_enabled")
+
+    @property
+    def report_service_enabled(self):
+        return self.data.get("report_service_enabled")
+
+    @property
+    def show_inspection_policy(self):
+        return self.data.data("show_inspection_policy")
+
+    @property
+    def show_main_policy(self):
+        return self.data.get("show_main_policy")
+
+    @property
+    def show_only_ip_addresses(self):
+        return self.data.get("show_only_ip_addresses")
+
+    @property
+    def show_sub_policy(self):
+        return self.data.get("show_sub_policy")
+
+    @property
+    def show_template_policy(self):
+        return self.data.get("show_template_policy")
+
+    @property
+    def show_upload_comment(self):
+        return self.data.get("show_upload_comment")
+
+    @property
+    def show_upload_history(self):
+        return self.data.get("show_upload_history")
+
+    @property
+    def granted_template_policy(self):
+        return self.data.get("granted_template_policy")
+
+    @property
+    def granted_sub_policy(self):
+        return self.data.get("granted_sub_policy")
+
+    @property
+    def granted_report_design(self):
+        return self.data.get("granted_report_design")
+
+    @property
+    def filter_tag(self):
+        return self.data.get("filter_tag")

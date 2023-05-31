@@ -222,3 +222,9 @@ class RawDictFormat(object):
 
     def formatted(self, alist):
         return alist
+
+
+class ElementFormat(RawDictFormat):
+    """
+    Return the data as a list in Element format.
+    """

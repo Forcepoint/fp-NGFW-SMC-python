@@ -59,7 +59,8 @@ Only Layer3Firewall and Layer3VirtualEngine types can support running BGP.
              :class:`smc.core.engines.Layer3VirtualEngine`
 
 """
-from smc.base.model import Element, ElementCreator, ElementCache, ElementRef
+from smc.base.model import Element, ElementCreator, ElementCache, ElementRef, SubElement
+from smc.base.structs import NestedDict
 from smc.base.util import element_resolver
 from smc.routing.ospf import OSPF
 
@@ -420,6 +421,22 @@ class AutonomousSystem(Element):
         return super(AutonomousSystem, cls).update_or_create(with_status=with_status, **kwargs)
 
 
+class BGPBMPSettings(NestedDict):
+    """
+    .. Requires SMC >= 7.1
+
+    A BGP BMP Entry representing the BMP listening address (FQDN/IPv4/IPv6),
+    the BMP listening port and the flag to know if the connection
+    must be done through master.
+    """
+
+    def __init__(self, bmp_address, bmp_port, bmp_connect_through_master):
+        data = {"bmp_address": bmp_address,
+                "bmp_port": bmp_port,
+                "bmp_connect_through_master": bmp_connect_through_master}
+        super(BGPBMPSettings, self).__init__(data=data)
+
+
 class BGPProfile(Element):
     """
     A BGP Profile specifies settings specific to an engine level BGP
@@ -456,9 +473,9 @@ class BGPProfile(Element):
         internal_distance=200,
         local_distance=200,
         subnet_distance=None,
-        bmp_port=None,
-        bmp_address=None,
-        bmp_connect_through_master=None
+        bmp_settings=None,
+        aggregation_entry=None,
+        redistribution_entry=None
     ):
         """
         Create a custom BGP Profile
@@ -470,10 +487,14 @@ class BGPProfile(Element):
         :param int local_distance: local administrative distance (aggregation) (1-255)
         :param list subnet_distance: configure specific subnet's with respective distances
         :type tuple subnet_distance: (subnet element(Network), distance(int))
-        :param int bmp_port: the BMP port (1-65535)
-        :param str bmp_address: the BMP address (IPv4 or IPv6 or FQDN)
-        :param bool bmp_connect_through_master: flag to indicate the BMP connection will be
-        performed from a master
+        :param list BGPBMPSettings: configure the BMP listering settings (address/port/flag)
+        :param List(BGPAggregationEntry) aggregation_entry:This represents the BGP aggregation entry
+         with:
+                subnet: link to a network.
+                mode: the aggregation mode.
+        :param List(RedistributionEntry) redistribution_entry:This represents an BGP or OSPF Profile
+         Redistribution Entry. There is one entry by BGP or OSPF Redistribution type
+         (static, connected, kernel, ospfv2)
         :raises CreateElementFailed: reason for failure
         :return: instance with meta
         :rtype: BGPProfile
@@ -484,9 +505,6 @@ class BGPProfile(Element):
             "internal": internal_distance,
             "local": local_distance,
             "port": port,
-            "bmp_port": bmp_port,
-            "bmp_address": bmp_address,
-            "bmp_connect_through_master": bmp_connect_through_master
         }
 
         if subnet_distance:
@@ -495,6 +513,14 @@ class BGPProfile(Element):
                 for subnet, distance in subnet_distance
             ]
             json.update(distance_entry=d)
+        if bmp_settings:
+            json.update(bmp_entry=[b.data for b in bmp_settings])
+
+        if aggregation_entry:
+            json.update(aggregation_entry=aggregation_entry)
+
+        if redistribution_entry:
+            json.update(redistribution_entry=redistribution_entry)
 
         return ElementCreator(cls, json)
 
@@ -509,34 +535,11 @@ class BGPProfile(Element):
         return self.data.get("port")
 
     @property
-    def bmp_port(self):
+    def bmp_settings(self):
         """
-        Specified port for BGP BMP
-
-        :return: value of BGP BMP port
-        :rtype: int
+        BMP settings: list of address/port/connect_through_master
         """
-        return self.data.get("bmp_port")
-
-    @property
-    def bmp_address(self):
-        """
-        Specified IPv4 or IPv6 or FQDN address for BGP BMP
-
-        :return: value of BGP BMP address
-        :rtype: str
-        """
-        return self.data.get("bmp_address")
-
-    @property
-    def bmp_connect_through_master(self):
-        """
-        Specified flag if the BGP BMP connection will be through a master
-
-        :return: flag for BGP BMP connection
-        :rtype: bool
-        """
-        return self.data.get("bmp_connect_through_master")
+        return [BGPBMPSettings(**b) for b in self.data.get("bmp_entry", [])]
 
     @property
     def external_distance(self):
@@ -579,6 +582,22 @@ class BGPProfile(Element):
             (Element.from_href(entry.get("subnet")), entry.get("distance"))
             for entry in self.data.get("distance_entry")
         ]
+
+    @property
+    def aggregation_entry(self):
+        """
+        Specific subnet with mode
+        :return: list of BGPAggregationEntry
+        """
+        return [BGPAggregationEntry(entry) for entry in self.data.get("aggregation_entry", [])]
+
+    @property
+    def redistribution_entry(self):
+        """
+        This represents an BGP or OSPF Profile Redistribution Entry.
+        :return: list of RedistributionEntry
+        """
+        return [RedistributionEntry(entry) for entry in self.data.get("redistribution_entry", [])]
 
 
 class ExternalBGPPeer(Element):
@@ -822,3 +841,57 @@ class BGPConnectionProfile(Element):
         :rtype: int
         """
         return self.data.get("session_keep_alive")
+
+
+class BGPAggregationEntry(NestedDict):
+
+    def __init__(self, data):
+        super(BGPAggregationEntry, self).__init__(data)
+
+    @classmethod
+    def create(cls, mode, subnet):
+        """
+        :param str mode: The Aggregation value:
+            1.aggregate: Aggregate mode.
+            2.aggregate_as_set: Aggregate with AS Set mode.
+            3.summary_only: Summary Only mode.
+            4.as_set_and_summary: Aggregate with AS Set and Summary mode.
+        :param str subnet: The Subnet Network element.
+        :rtype: dict
+        """
+        data = {
+            "subnet": element_resolver(subnet),
+            "mode": mode,
+        }
+        return cls(data)
+
+
+class RedistributionEntry(NestedDict):
+    def __init__(self, data):
+        super(RedistributionEntry, self).__init__(data)
+
+    @classmethod
+    def create(cls, redistribution_type, enabled=False, filter_type=None, **kwargs):
+        """
+        :param str redistribution_type: The redistribution type:
+            1.kernel: Redistribution from Kernel.
+            2.static: Redistribution from Static.
+            3.connected: Redistribution from Connected.
+            4.bgp: Redistribution from BGP. Available for any dynamic routing protocols Profile
+            element but BGP one.
+            5.ospfv2: Redistribution from OSPFv2. Available for any dynamic routing protocols
+            Profile element but OSPFv2 one.
+            6.default_originate: Default Originate injection. Available just for OSPFv2 element.
+        :param bool enabled: This redistribution is enabled or not.
+        :param str filter_type: The filter type.
+        :rtype: dict
+        """
+        data = {
+            "enabled": enabled,
+            "filter_type": filter_type,
+            "type": redistribution_type
+        }
+
+        for k, v in kwargs.items():
+            data.update({k: v})
+        return cls(data)

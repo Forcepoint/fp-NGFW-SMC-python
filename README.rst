@@ -35,8 +35,8 @@ Requirements
 
 Python >= 2.7 or >= 3.5
 
-Requests >= 2.12.0
-Websocket >= 0.2.1
+Requests >= 2.31.0
+websocket-client >= 1.5.0
 
 Security Management Center version >= 6.0
 

@@ -99,6 +99,9 @@ class SMCRequest(object):
     def read(self):
         return self._make_request(method="GET")
 
+    def options(self):
+        return self._make_request(method="OPTIONS")
+
     def _make_request(self, method):
         err = None
         result = None

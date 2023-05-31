@@ -58,6 +58,7 @@ class Layer3Firewall(Engine):
         log_server_ref=None,
         domain_server_address=None,
         nodes=1,
+        nodes_definition=None,
         node_type="firewall_node",
         location_ref=None,
         default_nat=False,
@@ -74,6 +75,7 @@ class Layer3Firewall(Engine):
         extra_opts=None,
         engine_type=None,
         lldp_profile=None,
+        link_usage_profile=None,
         quic_enabled=True,
         discard_quic_if_cant_inspect=True,
         **kw
@@ -189,6 +191,11 @@ class Layer3Firewall(Engine):
             lldp_profile = extra_opts['lldp_profile_ref']
             del extra_opts['lldp_profile_ref']
 
+        # convert link_usage profile from extra_opts to parameter for _create function
+        if extra_opts is not None and "link_usage_profile_ref" in extra_opts:
+            link_usage_profile = extra_opts['link_usage_profile']
+            del extra_opts['link_usage_profile_ref']
+
         # convert known_host_list from extra_opts to parameter for _create function
         if extra_opts is not None and "known_host_lists_ref" in extra_opts:
             known_host_lists = extra_opts["known_host_lists_ref"]
@@ -203,6 +210,7 @@ class Layer3Firewall(Engine):
                 domain_server_address=domain_server_address,
                 log_server_ref=log_server_ref,
                 nodes=nodes,
+                nodes_definition=nodes_definition,
                 enable_gti=enable_gti,
                 enable_antivirus=enable_antivirus,
                 sidewinder_proxy_enabled=sidewinder_proxy_enabled,
@@ -211,6 +219,7 @@ class Layer3Firewall(Engine):
                 location_ref=location_ref,
                 enable_ospf=enable_ospf,
                 ospf_profile=ospf_profile,
+                link_usage_profile=link_usage_profile,
                 snmp_agent=snmp_agent if snmp else None,
                 ntp_settings=ntp_settings,
                 timezone=timezone,
@@ -259,8 +268,10 @@ class Layer3Firewall(Engine):
         engine_type=None,
         node_type="firewall_node",
         lldp_profile=None,
+        link_usage_profile=None,
         quic_enabled=True,
         discard_quic_if_cant_inspect=True,
+        node_definition=None,
         **kw
     ):
         """
@@ -300,10 +311,12 @@ class Layer3Firewall(Engine):
         :param NTPSettings ntp_settings: NTP settings
         :param LLDPProfile lldp_profile: LLDP Profile represents a set of attributes used for
         configuring LLDP
+        :param LinkUsageProfule link_usage_profile
         :param dict extra_opts: extra options as a dict to be passed to the top level engine
         :param kw: optional keyword arguments specifying additional interfaces
         :param bool quic_enabled: (optional) include QUIC ports for web traffic
         :param bool discard_quic_if_cant_inspect: (optional) discard or allow QUIC
+        :param node_definition information for the node itself
          if inspection is not possible
         :raises CreateEngineFailed: Failure to create with reason
         :return: :py:class:`smc.core.engine.Engine`
@@ -329,6 +342,10 @@ class Layer3Firewall(Engine):
         }
         interfaces.append(interface)
 
+        nodes_definition = []
+        if node_definition:
+            nodes_definition.append(node_definition)
+
         return Layer3Firewall.create_bulk(
             name=name,
             node_type=node_type,
@@ -338,6 +355,7 @@ class Layer3Firewall(Engine):
             log_server_ref=log_server_ref,
             enable_gti=enable_gti,
             nodes=1,
+            nodes_definition=nodes_definition,
             enable_antivirus=enable_antivirus,
             sidewinder_proxy_enabled=sidewinder_proxy_enabled,
             known_host_lists=known_host_lists,
@@ -352,6 +370,7 @@ class Layer3Firewall(Engine):
             engine_type=engine_type,
             extra_opts=extra_opts,
             lldp_profile=lldp_profile,
+            link_usage_profile=link_usage_profile,
             quic_enabled=quic_enabled,
             discard_quic_if_cant_inspect=discard_quic_if_cant_inspect
         )
@@ -379,8 +398,10 @@ class Layer3Firewall(Engine):
         engine_type=None,
         node_type="firewall_node",
         lldp_profile=None,
+        link_usage_profile=None,
         quic_enabled=True,
         discard_quic_if_cant_inspect=True,
+        node_definition=None,
         **kw
     ):
         """
@@ -404,6 +425,7 @@ class Layer3Firewall(Engine):
         :param dict extra_opts: extra options as a dict to be passed to the top level engine
         :param bool quic_enabled: (optional) include QUIC ports for web traffic
         :param bool discard_quic_if_cant_inspect: (optional) discard or allow QUIC
+        :param node_definition information for the node itself
          if inspection is not possible
         :raises CreateElementFailed: failed to create engine
         :return: :py:class:`smc.core.engine.Engine`
@@ -434,9 +456,14 @@ class Layer3Firewall(Engine):
             address=loopback_ndi, nodeid=1, auth_request=True, rank=1
         )
 
+        nodes_definition = []
+        if node_definition:
+            nodes_definition.append(node_definition)
+
         return Layer3Firewall.create_bulk(
             name=name,
             node_type=node_type,
+            nodes_definition=nodes_definition,
             primary_mgt=interface_id,
             interfaces=interfaces,
             loopback_ndi=[loopback.data],
@@ -453,6 +480,7 @@ class Layer3Firewall(Engine):
             engine_type=engine_type,
             extra_opts=extra_opts,
             lldp_profile=lldp_profile,
+            link_usage_profile=link_usage_profile,
             quic_enabled=quic_enabled,
             discard_quic_if_cant_inspect=discard_quic_if_cant_inspect
         )
@@ -590,6 +618,7 @@ class Layer2Firewall(Engine):
         extra_opts=None,
         lldp_profile=None,
         discard_quic_if_cant_inspect=True,
+        node_definition=None,
         **kw
     ):
         """
@@ -612,6 +641,7 @@ class Layer2Firewall(Engine):
         configuring LLDP
         :param bool discard_quic_if_cant_inspect: (optional) discard or allow QUIC
          if inspection is not possible
+        :param node_definition information for the node itself
         :param dict extra_opts: extra options as a dict to be passed to the top level engine
         :raises CreateEngineFailed: Failure to create with reason
         :return: :py:class:`smc.core.engine.Engine`
@@ -631,7 +661,9 @@ class Layer2Firewall(Engine):
             "interface_id": mgmt_interface,
             "zone_ref": zone_ref,
             "interfaces": [
-                {"nodes": [{"address": mgmt_ip, "network_value": mgmt_network, "nodeid": 1}]}
+                {"nodes": [{"address": mgmt_ip,
+                            "network_value": mgmt_network,
+                            "nodeid": 1}]}
             ],
         }
 
@@ -639,9 +671,14 @@ class Layer2Firewall(Engine):
             {"physical_interface": Layer3PhysicalInterface(primary_mgt=mgmt_interface, **layer3)}
         )
 
+        nodes_definition = []
+        if node_definition:
+            nodes_definition.append(node_definition)
+
         engine = super(Layer2Firewall, cls)._create(
             name=name,
             node_type="fwlayer2_node",
+            nodes_definition=nodes_definition,
             physical_interfaces=interfaces,
             domain_server_address=domain_server_address,
             log_server_ref=log_server_ref,
@@ -690,6 +727,7 @@ class IPS(Engine):
         extra_opts=None,
         lldp_profile=None,
         discard_quic_if_cant_inspect=True,
+        node_definition=None,
         **kw
     ):
         """
@@ -713,6 +751,7 @@ class IPS(Engine):
         :param bool discard_quic_if_cant_inspect: (optional) discard or allow QUIC
          if inspection is not possible
         :param dict extra_opts: extra options as a dict to be passed to the top level engine
+        :param node_definition information for the node itself
         :raises CreateEngineFailed: Failure to create with reason
         :return: :py:class:`smc.core.engine.Engine`
         """
@@ -731,7 +770,9 @@ class IPS(Engine):
             "interface_id": mgmt_interface,
             "zone_ref": zone_ref,
             "interfaces": [
-                {"nodes": [{"address": mgmt_ip, "network_value": mgmt_network, "nodeid": 1}]}
+                {"nodes": [{"address": mgmt_ip,
+                            "network_value": mgmt_network,
+                            "nodeid": 1}]}
             ],
         }
 
@@ -739,9 +780,14 @@ class IPS(Engine):
             {"physical_interface": Layer3PhysicalInterface(primary_mgt=mgmt_interface, **layer3)}
         )
 
+        nodes_definition = []
+        if node_definition:
+            nodes_definition.append(node_definition)
+
         engine = super(IPS, cls)._create(
             name=name,
             node_type="ips_node",
+            nodes_definition=nodes_definition,
             physical_interfaces=interfaces,
             domain_server_address=domain_server_address,
             log_server_ref=log_server_ref,
@@ -930,6 +976,7 @@ class FirewallCluster(Engine):
         name,
         interfaces=None,
         nodes=2,
+        nodes_definition=[],
         cluster_mode="balancing",
         primary_mgt=None,
         backup_mgt=None,
@@ -946,6 +993,7 @@ class FirewallCluster(Engine):
         timezone=None,
         extra_opts=None,
         lldp_profile=None,
+        link_usage_profile=None,
         quic_enabled=True,
         discard_quic_if_cant_inspect=True,
         **kw
@@ -1003,6 +1051,11 @@ class FirewallCluster(Engine):
             lldp_profile = extra_opts['lldp_profile_res']
             del extra_opts['lldp_profile_ref']
 
+        # convert link_usage_profile_ref from extra_opts to parameter for _create function
+        if extra_opts is not None and "link_usage_profile_ref" in extra_opts:
+            lldp_profile = extra_opts['link_usage_profile_ref']
+            del extra_opts['link_usage_profile_ref']
+
         try:
             engine = super(FirewallCluster, cls)._create(
                 name=name,
@@ -1013,6 +1066,7 @@ class FirewallCluster(Engine):
                 location_ref=location_ref,
                 enable_gti=enable_gti,
                 nodes=nodes,
+                nodes_definition=nodes_definition,
                 enable_antivirus=enable_antivirus,
                 default_nat=default_nat,
                 snmp_agent=snmp_agent if snmp else None,
@@ -1020,6 +1074,7 @@ class FirewallCluster(Engine):
                 comment=comment,
                 timezone=timezone,
                 lldp_profile=lldp_profile,
+                link_usage_profile=link_usage_profile,
                 discard_quic_if_cant_inspect=discard_quic_if_cant_inspect,
                 ** extra_opts if extra_opts else {},
             )
@@ -1046,6 +1101,7 @@ class FirewallCluster(Engine):
         macaddress,
         interface_id,
         nodes,
+        nodes_definition=[],
         vlan_id=None,
         cluster_mode="balancing",
         backup_mgt=None,
@@ -1063,6 +1119,7 @@ class FirewallCluster(Engine):
         timezone=None,
         extra_opts=None,
         lldp_profile=None,
+        link_usage_profile=None,
         quic_enabled=True,
         discard_quic_if_cant_inspect=True,
         **kw
@@ -1084,6 +1141,7 @@ class FirewallCluster(Engine):
         :param str macaddress: macaddress for packet dispatch clustering
         :param str interface_id: nic id to use for primary interface
         :param list nodes: address/network_value/nodeid combination for cluster nodes
+        :param list nodes_definition : list of node info (name, comment..)
         :param str vlan_id: optional VLAN id for the management interface, i.e. '15'.
         :param str cluster_mode: 'balancing' or 'standby' mode (default: balancing)
         :param str,int primary_heartbeat: optionally set the primary_heartbeat. This is
@@ -1105,6 +1163,7 @@ class FirewallCluster(Engine):
             is a string with the SNMP location name.
         :param LLDPProfile lldp_profile: LLDP Profile represents a set of attributes used for
         configuring LLDP
+        :param LinkUsageProfile link_usage_profile: Link usage profile
         :param bool quic_enabled: (optional) include QUIC ports for web traffic
         :param bool discard_quic_if_cant_inspect: (optional) discard or allow QUIC
          if inspection is not possible
@@ -1215,6 +1274,7 @@ class FirewallCluster(Engine):
             name,
             interfaces=interfaces,
             nodes=len(nodes),
+            nodes_definition=nodes_definition,
             cluster_mode=cluster_mode,
             primary_mgt=primary_mgt,
             backup_mgt=backup_mgt,
@@ -1231,6 +1291,7 @@ class FirewallCluster(Engine):
             timezone=timezone,
             extra_opts=extra_opts,
             lldp_profile=lldp_profile,
+            link_usage_profile=link_usage_profile,
             quic_enabled=quic_enabled,
             discard_quic_if_cant_inspect=discard_quic_if_cant_inspect
         )
@@ -1276,6 +1337,7 @@ class MasterEngine(Engine):
         lldp_profile=None,
         cluster_mode="standby",
         reverse_connection=False,
+        node_definition=None,
         **kw
     ):
         """
@@ -1296,12 +1358,14 @@ class MasterEngine(Engine):
         :param str cluster_mode: Defines whether the clustered engines are all online balancing the
             traffic or whether one node is online at a time and the other engines are used as backup
         :param boolean reverse_connection: Reverse connection.
+        :param node_definition information for the node itself
         :raises CreateEngineFailed: Failure to create with reason
         :return: :py:class:`smc.core.engine.Engine`
         """
         interface = {
             "interface_id": mgmt_interface,
-            "interfaces": [{"nodes": [{"address": mgmt_ip, "network_value": mgmt_network,
+            "interfaces": [{"nodes": [{"address": mgmt_ip,
+                                       "network_value": mgmt_network,
                                        "reverse_connection": reverse_connection}]}],
             "zone_ref": zone_ref,
             "comment": comment,
@@ -1311,6 +1375,10 @@ class MasterEngine(Engine):
             primary_mgt=mgmt_interface, primary_heartbeat=mgmt_interface, **interface
         )
 
+        nodes_definition = []
+        if node_definition:
+            nodes_definition.append(node_definition)
+
         engine = super(MasterEngine, cls)._create(
             name=name,
             node_type="master_node",
@@ -1319,6 +1387,7 @@ class MasterEngine(Engine):
             log_server_ref=log_server_ref,
             enable_gti=enable_gti,
             nodes=1,
+            nodes_definition=nodes_definition,
             enable_antivirus=enable_antivirus,
             comment=comment,
             lldp_profile=lldp_profile,
@@ -1350,6 +1419,7 @@ class MasterEngineCluster(Engine):
         master_type,
         macaddress,
         nodes,
+        nodes_definition=None,
         mgmt_interface=0,
         log_server_ref=None,
         domain_server_address=None,
@@ -1381,6 +1451,7 @@ class MasterEngineCluster(Engine):
         :param str cluster_mode: Defines whether the clustered engines are all online balancing the
             traffic or whether one node is online at a time and the other engines are used as backup
         :param boolean reverse_connection: Reverse connection.
+        :param list nodes_definition : list of node info (name, comment..)
         :raises CreateEngineFailed: Failure to create with reason
         :return: :py:class:`smc.core.engine.Engine`
 
@@ -1416,6 +1487,7 @@ class MasterEngineCluster(Engine):
             log_server_ref=log_server_ref,
             enable_gti=enable_gti,
             nodes=len(nodes),
+            nodes_definition=nodes_definition,
             enable_antivirus=enable_antivirus,
             comment=comment,
             lldp_profile=lldp_profile,

@@ -27,11 +27,14 @@ For example, to load an engine and run node level commands::
 """
 import collections
 from smc.base.util import save_to_file, b64encode
-from smc.base.model import SubElement, Element, ElementList
+from smc.base.model import SubElement, Element
 from smc.compat import get_best_version
 from smc.core.sub_interfaces import LoopbackInterface
-from smc.api.exceptions import LicenseError, NodeCommandFailed
+from smc.api.exceptions import LicenseError, NodeCommandFailed, UnsupportedEngineFeature, \
+    CertificateImportError, CertificateExportError, CertificateError
 from smc.base.structs import SerializedIterable, NestedDict
+from smc.administration.certificates.tls_common import pem_as_string
+from smc.core.external_pki import PkiCertificateSettings, PkiCertificateInfo
 
 
 class Node(SubElement):
@@ -88,27 +91,48 @@ class Node(SubElement):
         self._engine._del_cache()
 
     @classmethod
-    def _create(cls, name, node_type, nodeid=1, loopback_ndi=None):
+    def _create(cls, name, node_type, nodeid=1,
+                loopback_ndi=None,
+                external_pki_certificate_settings=None,
+                disable=False, comment=None):
         """
         Create the node/s for the engine. This isn't called directly,
         instead it is used when engine.create() is called
 
-        :param str name: name of node
+        :param str name: name of node, to be unique
         :param str node_type: based on engine type specified
         :param int nodeid: used to identify which node
         :param list LoopbackInterface loopback_ndi: optional loopback
             interface for node.
+        :param external_pki_certificate_settings: settings of the node in
+        external pki mode
+        :param bool disable to disable a node, false  by default
+        :param str comment : comment for this element
         """
         loopback = loopback_ndi if loopback_ndi else []
-        node = {
-            node_type: {
-                "activate_test": True,
-                "disabled": False,
-                "loopback_node_dedicated_interface": loopback,
-                "name": name + " node " + str(nodeid),
-                "nodeid": nodeid,
+        if external_pki_certificate_settings:
+            node = {
+                node_type: {
+                    "activate_test": True,
+                    "disabled": disable,
+                    "comment": comment,
+                    "loopback_node_dedicated_interface": loopback,
+                    "name": name,
+                    "nodeid": nodeid,
+                    **external_pki_certificate_settings,
+                }
             }
-        }
+        else:
+            node = {
+                node_type: {
+                    "activate_test": True,
+                    "disabled": disable,
+                    "comment": comment,
+                    "loopback_node_dedicated_interface": loopback,
+                    "name": name,
+                    "nodeid": nodeid,
+                }
+            }
         return node
 
     @property
@@ -538,6 +562,92 @@ class Node(SubElement):
         :return: dict with links to cert info
         """
         return self.make_request(resource="certificate_info")
+
+    def pki_certificate_settings(self):
+        """
+        Get the certificate info of this node when working with External PKI.
+        This can return None if the engine type does not directly have a certificate,
+         like a virtual engine where the master engine manages certificates.
+
+        :raises UnsupportedEngineFeature: requires engine version 6.10 and external PKI
+        installation
+        :rtype: PkiCertificateSettings
+        """
+        if "external_pki_certificate_settings" in self.data:
+            return PkiCertificateSettings(self)
+
+    def pki_export_certificate_request(self, filename=None):
+        """
+        Export the certificate request for the node when working with an External PKI.
+        This can return None if the engine type does not have a certificate request.
+
+        :raises CertificateExportError: error exporting certificate
+        :rtype: str or None
+        """
+        result = self.make_request(
+            CertificateExportError, raw_result=True, resource="pki_export_certificate_request"
+        )
+
+        if filename is not None:
+            save_to_file(filename, result.content)
+            return
+
+        return result.content
+
+    def pki_import_certificate(self, certificate):
+        """
+        Import a valid certificate. Certificate can be either a file path
+        or a string of the certificate. If string certificate, it must include
+        the -----BEGIN CERTIFICATE----- string.
+
+        :param str certificate: fully qualified path or string
+        :raises CertificateImportError: failure to import cert with reason
+        :raises IOError: file not found, permissions, etc.
+        """
+        self.make_request(
+            CertificateImportError,
+            method="create",
+            resource="pki_import_certificate",
+            headers={"content-type": "multipart/form-data"},
+            files={
+                # decode certificate or use it as it is
+                "signed_certificate": open(certificate, "rb")
+                if not pem_as_string(certificate)
+                else certificate
+            },
+        )
+
+    def pki_renew_certificate(self):
+        """
+        Start renewal process on component when using external PKI mode.
+        It generates new private key and prepares a new certificate request.
+        """
+        self.make_request(
+            CertificateError,
+            method="update",
+            resource="pki_start_certificate_renewal",
+        )
+
+    def pki_certificate_info(self):
+        """
+        Get the certificate info of this component when working with External PKI.
+        This can return None if the component does not directly have a certificate,
+        like a virtual engine where the master engine manages certificates.
+
+        :raises UnsupportedEngineFeature: requires layer 3 engine
+        :rtype: PkiCertificateInfo
+        """
+        result = self.make_request(
+            CertificateError, resource="pki_certificate_info"
+        )
+        return PkiCertificateInfo(result)
+
+    def pki_delete_certificate_request(self):
+        """
+        Delete the certificate request if any is defined for this component.
+        """
+        self.make_request(method="delete",
+                          resource="pki_delete_certificate_request")
 
 
 class ApplianceStatus(NestedDict):

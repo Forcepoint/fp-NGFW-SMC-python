@@ -39,6 +39,7 @@ GET = "GET"
 PUT = "PUT"
 POST = "POST"
 DELETE = "DELETE"
+OPTIONS = "OPTIONS"
 
 
 def send_request(user_session, method, request):
@@ -141,6 +142,21 @@ def send_request(user_session, method, request):
                     debug(response)
 
                 if response.status_code not in (200, 204):
+                    raise SMCOperationFailure(response)
+
+            elif method == OPTIONS:
+                response = session.options(
+                    request.href,
+                    headers=request.headers,
+                    timeout=user_session.timeout,
+                )
+
+                response.encoding = "utf-8"
+
+                if logger.isEnabledFor(logging.DEBUG):
+                    debug(response)
+
+                if response.status_code not in (200, 204, 304):
                     raise SMCOperationFailure(response)
 
             else:  # Unsupported method
@@ -248,6 +264,7 @@ class SMCResult(object):
         self.msg = msg  # Only set in case of error
         self.code = None
         self.user_session = user_session
+        self.headers = None
         self.domain = getattr(user_session, "domain", None)
         self.json = self._unpack_response(respobj)  # list or dict
 
@@ -256,6 +273,7 @@ class SMCResult(object):
             self.code = response.status_code
             self.href = response.headers.get("location")
             self.etag = response.headers.get("ETag")
+            self.headers = response.headers
             content_type = response.headers.get("content-type", "")
 
             if content_type == "application/json":

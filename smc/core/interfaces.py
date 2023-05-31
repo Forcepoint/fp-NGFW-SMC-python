@@ -43,6 +43,7 @@ to view or modify specific aspects of a VLAN, such as addresses, etc.
 import copy
 from smc.base.model import SubElement, lookup_class, ElementCache
 from smc.api.exceptions import InterfaceNotFound
+from smc.core.advanced_settings import LogModeration
 from smc.core.route import del_invalid_routes
 from smc.core.sub_interfaces import (
     NodeInterface,
@@ -931,6 +932,54 @@ class Interface(SubElement):
         else:
             self.data["zone_ref"] = zone_helper(value)
 
+    def add_ip_address(self, cvi=None, sni=None, nodes=None):
+        """
+        Add an ip address(ipv4/ipv6) to tunnel interface
+        :param SingleNodeInterface sni: The single node interface.
+        :param ClusterVirtualInterface cvi: The cluster virtual interface instance.
+        :param list(NodeInterface) nodes: List of Node Interface instance.
+        """
+        if cvi:
+            self.data.interfaces.append({cvi.typeof: cvi.data})
+        if nodes:
+            for ndi in nodes:
+                self.data.interfaces.append({ndi.typeof: ndi.data})
+        if sni:
+            self.data.interfaces.append({sni.typeof: sni.data})
+        self.update()
+
+    @property
+    def log_moderation(self):
+        """
+        This is the definition of Log Compression for the engine or for an interface. You can also
+        configure Log Compression to save resources on the engine. By default, each generated
+        Antispoofing and Discard log entry is logged separately and displayed as a separate entry in
+        the Logs view. Log Compression allows you to define the maximum number of separately logged
+        entries.When the defined limit is reached, a single Antispoofing log entry or Discard log
+        entry is logged. The single entry contains information on the total number of the generated
+        Antispoofing log entries or Discard log entries. After this, logging returns to normal and
+        all the generated entries are once more logged and displayed separately.
+        Example of using log moderation settings:
+            >>> engine = Engine("testme")
+            >>> interface = engine.interface.get(1)
+            >>> log_moderation_obj = interface.log_moderation
+            >>> log_moderation_obj.get(1)["rate"]
+                100
+            >>> log_moderation_obj.get(1)["burst"]
+                1000
+            >>> log_moderation_obj.add(rate=200,burst=1100,log_event=2)
+            >>> interface.update()
+            >>> engine = Engine("testme")
+            >>> interface = engine.interface.get(1)
+            >>> log_moderation_obj=interface.log_moderation
+            >>> log_moderation_obj.get(2)["rate"]
+                200
+            >>> log_moderation_obj.get(2)["burst"]
+                1100
+        :rtype LogModeration
+        """
+        return LogModeration(self)
+
 
 class TunnelInterface(Interface):
     """
@@ -1026,7 +1075,11 @@ class TunnelInterface(Interface):
 
     @property
     def ndi_interfaces(self):
-        return []
+        return [
+            interface
+            for interface in self.interfaces
+            if getattr(interface, "typeof", None) == "node_interface"
+        ]
 
 
 class VPNBrokerInterface(Interface):
@@ -1936,6 +1989,13 @@ class Layer3PhysicalInterface(PhysicalInterface):
                     "comment": interface.pop("comment", None),
                     "interfaces": _interface,
                 }
+
+                # moving existing ip address from physical interface to vlan interface.
+                sni_list = []
+                for sni in self.interfaces:
+                    sni.update(nicid=_interface_id)
+                    sni_list.append({sni.typeof: sni.data})
+                vlan_interface.update(interfaces=sni_list)
 
                 if interface.get("virtual_mapping", None) is not None:
                     vlan_interface.update(

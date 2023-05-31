@@ -145,6 +145,7 @@ Create a no-encryption GRE route based VPN between two managed NGFWs::
 """
 from smc.base.model import Element, ElementCreator, ElementRef, SubElement
 from smc.base.collection import sub_collection
+from smc.base.util import element_resolver
 from smc.vpn.elements import VPNProfile
 from smc.api.exceptions import CreateElementFailed, CreateVPNFailed
 from smc.core.engine import InternalEndpoint
@@ -489,6 +490,15 @@ class RouteVPN(Element):
         if self.data.get("preshared_key"):
             self.update(preshared_key=new_key)
 
+    def set_tunnel_group(self, tunnel_group):
+        """
+        Set the tunnel group for this RBVPN.
+
+        :return: None
+        """
+        if self.data.get("tunnel_group_ref"):
+            self.update(tunnel_group_ref=tunnel_group.href)
+
     @property
     def local_endpoint(self):
         """
@@ -535,9 +545,26 @@ class TunnelMonitoringGroup(Element):
     """
     A tunnel monitoring group is used to group route based VPNs
     for monitoring on the Home->VPN dashboard.
+    :param str name: name tunnel group
+    :param str comment:  comment
+    :param object/href link_usage_profile : link usage profile to use for rbvpn tunnel group
     """
 
     typeof = "rbvpn_tunnel_group"
+
+    @classmethod
+    def create(cls, name, link_usage_profile=None, comment=None):
+        json = {
+            "name": name,
+            "comment": comment,
+        }
+        if link_usage_profile:
+            link_usage_profile = element_resolver(link_usage_profile)
+            json.update(link_usage_profile=link_usage_profile)
+        try:
+            return ElementCreator(cls, json)
+        except CreateElementFailed as err:
+            raise CreateVPNFailed(err)
 
 
 class RouteVPNTunnelMonitoringGroup(TunnelMonitoringGroup):

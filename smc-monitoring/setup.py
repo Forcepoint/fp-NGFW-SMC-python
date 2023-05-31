@@ -48,12 +48,11 @@ setup(
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Programming Language :: Python",
-        "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3.5",
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: Apache Software License",
     ],
     zip_safe=False,
-    install_requires=["fp_NGFW_SMC_python >=1.0.0", "websocket-client >=0.48.0"],
+    install_requires=["fp_NGFW_SMC_python >=1.0.19", "websocket-client >=1.5.0"],
 )

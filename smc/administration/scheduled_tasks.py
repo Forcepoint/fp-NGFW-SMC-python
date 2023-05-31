@@ -102,6 +102,7 @@ date::
 from smc.base.model import Element, SubElement, ElementCreator, ElementRef
 from smc.api.exceptions import ActionCommandFailed
 from smc.administration.tasks import Task
+from smc.compat import min_smc_version
 from smc.elements.servers import ManagementServer, LogServer
 from smc.core.engines import MasterEngine
 from smc.elements.other import FilterExpression
@@ -734,11 +735,17 @@ class ServerBackupTask(ScheduledTaskMixin, Element):
             "password": encrypt_password if encrypt_password else None,
             "log_data_must_be_saved": backup_log_data,
             "backup_comment": comment,
-            "server_target_path": path,
-            "script_to_execute": script
         }
 
+        if min_smc_version("7.0"):
+            # server_target_path, script_to_execute attributes are supported in the latest version.
+            json.update(server_target_path=path,
+                        script_to_execute=script)
         return ElementCreator(cls, json)
+
+    @property
+    def servers(self):
+        return self.data.get("resources")
 
 
 class SGInfoTask(ScheduledTaskMixin, Element):

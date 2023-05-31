@@ -32,6 +32,9 @@ To load the configuration for system, do::
 import logging
 import time
 
+
+from smc.administration.certificates.CertificateAuthority import CertificateAuthority
+from smc.administration.certificates.tls_common import pem_as_string
 from smc.administration.license import Licenses
 from smc.administration.system_properties import SystemProperty
 from smc.administration.tasks import Task
@@ -39,8 +42,9 @@ from smc.administration.upcoming_event import UpcomingEvents, UpcomingEventsPoli
     UpcomingEventIgnoreSettings
 from smc.administration.updates import EngineUpgrade, UpdatePackage
 from smc.api.common import fetch_entry_point
-from smc.api.exceptions import ResourceNotFound, ActionCommandFailed, ElementNotFound, \
-    EngineCommandFailed
+from smc.api.exceptions import ResourceNotFound, ActionCommandFailed, CertificateImportError, \
+    EngineCommandFailed, ElementNotFound, SMCConnectionError, UnsupportedEntryPoint, \
+    DeleteElementFailed
 from smc.base.collection import sub_collection
 from smc.base.model import SubElement, Element, ElementCreator
 from smc.base.util import millis_to_utc, extract_self
@@ -81,11 +85,26 @@ class System(SubElement):
         """
         return millis_to_utc(int(self.make_request(resource="smc_time").get("value")))
 
+    def bind_license(self, element_href, license_id=None):
+        """
+        Bind license on element.
+
+        When license_id is not set then automatic bind is done based on element type
+        and license available.
+
+        Example:
+
+            system = System()
+            system.bind_license(LogServer.objects.first())  # bind automatically license
+            system.bind_license(MgtServer.objects.first(), "123456787")  # bind license based on id
+        """
+        self.make_request(method="create", resource="license_bind",
+                          json={"component_href": element_href, "license_item_id": license_id})
+
     @property
     def massive_license_bind(self):
         """
         Bind licenses on all unlicensed nodes
-
         """
         return self.make_request(method="create", resource="massive_license_bind").get("value")
 
@@ -265,7 +284,13 @@ class System(SubElement):
         pass
 
     def clean_invalid_filters(self):
-        pass
+        """
+        Remove all invalid filters when there are not referenced.
+
+        :raises ActionCommandFailed: failed removing invalid filters
+        :return: None
+        """
+        self.make_request(method="delete", resource="clean_invalid_filters")
 
     def block_list(self, src, dst, duration=3600, **kw):
         """
@@ -406,8 +431,16 @@ class System(SubElement):
         """
         return self.make_request(resource="license_check_for_new")
 
-    def delete_license(self):
-        raise NotImplementedError
+    def delete_license(self, license_id):
+        """
+        Delete a license based on license id.
+        """
+        return self.make_request(
+            DeleteElementFailed,
+            method="update",
+            resource="delete_license",
+            params={"license_id": license_id}
+        )
 
     # @ReservedAssignment
     def visible_virtual_engine_mapping(self, filter=None):
@@ -589,7 +622,12 @@ class System(SubElement):
         )
 
     def unlicensed_components(self):
-        raise NotImplementedError
+        """
+        Return list of unlicensed element (if any)
+        """
+        return self.make_request(
+            method="read", resource="unlicensed_components"
+        )
 
     @property
     def mgt_integration_configuration(self):
@@ -669,6 +707,47 @@ class System(SubElement):
             entries.append(situation.href)
         json.update(entries=entries)
         return json
+
+    def smc_certificate_authority(self):
+        """
+        Show all Certificate Authorities on SMC.
+        :rtype: SubElementCollection(CertificateAuthority).
+        """
+        return sub_collection(self.get_relation("certificate_authority"), CertificateAuthority)
+
+    def import_new_certificate_authority_certificate(self, certificate):
+        """
+        Create new SMC CA from certificate.
+        """
+        self.make_request(CertificateImportError,
+                          method="create",
+                          headers={"content-type": "multipart/form-data"},
+                          resource="certificate_authority",
+                          files={
+                              "ca_certificate": open(certificate, "rb")
+                              # decode certificate or use it as it is
+                              if not pem_as_string(certificate)
+                              else certificate
+                          },
+                          )
+
+    def massive_delete(self, elements_list):
+        """
+        Massive delete of several elements
+        elements_list: List of element as object to delete
+
+        Example:
+             host_1 = Host("My host 1")
+             host_2 = Host("My host 2")
+             host_3 = Host("My host 3")
+             system = System()
+             system.massive_delete([host_1, host_2, host_3])
+
+        """
+        self.make_request(DeleteElementFailed,
+                          method="create",
+                          resource="massive_delete",
+                          json={"resource": [element.href for element in elements_list]})
 
 
 class AdminDomain(Element):
@@ -810,8 +889,8 @@ class AdminDomain(Element):
         :return: list of alert monitoring entries : session_monitoring.SessionMonitoringResult
         :rtype: SerializedIterable(Route)
         """
-        if not min_smc_version("7.1"):
-            raise UnsupportedEngineFeature("Need at least 7.1 version of the SMC")
+        if is_smc_version_less_than_or_equal("7.0"):
+            raise UnsupportedEntryPoint("Need at least 7.1 version of the SMC")
         try:
             params = None
             if not full:

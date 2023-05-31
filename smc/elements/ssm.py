@@ -24,6 +24,14 @@ class SSMLoggingProfile(Element):
     typeof = "sidewinder_logging_profile"
 
 
+class LoggingProfile(Element):
+    typeof = "logging_profile"
+
+
+class ProbingProfile(Element):
+    typeof = "probing_profile"
+
+
 class SSHProfile(Element):
     """
     Class representing a SSH Profile object used in SSM SSH Proxy services

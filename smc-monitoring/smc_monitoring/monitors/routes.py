@@ -207,8 +207,12 @@ class RoutingView(object):
         return int(self.rt.get(str(LogField.ROUTEMETRIC)), 0)
 
     def __str__(self):
-        return "{}(dest_if={},network={},type={})".format(
-            self.__class__.__name__, self.dest_if, self.route_network, self.route_type)
+        return "{}(dest_if={}, gateway={}, network={},type={})".format(
+            self.__class__.__name__,
+            self.dest_if,
+            self.route_gw,
+            self.route_network,
+            self.route_type)
 
     def __repr__(self):
         return str(self)

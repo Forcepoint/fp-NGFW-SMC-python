@@ -51,8 +51,9 @@ Specify a DNS server to handle specific domains::
 
 """
 from smc.base.model import Element, ElementCreator
-from smc.api.exceptions import ElementNotFound
+from smc.api.exceptions import ElementNotFound, UnsupportedAttribute
 from smc.base.util import element_resolver
+from smc.compat import is_smc_version_less_than
 
 
 class DNSRule(object):
@@ -297,6 +298,223 @@ class SandboxService(Element):
         }
         return ElementCreator(cls, json)
 
+    @property
+    def sandbox_license_key(self):
+        """
+        Sandbox License Key.
+        :rtype: str
+        """
+        return self.data.get("sandbox_license_key")
+
+    @property
+    def sandbox_license_token(self):
+        """
+        License Token.
+        :rtype: str
+        """
+        return self.data.get("sandbox_license_token")
+
+    @property
+    def sandbox_data_center(self):
+        """
+        Sandbox Data Center
+        :rtype: SandboxDataCenter
+        """
+        return self.from_href(self.data.get("sandbox_data_center"))
+
 
 class SandboxDataCenter(Element):
     typeof = "sandbox_data_center"
+
+    @property
+    def hostname(self):
+        """Sandbox Service Hostname"""
+        return self.data.get("hostname")
+
+    @property
+    def server_url(self):
+        """Sandbox Data Center Server URL"""
+        return self.data.get("server_url")
+
+    @property
+    def portal_url(self):
+        """Sandbox Data Center Portal URL"""
+        return self.data.get("portal_url")
+
+    @property
+    def api_url(self):
+        """Sandbox Data Center API URL."""
+        return self.data.get("api_url")
+
+    @property
+    def sandbox_type(self):
+        """
+        Sandbox Data Center Type.
+            1. forcepoint_sandbox
+            2. cloud_sandbox or local_sandbox
+        """
+        if is_smc_version_less_than("7.1"):
+            raise UnsupportedAttribute("Unsupported Attribute, sandbox_type is available in "
+                                       "smc version > 7.1")
+        return self.data.get("sandbox_type")
+
+    @property
+    def tls_profile(self):
+        """Represents a TLS Profile."""
+        return self.from_href(self.data.get("tls_profile"))
+
+
+class UserIDService(Element):
+    """
+    Represents a User ID Service element.
+    """
+    typeof = "user_id_service"
+
+    @classmethod
+    def create(
+            cls,
+            name,
+            address=None,
+            cache_expiration=300,
+            connect_timeout=10,
+            monitored_user_domains=None,
+            netflow=False,
+            snmp_trap=False,
+            tls_field="DNSName",
+            tls_value=None,
+            tls_profile=None,
+            port=5000,
+            address_list=None,
+            encoding="UTF-8",
+            logging_profile=None,
+            monitoring_log_server=None,
+            probing_profile=None,
+            time_zone="Europe/Paris",
+            comment=None
+    ):
+        """
+        :param str name: Name of user id service.
+        :param str address: IP addresses to contact the User ID Service.
+        :param int cache_expiration: The time in seconds for the cache expiration on the engine.
+        :param int connect_timeout: The time in seconds for the connection from the engine to time
+        out.
+        :param List monitored_user_domains: Specific user domains to check. If not defined, it uses
+        all known user domains by User ID service.
+        :param bool netflow: Activates NetFlow (v6 and v16) and IPFIX (NetFlow v20) data reception
+        from this device.
+        :param bool snmp_trap: Activates SNMP trap reception from this device. The data that the
+        device sends must be formatted according to the MIB definitions currently active in the
+        system.
+        :param str tls_field: This id field from Field/value pair used to insure server identity
+        when connecting to User ID service using TLS.
+        :param str tls_value: This id value from Field/value pair used to insure server identity
+        when connecting to User ID service using TLS
+        :param TLSProfile tls_profile: TLS information required to establish TLS connection to the
+        User ID service.
+        :param int port: The port on which the User ID Service communicates with the Firewall. If
+        you change the port from the default, you must configure the same port in the User ID
+        Service Properties on the Windows system. You must also change the rule that allows
+        communication between the Firewall and the User ID Service.
+        :param List address_list: List of additional IP addresses to contact the User ID Service.
+        You can add several IPv4 and IPv6 addresses (one by one).
+        :param encoding:
+        :param ThirdPartyLoggingProfile logging_profile: Activates syslog reception from this device
+        You must select the Logging Profile that contains the definitions for converting the syslog
+        entries to log entries.You must also select the Time Zone in which the device is located.
+        By default, the local time zone of the computer you are using is selected
+        :param LogServer monitoring_log_server: Monitoring Log Server that monitors this device
+        (third-party monitoring).You must select a Log Server to activate the other options.
+        :param probing_profile: Activates status monitoring for this device. You must also select
+        the Probing Profile that contains the definitions for the monitoring. When you select this
+        option, the element is added to the tree in the System Status view.
+        :param time_zone:
+        :param str comment: comment
+        :return UserIDService
+        """
+        json = {
+            "name": name,
+            "monitored_user_domains": monitored_user_domains,
+            "address": address,
+            "cache_expiration": cache_expiration,
+            "connect_timeout": connect_timeout,
+            "port": port,
+            "list": address_list,
+            "tls_identity": {"tls_field": tls_field,
+                             "tls_value": tls_value
+                             },
+            "tls_profile": element_resolver(tls_profile),
+            "third_party_monitoring": {
+                "encoding": encoding,
+                "logging_profile_ref": element_resolver(logging_profile),
+                "monitoring_log_server_ref": element_resolver(monitoring_log_server),
+                "probing_profile_ref": element_resolver(probing_profile),
+                "netflow": netflow,
+                "time_zone": time_zone,
+                "snmp_trap": snmp_trap
+            },
+            "comment": comment,
+        }
+
+        return ElementCreator(cls, json)
+
+    @property
+    def tls_profile(self):
+        """Represents a TLS Profile."""
+        return self.from_href(self.data.get("tls_profile"))
+
+    @property
+    def tls_identity(self):
+        """
+        Field/value pair used to insure server identity when connecting to User ID service using TLS
+        """
+        return self.data.get("tls_identity")
+
+    @property
+    def monitored_user_domains(self):
+        """
+        Specific user domains to check. If not defined, it uses all known user domains by User ID
+        service.
+        """
+        return self.data.get("monitored_user_domains")
+
+    @property
+    def address(self):
+        """
+        IP addresses to contact the User ID Service.
+        """
+        return self.data.get("address")
+
+    @property
+    def cache_expiration(self):
+        """
+        The time in seconds for the cache expiration on the engine.
+        """
+        return self.data.get("cache_expiration")
+
+    @property
+    def connect_timeout(self):
+        """
+        The time in seconds for the connection from the engine to time out.
+        """
+        return self.data.get("connect_timeout")
+
+    @property
+    def port(self):
+        """
+        The port on which the User ID Service communicates with the Firewall.
+        """
+        return self.data.get("port")
+
+    @property
+    def list(self):
+        """
+        List of additional IP addresses to contact the User ID Service.
+        """
+        return self.data.get("list")
+
+    @property
+    def third_party_monitoring(self):
+        """
+        This represents Monitoring Settings for Third Party Monitoring.
+        """
+        return self.data.get("third_party_monitoring")

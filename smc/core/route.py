@@ -243,6 +243,86 @@ class RoutingTree(SubElement):
             else Element.from_href(self.data.get("href")).typeof
         )  # pre-6.4
 
+    @property
+    def probe_test(self):
+        """
+        probe test for a route.
+        possible values: ping, next_hop_reachability, not_enabled
+
+        :return: probe test value
+        :rtype: str
+        """
+        return self.data.get("probe_test")
+
+    @probe_test.setter
+    def probe_test(self, value):
+        self.data["probe_test"] = value
+
+    @property
+    def probe_ecmp(self):
+        """
+        the ECMP for multi path routing.
+
+        :rtype: int
+        """
+        return self.data.get("probe_ecmp")
+
+    @probe_ecmp.setter
+    def probe_ecmp(self, value):
+        self.data["probe_ecmp"] = value
+
+    @property
+    def probe_metric(self):
+        """
+        the probe metric.
+
+        :rtype: int
+        """
+        return self.data.get("probe_metric")
+
+    @probe_metric.setter
+    def probe_metric(self, value):
+        self.data["probe_metric"] = value
+
+    @property
+    def probe_ipaddress(self):
+        """
+        the probe ipaddress, when the probe test is Ping.
+
+        :rtype: str
+        """
+        return self.data.get("probe_ipaddress")
+
+    @probe_ipaddress.setter
+    def probe_ipaddress(self, value):
+        self.data["probe_ipaddress"] = value
+
+    @property
+    def probe_retry_count(self):
+        """
+        the probe retry counter.
+
+        :rtype: int
+        """
+        return self.data.get("probe_retry_count")
+
+    @probe_retry_count.setter
+    def probe_retry_count(self, value):
+        self.data["probe_retry_count"] = value
+
+    @property
+    def probe_interval(self):
+        """
+        the probe interval.
+
+        :rtype: int
+        """
+        return self.data.get("probe_interval")
+
+    @probe_interval.setter
+    def probe_interval(self, value):
+        self.data["probe_interval"] = value
+
     def as_tree(self, level=0):
         """
         Display the routing tree representation in string

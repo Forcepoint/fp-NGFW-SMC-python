@@ -943,7 +943,7 @@ class SubElement(ElementBase):
         return self._meta.href if self._meta else None
 
 
-class UserElement(ElementBase):
+class UserElement(Element):
     """
     User element mixin for LDAP of Internal Domains.
     """

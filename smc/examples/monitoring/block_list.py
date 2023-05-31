@@ -247,7 +247,7 @@ try:
     #
     # create a large number of entries
     #
-    print("{} => Add {} blacklist entries to engine.."
+    print("{} => Add {} blocklist entries to engine.."
           .format(datetime.datetime.now().strftime("%H:%M:%S"), NUMBER_BLOCK_LIST_ENTRIES))
     bl = Blocklist()
     nb_block = math.floor(NUMBER_BLOCK_LIST_ENTRIES / 250)

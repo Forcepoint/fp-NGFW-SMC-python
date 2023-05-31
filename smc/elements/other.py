@@ -528,6 +528,79 @@ class HTTPSInspectionExceptions(Element):
     typeof = "tls_inspection_policy"
 
 
+class RuleValidityTime(Element):
+    """
+    This represents a Rule Validity Time.
+    """
+    typeof = "rule_validity_time"
+
+
+class UpdateServerProfile(Element):
+    """
+    This represents Update Server Profile (aka Update Service)
+    """
+    typeof = "update_service"
+
+    @classmethod
+    def create(cls, name, retry=0, timeout=0, urls=None, tls_profile_ref=None, comment=None):
+        """
+        Create a UpdateServerProfile. A Update Server Profile represents a update service.
+        These are used to provide server providing the updates within the SMC.
+
+        :param str name: name of category tag.
+        :param int retry: number of retries.
+        :param int timeout: connection timeout.
+        :param list urls: list of URL, at least one is mandatory.
+        :param str tls_profile_ref: TLS profile used to connect to the server(s).
+        :param str comment: optional comment.
+        :raises CreateElementFailed: problem creating tag.
+        :return: instance with meta.
+        :rtype: CategoryTag.
+        """
+
+        json = {"name": name, "retry": retry, "timeout": timeout,
+                "tls_profile_ref": element_resolver(tls_profile_ref), "comment": comment}
+        if urls:
+            ordered_url = []
+            for rank, url in enumerate(urls):
+                ordered_url.append({
+                    "rank": rank,
+                    "url": url
+                })
+            json.update(ordered_url=ordered_url)
+        return ElementCreator(cls, json)
+
+    @property
+    def retry(self):
+        """
+        number of retries
+        """
+        return self.data.get("retry")
+
+    @property
+    def timeout(self):
+        """
+        It is connection timeout
+        """
+        return self.data.get("timeout")
+
+    @property
+    def ordered_url(self):
+        """
+        The list of url used by update service.
+        :rtype List(url)
+        """
+        return self.data.get("ordered_url")
+
+    @property
+    def tls_profile(self):
+        """
+        TLS profile used to connect to the server(s).
+        :rtype TLSProfile
+        """
+        return Element.from_href(self.data.get("tls_profile_ref"))
+
+
 def prepare_blacklist(
     src,
     dst,

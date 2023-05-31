@@ -286,6 +286,10 @@ class Query(object):
             for result in protocol.receive():
                 yield result
 
+    def get_record(self, results):
+        if "records" in results and results["records"].get("added"):
+            return results["records"]["added"]
+
     def fetch_raw(self, **kw):
         """
         Fetch the records for this query. This fetch type will return the

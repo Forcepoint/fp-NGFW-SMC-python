@@ -15,12 +15,14 @@ Example script to show how to use Internal Gateways from L3 Firewalls.
 
 from smc import session
 from smc.core.engines import Layer3Firewall
+from smc.vpn.elements import ConnectionType
 from smc_info import SMC_URL, API_KEY, API_VERSION
 
 NOT_CREATED_MSG = "Fail to create internal gateway"
 ERROR_IN_GET_ALL_GATEWAY = "Not received list of all internal gateways."
 ERROR_IN_GETEWAY_DEL = "Error in delete internal gateway"
 GATEWAY_UPDATE_ERROR = "Failed to update an internal gateway"
+UPDATE_CONN_TYPE_ERROR = "Failed to update connection type in internal endpoint"
 RETRY_ONLINE = 30
 FW_NAME = 'myFW'
 TEST_GATEWAY = 'test_gateway'
@@ -38,6 +40,13 @@ if __name__ == "__main__":
         is_vpn_gateway_created = False
         for vpn in list_of_vpn_object:
             if vpn.name == TEST_GATEWAY:
+                # update connection type in internal endpoint
+                standby_con_type = ConnectionType("Standby")
+                for endpoint in engine.vpn.internal_endpoint:
+                    endpoint.update(connection_type_ref=standby_con_type.href)
+                    assert endpoint.data.get(
+                        "connection_type_ref") == standby_con_type.href, UPDATE_CONN_TYPE_ERROR
+                    print("Updated connection type to standby successfully.")
                 is_vpn_gateway_created = True
                 vpn.vpn_client.update(
                     firewall=True, antivirus=True)

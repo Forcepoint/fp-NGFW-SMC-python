@@ -17,17 +17,22 @@ This example is based on SMC 6.5.x
 import smc.examples
 
 from smc.core.engines import MasterEngine, Layer3VirtualEngine
+from smc.core.sub_interfaces import SingleNodeInterface
 from smc.elements.network import Router, Network
 from smc import session
 from smc_info import *
-
+NAME = "master"
+DELETE_VLAN_ERROR = "Failed to delete all vlan interfaces of master engine."
+UPDATE_INTERFACE_ERROR = "Failed to update physical interface of master engine."
+VLAN_CREATE_ERROR = "Failed to create vlan interface in virtual engine."
+ADD_IP_ADDRESS_ERROR = "Failed to add new ip address to vlan interface."
 if __name__ == "__main__":
     session.login(url=SMC_URL, api_key=API_KEY, verify=False, timeout=120, api_version=API_VERSION)
     print("session OK")
 
 try:
     master_engine = MasterEngine.create(
-        name="master",
+        name=NAME,
         master_type="firewall",
         mgmt_ip="172.18.1.1",
         mgmt_network="172.18.1.0/24",
@@ -91,6 +96,73 @@ try:
         interface_1.add_static_route(gateway=Router("southbound"),
                                      destination=[Network("Any network")])
         print("Virtual Engine created:{}".format(virtual_engine))
+    # Remove all vlan interfaces of master engine
+    for interface in master_engine.interface:
+        for vlan_interface in interface.vlan_interface:
+            vlan_interface.delete()
+
+    master_engine = MasterEngine(NAME)
+    for interface in master_engine.interface:
+        assert not interface.vlan_interface, DELETE_VLAN_ERROR
+
+    print("Removed all vlan interfaces of master engine successfully")
+
+    # update master engine's interface to allow configure vlan interface on virtual engine.
+    interface = master_engine.physical_interface.get(1)
+    interface.update(virtual_resource_settings=[
+        {"virtual_resource_name": "Customer {}".format(1), "virtual_mapping": 1}],
+        virtual_engine_vlan_ok=True)
+    interface = master_engine.physical_interface.get(2)
+    interface.update(virtual_resource_settings=[
+        {"virtual_resource_name": "Customer {}".format(1), "virtual_mapping": 2}],
+        virtual_engine_vlan_ok=True)
+    master_engine = MasterEngine(NAME)
+    for ifc in master_engine.physical_interface:
+        # ignoring unwanted interface
+        if ifc.interface_id == '0':
+            continue
+        assert ifc.data.get("virtual_engine_vlan_ok") and \
+               ifc.data.get("virtual_resource_settings")[0][
+                   "virtual_resource_name"] == "Customer 1", UPDATE_INTERFACE_ERROR
+
+    # add vlan interface on virtual engine.
+    for vr in range(1, 9):
+        virtual_engine = Layer3VirtualEngine(name="Customer {}".format(vr))
+        virtual_engine.virtual_physical_interface.add_layer3_vlan_interface(
+            interface_id=1,
+            vlan_id=vr,
+            virtual_mapping=1,
+            virtual_resource_name="Customer {}".format(vr),
+            address="10.1.3.1",
+            network_value="10.1.3.0/24",
+        )
+        virtual_engine.virtual_physical_interface.add_layer3_vlan_interface(
+            interface_id=2,
+            vlan_id=vr,
+            virtual_mapping=2,
+            virtual_resource_name="Customer {}".format(vr),
+        )
+    print("Added vlan interface on virtual engine successfully.")
+    # add another ip address on vlan interface
+    for vr in range(1, 9):
+        virtual_engine = Layer3VirtualEngine(name="Customer {}".format(vr))
+        for interface in virtual_engine.interface:
+            for vlan_interface in interface.vlan_interface:
+                sni = SingleNodeInterface.create(vlan_interface.interface_id, address="1.1." + str(
+                    interface.interface_id) + ".1", network_value="1.1." + str(
+                    interface.interface_id) + ".0/24")
+                vlan_interface.add_ip_address(sni=sni)
+    for vr in range(1, 9):
+        virtual_engine = Layer3VirtualEngine(name="Customer {}".format(vr))
+        for interface in virtual_engine.interface:
+            # make sure vlan interface in exist
+            assert len(interface.vlan_interface), VLAN_CREATE_ERROR
+            for vlan_interface in interface.vlan_interface:
+                # make sure new ip address added in vlan interface.
+                assert len(vlan_interface.addresses) == 2, ADD_IP_ADDRESS_ERROR
+    print("Added additional ip address to vlan interface successfully.")
+except Exception as ex:
+    print("Exception : {}".format(ex))
 
 finally:
     for vr in range(1, 9):

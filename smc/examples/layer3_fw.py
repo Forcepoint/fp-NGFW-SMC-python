@@ -24,8 +24,21 @@ from smc.elements.servers import NTPServer, DNSServer
 from smc_info import SMC_URL, API_KEY, API_VERSION
 
 engine_name = "myFw"
+PROTOCOL1 = 'tcp_syn_seen'
+PROTOCOL2 = 'tcp_time_wait'
 MESSAGE_FOR_DNS_DELAY = "Failed to check the allow_listening_interfaces_to_dns_relay_port."
 MESSAGE_FOR_DNS_RESOLVER = "Failed to check the allow_connections_to_dns_resolvers."
+TIME_OUT_SETTING_MSG1 = "Protocol settings are already present for {} and {}."
+ERROR_CREATE_LOG_SETTING = "Failed to create engine with local log storage settings."
+ERROR_UPDATE_LOG_SETTING = "Failed to update local log storage settings."
+ERROR_CREATE_LOG_MODERATION = "Failed to create engine with log moderation settings."
+ERROR_UPDATE_LOG_MODERATION = "Failed to update log moderation settings."
+LOG_SETTING1 = 50
+LOG_SETTING2 = 60
+RATE = 100
+BURST = 1000
+LOG_EVENT1 = '1'
+LOG_EVENT2 = '2'
 
 if __name__ == "__main__":
     session.login(url=SMC_URL, api_key=API_KEY, verify=False, timeout=120, api_version=API_VERSION)
@@ -48,7 +61,21 @@ try:
                           mgmt_ip="192.168.10.1",
                           mgmt_network="192.168.10.0/24",
                           ntp_settings=ntp,
-                          extra_opts={"is_cert_auto_renewal": True}
+                          extra_opts={"is_cert_auto_renewal": True, "local_log_storage": {
+                              "lls_guaranteed_free_percent": LOG_SETTING1,
+                              "lls_guaranteed_free_size_in_mb": LOG_SETTING1,
+                              "lls_max_time": LOG_SETTING1,
+                              "local_log_storage_activated": True
+                          },
+                                      "log_spooling_policy": "discard",  # enable log_moderation
+
+                                      "log_moderation": [  # adding  log moderation setting
+                                          {
+                                              "burst": BURST,
+                                              "log_event": LOG_EVENT1,
+                                              "rate": RATE
+                                          }]
+                                      }
                           )
 
     # Update NTP server settings for the Firewall
@@ -108,6 +135,66 @@ try:
     assert not engine.automatic_rules_settings.allow_connections_to_dns_resolvers, \
         MESSAGE_FOR_DNS_RESOLVER
 
+    # checking connection timeout setting
+    print("Checking the idle timeout setting")
+    conn_timeout_obj = engine.connection_timeout
+    assert not conn_timeout_obj._contains(PROTOCOL1) and not conn_timeout_obj._contains(
+        PROTOCOL2), TIME_OUT_SETTING_MSG1.format(PROTOCOL1, PROTOCOL2)
+    conn_timeout_obj.add(PROTOCOL1)
+    conn_timeout_obj.add(PROTOCOL2)
+    engine.update()
+    conn_timeout_obj = engine.connection_timeout
+    print("IdleTimeout settings after update is {}".format(conn_timeout_obj.data))
+    assert conn_timeout_obj._contains(PROTOCOL1) and conn_timeout_obj._contains(
+        PROTOCOL2), "Failed to update the protocol setting."
+    print("The new protocol has been successfully added to idle timeout.")
+
+    # checking local log storage
+    print("Checking local log storage settings : ")
+    engine = Layer3Firewall(engine_name)
+    local_log_obj = engine.local_log_storage
+    assert local_log_obj.local_log_storage_activated and local_log_obj.lls_max_time == \
+           LOG_SETTING1 and local_log_obj.lls_guaranteed_free_size_in_mb == LOG_SETTING1 and \
+           local_log_obj.lls_guaranteed_free_percent == LOG_SETTING1, ERROR_CREATE_LOG_SETTING
+    print("Successfully created the engine with local log storage settings.")
+    local_log_obj.update(lls_max_time=LOG_SETTING2, lls_guaranteed_free_size_in_mb=LOG_SETTING2,
+                         lls_guaranteed_free_percent=LOG_SETTING2)
+    engine.update()
+    engine = Layer3Firewall(engine_name)
+    local_log_obj = engine.local_log_storage
+    assert local_log_obj.local_log_storage_activated and local_log_obj.lls_max_time == \
+           LOG_SETTING2 and local_log_obj.lls_guaranteed_free_size_in_mb == LOG_SETTING2 and \
+           local_log_obj.lls_guaranteed_free_percent == LOG_SETTING2, ERROR_UPDATE_LOG_SETTING
+    print("Successfully updated engine with the local log storage settings.")
+
+    # checking log moderation
+    engine = Layer3Firewall(engine_name)
+    log_moderation_obj = engine.log_moderation
+    assert log_moderation_obj.contains(log_event=LOG_EVENT1) and \
+           log_moderation_obj.get(LOG_EVENT1)["rate"] == RATE and \
+           log_moderation_obj.get(LOG_EVENT1)["burst"] == BURST, ERROR_CREATE_LOG_MODERATION
+    print("Successfully created the engine with the log moderation settings.")
+    log_moderation_obj.add(rate=RATE, log_event=LOG_EVENT2, burst=BURST)
+    engine.update()
+    engine = Layer3Firewall(engine_name)
+    log_moderation_obj = engine.log_moderation
+    assert log_moderation_obj.contains(log_event=LOG_EVENT2) and \
+           log_moderation_obj.get(LOG_EVENT2)["rate"] == RATE and \
+           log_moderation_obj.get(LOG_EVENT2)["burst"] == BURST, ERROR_UPDATE_LOG_MODERATION
+    print("Successfully updated the engine with log moderation settings.")
+    print("Checking the log moderation setting in the interface: ")
+    interface = engine.interface.get(1)
+    log_moderation_obj = interface.log_moderation
+    log_moderation_obj.add(rate=RATE, log_event=LOG_EVENT2, burst=BURST)
+    interface.update(override_engine_settings=True, override_log_moderation_settings=True)
+    # Reload engine setting from DB
+    engine = Layer3Firewall(engine_name)
+    interface = engine.interface.get(1)
+    log_moderation_obj = interface.log_moderation
+    assert log_moderation_obj.contains(log_event=LOG_EVENT1) and \
+           log_moderation_obj.get(LOG_EVENT1)["rate"] == RATE and \
+           log_moderation_obj.get(LOG_EVENT1)["burst"] == BURST, ERROR_UPDATE_LOG_MODERATION
+    print("Successfully updated the interface with log moderation settings.")
 except BaseException as e:
     print("ex={}".format(e))
     exit(-1)

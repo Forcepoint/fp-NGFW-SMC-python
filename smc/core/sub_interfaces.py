@@ -69,6 +69,10 @@ class SubInterface(NestedDict):
     def __getattr__(self, key):
         return self.get(key)
 
+    @property
+    def address(self):
+        return self.data.get("address")
+
 
 class ClusterVirtualInterface(SubInterface):
     """

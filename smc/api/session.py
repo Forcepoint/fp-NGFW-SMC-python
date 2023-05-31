@@ -20,6 +20,8 @@ import ssl
 import requests
 import collections
 
+from _socket import SO_KEEPALIVE, SOL_SOCKET
+
 import smc
 # import smc.api.web
 from smc.api.web import send_request, counters
@@ -47,15 +49,6 @@ ERROR_CODES_SUPPORTING_AUTO_RETRY = [
     409,  # to support ETag conflict
     429,  # to support too many requests
     413,  # to support entity too large
-]
-HTTP_METHODS_SUPPORTING_AUTO_RETRY = [
-    "HEAD",
-    "TRACE",
-    "GET",
-    "POST",  # to support creation and api services with possible db concurrency
-    "PUT",
-    "OPTIONS",
-    "DELETE",
 ]
 
 logger = logging.getLogger(__name__)
@@ -234,10 +227,25 @@ class SessionManager(object):
 class SSLAdapter(HTTPAdapter):
 
     def init_poolmanager(self, connections, maxsize, block=False):
+        """
+        :param maxsize:
+        Number of connections to save that can be reused. More than 1 is useful
+        in multithreaded situations. If ``block`` is set to False, more
+        connections will be created but they will not be saved once they've
+        been used.
+        :param block:
+        If set to True, no more than ``maxsize`` connections will be used at
+        a time. When no free connections are available, the call will block
+        until a connection has been released. This is a useful side effect for
+        particular multithreaded situations where one does not want to use more
+        than maxsize connections per host to prevent flooding.
+        """
         self.poolmanager = PoolManager(
-            num_pools=connections,
             maxsize=maxsize,
+            num_pools=connections,
             block=block,
+            timeout=720,
+            socket_options=[(SOL_SOCKET, SO_KEEPALIVE, 1)],
             ssl_version=ssl.PROTOCOL_TLSv1_2)
 
 
@@ -264,6 +272,8 @@ class Session(object):
         self._resource = None  # smc.api.entry_point.Resource
 
         self._manager = manager  # Session Manager that tracks this session
+
+        self._connpool = None  # default is 10 connections
 
         # Transactions are supported in version 0.6.2 and beyond. When
         # run with atomic, this session parameter indicates whether the
@@ -339,10 +349,13 @@ class Session(object):
     @property
     def sock(self):
         """
-        get new secure socket from the pool
+        get a secure socket from the pool if one is available
+        else get a new connection
 
         :rtype: SSLSocket
         """
+        logger.debug("Get secure socket, from pool available sock:{}".
+                     format(self._connpool.pool.queue))
         return self._connpool._get_conn().sock
 
     @property
@@ -490,7 +503,7 @@ class Session(object):
         :param str api_key: API key created for api client in SMC
         :param str login: Administrator user in SMC that has privilege to SMC API.
         :param str pwd: Password for user login.
-        :param api_version (optional): specify api version
+        :param api_version: specify api version (optional)
         :param int timeout: (optional): specify a timeout for initial connect; (default 10)
         :param str|boolean verify: verify SSL connections using cert (default: verify=True)
             You can pass verify the path to a CA_BUNDLE file or directory with certificates
@@ -596,7 +609,8 @@ class Session(object):
             self.set_retry_on_busy()
 
         # Load entry points
-        load_entry_points(self)
+        if not self._resource:
+            load_entry_points(self)
 
         logger.debug(
             "Login succeeded for admin: %s in domain: %s, session: %s",
@@ -650,24 +664,29 @@ class Session(object):
         :return: python requests session
         :rtype: requests.Session
         """
-        _session = requests.sessions.Session()  # empty session
-        retry = Retry(
-            total=MAX_RETRY,
-            read=MAX_RETRY,
-            connect=MAX_RETRY,
-            backoff_factor=0.3,
-            method_whitelist=HTTP_METHODS_SUPPORTING_AUTO_RETRY,
-            status_forcelist=ERROR_CODES_SUPPORTING_AUTO_RETRY,
-        )
-        adapter = HTTPAdapter(max_retries=retry,
-                              pool_maxsize=Session.DEFAULT_POOL_MAXSIZE)
-        ssladapter = SSLAdapter(max_retries=retry,
-                                pool_maxsize=Session.DEFAULT_POOL_MAXSIZE)
-        _session.mount("http://", adapter)
-        _session.mount("https://", ssladapter)
+        # build the user session
+        if self.session is None:
+            _session = requests.sessions.Session()  # empty session
+            retry = Retry(
+                total=MAX_RETRY,
+                read=MAX_RETRY,
+                connect=MAX_RETRY,
+                backoff_factor=0.3,
+                status_forcelist=ERROR_CODES_SUPPORTING_AUTO_RETRY,
+            )
+            adapter = HTTPAdapter(max_retries=retry,
+                                  pool_maxsize=Session.DEFAULT_POOL_MAXSIZE)
+            ssladapter = SSLAdapter(max_retries=retry,
+                                    pool_maxsize=Session.DEFAULT_POOL_MAXSIZE)
+            _session.mount("http://", adapter)
+            _session.mount("https://", ssladapter)
+        else:
+            _session = self.session
+
         response = _session.post(**request)
         logger.info("Using SMC API version: %s", self.api_version)
-        self._connpool = ssladapter.get_connection(request.get("url"))
+        if not self._connpool:
+            self._connpool = ssladapter.get_connection(request.get("url"))
 
         if response.status_code != 200:
             raise SMCConnectionError(
@@ -683,6 +702,10 @@ class Session(object):
         :return: None
         """
         if not self.session:
+            self.manager._deregister(self)
+            return
+        if len(self._connpool.pool.queue) < self._connpool.pool.maxsize:
+            logger.info("Can't logout connectionpool is currently used")
             self.manager._deregister(self)
             return
         try:
@@ -704,7 +727,9 @@ class Session(object):
         finally:
             self.entry_points.clear()
             self.manager._deregister(self)
+            # Reset session object after logout
             requests.sessions.session().close()
+            self._session = None
             try:
                 delattr(self, "current_user")
             except AttributeError:
@@ -726,7 +751,10 @@ class Session(object):
                 "Session timed out, will try obtaining a new session using "
                 "previously saved credential information."
             )
-            self.logout()  # Force log out session just in case
+            try:
+                self.logout()  # Force log out session just in case
+            except SMCConnectionError:
+                logger.debug("Tried to logout but session is already closed, can continue..")
             self.login(**self.copy())
             if self.session:
                 return

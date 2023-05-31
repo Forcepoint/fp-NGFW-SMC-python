@@ -371,3 +371,29 @@ class HaCommandException(SMCOperationFailure):
     set_standby, and full_replication. If the SMC API returns an error and wraps the response,
     this exception will be thrown.
     """
+
+
+class AlertChainError(SMCException):
+    """
+    This exception is related to AlertChain based operations like AlertChain and Alert Chain Rule
+    creation update, and deletion.
+    """
+
+
+class AlertPolicyError(SMCException):
+    """
+    This exception is related to AlertPolicy based operations like AlertPolicy and Alert Rule
+    creation update, and deletion.
+    """
+
+
+class UnsupportedAlertChannel(AlertChainError):
+    """
+    The exception occurs when an unsupported alert channel is used.
+    """
+
+
+class UnsupportedAttribute(SMCException):
+    """
+    The exception occurs when an unsupported attribute is used.
+    """

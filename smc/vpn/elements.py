@@ -138,8 +138,101 @@ class GatewayProfile(Element):
 
     typeof = "gateway_profile"
 
+    @classmethod
+    def create(cls, name, capabilities=None, comment=None):
+        """
+        Create new GatewayProfile
+        :param str name: name of the gateway profile.
+        :param dict capabilities: Capabilities are all boolean values that specify features or
+        cryptography features to enable or disable on this gateway profile.
+        Following additional boolean attributes can be set:
+            sha2_ike_hash_length
+            sha2_ipsec_hash_length
+            aes128_for_ike
+            aes128_for_ipsec
+            aes256_for_ike
+            aes256_for_ipsec
+            aes_gcm_256_for_ipsec
+            aes_gcm_for_ipsec
+            aes_xcbc_for_ipsec
+            aggressive_mode
+            ah_for_ipsec
+            blowfish_for_ike
+            blowfish_for_ipsec
+            des_for_ike
+            des_for_ipsec
+            dh_group_14_for_ike
+            dh_group_15_for_ike
+            dh_group_16_for_ike
+            dh_group_17_for_ike
+            dh_group_18_for_ike
+            dh_group_19_for_ike
+            dh_group_1_for_ike
+            dh_group_20_for_ike
+            dh_group_21_for_ike
+            dh_group_2_for_ike
+            dh_group_5_for_ike
+            dss_signature_for_ike
+            ecdsa_signature_for_ike
+            esp_for_ipsec
+            external_for_ipsec
+            forward_client_vpn
+            forward_gw_to_gw_vpn
+            ike_v1
+            ike_v2
+            ipcomp_deflate_for_ipsec
+            main_mode
+            md5_for_ike
+            md5_for_ipsec
+            null_for_ipsec
+            pfs_dh_group_14_for_ipsec
+            pfs_dh_group_15_for_ipsec
+            pfs_dh_group_16_for_ipsec
+            pfs_dh_group_17_for_ipsec
+            pfs_dh_group_18_for_ipsec
+            pfs_dh_group_19_for_ipsec
+            pfs_dh_group_1_for_ipsec
+            pfs_dh_group_20_for_ipsec
+            pfs_dh_group_21_for_ipsec
+            pfs_dh_group_2_for_ipsec
+            pfs_dh_group_5_for_ipsec
+            pre_shared_key_for_ike
+            rsa_signature_for_ike
+            sa_per_host
+            sa_per_net
+            sha1_for_ike
+            sha1_for_ipsec
+            sha2_for_ike
+            sha2_for_ipsec
+            triple_des_for_ike
+            triple_des_for_ipsec
+            vpn_client_dss_signature_for_ike
+            vpn_client_ecdsa_signature_for_ike
+            vpn_client_rsa_signature_for_ike
+            vpn_client_sa_per_host
+            vpn_client_sa_per_net
+        :param str comment: comment message
+        :return GatewayProfile: instance with metadata
+        :rtype: GatewayProfile
+        """
+        json = {'name': name, 'comment': comment}
+        if capabilities:
+            json.update(capabilities=capabilities)
+        return ElementCreator(cls, json=json)
+
+    @property
     def capabilities(self):
-        pass
+        """
+        Capabilities are all boolean values that specify features or cryptography features to enable
+        or disable on this gateway profile.To update or change these values, you can use the built
+        in `update` with a key of 'capabilities' and dict value of attributes, i.e::
+            gateway_profile = GatewayProfile('myGatewayProfile')
+            pprint(gateway_profile.capabilities) # <-- show all options
+            gateway_profile.update(capabilities={'sha2_for_ipsec': True, 'sha2_for_ike': True})
+
+        :rtype: dict
+        """
+        return self.data.get("capabilities", {})
 
 
 class ExternalGateway(Element):
@@ -694,10 +787,16 @@ class VPNProfile(Element):
     typeof = "vpn_profile"
 
     @classmethod
-    def create(cls, name, comment=None, **kw):
+    def create(cls, name, capabilities=None, cn_authentication_for_mobile_vpn=False,
+               disable_anti_replay=False, disable_path_discovery=False,
+               hybrid_authentication_for_mobile_vpn=False, keep_alive=False,
+               preshared_key_for_mobile_vpn=False, sa_life_time=86400,
+               sa_to_any_network_allowed=False, trust_all_cas=True,
+               trusted_certificate_authority=[], tunnel_life_time_kbytes=0,
+               tunnel_life_time_seconds=28800, comment=None, **kw):
         """
         Create a VPN Profile. There are a variety of kwargs that can
-        can be and also retrieved about a VPN Profile. Keyword parameters
+        be and also retrieved about a VPN Profile. Keyword parameters
         are specified below. To access a valid keyword, use the standard
         dot notation.
 
@@ -717,11 +816,45 @@ class VPNProfile(Element):
             vpn.update(sa_life_time=128000, tunnel_life_time_seconds=57600)
 
         :param str name: Name of profile
+        :param dict capabilities: Capabilities are all boolean values that specify features or
+            cryptography features to enable or disable on this VPN profile.
+            To update or change these values, you can use the built in `update`
+            with a key of 'capabilities' and dict value of attributes
+        :param bool cn_authentication_for_mobile_vpn: Indicates whether CN authentification is
+            allowed or not, for a client using a certificate authentication.
+        :param bool disable_anti_replay: IPSEC_DISABLE_ANTI_REPLAY flag value
+        :param bool disable_path_discovery: NO_PATH_MTU_DISCOVERY flag value.
+        :param bool hybrid_authentication_for_mobile_vpn: Indicates whether Hybrid authentification
+            is allowed or not, for a client using a certificate authentication.
+        :param bool keep_alive: Keep-alive option
+        :param bool preshared_key_for_mobile_vpn: Indicates whether preshared key authentification
+            is allowed or not,together with a client certificate authentication.,
+        :param int sa_life_time: IKE Lifetime in seconds
+        :param bool sa_to_any_network_allowed: IPSEC_SA_To_ANY flag value.
+        :param bool trust_all_cas: Whether to trust all certificate authorities or not
+        :param list trusted_certificate_authority: List of trusted certificate authorities for this
+            profile (if the trust all CAs attribute has been set to false)
+        :param int tunnel_life_time_kbytes: IPsec Lifetime in KBytes.
+        :param int tunnel_life_time_seconds: IPsec Lifetime in seconds.
         :param str comment: optional comment
         :raises CreateElementFailed: failed creating element with reason
         :rtype: VPNProfile
         """
-        kw.update(name=name, comment=comment)
+        kw.update(name=name, capabilities=capabilities,
+                  cn_authentication_for_mobile_vpn=cn_authentication_for_mobile_vpn,
+                  disable_anti_replay=disable_anti_replay,
+                  disable_path_discovery=disable_path_discovery,
+                  hybrid_authentication_for_mobile_vpn=hybrid_authentication_for_mobile_vpn,
+                  keep_alive=keep_alive,
+                  preshared_key_authentication_for_mobile_vpn=preshared_key_for_mobile_vpn,
+                  sa_life_time=sa_life_time,
+                  sa_to_any_network_allowed=sa_to_any_network_allowed,
+                  trust_all_cas=trust_all_cas,
+                  tunnel_life_time_kbytes=tunnel_life_time_kbytes,
+                  tunnel_life_time_seconds=tunnel_life_time_seconds, comment=comment)
+
+        if trusted_certificate_authority:
+            kw.update(trusted_certificate_authority=trusted_certificate_authority)
         return ElementCreator(cls, json=kw)
 
     @property
@@ -739,6 +872,54 @@ class VPNProfile(Element):
         :rtype: dict
         """
         return self.data.get("capabilities", {})
+
+    @property
+    def cn_authentication_for_mobile_vpn(self):
+        return self.data.get("cn_authentication_for_mobile_vpn")
+
+    @property
+    def disable_anti_replay(self):
+        return self.data.get("disable_anti_replay")
+
+    @property
+    def disable_path_discovery(self):
+        return self.data.get("disable_path_discovery")
+
+    @property
+    def hybrid_authentication_for_mobile_vpn(self):
+        return self.data.get("hybrid_authentication_for_mobile_vpn")
+
+    @property
+    def keep_alive(self):
+        return self.data.get("keep_alive")
+
+    @property
+    def preshared_key_authentication_for_mobile_vpn(self):
+        return self.data.get("preshared_key_authentication_for_mobile_vpn")
+
+    @property
+    def sa_life_time(self):
+        return self.data.get("sa_life_time")
+
+    @property
+    def sa_to_any_network_allowed(self):
+        return self.data.get("sa_to_any_network_allowed")
+
+    @property
+    def trust_all_cas(self):
+        return self.data.get("trust_all_cas", [])
+
+    @property
+    def tunnel_life_time_kbytes(self):
+        return self.data.get("tunnel_life_time_kbytes")
+
+    @property
+    def tunnel_life_time_seconds(self):
+        return self.data.get("tunnel_life_time_seconds")
+
+    @property
+    def trusted_certificate_authority(self):
+        return self.data.get("trusted_certificate_authority")
 
 
 class VPNBrokerDomain(Element):
@@ -812,7 +993,7 @@ class ConnectionType(Element):
     typeof = "connection_type"
 
     @classmethod
-    def create(cls, name, mode="active", connectivity_group=1, comment=None):
+    def create(cls, name, mode="active", connectivity_group=1, link_type_ref=None, comment=None):
         """
         Create a connection type for an VPN endpoint.
         ::
@@ -822,18 +1003,101 @@ class ConnectionType(Element):
         :param str name: name of connection type
         :param str mode: mode of connection type, valid options active, standby,
             aggregate
-        :param int connectivity_group: integer useed to group multiple connection types
+        :param int connectivity_group: integer used to group multiple connection types
             into a single monitoring group (default: 1)
+        :param str link_type_ref: Indicates link type for the connections. Not Required.
         :param str comment: optional comment
         :raises CreateElementFailed: reason for failure
         :rtype: ConnectionType
         """
+        json = {
+            "name": name,
+            "mode": mode,
+            "comment": comment,
+            "connectivity_group": connectivity_group,
+        }
+        if link_type_ref:
+            json.update(link_type_ref=element_resolver(link_type_ref))
         return ElementCreator(
             cls,
-            json={
-                "name": name,
-                "mode": mode,
-                "comment": comment,
-                "connectivity_group": connectivity_group,
-            },
+            json=json,
         )
+
+    def mode(self):
+        return self.data.get("mode")
+
+    def connectivity_group(self):
+        return self.data.get("connectivity_group")
+
+    def link_type_ref(self):
+        return self.data.get("link_type_ref", None)
+
+
+class LinkUsagePreference(object):
+    def __init__(self, preference, qos_class):
+        self.preference = preference
+        self.qos_class = qos_class.href
+
+
+class LinkUsageException(object):
+    def __init__(self, link_type, link_usage_preference):
+        self.link_type = link_type.href
+        self.link_usage_preference = link_usage_preference
+        link_usage_preferences_json = []
+        for lup in link_usage_preference:
+            link_usage_preferences_json.append({
+                    "preference": lup.preference,
+                    "qos_class": lup.qos_class
+                })
+        self.link_usage_preference = link_usage_preferences_json
+
+    def link_type(self):
+        return self.link_type
+
+    def link_usage_preference(self):
+        return self.link_usage_preference
+
+
+class LinkUsageProfile(Element):
+    typeof = "link_usage_profile"
+
+    @classmethod
+    def create(cls, name, default_link_balancing_preference=0, link_usage_exception=None):
+        """
+        Create a LinkUsageProfile.
+        :param str name: name of Link usage profile
+        :param int default_link_balancing_preference: The link balancing preference
+        from 0 equal balancing to 4 best link
+        :param list link_usage_exception: list of link_usage_exception
+        :raises CreateElementFailed: failed to create element with reason
+        :raises ElementNotFound: specified element reference was not found
+        :rtype: LinkUsageProfile
+        """
+        link_usage_profile_json = {}
+        link_usage_profile_json.update(name=name)
+        link_usage_profile_json.update(
+            default_link_balancing_preference=default_link_balancing_preference)
+        link_usage_exception_json = []
+        link_usage_exception = [] if not link_usage_exception else link_usage_exception
+        for lue in link_usage_exception:
+            link_usage_exception_temp_json = {"link_type": lue.link_type,
+                                              "link_usage_preference": lue.link_usage_preference}
+            link_usage_exception_json.append(link_usage_exception_temp_json)
+        link_usage_profile_json.update(link_usage_exception=link_usage_exception_json)
+
+        return ElementCreator(cls, link_usage_profile_json)
+
+    @property
+    def default_link_balancing_preference(self):
+        """
+        default link balancing preference 0 to 4
+        equal balancing to best link
+        """
+        return self.data.get("default_link_balancing_preference")
+
+    @property
+    def link_usage_exception(self):
+        """
+        List of exceptions
+        """
+        return self.link_usage_exception.get("link_usage_exception")

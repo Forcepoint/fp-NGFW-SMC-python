@@ -20,9 +20,10 @@ import time
 from pprint import pformat
 from smc import session
 from smc.compat import PYTHON_v3_9
+from smc_monitoring.models.formatters import TableFormat, ElementFormat
 
 import websocket
-
+from websocket import WebSocketApp
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +56,182 @@ def _get_ca_bundle():
         return certifi.where()
     except ImportError:
         pass
+
+
+def get_ssl_opt(**kw):
+    sslopt = {}
+    if session.is_ssl:
+        # SSL verification is based on the session settings since the
+        # session must be made before calling this class. If verify=True,
+        # try to get the CA bundle from certifi if the package exists
+        # Set check_hostname to False because python ssl doesn't appear
+        # to validate the subjectAltName properly, however requests does
+        # and would have already validated this when the session was set
+        # up. This can still be overridden by setting check_hostname=True.
+        sslopt.update(cert_reqs=ssl.CERT_NONE, check_hostname=False)
+
+        certfile = session.session.verify
+        if certfile:
+            if isinstance(certfile, bool):  # verify=True
+                certfile = _get_ca_bundle()
+                if certfile is None:
+                    certfile = ""
+
+            sslopt.update(
+                cert_reqs=kw.pop("cert_reqs", ssl.CERT_REQUIRED),
+                check_hostname=kw.pop("check_hostname", False),
+            )
+
+            if sslopt.get("cert_reqs") != ssl.CERT_NONE:
+                os.environ["WEBSOCKET_CLIENT_CA_BUNDLE"] = certfile
+
+    return sslopt
+
+
+def get_sock_from_session():
+    sock = None
+    if session.session_id is None:
+        sock = session.sock
+        if sock is None:
+            # Need to refresh the session
+            session.refresh()
+            sock = session.sock
+            logger.debug("WS: socket from new session:{} id:{}".format(sock,
+                                                                       sock.session.id))
+        else:
+            logger.debug("WS: session still available socket:{} id:{}".format(sock,
+                                                                              sock.session.id))
+    return sock
+
+
+class SMCSocketAsyncProtocol:
+    """
+    SMCSocketAsyncProtocol manages the web socket connection between this
+    client and the SMC. It provides the interface to monitor the query
+    results and call the callback_method provided on the fly when there is new data.
+    It is possible to provide formatter like TableFormat, ElementFormat and the element name you
+    want to retrieve
+
+    Example of subscribing to log notifications using callback method::
+
+        >>>     def callback_log_table_fct(wso, data):
+        ...         print(data)
+
+        >>>     query = LogQuery()
+        >>>     query.add_or_filter([
+        ...               InFilter(FieldValue(LogField.DPORT), [NumberValue(80)]),
+        ...               InFilter(FieldValue(LogField.SERVICE), [ServiceValue('TCP/80')])])
+
+        >>>    async_ws = SMCSocketAsyncProtocol(query=query,
+        ...                              on_message_fct=callback_log_table_fct,
+        ...                              formatter=TableFormat)
+        >>>     async_ws.run(background=True)
+
+
+    """
+
+    def __init__(self, query, on_message_fct, formatter=TableFormat, element_name=None, **kw):
+        """
+        Initialize the web socket.
+
+        :param Query query: Query type from `smc_monitoring.monitors`
+        :param formatter: Custom formats used to return data in different formats.
+        :param element_name: if formatter is ElementFormat give the name of the element to retrieve
+            e.g. Neighbor, RoutingView, Alert..
+        """
+
+        self.query = query
+        self.on_message_fct = on_message_fct
+        self.formatter = formatter
+        self.element_name = element_name
+        self.thread = None
+        self.fetch_id = None
+
+        if formatter is ElementFormat:
+            query.format.field_format("id")
+            for custom_field in ["field_ids", "field_names"]:
+                query.format.data.pop(custom_field, None)
+
+        if not session.session:
+            raise SessionNotFound(
+                "No SMC session found. You must first "
+                "obtain an SMC session through session.login before making "
+                "a web socket connection."
+            )
+
+        # Case use ssl for session_id
+        self.sock = get_sock_from_session()
+
+        self.sslopt = get_ssl_opt(**kw)
+
+        self.ws = WebSocketApp(session.web_socket_url + query.location,
+                               on_open=self._on_open_ws,
+                               on_message=self._on_message_ws,
+                               on_close=self._on_close,
+                               on_error=self._on_error,
+                               cookie=session.session_id,
+                               socket=self.sock)
+
+    def run(self, background=False):
+        """
+        Start listening from the websocket on the callback method
+        """
+        if background:
+            logger.debug("WS run in new thread...")
+            self.thread = threading.Thread(target=self.ws.run_forever,
+                                           kwargs={"sslopt": self.sslopt})
+            self.thread.start()
+        else:
+            logger.debug("WS run in main thread...")
+            self.ws.run_forever(sslopt=self.sslopt)
+
+    def _on_open_ws(self, ws):
+        logger.debug("WS:{} open".format(ws))
+        ws.send(json.dumps(self.query.request))
+
+    def _on_message_ws(self, ws, message):
+        data = json.loads(message)
+        self.fetch_id = data.get("fetch")
+        records = self.query.get_record(results=data)
+        if records:
+            if self.formatter is ElementFormat:
+                for message in records:
+                    self.on_message_fct(ws, self.element_name(**message))
+            else:
+                fmt = self.formatter(self.query)
+                self.on_message_fct(ws, fmt.formatted(records))
+
+    def _on_error(self, ws, err):
+        ws.close()
+        logger.error("WS:{} error: {}".format(ws, err))
+
+    def _on_close(self, ws, close_status_code, close_msg):
+        logger.debug("WS:{} closed status={} message={} ! ".format(ws,
+                                                                   close_status_code,
+                                                                   close_msg))
+
+    def abort(self):
+        """
+        Abort
+        End listening for new messages and let server close the websocket
+        :return: True ws connection aborted
+        """
+        if self.fetch_id is None:
+            logger.warning("WS fetch_id is None: can't abort !")
+            return False
+        if session.session_id is None and self.sock is None:
+            self.sock = get_sock_from_session()
+
+        self.ws.send("{{'abort': {}}}".format(self.fetch_id))
+        logger.debug("WS connection aborted !")
+        return True
+
+    def close(self):
+        """
+        Close the websocket
+        """
+        logger.info("Close WS:{}".format(self))
+        self.ws.close()
 
 
 class SMCSocketProtocol(websocket.WebSocket):
@@ -94,31 +271,7 @@ class SMCSocketProtocol(websocket.WebSocket):
                 "a web socket connection."
             )
 
-        sslopt = {}
-        if session.is_ssl:
-            # SSL verification is based on the session settings since the
-            # session must be made before calling this class. If verify=True,
-            # try to get the CA bundle from certifi if the package exists
-            # Set check_hostname to False because python ssl doesn't appear
-            # to validate the subjectAltName properly, however requests does
-            # and would have already validated this when the session was set
-            # up. This can still be overridden by setting check_hostname=True.
-            sslopt.update(cert_reqs=ssl.CERT_NONE, check_hostname=False)
-
-            certfile = session.session.verify
-            if certfile:
-                if isinstance(certfile, bool):  # verify=True
-                    certfile = _get_ca_bundle()
-                    if certfile is None:
-                        certfile = ""
-
-                sslopt.update(
-                    cert_reqs=kw.pop("cert_reqs", ssl.CERT_REQUIRED),
-                    check_hostname=kw.pop("check_hostname", False),
-                )
-
-                if sslopt.get("cert_reqs") != ssl.CERT_NONE:
-                    os.environ["WEBSOCKET_CLIENT_CA_BUNDLE"] = certfile
+        sslopt = get_ssl_opt(**kw)
 
         # Enable multithread locking
         if "enable_multithread" not in kw:
@@ -142,6 +295,7 @@ class SMCSocketProtocol(websocket.WebSocket):
             sock = session.sock
             if sock is None:
                 # Need to obtain new socket
+                logger.debug("Refresh the login session..")
                 session.refresh()
             self.connect(
                 url=session.web_socket_url + self.query.location,
@@ -278,4 +432,4 @@ class SMCSocketProtocol(websocket.WebSocket):
                       (PYTHON_v3_9 and self.thread.is_alive()):
                     self.event.wait(1)
 
-            logger.info("Closed web socket connection normally.")
+            logger.info("Closed web socket connection normally:{}.".format(self))
