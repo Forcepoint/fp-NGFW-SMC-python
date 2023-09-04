@@ -62,7 +62,7 @@ from smc.base.collection import create_collection, sub_collection
 from smc.base.util import element_resolver
 from smc.administration.access_rights import AccessControlList, Permission
 from smc.base.decorators import cacheable_resource
-from smc.administration.certificates.vpn import GatewayCertificate
+from smc.administration.certificates.vpn import GatewayCertificate, GatewayCertificateRequest
 from smc.base.structs import BaseIterable, NestedDict
 from smc.elements.profiles import SNMPAgent
 from smc.elements.ssm import SSHKnownHostsLists
@@ -2355,19 +2355,36 @@ class VPN(object):
             for cert in self.internal_gateway.make_request(resource="gateway_certificate")
         ]
 
+    @property
+    def gateway_certificate_request(self):
+        """
+        A Gateway Certificate request is a gateway certificate that need to be signed internally
+        or externally using external CA
+
+        :return: GatewayCertificateRequest
+        :rtype: list
+        """
+        return [
+            GatewayCertificateRequest.from_href(cert.get('href'))
+            for cert in self.internal_gateway.make_request(resource="gateway_certificate_request")
+        ]
+
     def generate_certificate(
             self,
             common_name,
+            organization="Forcepoint",
             public_key_algorithm="rsa",
             signature_algorithm="rsa_sha_512",
             key_length=2048,
             signing_ca=None,
+            certificate=None,
     ):
         """
         Generate an internal gateway certificate used for VPN on this engine.
         Certificate request should be an instance of VPNCertificate.
 
         :param: str common_name: common name for certificate
+        :param: str organization: organization for certificate
         :param str public_key_algorithm: public key type to use. Valid values
             rsa, dsa, ecdsa.
         :param str signature_algorithm: signature algorithm. Valid values
@@ -2379,12 +2396,17 @@ class VPN(object):
             documentation for more details.
         :param str,VPNCertificateCA signing_ca: by default will use the
             internal RSA CA
+        :param str, certificate : used directly call another _create_from_cert
         :raises CertificateError: error generating certificate
         :return: GatewayCertificate
         """
-        return GatewayCertificate._create(
-            self, common_name, public_key_algorithm, signature_algorithm, key_length, signing_ca
-        )
+        if certificate:
+            return GatewayCertificate._create_from_cert(self, signing_ca, certificate)
+        else:
+            return GatewayCertificate._create(
+                self, common_name, organization, public_key_algorithm, signature_algorithm,
+                key_length, signing_ca
+            )
 
     def __repr__(self):
         return "VPN(name={})".format(self.name)

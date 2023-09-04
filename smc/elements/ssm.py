@@ -28,6 +28,10 @@ class LoggingProfile(Element):
     typeof = "logging_profile"
 
 
+class DeviceToolsProfile(Element):
+    typeof = "tools_profile"
+
+
 class ProbingProfile(Element):
     typeof = "probing_profile"
 

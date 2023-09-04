@@ -47,6 +47,8 @@ class SMCRequest(object):
     :param dict params: query string parameters
     :param str filename: name of file for download, optional for create
     :param str etag: etag of element, required for update
+    :param bool send_none_json: To force json to be none instead of {} set this boolean to True.
+         In this case json param will be ignored.
     """
 
     _session_manager = None
@@ -59,6 +61,7 @@ class SMCRequest(object):
         filename=None,
         etag=None,
         user_session=None,
+        send_none_json=False,
         **kwargs
     ):
 
@@ -71,8 +74,10 @@ class SMCRequest(object):
         #: ETag for PUT or DELETE request modifications
         self.etag = etag
         #: JSON data to send in request
-        self.json = {} if json is None else json
-
+        if not send_none_json:
+            self.json = {} if json is None else json
+        else:
+            self.json = None
         # Only used in the case of streaming file download/upload
         self.files = None
         #: Default headers

@@ -15,7 +15,7 @@ from smc.core.interfaces import (
     TunnelInterface,
     Layer3PhysicalInterface,
     Layer2PhysicalInterface,
-    SwitchPhysicalInterface,
+    SwitchPhysicalInterface, SwitchInterface,
 )
 from smc.core.sub_interfaces import LoopbackInterface
 from smc.core.engine import Engine
@@ -151,6 +151,17 @@ class Layer3Firewall(Engine):
                 physical_interfaces.append(
                     {
                         "switch_physical_interface": SwitchPhysicalInterface(
+                            primary_mgt=primary_mgt,
+                            backup_mgt=backup_mgt,
+                            auth_request=auth_request,
+                            **interface
+                        )
+                    }
+                )
+            elif interface.get("type", None) == "switch_interface":
+                physical_interfaces.append(
+                    {
+                        "switch_interface": SwitchInterface(
                             primary_mgt=primary_mgt,
                             backup_mgt=backup_mgt,
                             auth_request=auth_request,

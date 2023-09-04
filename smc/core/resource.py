@@ -56,6 +56,41 @@ class Snapshot(SubElement):
         except IOError as e:
             raise EngineCommandFailed("Snapshot download failed: {}".format(e))
 
+    def download_html(self, filename=None):
+        """
+        Download snapshot as HTML to filename
+
+        :param str filename: fully qualified path including filename .zip
+        :raises EngineCommandFailed: IOError occurred downloading snapshot
+        :return: None
+        """
+        if not filename:
+            filename = "{}{}".format(self.name, ".zip")
+
+        try:
+            self.make_request(EngineCommandFailed, resource="html_content", filename=filename)
+
+        except IOError as e:
+            raise EngineCommandFailed("HTML Snapshot download failed: {}".format(e))
+
+    def compare_to_latest(self, filename=None):
+        """
+        Download comparison between this snapshot and the current version of the configuration
+        as HTML to filename
+
+        :param str filename: fully qualified path including filename .zip
+        :raises EngineCommandFailed: IOError occurred downloading snapshot
+        :return: None
+        """
+        if not filename:
+            filename = "{}{}".format(self.name, ".zip")
+
+        try:
+            self.make_request(EngineCommandFailed, resource="compare_to_latest", filename=filename)
+
+        except IOError as e:
+            raise EngineCommandFailed("HTML Snapshot comparison download failed: {}".format(e))
+
 
 class PendingChanges(SerializedIterable):
     """

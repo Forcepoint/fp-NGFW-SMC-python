@@ -85,7 +85,7 @@ class System(SubElement):
         """
         return millis_to_utc(int(self.make_request(resource="smc_time").get("value")))
 
-    def bind_license(self, element_href, license_id=None):
+    def bind_license(self, element_href, license_id=None, **kwargs):
         """
         Bind license on element.
 
@@ -98,8 +98,13 @@ class System(SubElement):
             system.bind_license(LogServer.objects.first())  # bind automatically license
             system.bind_license(MgtServer.objects.first(), "123456787")  # bind license based on id
         """
+        if "node2" in kwargs:
+            node2 = kwargs.pop("node2")
+        else:
+            node2 = False
         self.make_request(method="create", resource="license_bind",
-                          json={"component_href": element_href, "license_item_id": license_id})
+                          json={"component_href": element_href, "license_item_id": license_id,
+                                "node2": node2})
 
     @property
     def massive_license_bind(self):

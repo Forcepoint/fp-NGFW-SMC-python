@@ -58,6 +58,9 @@ FAILED_TO_ADD_IP = "Failed to add ip address to tunnel interface"
 TUNNEL_IP_ADDRESS = "9.9.9.9"
 TUNNEL_NETWORK_VALUE = "9.9.9.0/32"
 TUNNEL_INTERFACE_ID = "1010"
+IPV6_NETWORK_VALUE = "2001:db8:3333:4444:5555:6666:7777:0000/128"
+IPV6_NETWORK_ADDRESS = "2001:db8:3333:4444:5555:6666:7777:0"
+
 
 if __name__ == "__main__":
     session.login(url=SMC_URL, api_key=API_KEY, verify=False, timeout=120, api_version=API_VERSION)
@@ -196,7 +199,8 @@ try:
                                                           comment=None)
     # flag to check tunnel interface and ip address in tunnel interface is created.
     is_tunnel_interface = False
-    added_ip_address = False
+    added_ipv4_address = False
+    added_ipv6_address = False
     for interface in engine.tunnel_interface:
         if interface.interface_id == TUNNEL_INTERFACE_ID:
             cvi = ClusterVirtualInterface.create(
@@ -220,20 +224,46 @@ try:
                 list_of_node_interfaces.append(ndi)
             # add ip address to tunnel interface
             interface.add_ip_address(cvi=cvi, nodes=list_of_node_interfaces)
+
+            ipv6_cvi = ClusterVirtualInterface.create(
+                interface.interface_id,
+                IPV6_NETWORK_ADDRESS,
+                IPV6_NETWORK_VALUE,
+            )
+
+            list_of_nodes_ipv6 = [{'address': '2001:db8:3333:4444:5555:6666:7777:8886',
+                                   'network_value': IPV6_NETWORK_VALUE,
+                                   'nodeid': 1},
+                                  {'address': '2001:db8:3333:4444:5555:6666:7777:8887',
+                                   'network_value': IPV6_NETWORK_VALUE,
+                                   'nodeid': 2},
+                                  {'address': '2001:db8:3333:4444:5555:6666:7777:8888',
+                                   'network_value': IPV6_NETWORK_VALUE,
+                                   'nodeid': 3}
+                                  ]
+            list_of_node_interfaces_ipv6 = []
+            for _node in list_of_nodes_ipv6:
+                ndi = NodeInterface.create(interface_id=interface.interface_id, **_node)
+                list_of_node_interfaces_ipv6.append(ndi)
+            # add ip address to tunnel interface
+            interface.add_ip_address(cvi=ipv6_cvi, nodes=list_of_node_interfaces_ipv6)
             break
     for interface in engine.tunnel_interface.all():
         if interface.interface_id == TUNNEL_INTERFACE_ID:
             is_tunnel_interface = True
             for intf in interface.sub_interfaces():
                 if intf.address == TUNNEL_IP_ADDRESS:
-                    added_ip_address = True
+                    added_ipv4_address = True
+                elif intf.address == IPV6_NETWORK_ADDRESS:
+                    added_ipv6_address = True
             list_of_ip_address = [ip[0] for ip in interface.addresses]
             for _ndi in interface.ndi_interfaces:
                 assert _ndi.address in list_of_ip_address, "Error in ndi ip address creation."
             break
     assert is_tunnel_interface, CREATE_TUNNEL_INTERFACE_ERROR
     print("Created tunnel interface successfully.")
-    assert added_ip_address, FAILED_TO_ADD_IP
+    assert added_ipv4_address, FAILED_TO_ADD_IP
+    assert added_ipv6_address, FAILED_TO_ADD_IP
     print("Successfully added ip(cvi and ndi) address to tunnel interface.")
 
     # Create initial configuration for each node

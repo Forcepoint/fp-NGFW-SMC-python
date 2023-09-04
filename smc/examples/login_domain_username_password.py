@@ -43,7 +43,7 @@ failed_update_web_user = "Failed to update web portal admin user"
 receive_error_value = "Receive incorrect values"
 access_attribute_error = "Failed to access AdminDomain's attribute."
 pwd_meta_data_error = "Failed to get password meta data error."
-
+RETRY = 3
 if __name__ == "__main__":
 
     try:
@@ -105,10 +105,29 @@ if __name__ == "__main__":
         print("Updated WebPortalAdminUser successfully.")
         # change password
         admin.change_password(admin_password)
+        # check enable disable is working for web admin user.
         # disable web admin user
-        # admin.enable_disable()
-        # assert not WebPortalAdminUser(web_admin_test).enabled, failed_update_web_user
-
+        admin.enable_disable()
+        is_user_enable = True
+        retry = 0
+        while is_user_enable and retry < RETRY:
+            admin = WebPortalAdminUser(web_admin_test)
+            is_user_enable = admin.enabled
+            time.sleep(2)
+            retry += 1
+        # check web admin  user is disabled
+        assert not admin.enabled, failed_update_web_user
+        # enable web admin user
+        admin.enable_disable()
+        retry = 0
+        while not is_user_enable and retry < RETRY:
+            admin = WebPortalAdminUser(web_admin_test)
+            is_user_enable = admin.enabled
+            time.sleep(2)
+            retry += 1
+        # check web admin user is enable
+        assert admin.enabled, failed_update_web_user
+        print("Check enable disable request")
         # Create new SMC Admin
         if AdminUser.objects.filter(name=admin_name):
             AdminUser(admin_name).enable_disable()

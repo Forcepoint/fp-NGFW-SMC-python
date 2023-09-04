@@ -340,3 +340,38 @@ class ICMPServiceGroup(GroupMixin, Element):
 
 class URLCategoryGroup(Element):
     typeof = "url_category_group"
+
+
+class EthernetServiceGroup(GroupMixin, Element):
+    """
+    This represents an Ethernet Service Group, it groups a list of Ethernet Services.
+
+    Create EthernetService and add to EthernetServiceGroup::
+
+        es1 = EthernetService.create('EthernetService1', frame_type="eth2",
+                                                  protocol_agent_ref=protocol, value1='1',
+                                                  value2='2', comment=COMMENT)
+        es2 = EthernetService.create('EthernetService2', frame_type="eth2",
+                                                  protocol_agent_ref=protocol, value1='1',
+                                                  value2='2', comment=COMMENT)
+        EthernetServiceGroup.create('ethernetservicegroup', element=[es1, es2])
+    """
+
+    typeof = "ethernet_service_group"
+
+    @classmethod
+    def create(cls, name, members=None, comment=None):
+        """
+        Create the Ethernet Service Group
+
+        :param str name: name of ethernet service group.
+        :param list(EthernetService) members: The elements that are included in the
+            EthernetServiceGroup.
+        :param str comment: Optional comment.
+        :raises CreateElementFailed: element creation failed with reason.
+        :return: instance with meta
+        :rtype: EthernetServiceGroup
+        """
+        element = [] if members is None else element_resolver(members)
+        json = {"name": name, "element": element, "comment": comment}
+        return ElementCreator(cls, json)

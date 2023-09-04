@@ -681,27 +681,47 @@ class BGPPeering(Element):
     """
 
     typeof = "bgp_peering"
-    connection_profile = ElementRef("connection_profile")
 
     @classmethod
     def create(
-        cls,
-        name,
-        connection_profile_ref=None,
-        md5_password=None,
-        local_as_option="not_set",
-        max_prefix_option="not_enabled",
-        send_community="no",
-        connected_check="disabled",
-        orf_option="disabled",
-        next_hop_self=True,
-        override_capability=False,
-        dont_capability_negotiate=False,
-        remote_private_as=False,
-        route_reflector_client=False,
-        soft_reconfiguration=True,
-        ttl_option="disabled",
-        comment=None,
+            cls,
+            name,
+            connection_profile_ref=None,
+            md5_password=None,
+            local_as_option="not_set",
+            local_as_value=None,
+            max_prefix_option="not_enabled",
+            max_prefix_value=None,
+            send_community="no",
+            connected_check="disabled",
+            orf_option="disabled",
+            next_hop_self=True,
+            override_capability=False,
+            dont_capability_negotiate=False,
+            remote_private_as=False,
+            route_reflector_client=False,
+            soft_reconfiguration=True,
+            ttl_option="disabled",
+            ttl_value=None,
+            inbound_rm_filter=None,
+            inbound_ip_filter=None,
+            inbound_ipv6_filter=None,
+            inbound_ipprefix_filter=None,
+            inbound_ipv6prefix_filter=None,
+            inbound_aspath_filter=None,
+            outbound_rm_filter=None,
+            outbound_ip_filter=None,
+            outbound_ipv6_filter=None,
+            outbound_ipprefix_filter=None,
+            outbound_ipv6prefix_filter=None,
+            outbound_aspath_filter=None,
+            default_originate=False,
+            bfd_enabled=False,
+            bfd_interval=750,
+            bfd_min_rx=500,
+            bfd_multiplier=3,
+            bfd_passive_mode=False,
+            comment=None,
     ):
         """
         Create a new BGPPeering configuration.
@@ -710,10 +730,14 @@ class BGPPeering(Element):
         :param str,BGPConnectionProfile connection_profile_ref: required BGP
             connection profile. System default used if not provided.
         :param str md5_password: optional md5_password
-        :param str local_as_option: the local AS mode. Valid options are:
+        :param str local_as_option: The local AS mode. Valid options are:
             'not_set', 'prepend', 'no_prepend', 'replace_as'
+        :param str local_as_value: The Local AS value. Optional, depending on Local AS mode.
+            Not required.
         :param str max_prefix_option: The max prefix mode. Valid options are:
             'not_enabled', 'enabled', 'warning_only'
+        :param int max_prefix_value: The Max Prefix value. Optional, depending on Max Prefix mode.
+            Not required
         :param str send_community: the send community mode. Valid options are:
             'no', 'standard', 'extended', 'standard_and_extended'
         :param str connected_check: the connected check mode. Valid options are:
@@ -728,6 +752,34 @@ class BGPPeering(Element):
         :param bool soft_reconfiguration: do soft reconfiguration inbound
         :param str ttl_option: ttl check mode. Valid options are: 'disabled',
             'ttl-security'
+        :param int ttl_value: The Hops value for TTL Check Mechanism.If not set, it corresponds
+            to Automatic. Not required
+        :param RouteMap inbound_rm_filter: The Route Map inbound filter. Not required
+        :param IPAccessList inbound_ip_filter: The IP Access List inbound filter. Not required
+        :param IPv6AccessList inbound_ipv6_filter: The IPv6 Access List inbound filter. Not required
+        :param IPPrefixList inbound_ipprefix_filter: The IP Prefix List inbound filter. Not required
+        :param IPv6PrefixList inbound_ipv6prefix_filter: The IPv6 Prefix List inbound filter.
+            Not required.
+        :param ASPathAccessList inbound_aspath_filter: The AS Path Access List inbound filter.
+            Not required.
+        :param RouteMap outbound_rm_filter: The Route Map outbound filter. Not required
+        :param IPAccessList outbound_ip_filter: The IP Access List outbound filter. Not required
+        :param IPv6AccessList outbound_ipv6_filter: The IPv6 Access List outbound filter.
+            Not required.
+        :param IPPrefixList outbound_ipprefix_filter: The IP Prefix List outbound filter.
+            Not required.
+        :param IPv6PrefixList outbound_ipv6prefix_filter: The IPv6 Prefix List outbound filter.
+            Not required.
+        :param ASPathAccessList outbound_aspath_filter: The AS Path Access List outbound filter.
+            Not required.
+        :param bool default_originate: Default originate. Default value is false. Not required.
+        :param bool bfd_enabled: Bidirectional Forwarding Detection flag. Default value is false.
+            Not required
+        :param int bfd_interval: Bidirectional Forwarding Detection interval in ms. Not required.
+        :param int bfd_min_rx: Bidirectional Forwarding Detection min RX in ms. Not required.
+        :param int bfd_multiplier: Bidirectional Forwarding Detection multiplier. Not required.
+        :param bool bfd_passive_mode: Bidirectional Forwarding Detection passive mode flag.
+            Not required.
         :raises CreateElementFailed: failed creating profile
         :return: instance with meta
         :rtype: BGPPeering
@@ -746,20 +798,157 @@ class BGPPeering(Element):
             "remove_private_as": remote_private_as,
             "route_reflector_client": route_reflector_client,
             "ttl_option": ttl_option,
+            "default_originate": default_originate,
+            "bfd_enabled": bfd_enabled,
+            "inbound_rm_filter": element_resolver(inbound_rm_filter),
+            "inbound_ip_filter": element_resolver(inbound_ip_filter),
+            "inbound_ipv6_filter": element_resolver(inbound_ipv6_filter),
+            "inbound_ipprefix_filter": element_resolver(inbound_ipprefix_filter),
+            "inbound_ipv6prefix_filter": element_resolver(inbound_ipv6prefix_filter),
+            "inbound_aspath_filter": element_resolver(inbound_aspath_filter),
+            "outbound_rm_filter": element_resolver(outbound_rm_filter),
+            "outbound_ip_filter": element_resolver(outbound_ip_filter),
+            "outbound_ipv6_filter": element_resolver(outbound_ipv6_filter),
+            "outbound_ipprefix_filter": element_resolver(outbound_ipprefix_filter),
+            "outbound_ipv6prefix_filter": element_resolver(outbound_ipv6prefix_filter),
+            "outbound_aspath_filter": element_resolver(outbound_aspath_filter),
             "comment": comment,
         }
 
+        if local_as_option != "not_set":
+            json.update(local_as_value=local_as_value)
+
+        if max_prefix_option != "not_enabled":
+            json.update(max_prefix_value=max_prefix_value)
+
+        if ttl_option != "disabled":
+            json.update(ttl_value=ttl_value)
+
+        if bfd_enabled:
+            json.update(bfd_interval=bfd_interval, bfd_min_rx=bfd_min_rx,
+                        bfd_multiplier=bfd_multiplier, bfd_passive_mode=bfd_passive_mode)
         if md5_password:
             json.update(md5_password=md5_password)
 
         connection_profile_ref = (
-            element_resolver(connection_profile_ref)
-            or BGPConnectionProfile("Default BGP Connection Profile").href
+                element_resolver(connection_profile_ref)
+                or BGPConnectionProfile("Default BGP Connection Profile").href
         )
-
         json.update(connection_profile=connection_profile_ref)
 
         return ElementCreator(cls, json)
+
+    @property
+    def local_as_option(self):
+        return self.data.get("local_as_option")
+
+    @property
+    def local_as_value(self):
+        return self.data.get("local_as_value", None)
+
+    @property
+    def max_prefix_value(self):
+        return self.data.get("max_prefix_value", None)
+
+    @property
+    def inbound_aspath_filter(self):
+        return self.data.get("inbound_aspath_filter")
+
+    @property
+    def outbound_rm_filter(self):
+        return self.data.get("outbound_rm_filter")
+
+    @property
+    def outbound_ip_filter(self):
+        return self.data.get("outbound_ip_filter")
+
+    @property
+    def outbound_ipv6_filter(self):
+        return self.data.get("outbound_ipv6_filter")
+
+    @property
+    def outbound_ipprefix_filter(self):
+        return self.data.get("outbound_ipprefix_filter")
+
+    @property
+    def outbound_ipv6prefix_filter(self):
+        return self.data.get("outbound_ipv6prefix_filter")
+
+    @property
+    def outbound_aspath_filter(self):
+        return self.data.get("outbound_aspath_filter")
+
+    @property
+    def inbound_rm_filter(self):
+        return self.data.get("inbound_rm_filter")
+
+    @property
+    def inbound_ip_filter(self):
+        return self.data.get("inbound_ip_filter")
+
+    @property
+    def inbound_ipv6_filter(self):
+        return self.data.get("inbound_ipv6_filter")
+
+    @property
+    def inbound_ipprefix_filter(self):
+        return self.data.get("inbound_ipprefix_filter")
+
+    @property
+    def inbound_ipv6prefix_filter(self):
+        return self.data.get("inbound_ipv6prefix_filter")
+
+    @property
+    def max_prefix_option(self):
+        return self.data.get("max_prefix_option")
+
+    @property
+    def send_community(self):
+        return self.data.get("send_community")
+
+    @property
+    def connected_check(self):
+        return self.data.get("connected_check")
+
+    @property
+    def orf_option(self):
+        return self.data.get("orf_option")
+
+    @property
+    def next_hop_self(self):
+        return self.data.get("next_hop_self")
+
+    @property
+    def override_capability(self):
+        return self.data.get("override_capability")
+
+    @property
+    def dont_capability_negotiate(self):
+        return self.data.get("dont_capability_negotiate")
+
+    @property
+    def soft_reconfiguration(self):
+        return self.data.get("soft_reconfiguration")
+
+    @property
+    def remove_private_as(self):
+        return self.data.get("remove_private_as")
+
+    @property
+    def route_reflector_client(self):
+        return self.data.get("route_reflector_client")
+
+    @property
+    def ttl_option(self):
+        return self.data.get("ttl_option")
+
+    @property
+    def default_originate(self):
+        return self.data.get("default_originate")
+
+    @property
+    def bfd_enabled(self):
+        return self.data.get("bfd_enabled")
 
 
 class BGPConnectionProfile(Element):

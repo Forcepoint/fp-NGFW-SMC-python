@@ -675,9 +675,11 @@ class IPv4NATRule(RuleCommon, NATRule, SubElement):
         services=None,
         dynamic_src_nat=None,
         dynamic_src_nat_ports=(1024, 65535),
+        dynamic_src_nat_automatic_proxy=None,
         static_src_nat=None,
         static_dst_nat=None,
         static_dst_nat_ports=None,
+        static_dst_nat_automatic_proxy=None,
         is_disabled=False,
         used_on="ANY",
         add_pos=None,
@@ -704,11 +706,13 @@ class IPv4NATRule(RuleCommon, NATRule, SubElement):
         :type dynamic_src_nat: str,Element
         :param tuple dynamic_src_nat_ports: starting and ending ports for PAT.
             Default: (1024, 65535)
+        :param bool dynamic_src_nat_automatic_proxy: Is Automatic Proxy ARP enabled?
         :param str static_src_nat: ip or element href of used for source NAT
         :param str static_dst_nat: destination NAT IP address or element href
         :param tuple static_dst_nat_ports: ports or port range used for original
             and destination ports (only needed if a different destination port
             is used and does not match the rules service port)
+        :param bool static_dst_nat_automatic_proxy: Is Automatic Proxy ARP enabled?
         :param bool is_disabled: whether to disable rule or not
         :param str,Engine used_on: Can be None, 'ANY' or and Engine element. Default
             is 'ANY'.
@@ -730,12 +734,15 @@ class IPv4NATRule(RuleCommon, NATRule, SubElement):
         """
         rule_values = self.update_targets(sources, destinations, services)
 
-        rule_values = self._update_nat(rule_values=rule_values,
-                                       dynamic_src_nat=dynamic_src_nat,
-                                       dynamic_src_nat_ports=dynamic_src_nat_ports,
-                                       static_src_nat=static_src_nat,
-                                       static_dst_nat=static_dst_nat,
-                                       static_dst_nat_ports=static_dst_nat_ports)
+        rule_values = self._update_nat(
+            rule_values=rule_values,
+            dynamic_src_nat=dynamic_src_nat,
+            dynamic_src_nat_ports=dynamic_src_nat_ports,
+            dynamic_src_nat_automatic_proxy=dynamic_src_nat_automatic_proxy,
+            static_src_nat=static_src_nat,
+            static_dst_nat=static_dst_nat,
+            static_dst_nat_ports=static_dst_nat_ports,
+            static_dst_nat_automatic_proxy=static_dst_nat_automatic_proxy)
 
         rule_values.update(name=name, comment=comment, is_disabled=is_disabled)
 

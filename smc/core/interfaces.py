@@ -1990,12 +1990,13 @@ class Layer3PhysicalInterface(PhysicalInterface):
                     "interfaces": _interface,
                 }
 
-                # moving existing ip address from physical interface to vlan interface.
-                sni_list = []
-                for sni in self.interfaces:
-                    sni.update(nicid=_interface_id)
-                    sni_list.append({sni.typeof: sni.data})
-                vlan_interface.update(interfaces=sni_list)
+                if len(self.interfaces.items) > 0:
+                    # moving existing ip address from physical interface to vlan interface.
+                    sni_list = []
+                    for sni in self.interfaces:
+                        sni.update(nicid=_interface_id)
+                        sni_list.append({sni.typeof: sni.data})
+                    vlan_interface.update(interfaces=sni_list)
 
                 if interface.get("virtual_mapping", None) is not None:
                     vlan_interface.update(

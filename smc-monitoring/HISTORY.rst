@@ -39,4 +39,21 @@ Release History
 
 - Update requirements to fp_NGFW_SMC_python >= 1.0.0
 
+1.5.0
++++++
+
+-fixed blacklist entry issue
+-added first_fetch support
+-added support to NumberValue and TranslatedValue in QueryFilter
+-blacklist -> block_list renaming
+-support "use ssl for session id" (Fix session lost issue)
+-Adding asynchronious callback support (@see SMCSocketAsyncProtocol)
+-support certificate options in wsocket
+
+1.5.1
++++++
+
+TODO
+
+
 

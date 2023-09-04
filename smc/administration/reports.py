@@ -89,7 +89,8 @@ class ReportDesign(Element):
     typeof = "report_design"
 
     def generate(
-        self, start_time=0, end_time=0, senders=None, wait_for_finish=False, timeout=5, **kw
+        self, start_time=None, end_time=None, launch_time=None, overriding_duration=None,
+            use_elasticsearch=False, senders=None, wait_for_finish=False, timeout=5, **kw
     ):  # @ReservedAssignment
         """
         Generate the report and optionally wait for results.
@@ -101,8 +102,11 @@ class ReportDesign(Element):
             end = datetime_to_ms(datetime.strptime("2018-02-04T00:00:00", "%Y-%m-%dT%H:%M:%S"))
             report.generate(start_time=begin, end_time=end, senders=[Engine('vm')])
 
-        :param int period_begin: milliseconds time defining start time for report
-        :param int period_end: milliseconds time defining end time for report
+        :param int start_time: milliseconds time defining start time for report (legacy)
+        :param int end_time: milliseconds time defining end time for report(legacy)
+        :param long launch_time : End of timerange in milliseconds (new)
+        :param int overriding_duration: period duration in seconds (new)
+        :param bool use_elasticsearch: if true will use elasticsearch storage
         :param senders: filter targets to use when generating report
         :type senders: list(Element)
         :param bool wait_for_finish: enable polling for results
@@ -112,6 +116,10 @@ class ReportDesign(Element):
         """
         if start_time and end_time:
             kw.setdefault("params", {}).update({"start_time": start_time, "end_time": end_time})
+        if launch_time and overriding_duration:
+            kw.setdefault("params", {}).update({"launch_time": launch_time,
+                                                "overriding_duration": overriding_duration,
+                                                "use_elasticsearch": use_elasticsearch})
         if senders:
             kw.setdefault("json", {}).update({"senders": element_resolver(senders)})
         return Task.execute(

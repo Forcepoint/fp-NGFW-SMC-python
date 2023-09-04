@@ -222,13 +222,17 @@ class EthernetService(Element):
     typeof = "ethernet_service"
 
     @classmethod
-    def create(cls, name, frame_type="eth2", value1=None, comment=None):
+    def create(cls, name, frame_type="eth2", value1=None, value2=None, protocol_agent_ref=None,
+               comment=None):
         """
         Create an ethernet service
 
         :param str name: name of service
         :param str frame_type: ethernet frame type, eth2
         :param str value1: hex code representing ethertype field
+        :param str value2: Following the frame_type value: For llc: the DSAP (destination service
+            access point) address that the traffic uses. For snap: the type that the traffic uses.
+        :param ProtocolAgent protocol_agent_ref: The possible Protocol linked to this service.
         :param str comment: optional comment
         :raises CreateElementFailed: failure creating element with reason
         :return: instance with meta
@@ -238,6 +242,8 @@ class EthernetService(Element):
             "frame_type": frame_type,
             "name": name,
             "value1": int(value1, 16),
+            "value2": int(value2, 16),
+            "protocol_agent_ref": element_resolver(protocol_agent_ref),
             "comment": comment,
         }
 
@@ -252,6 +258,24 @@ class EthernetService(Element):
     def value1(self, value):
         if "value1" in self.data:
             self.data["value1"] = int(value, 16)
+
+    @property
+    def value2(self):
+        if "value2" in self.data:
+            return hex(int(self.data.get("value2")))
+
+    @value2.setter
+    def value2(self, value):
+        if "value2" in self.data:
+            self.data["value2"] = int(value, 16)
+
+    @property
+    def protocol_agent_ref(self):
+        """
+        The possible Protocol linked to this service.
+        :rtype: ProtocolAgent
+        """
+        return Element.from_href(self.data.get("protocol_agent_ref"))
 
 
 class RPCService(Element):

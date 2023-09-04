@@ -14,9 +14,10 @@ Module that represents server based configurations
 """
 from smc.api.common import SMCRequest, _get_session
 from smc.api.exceptions import CreateElementFailed, SMCOperationFailure, CertificateImportError, \
-    CertificateExportError, CertificateError
+    CertificateExportError, CertificateError, UnsupportedEngineFeature
 from smc.base.model import SubElement, ElementCreator, Element, ElementRef
 from smc.base.structs import NestedDict
+from smc.compat import is_smc_version_less_than, is_smc_version_less_than_or_equal
 from smc.elements.helpers import location_helper
 from smc.elements.other import ContactAddress, Location
 from smc.base.util import element_resolver, save_to_file
@@ -200,7 +201,460 @@ class ContactAddressMixin(object):
         return self.contact_addresses.delete(location)
 
 
-class ManagementServer(ContactAddressMixin, Element):
+class WebApp(NestedDict):
+    """
+    Represents a Web Application parameter.
+    """
+
+    def __init__(self, data):
+        super(WebApp, self).__init__(data=data)
+
+    @classmethod
+    def create(cls,
+               enabled=False,
+               eca_enabled=False,
+               listening_address=None,
+               log_access=False,
+               port=8083,
+               server_credentials_ref=None,
+               session_timeout=300,
+               ssl_session_id=False,
+               tls_cipher_suites=None,
+               standalone_enabled=False,
+               web_app_identifier=None,
+               host_name=None,
+               ):
+        """
+        :param bool enabled: If the Web Application is enabled or not.
+        :param bool eca_enabled: Indicates if ECA Rollout evaluation is enabled in SMC Download
+            pages (SMC Downloads has to be enabled )
+        :param str listening_address: The Web Application listening address, null if listening on
+            all addresses.
+        :param bool log_access: Indicates whether access to this Web Application are logged.
+        :param int port: The port on which the Web Application listens for connections.
+        :param TLSServerCredential server_credentials_ref: TLS Credentials of server.
+        :param int session_timeout: Session Timeout for Webswing.
+        :param bool ssl_session_id: Indicates whether session ID must be used with SSL.
+        :param TLSCryptographySuite tls_cipher_suites: TLS Cipher suite.
+        :param bool standalone_enabled: Indicates if Standalone client bundles download are enabled
+            in SMC Download pages (SMC Downloads has to be enabled )
+        :param str web_app_identifier: The Web Application Identifier.
+        :param str host_name: The Web Application host name, null if none.
+        """
+        web_app_data = {
+            "enabled": enabled,
+            "host_name": host_name,
+            "listening_address": listening_address,
+            "log_access": log_access,
+            "port": port,
+            "server_credentials_ref": element_resolver(server_credentials_ref),
+            "session_timeout": session_timeout,
+            "ssl_session_id": ssl_session_id,
+            "tls_cipher_suites": element_resolver(tls_cipher_suites),
+            "eca_enabled": eca_enabled,
+            "standalone_enabled": standalone_enabled,
+            "web_app_identifier": web_app_identifier
+        }
+        return cls(web_app_data)
+
+    @property
+    def enabled(self):
+        return self.data.get("enabled")
+
+    @property
+    def host_name(self):
+        return self.data.get("host_name")
+
+    @property
+    def listening_address(self):
+        return self.data.get("listening_address")
+
+    @property
+    def log_access(self):
+        return self.data.get("log_access")
+
+    @property
+    def port(self):
+        return self.data.get("port")
+
+    @property
+    def server_credentials_ref(self):
+        return Element.from_href(self.data.get("server_credentials_ref"))
+
+    @property
+    def session_timeout(self):
+        return self.data.get("session_timeout")
+
+    @property
+    def tls_cipher_suites(self):
+        return Element.from_href(self.data.get("tls_cipher_suites"))
+
+    @property
+    def eca_enabled(self):
+        return self.data.get("eca_enabled")
+
+    @property
+    def standalone_enabled(self):
+        return self.data.get("standalone_enabled")
+
+    @property
+    def web_app_identifier(self):
+        return self.data.get("web_app_identifier")
+
+
+class TlsSettings(NestedDict):
+    """
+    TLS Settings.
+    """
+    def __init__(self, data):
+        super(TlsSettings, self).__init__(data=data)
+
+
+class ThirdPartyMonitoring(NestedDict):
+    """
+    This represents Monitoring Settings for Third Party Monitoring.
+    """
+
+    def __init__(self, data):
+        super(ThirdPartyMonitoring, self).__init__(data=data)
+
+    @classmethod
+    def create(cls,
+               encoding="UTF-8",
+               logging_profile_ref=None,
+               monitoring_log_server_ref=None,
+               netflow=False,
+               probing_profile_ref=None,
+               snmp_trap=False,
+               time_zone="Europe/Paris"
+               ):
+        """
+        :param str encoding: The log reception the encoding.
+        :param LoggingProfile logging_profile_ref: Activates syslog reception from this device. You
+            must select the Logging Profile that contains the definitions for converting the syslog
+            entries to log entries.You must also select the Time Zone in which the device is located
+            By default, the local time zone of the computer you are using is selected.Not Required.
+        :param LogServer monitoring_log_server_ref: Select the Monitoring Log Server that monitors
+            this device (third-party monitoring).You must select a Log Server to activate the other
+            options. Not Required.
+        :param bool netflow: Activates NetFlow (v6 and v16) and IPFIX (NetFlow v20) data reception
+            from this device. Not Required.
+        :param ProbingProfile probing_profile_ref: Activates status monitoring for this device. You
+            must also select the Probing Profile that contains the definitions for the monitoring.
+            When you select this option, the element is added to the tree in the System Status view.
+            Not Required.
+        :param bool snmp_trap: Activates SNMP trap reception from this device. The data that the
+            device sends must be formatted according to the MIB definitions currently active in the
+            system. Not Required.
+        :param str time_zone: The log reception the time zone.
+        """
+        data = {
+            "encoding": encoding,
+            "logging_profile_ref": element_resolver(logging_profile_ref),
+            "monitoring_log_server_ref": element_resolver(monitoring_log_server_ref),
+            "probing_profile_ref": element_resolver(probing_profile_ref),
+            "snmp_trap": snmp_trap,
+            "time_zone": time_zone,
+            "netflow": netflow,
+        }
+        return cls(data)
+
+    @property
+    def encoding(self):
+        """
+        The log reception the encoding.
+        :rtype str
+        """
+        return self.data.get("encoding")
+
+    @property
+    def snmp_trap(self):
+        """
+        Activates SNMP trap reception from this device. The data that the device sends must be
+        formatted according to the MIB definitions currently active in the system.
+        :rtype bool
+        """
+        return self.data.get("snmp_trap")
+
+    @property
+    def netflow(self):
+        """
+        Activates NetFlow (v6 and v16) and IPFIX (NetFlow v20) data reception from this device.
+        :rtype bool
+        """
+        return self.data.get("netflow")
+
+    @property
+    def time_zone(self):
+        """
+        The log reception the time zone.
+        :rtype str
+        """
+        return self.data.get("time_zone")
+
+    @property
+    def logging_profile_ref(self):
+        """
+        Activates syslog reception from this device.
+        :rtype LoggingProfile
+        """
+        return Element.from_href(self.data.get("logging_profile_ref"))
+
+    @property
+    def monitoring_log_server_ref(self):
+        """
+        Monitoring Log Server that monitors this device (third-party monitoring)
+        :rtype LogServer
+        """
+        return Element.from_href(self.data.get("monitoring_log_server_ref"))
+
+    @property
+    def probing_profile_ref(self):
+        """
+        Probing Profile that contains the definitions for the monitoring.
+        :rtype ProbingProfile
+        """
+        return Element.from_href(self.data.get("probing_profile_ref"))
+
+
+class ElementWithLocation:
+
+    @property
+    def location_ref(self):
+        """
+        The location of server
+        :rtype Location:
+        """
+        return Element.from_href(self.data.get("location_ref"))
+
+
+class NodeElement(ElementWithLocation):
+    @property
+    def tools_profile_ref(self):
+        """
+        Allows you to add commands to the element’s right-click menu.
+        :rtype DeviceToolsProfile
+        """
+        return Element.from_href(self.data.get("tools_profile_ref"))
+
+    @property
+    def third_party_monitoring(self):
+        """
+        This represents Monitoring Settings for Third Party Monitoring.
+        """
+        return ThirdPartyMonitoring(self.data.get("third_party_monitoring"))
+
+    @property
+    def secondary(self):
+        """
+        If the device has additional IP addresses, you can enter them here instead of creating
+        additional elements for the other IP addresses. The secondary IP addresses are valid in
+        policies and in routing and antispoofing. You can add several IPv4 and IPv6 addresses
+        (one by one)
+        :rtype list
+        """
+        return self.data.get("secondary")
+
+
+class MultiContactServer(NodeElement):
+
+    @property
+    def address(self):
+        """
+        Single valid IPv4 address.
+        :rtype str
+        """
+        return self.data.get("address")
+
+    @property
+    def ipv6_address(self):
+        """
+        Single valid IPv6 address.
+        :rtype str
+        """
+        return self.data.get("ipv6_address")
+
+
+class ManagementLogServerMixin(MultiContactServer):
+
+    @property
+    def log_disk_space_handling_mode(self):
+        """
+        Mode chosen to handle extra logs when disk runs out of space.
+        :rtype: str
+        """
+        return self.data.get("log_disk_space_handling_mode")
+
+    @property
+    def es_tls_settings(self):
+        """
+        Elasticsearch TLS Settings.
+        :rtype: TlsSettings
+        """
+        return TlsSettings(self.data.get("es_tls_settings"))
+
+    @property
+    def forwarding_tls_settings(self):
+        """
+        Log Forwarding TLS Settings.
+        :rtype: TlsSettings
+        """
+        return TlsSettings(self.data.get("forwarding_tls_settings"))
+
+    @property
+    def netflow_collector(self):
+        """
+        A collection of NetflowCollector
+
+        :rtype: list(NetflowCollector)DomainController
+        """
+        return [NetflowCollector(**nc) for nc in self.data.get("netflow_collector", [])]
+
+    def add_netflow_collector(self, netflow_collectors):
+        """
+        Add netflow collector/s to this log server.
+
+        :param netflow_collectors: netflow_collector/s to add to log server
+        :type netflow_collectors: list(netflow_collectors)
+        :raises UpdateElementFailed: failed updating log server
+        :return: None
+        """
+        if "netflow_collector" not in self.data:
+            self.data["netflow_collector"] = {"netflow_collector": []}
+
+        for p in netflow_collectors:
+            self.data["netflow_collector"].append(p.data)
+        self.update()
+
+    def remove_netflow_collector(self, netflow_collector):
+        """
+        Remove a netflow collector from this log server.
+
+        :param NetflowCollector netflow_collector: element to remove
+        :return: remove element if it exists and return bool
+        :rtype: bool
+        """
+        _netflow_collector = []
+        changed = False
+        for nf in self.netflow_collector:
+            if nf != netflow_collector:
+                _netflow_collector.append(nf.data)
+            else:
+                changed = True
+
+        if changed:
+            self.data["netflow_collector"] = _netflow_collector
+            self.update()
+
+        return changed
+
+    def pki_certificate_settings(self):
+        """
+        Get the certificate info of this component when working with External PKI.
+
+        :rtype: PkiCertificateSettings
+        """
+        if "external_pki_certificate_settings" in self.data:
+            return PkiCertificateSettings(self)
+        raise UnsupportedEngineFeature(
+            "External PKI certificate settings are only supported when using "
+            "external PKI installation mode."
+        )
+
+    def pki_export_certificate_request(self, filename=None):
+        """
+        Export the certificate request for the component when working with an External PKI.
+        This can return None if the component does not have a certificate request.
+
+        :raises CertificateExportError: error exporting certificate
+        :rtype: str or None
+        """
+        result = self.make_request(
+            CertificateExportError, raw_result=True, resource="pki_export_certificate_request"
+        )
+
+        if filename is not None:
+            save_to_file(filename, result.content)
+            return
+
+        return result.content
+
+    def pki_import_certificate(self, certificate):
+        """
+        Import a valid certificate. Certificate can be either a file path
+        or a string of the certificate. If string certificate, it must include
+        the -----BEGIN CERTIFICATE----- string.
+
+        :param str certificate: fully qualified path or string
+        :raises CertificateImportError: failure to import cert with reason
+        :raises IOError: file not found, permissions, etc.
+        :return: None
+        """
+        self.make_request(
+            CertificateImportError,
+            method="create",
+            resource="pki_import_certificate",
+            headers={"content-type": "multipart/form-data"},
+            files={
+                # decode certificate or use it as it is
+                "signed_certificate": open(certificate, "rb")
+                if not pem_as_string(certificate)
+                else certificate
+            },
+        )
+
+    def pki_renew_certificate(self):
+        """
+        Start renewal process on component when using external PKI mode.
+        It generates new private key and prepare a new certificate request.
+        """
+        self.make_request(
+            CertificateError,
+            method="update",
+            resource="pki_start_certificate_renewal",
+        )
+
+    def pki_certificate_info(self):
+        """
+        Get the certificate info of this component when working with External PKI.
+        This can return None if the component does not directly have a certificate.
+
+        :rtype: PkiCertificateInfo
+        """
+        result = self.make_request(
+            CertificateError, resource="pki_certificate_info"
+        )
+        return PkiCertificateInfo(result)
+
+    def pki_delete_certificate_request(self):
+        """
+        Delete the certificate request if any is defined for this component.
+        """
+        self.make_request(method="delete",
+                          resource="pki_delete_certificate_request")
+
+    @property
+    def uiid(self):
+        """
+        Installation ID (aka UUID).
+        :rtype: str
+        """
+        return self.data.get("uiid")
+
+    @property
+    def external_pki_certificate_settings(self):
+        """
+        Get the certificate info of this component when working with External PKI.
+        :rtype: PkiCertificateSettings
+        """
+        return PkiCertificateSettings(self)
+
+    @property
+    def announcement_message(self):
+        return self.data.get("announcement_message")
+
+
+class ManagementServer(ContactAddressMixin, Element, ManagementLogServerMixin):
     """
     Management Server configuration. Most configuration settings are better set
     through the SMC, such as HA, however this object can be used to do simple
@@ -211,13 +665,352 @@ class ManagementServer(ContactAddressMixin, Element):
 
         >>> ManagementServer.objects.first()
         ManagementServer(name=Management Server)
-
-    :ivar name: name of management server
-    :ivar address: address of Management Server
-
     """
 
     typeof = "mgt_server"
+
+    @classmethod
+    def create(
+            cls,
+            name,
+            address=None,
+            ipv6_address=None,
+            alert_server=None,
+            location_ref=None,
+            web_app=None,
+            announcement_enabled=False,
+            announcement_message=None,
+            external_pki_certificate_settings=None,
+            uiid=None,
+            tools_profile_ref=None,
+            secondary=None,
+            updates_check_enabled=False,
+            license_update_enabled=False,
+            updates_proxy_enabled=False,
+            updates_proxy_address=None,
+            updates_proxy_port=82,
+            updates_proxy_authentication_enabled=False,
+            updates_proxy_username=None,
+            updates_proxy_password=None,
+            db_replication=False,
+            tls_profile=None,
+            tls_credentials=None,
+            es_tls_settings=None,
+            forwarding_tls_settings=None,
+            netflow_collector=None,
+            mgt_integration_container=None,
+            smtp_server_ref=None,
+            sender_address=None,
+            sender_name=None,
+            snmp_gateways=None,
+            script_path=None,
+            sms_http_channel=None,
+            sms_smtp_channel=None,
+            sms_script_channel=None,
+            radius_method="eap-md5",
+            tacacs_method="mschap",
+            comment=None
+    ):
+        """
+        This represents a Management Server. A system component that stores all information about
+        the configurations of all NGFW Engines,and other components in the Stonesoft Management
+        Center, monitors their state, and provides access for Management Clients when administrators
+        want to change the configurations or command the engines. The most important component in
+        the system.
+        :param str name: Name of the Management Server.
+        :param str address: Single valid IPv4 address. Required.
+        :param str ipv6_address: IPv6 address.
+        :param LogServer alert_server: Specify the Log Server to which you want the Management
+            Server to send its logs. Required.
+        :param Location location_ref: Location of the server.
+        :param list(WebApp) web_app: Mgt Server can be configured to define several Web Applications
+            like webclient, webswing.
+        :param bool announcement_enabled: Is announcement enabled for Mgt Server:Announcements
+            in the Mgt Server element are shown for all users that connect to that Mgt Server.
+            Not Required.
+        :param str announcement_message: The announcement message for Mgt Server.
+        :param PkiCertificateSettings external_pki_certificate_settings: Certificate Settings for
+            External PKI mode.
+        :param str uiid: Mgt Server Installation ID (aka UUID).
+        :param tools_profile tools_profile_ref: Allows you to add commands to the element’s
+            right-click menu.
+        :param list(str) secondary: If the device has additional IP addresses, you can enter them
+            here instead of creating additional elements for the other IP addresses. The secondary
+            IP addresses are valid in policies and in routing and antispoofing. You can add several
+            IPv4 and IPv6 addresses (one by one)
+        :param bool updates_check_enabled: Are you notified of new dynamic updates?
+        :param bool license_update_enabled: Select Generate and Install New Licenses Automatically
+            to automatically regenerate and install the licenses required for upgrading system
+            components to a major new release.
+        :param bool updates_proxy_enabled: If the connection from the Management Server to the
+            Internet servers requires a proxy server, select Use Proxy Server for HTTPS Connection.
+        :param updates_proxy_address: If the connection from the Management Server to the Internet
+            servers requires a proxy server, select an FQDN as proxy address.
+        :param int updates_proxy_port: If the connection from the Management Server to the Internet
+            servers requires a proxy server, select a port as proxy port.
+        :param bool updates_proxy_authentication_enabled: If the connection from the Management
+            Server to the Internet servers requires a proxy server with authentication.
+        :param str updates_proxy_username: If the connection from the Management Server to the
+            Internet servers requires a proxy server with authentication, select an users's name.
+        :param str updates_proxy_password: If the connection from the Management Server to the
+            Internet servers requires a proxy server with authentication, select an users's password
+        :param bool db_replication: Disable automatic database replication.
+        :param TLSProfile tls_profile: Select the TLS Profile to be used for admin login with Client
+            Certificate authentication.
+        :param TLSServerCredential tls_credentials: Select the Credentials to be used for admin
+            login with Client Certificate authentication.
+        :param TlsSettings es_tls_settings: Elasticsearch TLS Settings. Not null when we decide to
+            override the ES Tls Settings in the Log Server or Management Server.
+        :param TlsSettings forwarding_tls_settings: Log Forwarding TLS Settings. Should be NULL if
+            no Log Forwarding has been defined for this Log Server. Not required
+        :param list(NetflowCollector) netflow_collector: Log Servers can be configured to forward
+            log data to external hosts. You can define which type of log data you want to forward
+            and in which format. You can also use Filters to specify in detail which log data is
+            forwarded.
+        :param list mgt_integration_container: Mgt Server can be configured to define several
+            Management Integration instances.
+        :param SmtpServer smtp_server_ref: The SMTP Server used for sending emails.
+        :param str sender_address: The sender email address.
+        :param str sender_name: The sender name.
+        :param str snmp_gateways: The SNMP gateway.
+        :param str script_path: The custom alert script path.
+        :param list sms_http_channel: The SMS HTTP channels.
+        :param list sms_smtp_channel: The SMS SMTP channels.
+        :param list sms_script_channel: The SMS Script channels.
+        :param str radius_method: Radius Method used in authentication when using Radius Server for
+            authenticating administrators. One of the following values:
+            "pap","chap", "mschap", "mschap2", "eap-md5" Default is eap-md5.
+        :param str tacacs_method:Tacacs Method used in authentication when using Tacas Server for
+            authenticating administrators.One of the following values: "ascii","pap","chap","mschap"
+            Default is mschap.
+        :param str comment: optional comment.
+        """
+
+        web_app = web_app if web_app else []
+        netflow_collector = netflow_collector if netflow_collector else []
+        json = {
+            "name": name,
+            "address": address,
+            "ipv6_address": ipv6_address,
+            "alert_server_ref": element_resolver(alert_server),
+            "location_ref": element_resolver(location_ref),
+            "secondary": secondary if secondary else [],
+            "uiid": uiid,
+            "tools_profile_ref": element_resolver(tools_profile_ref),
+            "web_app": [app.data for app in web_app],
+            "updates_check_enabled": updates_check_enabled,
+            "license_update_enabled": license_update_enabled,
+            "updates_proxy_enabled": updates_proxy_enabled,
+            "updates_proxy_address": updates_proxy_address,
+            "updates_proxy_port": updates_proxy_port,
+            "updates_proxy_authentication_enabled": updates_proxy_authentication_enabled,
+            "updates_proxy_username": updates_proxy_username,
+            "updates_proxy_password": updates_proxy_password,
+            "db_replication": db_replication,
+            "tls_profile": element_resolver(tls_profile),
+            "tls_credentials": element_resolver(tls_credentials),
+            "netflow_collector": [netflow.data for netflow in netflow_collector],
+            "mgt_integration_container": mgt_integration_container,
+            "smtp_server_ref": element_resolver(smtp_server_ref),
+            "sender_address": sender_address,
+            "sender_name": sender_name,
+            "snmp_gateways": snmp_gateways,
+            "script_path": script_path,
+            "sms_http_channel": sms_http_channel if sms_http_channel else [],
+            "sms_smtp_channel": sms_smtp_channel if sms_smtp_channel else [],
+            "sms_script_channel": sms_script_channel if sms_script_channel else [],
+            "radius_method": radius_method,
+            "tacacs_method": tacacs_method,
+            "announcement_enabled": announcement_enabled,
+            "announcement_message": announcement_message,
+            "comment": comment
+        }
+        if es_tls_settings:
+            json.update(es_tls_settings=es_tls_settings)
+        if forwarding_tls_settings:
+            json.update(forwarding_tls_settings=forwarding_tls_settings)
+        if external_pki_certificate_settings:
+            json.update(external_pki_certificate_settings=external_pki_certificate_settings.data)
+        return ElementCreator(cls, json)
+
+    @property
+    def alert_server_ref(self):
+        """
+        Specify the Log Server to which you want the Mgt Server to send its logs
+        :rtype: LogServer
+        """
+        return Element.from_href(self.data.get("alert_server_ref"))
+
+    @property
+    def web_app(self):
+        """
+        Represents a Web Application parameter.
+        :rtype: list(WebApp):
+        """
+        return [WebApp(data) for data in self.data.get("web_app")]
+
+    @property
+    def updates_check_enabled(self):
+        """
+        Are you notified of new dynamic updates?
+        :rtype: bool
+        """
+        return self.data.get("updates_check_enabled")
+
+    @property
+    def license_update_enabled(self):
+        """
+        Select Generate and Install New Licenses Automatically to automatically regenerate and
+            install the licenses required for upgrading system components to a major new release.
+        :rtype: bool
+        """
+        return self.data.get("license_update_enabled")
+
+    @property
+    def updates_proxy_enabled(self):
+        """
+        If the connection from the Management Server to the Internet servers requires a proxy server
+            , select Use Proxy Server for HTTPS Connection.
+        :rtype: bool
+        """
+        return self.data.get("updates_proxy_enabled")
+
+    @property
+    def updates_proxy_address(self):
+        """
+        FQDN as proxy address
+        :rtype: str
+        """
+        return self.data.get("updates_proxy_address")
+
+    @property
+    def updates_proxy_port(self):
+        """
+        Proxy server port.
+        :rtype: int
+        """
+        return self.data.get("updates_proxy_port")
+
+    @property
+    def updates_proxy_authentication_enabled(self):
+        """
+        If the connection from the Management Server to the Internet servers requires a proxy server
+            with authentication.
+        :rtype: bool
+        """
+        return self.data.get("updates_proxy_authentication_enabled")
+
+    @property
+    def updates_proxy_username(self):
+        """
+        Proxy server authentication username.
+        :rtype: str
+        """
+        return self.data.get("updates_proxy_username")
+
+    @property
+    def updates_proxy_password(self):
+        """
+        Proxy server authentication password.
+        :rtype: str
+        """
+        return self.data.get("updates_proxy_password")
+
+    @property
+    def db_replication(self):
+        """
+        Disable automatic database replication?
+        :rtype: bool
+        """
+        return self.data.get("db_replication")
+
+    @property
+    def tls_profile(self):
+        """
+        TLS Profile to be used for admin login with Client Certificate authentication.
+        :rtype: TLSProfile.
+        """
+        return Element.from_href(self.data.get("tls_profile"))
+
+    @property
+    def tls_credentials(self):
+        """
+        Credentials to be used for admin login with Client Certificate authentication.
+        :rtype: TLSServerCredential
+        """
+        return Element.from_href(self.data.get("tls_credentials"))
+
+    @property
+    def mgt_integration_container(self):
+        """
+        Several Management Integration instances.
+        :rtype: list
+        """
+        return self.data.get("mgt_integration_container")
+
+    @property
+    def smtp_server_ref(self):
+        """
+        The SMTP Server used for sending emails.
+        :rtype: SmtpServer
+        """
+        return Element.from_href(self.data.get("smtp_server_ref"))
+
+    @property
+    def sender_address(self):
+        """
+        The sender email address.
+        :rtype: str
+        """
+        return self.data.get("sender_address")
+
+    @property
+    def sender_name(self):
+        """
+        The sender name.
+        :rtype: str
+        """
+        return self.data.get("sender_name")
+
+    @property
+    def snmp_gateways(self):
+        """
+        The SNMP gateway.
+        :rtype: str
+        """
+        return self.data.get("snmp_gateways")
+
+    @property
+    def script_path(self):
+        """
+        The custom alert script path.
+        :rtype: str
+        """
+        return self.data.get("script_path")
+
+    @property
+    def sms_http_channel(self):
+        """
+        The SMS HTTP channels.
+        :rtype: list
+        """
+        return self.data.get("sms_http_channel")
+
+    @property
+    def sms_smtp_channel(self):
+        """
+        The SMS SMTP channels.
+        :rtype: list
+        """
+        return self.data.get("sms_smtp_channel")
+
+    @property
+    def sms_script_channel(self):
+        """
+        The SMS Script channels.
+        :rtype: list
+        """
+        return self.data.get("sms_script_channel")
 
     def restart_web_access(self):
         """
@@ -397,7 +1190,7 @@ class DataContext(Element):
         return self.data.get("info_data_tag")
 
 
-class LogServer(ContactAddressMixin, Element):
+class LogServer(ContactAddressMixin, Element, ManagementLogServerMixin):
     """
     Log Server elements are used to receive log data from the security engines
     Most settings on Log Server generally do not need to be changed, however it
@@ -411,138 +1204,6 @@ class LogServer(ContactAddressMixin, Element):
     """
 
     typeof = "log_server"
-
-    @property
-    def netflow_collector(self):
-        """
-        A collection of NetflowCollector
-
-        :rtype: list(NetflowCollector)DomainController
-        """
-        return [NetflowCollector(**nc) for nc in self.data.get("netflow_collector", [])]
-
-    def add_netflow_collector(self, netflow_collectors):
-        """
-        Add netflow collector/s to this log server.
-
-        :param netflow_collectors: netflow_collector/s to add to log server
-        :type netflow_collectors: list(netflow_collectors)
-        :raises UpdateElementFailed: failed updating log server
-        :return: None
-        """
-        if "netflow_collector" not in self.data:
-            self.data["netflow_collector"] = {"netflow_collector": []}
-
-        for p in netflow_collectors:
-            self.data["netflow_collector"].append(p.data)
-        self.update()
-
-    def remove_netflow_collector(self, netflow_collector):
-        """
-        Remove a netflow collector from this log server.
-
-        :param NetflowCollector netflow_collector: element to remove
-        :return: remove element if it exists and return bool
-        :rtype: bool
-        """
-        _netflow_collector = []
-        changed = False
-        for nf in self.netflow_collector:
-            if nf != netflow_collector:
-                _netflow_collector.append(nf.data)
-            else:
-                changed = True
-
-        if changed:
-            self.data["netflow_collector"] = _netflow_collector
-            self.update()
-
-        return changed
-
-    def pki_certificate_settings(self):
-        """
-        Get the certificate info of this component when working with External PKI.
-
-        :rtype: PkiCertificateSettings
-        """
-        if "external_pki_certificate_settings" in self.data:
-            return PkiCertificateSettings(self)
-        raise UnsupportedEngineFeature(
-            "External PKI certificate settings are only supported when using "
-            "external PKI installation mode."
-        )
-
-    def pki_export_certificate_request(self, filename=None):
-        """
-        Export the certificate request for the component when working with an External PKI.
-        This can return None if the component does not have a certificate request.
-
-        :raises CertificateExportError: error exporting certificate
-        :rtype: str or None
-        """
-        result = self.make_request(
-            CertificateExportError, raw_result=True, resource="pki_export_certificate_request"
-        )
-
-        if filename is not None:
-            save_to_file(filename, result.content)
-            return
-
-        return result.content
-
-    def pki_import_certificate(self, certificate):
-        """
-        Import a valid certificate. Certificate can be either a file path
-        or a string of the certificate. If string certificate, it must include
-        the -----BEGIN CERTIFICATE----- string.
-
-        :param str certificate: fully qualified path or string
-        :raises CertificateImportError: failure to import cert with reason
-        :raises IOError: file not found, permissions, etc.
-        :return: None
-        """
-        self.make_request(
-            CertificateImportError,
-            method="create",
-            resource="pki_import_certificate",
-            headers={"content-type": "multipart/form-data"},
-            files={
-                # decode certificate or use it as it is
-                "signed_certificate": open(certificate, "rb")
-                if not pem_as_string(certificate)
-                else certificate
-            },
-        )
-
-    def pki_renew_certificate(self):
-        """
-        Start renewal process on component when using external PKI mode.
-        It generates new private key and prepare a new certificate request.
-        """
-        self.make_request(
-            CertificateError,
-            method="update",
-            resource="pki_start_certificate_renewal",
-        )
-
-    def pki_certificate_info(self):
-        """
-        Get the certificate info of this component when working with External PKI.
-        This can return None if the component does not directly have a certificate.
-
-        :rtype: PkiCertificateInfo
-        """
-        result = self.make_request(
-            CertificateError, resource="pki_certificate_info"
-        )
-        return PkiCertificateInfo(result)
-
-    def pki_delete_certificate_request(self):
-        """
-        Delete the certificate request if any is defined for this component.
-        """
-        self.make_request(method="delete",
-                          resource="pki_delete_certificate_request")
 
 
 class HttpProxy(Element):
@@ -672,7 +1333,7 @@ class DHCPServer(Element):
         return ElementCreator(cls, json)
 
 
-class ProxyServer(ContactAddressMixin, Element):
+class ProxyServer(ContactAddressMixin, Element, MultiContactServer):
     """
     A ProxyServer element is used in the firewall policy to provide the ability to
     send HTTP, HTTPS, FTP or SMTP traffic to a next hop proxy.
@@ -698,22 +1359,24 @@ class ProxyServer(ContactAddressMixin, Element):
     """
 
     typeof = "proxy_server"
-    location = ElementRef("location_ref")
 
     @classmethod
     def create(
-        cls,
-        name,
-        address,
-        inspected_service,
-        secondary=None,
-        balancing_mode="ha",
-        proxy_service="generic",
-        location=None,
-        comment=None,
-        add_x_forwarded_for=False,
-        trust_host_header=False,
-        **kw
+            cls,
+            name,
+            address,
+            secondary=None,
+            ipv6_address=None,
+            balancing_mode="ha",
+            proxy_service="generic",
+            location=None,
+            add_x_forwarded_for=False,
+            trust_host_header=False,
+            inspected_service=None,
+            third_party_monitoring=None,
+            tools_profile_ref=None,
+            comment=None,
+            **kw
     ):
         """
         Create a Proxy Server element
@@ -721,12 +1384,13 @@ class ProxyServer(ContactAddressMixin, Element):
         :param str name: name of proxy server element
         :param str address: address of element. Can be a single FQDN or comma separated
             list of IP addresses
-        :param list secondary: list of secondary IP addresses
+        :param list secondary: List of secondary IP addresses
+        :param str ipv6_address: Single valid IPv6 address.
         :param str balancing_mode: how to balance traffic, valid options are
             ha (first available server), src, dst, srcdst (default: ha)
         :param str proxy_service: which proxy service to use for next hop, options
             are generic or forcepoint_ap-web_cloud
-        :param str,Element location: location for this proxy server
+        :param Location location: location for this proxy server
         :param bool add_x_forwarded_for: add X-Forwarded-For header when using the
             Generic Proxy forwarding method (default: False)
         :param bool trust_host_header: trust the host header when using the Generic
@@ -734,6 +1398,10 @@ class ProxyServer(ContactAddressMixin, Element):
         :param dict inspected_service: inspection services dict. Valid keys are
             service_type and port. Service type valid values are HTTP, HTTPS, FTP or SMTP
             and are case sensitive
+        :param ThirdPartyMonitoring third_party_monitoring: The optional Third Party Monitoring
+            configuration.
+        :param DeviceToolsProfile tools_profile_ref: Allows you to add commands to the element’s
+            right-click menu. Not Required.
         :param str comment: optional comment
         :param kw: keyword arguments are used to collect settings when the proxy_service
             value is forcepoint_ap-web_cloud. Valid keys are `fp_proxy_key`,
@@ -742,14 +1410,16 @@ class ProxyServer(ContactAddressMixin, Element):
         """
         json = {
             "name": name,
-            "comment": comment,
             "secondary": secondary or [],
-            "http_proxy": proxy_service,
             "balancing_mode": balancing_mode,
+            "http_proxy": proxy_service,
+            "ipv6_address": ipv6_address,
             "inspected_service": inspected_service,
             "trust_host_header": trust_host_header,
             "add_x_forwarded_for": add_x_forwarded_for,
             "location_ref": element_resolver(location),
+            "tools_profile_ref": element_resolver(tools_profile_ref),
+            "comment": comment
         }
         addresses = address.split(",")
         json.update(address=addresses.pop(0))
@@ -764,6 +1434,9 @@ class ProxyServer(ContactAddressMixin, Element):
                     )
                 json[key] = kw.get(key)
 
+        if third_party_monitoring:
+            json.update(third_party_monitoring=third_party_monitoring.data)
+
         return ElementCreator(cls, json)
 
     @property
@@ -774,6 +1447,65 @@ class ProxyServer(ContactAddressMixin, Element):
         :rtype: str
         """
         return self.data.get("http_proxy")
+
+    @property
+    def ip_address(self):
+        """
+        List of IP Addresses to be used in addition to the 'address' field to allow using multiple
+            IP Addresses for the element.
+
+        :rtype: list(str)
+        """
+        return self.data.get("ip_address")
+
+    @property
+    def balancing_mode(self):
+        """
+        How to balance traffic, valid options are ha (first available server), src, dst, srcdst
+            (default: ha)
+        :rtype: str
+        """
+        return self.data.get("balancing_mode")
+
+    @property
+    def trust_host_header(self):
+        """
+        Trust the host header when using the Generic Proxy forwarding method (default: False)
+        :rtype: bool
+        """
+        return self.data.get("trust_host_header")
+
+    @property
+    def add_x_forwarded_for(self):
+        """
+        Add X-Forwarded-For header when using the Generic Proxy forwarding method (default: False)
+        :rtype: bool
+        """
+        return self.data.get("add_x_forwarded_for")
+
+    @property
+    def fp_proxy_key(self):
+        """
+        Password of Customer ID used in HTTP/HTTPS properties.
+        :rtype: str
+        """
+        return self.data.get("fp_proxy_key", None)
+
+    @property
+    def fp_proxy_key_id(self):
+        """
+        Key ID in case of Web-Gateway choice
+        :rtype: int
+        """
+        return self.data.get("fp_proxy_key_id", None)
+
+    @property
+    def fp_proxy_user_id(self):
+        """
+        Customer ID used in HTTP/HTTPS properties.
+        :rtype: str
+        """
+        return self.data.get("fp_proxy_user_id", None)
 
     @classmethod
     def update_or_create(cls, with_status=False, **kwargs):
@@ -1022,3 +1754,562 @@ class NTPServer(Element):
             "ntp_auth_key": ntp_auth_key,
         }
         return ElementCreator(cls, ntp_server_json)
+
+
+class AuthenticationServerMixin(Element, MultiContactServer):
+    """
+    This mixin class provide interface to a TACACS+/RADIUS Authentication Server.
+    """
+
+    @classmethod
+    def create(
+            cls,
+            name,
+            address=None,
+            ipv6_address=None,
+            clear_text=False,
+            location_ref=None,
+            provided_method=None,
+            retries=2,
+            timeout=10,
+            secondary=None,
+            shared_secret=None,
+            port=49,
+            third_party_monitoring=None,
+            tools_profile_ref=None,
+            comment=None
+    ):
+        """
+        :param str name: Name of the TacacsServer/RadiusServer.
+        :param str address: Single valid IPv4 address. Required.
+        :param str ipv6_address: Single valid IPv6 address
+        :param bool clear_text: Select Accepted by Firewall if you want the Firewall to accept
+            unencrypted replies from the TACACS+ authentication server. Not Required.
+        :param Location location_ref: The location of TacacsServer/RadiusServer.
+        :param list(AuthenticationMethod) provided_method: Specify provided Authentication methods.
+            Not Required.
+        :param int retries: Specify the number of times Firewalls try to connect to the RADIUS or
+            TACACS+ authentication server if the connection fails. Required.
+        :param int timeout: Specify the time (in seconds) that Firewalls wait for the RADIUS or
+            TACACS+ authentication server to reply. Not Required.
+        :param list(str) secondary: If the device has additional IP addresses, you can enter them
+            here instead of creating additional elements for the other IP addresses. The secondary
+            IP addresses are valid in policies and in routing and antispoofing. You can add several
+            IPv4 and IPv6 addresses (one by one)
+        :param str shared_secret: Specify the Shared Secret that you have defined for RADIUS clients
+            on the Active Directory server.
+        :param int port: Specify the port number if the server communicates on a port other than the
+            default port. The predefined Firewall Template allows the engines to connect to the
+            default port. If you change to a custom port, you must add a new IPv4 Access Rule to
+            allow the traffic. Not Required.
+        :param ThirdPartyMonitoring third_party_monitoring: The optional Third Party Monitoring
+            configuration.
+        :param tools_profile tools_profile_ref: Allows you to add commands to the element’s
+            right-click menu. Not Required.
+        :param str comment: optional comment.
+        """
+
+        json = {
+            "name": name,
+            "address": address,
+            "ipv6_address": ipv6_address,
+            "location_ref": element_resolver(location_ref),
+            "retries": retries,
+            "timeout": timeout,
+            "secondary": secondary,
+            "shared_secret": shared_secret,
+            "port": port,
+            "tools_profile_ref": element_resolver(tools_profile_ref),
+            "comment": comment
+        }
+        if cls.typeof == "tacacs_server":
+            json.update(clear_text=clear_text)
+
+        if third_party_monitoring:
+            json.update(third_party_monitoring=third_party_monitoring.data)
+        provided_method = provided_method if provided_method else []
+        json.update(provided_method=[element_resolver(method) for method in provided_method])
+
+        return ElementCreator(cls, json)
+
+    @property
+    def provided_method(self):
+        """
+        Provided Authentication methods.
+        :rtype list(AuthenticationMethod)
+        """
+        return [Element.from_href(method) for method in self.data.get("provided_method")]
+
+    @property
+    def timeout(self):
+        """
+         Specify the time (in seconds) that Firewalls wait for the TACACS+/RADIUS authentication
+            server to reply
+         :rtype Time out value
+        """
+        return self.data.get("timeout")
+
+    @property
+    def shared_secret(self):
+        """
+        Shared secrete text
+        :rtype str
+        """
+        return self.data.get("shared_secret")
+
+    @property
+    def port(self):
+        """
+        Specify the port number if the server communicates on a port other than the default port.
+        :rtype int
+        """
+        return self.data.get("port")
+
+
+class WebPortalServer(Element, MultiContactServer):
+    """
+    This represents a Web Portal Server. A component of the Management Center responsible for
+    browsing logs, Policy Snapshots and reports from a Web Browser.
+    """
+    typeof = "web_portal_server"
+
+    @classmethod
+    def create(
+            cls,
+            name,
+            address=None,
+            ipv6_address=None,
+            alert_server=None,
+            location_ref=None,
+            web_app=None,
+            announcement_enabled=False,
+            announcement_message=None,
+            external_pki_certificate_settings=None,
+            uiid=None,
+            tools_profile_ref=None,
+            secondary=None,
+            comment=None
+    ):
+        """
+        This represents a Web Portal Server. A component of the Management Center responsible for
+            browsing logs, Policy Snapshots and reports from a Web Browser.
+        :param str name: Name of the Web Portal Server.
+        :param str address: Single valid IPv4 address. Required.
+        :param str ipv6_address: IPv6 address.
+        :param LogServer alert_server: Specify the Log Server to which you want the Web Portal
+            Server to send its logs. Required.
+        :param Location location_ref: Location of the server.
+        :param list(WebApp) web_app: Web Portal Server can be configured to define several Web
+        Application like webclient, webswing.
+        :param bool announcement_enabled: Is announcement enabled for WebPortal Server:Announcements
+            in the Web Portal Server element are shown for all users that connect to that Web Portal
+            Server.Not Required.
+        :param str announcement_message: The announcement message for WebPortal users.
+        :param PkiCertificateSettings external_pki_certificate_settings: Certificate Settings for
+            External PKI mode.
+        :param str uiid: Web Portal Server Installation ID (aka UUID).
+        :param tools_profile tools_profile_ref: Allows you to add commands to the element’s
+            right-click menu.
+        :param list(str) secondary: If the device has additional IP addresses, you can enter them
+            here instead of creating additional elements for the other IP addresses. The secondary
+            IP addresses are valid in policies and in routing and antispoofing. You can add several
+            IPv4 and IPv6 addresses (one by one)
+        :param str comment: optional comment.
+        """
+
+        web_app = web_app if web_app else []
+        json = {
+            "name": name,
+            "address": address,
+            "ipv6_address": ipv6_address,
+            "alert_server": element_resolver(alert_server),
+            "location_ref": element_resolver(location_ref),
+            "secondary": secondary if secondary else [],
+            "external_pki_certificate_settings": external_pki_certificate_settings,
+            "uiid": uiid,
+            "tools_profile_ref": tools_profile_ref,
+            "web_app": [app.data for app in web_app],
+            "comment": comment
+        }
+        if is_smc_version_less_than("7.1"):
+            json.update(announcement_enabled=announcement_enabled,
+                        announcement_message=announcement_message)
+        return ElementCreator(cls, json)
+
+    @property
+    def web_app(self):
+        """
+        Represents a Web Application parameter.
+        :rtype list(WebApp):
+        """
+        return [WebApp(data) for data in self.data.get("web_app")]
+
+    @property
+    def alert_server(self):
+        """
+        Specify the Log Server to which you want the Web Portal Server to send its logs
+        rtype LogServer
+        """
+        return Element.from_href(self.data.get("alert_server"))
+
+    @property
+    def uiid(self):
+        return self.data.get("uiid")
+
+    @property
+    def external_pki_certificate_settings(self):
+        """
+        Certificate Settings for External PKI mode.
+        return PkiCertificateSettings
+        """
+        return PkiCertificateSettings(self)
+
+    @property
+    def announcement_message(self):
+        return self.data.get("announcement_message")
+
+
+class TacacsServer(AuthenticationServerMixin, ContactAddressMixin):
+    """
+    This represents a TACACS Server.An external authentication server can be any server that
+    supports either the RADIUS or the TACACS+ protocol, including Microsoft Active Directory servers
+    External authentication servers are integrated with the help of Active Directory Server, RADIUS
+    Authentication Server, TACACS+ Authentication Server, and Authentication Method elements. The
+    RADIUS Authentication Server and TACACS+ Authentication Server elements define the settings
+    necessary for connecting to an external authentication server. The Authentication Method
+    elements define an authentication method, and can include several RADIUS Authentication Servers
+    or TACACS+ Authentication Servers that support the method and can be used as backups to each
+    other.
+    """
+    typeof = "tacacs_server"
+
+    @property
+    def clear_text(self):
+        """
+        Select Accepted by Firewall if you want the Firewall to accept unencrypted replies from the
+            TACACS+ authentication server.
+        :rtype bool
+        """
+        return self.data.get("clear_text")
+
+
+class RadiusServer(AuthenticationServerMixin, ContactAddressMixin):
+    """
+    This represents a RADIUS Server. It is an Authentication server using RADIUS authentication
+    method. It can be used as authentication method for Administrators. An external authentication
+    server can be any server that supports either the RADIUS or the TACACS+ protocol, including
+    Microsoft Active Directory servers. External authentication servers are integrated with the help
+    of Active Directory Server, RADIUS Authentication Server, TACACS+ Authentication Server, and
+    Authentication Method elements. The RADIUS Authentication Server Server elements define the
+    settings necessary for connecting to an external authentication server. The Authentication
+    Method elements define an authentication method, and can include several RADIUS Authentication
+    Servers or TACACS+ Authentication Servers that support the method and can be used as backups
+    to each other.
+    """
+    typeof = "radius_server"
+
+
+class IcapServer(Element, MultiContactServer):
+    """
+    This represents an ICAP server: A Network Element that represents an ICAP instance of server.
+    """
+    typeof = "icap"
+
+    @classmethod
+    def create(
+            cls,
+            name,
+            address=None,
+            ipv6_address=None,
+            icap_include_xhdrs=False,
+            icap_path=None,
+            icap_port=1344,
+            icap_secure=False,
+            icap_xhdr_clientip=None,
+            icap_xhdr_serverip=None,
+            icap_xhdr_username=None,
+            tls_profile_ref=None,
+            location_ref=None,
+            secondary=None,
+            third_party_monitoring=None,
+            tools_profile_ref=None,
+            comment=None
+    ):
+        """
+        :param str name: Name of the IcapServer.
+        :param str address: Single valid IPv4 address. Required.
+        :param str ipv6_address: Single valid IPv6 address.
+        :param bool icap_include_xhdrs:Include X-Headers or not.
+        :param str icap_path: The path to the service. Not Required. Defaults to "reqmod".
+        :param int icap_port: The port on which the ICAP server is listening.Defaults to 1344, or
+            11344 for Secure
+        :param bool icap_secure: Secure ICAP Enabled. Not Required.
+        :param str icap_xhdr_clientip: X-Header Client IP. Not Required. Defaults to "X-Client-IP"
+        :param str icap_xhdr_serverip: X-Header Server IP. Not Required. Defaults to "X-Server-IP"
+        :param str icap_xhdr_username: X-Header Username. Not Required. Defaults to
+            "X-Authenticated-User"
+        :param TLSProfile tls_profile_ref: Represents a TLS Profile Contains common parameters for
+            establishing TLS based connections.
+        :param Location location_ref: The location of TacacsServer/RadiusServer.
+        :param list(str) secondary: If the device has additional IP addresses, you can enter them
+            here instead of creating additional elements for the other IP addresses. The secondary
+            IP addresses are valid in policies and in routing and antispoofing. You can add several
+            IPv4 and IPv6 addresses (one by one)
+        :param ThirdPartyMonitoring third_party_monitoring: The optional Third Party Monitoring
+            configuration.
+        :param DeviceToolsProfile tools_profile_ref: Allows you to add commands to the element’s
+            right-click menu. Not Required.
+        :param str comment: optional comment.
+        """
+
+        json = {
+            "name": name,
+            "address": address,
+            "ipv6_address": ipv6_address,
+            "location_ref": element_resolver(location_ref),
+            "tools_profile_ref": element_resolver(tools_profile_ref),
+            "icap_include_xhdrs": icap_include_xhdrs,
+            "icap_path": icap_path,
+            "icap_port": icap_port,
+            "icap_secure": icap_secure,
+            "icap_xhdr_clientip": icap_xhdr_clientip,
+            "icap_xhdr_serverip": icap_xhdr_serverip,
+            "icap_xhdr_username": icap_xhdr_username,
+            "tls_profile_ref": element_resolver(tls_profile_ref),
+            "secondary": secondary,
+            "comment": comment
+        }
+
+        if third_party_monitoring:
+            json.update(third_party_monitoring=third_party_monitoring.data)
+        return ElementCreator(cls, json)
+
+    @property
+    def icap_port(self):
+        """
+        The port on which the ICAP server is listening.
+        :rtype int
+        """
+        return self.data.get("icap_port")
+
+    @property
+    def icap_include_xhdrs(self):
+        """
+        Include X-Headers or not.
+        :rtype bool
+        """
+        return self.data.get("icap_include_xhdrs")
+
+    @property
+    def icap_path(self):
+        """
+        The path to the service. Not Required. Defaults to "reqmod".
+        """
+        return self.data.get("icap_path")
+
+    @property
+    def icap_secure(self):
+        """
+        Secure ICAP Enabled.
+        :rtype bool
+        """
+        return self.data.get("icap_secure")
+
+    @property
+    def icap_xhdr_clientip(self):
+        """
+        X-Header Client IP.
+        :rtype str
+        """
+        return self.data.get("icap_xhdr_clientip")
+
+    @property
+    def icap_xhdr_serverip(self):
+        """
+        X-Header Server IP.
+        :rtype str
+        """
+        return self.data.get("icap_xhdr_serverip")
+
+    @property
+    def icap_xhdr_username(self):
+        """
+        X-Header Username.
+        :rtype str
+        """
+        return self.data.get("icap_xhdr_username")
+
+    @property
+    def tls_profile_ref(self):
+        """
+        Represents a TLS Profile Contains common parameters for establishing TLS based connections.
+        :rtype TLSProfile
+        """
+        return Element.from_href(self.data.get("tls_profile_ref"))
+
+
+class SmtpServer(Element, ContactAddressMixin, MultiContactServer):
+    """
+    This represents a Simple Mail Transfer Protocol (SMTP) server. Server used to process
+        notifications by e-mails.
+    """
+    typeof = "smtp_server"
+
+    @classmethod
+    def create(
+            cls,
+            name,
+            address=None,
+            ipv6_address=None,
+            port=25,
+            email_sender_address=None,
+            email_sender_name=None,
+            location_ref=None,
+            secondary=None,
+            third_party_monitoring=None,
+            tools_profile_ref=None,
+            comment=None
+    ):
+        """
+        This represents a Simple Mail Transfer Protocol (SMTP) server. Server used to process
+        notifications by e-mails.
+        :param str name: Name of the SmtpServer.
+        :param str address: Single valid IPv4 address. Required.
+        :param str ipv6_address: Single valid IPv6 address.
+        :param int port: The port on which the SMTP server is listening. default port 25.Required
+        :param str email_sender_address: E-mail address to be used in the From field of the e-mail.
+            This default value can be overridden in the properties of the element where the SMTP
+            Server is used.Not Required.
+        :param str email_sender_name: Name to be used in the From field of the e-mail. This default
+            value can be overridden in the properties of the element where the SMTP Server is used.
+            Not Required.
+        :param Location location_ref: The location of SmtpServer.
+        :param list(str) secondary: If the device has additional IP addresses, you can enter them
+            here instead of creating additional elements for the other IP addresses. The secondary
+            IP addresses are valid in policies and in routing and antispoofing. You can add several
+            IPv4 and IPv6 addresses (one by one)
+        :param ThirdPartyMonitoring third_party_monitoring: The optional Third Party Monitoring
+            configuration.
+        :param DeviceToolsProfile tools_profile_ref: Allows you to add commands to the element’s
+            right-click menu. Not Required.
+        :param str comment: optional comment.
+        """
+
+        json = {
+            "name": name,
+            "address": address,
+            "ipv6_address": ipv6_address,
+            "location_ref": element_resolver(location_ref),
+            "tools_profile_ref": element_resolver(tools_profile_ref),
+            "port": port,
+            "email_sender_address": email_sender_address,
+            "email_sender_name": email_sender_name,
+            "secondary": secondary,
+            "comment": comment
+        }
+
+        if third_party_monitoring:
+            json.update(third_party_monitoring=third_party_monitoring.data)
+        return ElementCreator(cls, json)
+
+    @property
+    def port(self):
+        """
+        The port on which the SMTP server is listening.
+        :rtype int
+        """
+        return self.data.get("port")
+
+    @property
+    def email_sender_address(self):
+        """
+        E-mail address to be used in the From field of the e-mail.
+        :rtype str
+        """
+        return self.data.get("email_sender_address")
+
+    @property
+    def email_sender_name(self):
+        """
+        Name to be used in the From field of the e-mail.
+        :rtype str
+        """
+        return self.data.get("email_sender_name")
+
+
+class EpoServer(Element, ContactAddressMixin, MultiContactServer):
+    """
+    This represents an ePO server: A Network Element that represents an ePO instance of server.
+    """
+    typeof = "epo"
+
+    @classmethod
+    def create(
+            cls,
+            name,
+            address=None,
+            ipv6_address=None,
+            epo_password=None,
+            epo_login=None,
+            epo_port=8444,
+            location_ref=None,
+            secondary=None,
+            third_party_monitoring=None,
+            tools_profile_ref=None,
+            comment=None
+    ):
+        """
+        This represents an ePO server: A Network Element that represents an ePO instance of server.
+        :param str name: Name of the EpoServer.
+        :param str address: Single valid IPv4 address. Required.
+        :param str ipv6_address: Single valid IPv6 address.
+        :param str epo_password: The ePO password Must be entered in clear. If filled with stars,the
+            field won't be updated. Required.
+        :param str epo_login: The ePO login user name.
+        :param int epo_port: The ePO port.
+        :param Location location_ref: The location of EpoServer.
+        :param list(str) secondary: If the device has additional IP addresses, you can enter them
+            here instead of creating additional elements for the other IP addresses. The secondary
+            IP addresses are valid in policies and in routing and antispoofing. You can add several
+            IPv4 and IPv6 addresses (one by one)
+        :param ThirdPartyMonitoring third_party_monitoring: The optional Third Party Monitoring
+            configuration.
+        :param DeviceToolsProfile tools_profile_ref: Allows you to add commands to the element’s
+            right-click menu. Not Required.
+        :param str comment: optional comment.
+        """
+        if not is_smc_version_less_than_or_equal("7.0"):
+            raise UnsupportedEngineFeature(
+                "EpoServer is not supported in smc version greater than 7.0")
+        json = {
+            "name": name,
+            "address": address,
+            "ipv6_address": ipv6_address,
+            "epo_password": epo_password,
+            "epo_login": epo_login,
+            "location_ref": element_resolver(location_ref),
+            "tools_profile_ref": element_resolver(tools_profile_ref),
+            "epo_port": epo_port,
+            "secondary": secondary,
+            "comment": comment
+        }
+
+        if third_party_monitoring:
+            json.update(third_party_monitoring=third_party_monitoring.data)
+        return ElementCreator(cls, json)
+
+    @property
+    def epo_port(self):
+        """
+        The ePO port.
+        :rtype: int
+        """
+        return self.data.get("epo_port")
+
+    @property
+    def epo_login(self):
+        """
+        The ePO login user name.
+        :rtype: str
+        """
+        return self.data.get("epo_login")

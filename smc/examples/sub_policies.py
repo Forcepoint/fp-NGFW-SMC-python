@@ -99,7 +99,7 @@ if __name__ == "__main__":
         # Create external gateway used by PolicyVpn, its end-point and site
         external_gateway = ExternalGateway.create("remoteside")
         external_gateway.external_endpoint.create(name="remoteendpoint", address="2.2.2.2")
-        network = Network.create(name='remotenet', ipv4_network='172.18.10.0/24')
+        network = Network.create(name='remotenet', ipv4_network='172.18.10.0/24', broadcast=True)
         external_gateway.vpn_site.create("remote-site", [network.href])
 
         fw = Layer3Firewall("Plano")

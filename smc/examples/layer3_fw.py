@@ -56,11 +56,29 @@ try:
     # create Layer3 FW using NTPSettings object
     ntp = NTPSettings.create(ntp_enable=True,
                              ntp_servers=[new_ntp_server])
-
+    interfaces_json = [{'interfaces': [{'nodes': [{'address': '11.11.11.1',
+                                                   'network_value': '11.11.11.1/32',
+                                                   'nodeid': 1}]}],
+                       'interface_id': '1000', 'type': 'tunnel_interface'},
+                       {'interfaces': [], 'interface_id': 'SWP_0',
+                        'appliance_switch_module': '110 appliance (8 fixed ports)',
+                        'type': 'switch_interface',
+                        'port_group_interface': [{'interface_id': 'SWP_0.4',
+                                                 'switch_interface_port': [{
+                                                     'switch_interface_port_comment': 'port 2',
+                                                     'physical_switch_port_number': 2},
+                                                     {'switch_interface_port_comment': '',
+                                                      'physical_switch_port_number': 4},
+                                                     {'switch_interface_port_comment': '',
+                                                      'physical_switch_port_number': 5},
+                                                     {'switch_interface_port_comment': '',
+                                                      'physical_switch_port_number': 6}]}]
+                        }]
     Layer3Firewall.create(name=engine_name,
                           mgmt_ip="192.168.10.1",
                           mgmt_network="192.168.10.0/24",
                           ntp_settings=ntp,
+                          interfaces=interfaces_json,
                           extra_opts={"is_cert_auto_renewal": True, "local_log_storage": {
                               "lls_guaranteed_free_percent": LOG_SETTING1,
                               "lls_guaranteed_free_size_in_mb": LOG_SETTING1,

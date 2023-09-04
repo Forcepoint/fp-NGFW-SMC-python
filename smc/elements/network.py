@@ -12,6 +12,7 @@
 """
 Module representing network elements used within the SMC
 """
+import copy
 
 from smc.base.model import Element, ElementCreator
 from smc.api.exceptions import (
@@ -20,9 +21,10 @@ from smc.api.exceptions import (
     ElementNotFound,
     FetchElementFailed,
 )
+from smc.base.structs import NestedDict
 from smc.base.util import element_resolver
+from smc.compat import is_api_version_less_than, is_smc_version_less_than_or_equal
 from smc.api.common import fetch_entry_point
-from smc.compat import is_smc_version_less_than
 
 
 class Host(Element):
@@ -207,13 +209,19 @@ class Network(Element):
     typeof = "network"
 
     @classmethod
-    def create(cls, name, ipv4_network=None, ipv6_network=None, comment=None):
+    def create(cls, name, ipv4_network=None, ipv6_network=None, broadcast=True, location_ref=None,
+               comment=None):
         """
         Create the network element
 
         :param str name: Name of element
         :param str ipv4_network: network cidr (optional if ipv6)
         :param str ipv6_network: network cidr (optional if ipv4)
+        :param bool broadcast: Includes the broadcast address and the network address in the
+            definition. This option is only used in the Source and Destination cells in rules. In
+            other uses, the broadcast and network addresses are always included in the definition
+            regardless of this option.
+        :param Location location_ref: Location of the network.
         :param str comment: comment (optional)
         :raises CreateElementFailed: element creation failed with reason
         :return: instance with meta
@@ -227,6 +235,8 @@ class Network(Element):
             "name": name,
             "ipv4_network": ipv4_network,
             "ipv6_network": ipv6_network,
+            "broadcast": broadcast,
+            "location_ref": element_resolver(location_ref),
             "comment": comment,
         }
 
@@ -247,18 +257,29 @@ class DomainName(Element):
     typeof = "domain_name"
 
     @classmethod
-    def create(cls, name, comment=None):
+    def create(cls, name, domain_name_entry=None, comment=None):
         """
         Create domain name element
 
         :param str name: name of domain, i.e. example.net, www.example.net
+        :param list(str) domain_name_entry: The additional domain names.
+        :param str comment: Optional comment.
         :raises CreateElementFailed: element creation failed with reason
         :return: instance with meta
         :rtype: DomainName
         """
         json = {"name": name, "comment": comment}
-
+        if not is_smc_version_less_than_or_equal("6.10"):
+            json.update(domain_name_entry=domain_name_entry)
         return ElementCreator(cls, json)
+
+    @property
+    def domain_name_entry(self):
+        """
+        The additional domain names.
+        :rtype: list(str)
+        """
+        return self.data.get("domain_name_entry")
 
 
 class Expression(Element):
@@ -330,6 +351,116 @@ class Expression(Element):
         return ElementCreator(cls, json)
 
 
+class ApplicationPort(NestedDict):
+    """
+    This represents the definition of port for an Application element.
+    """
+    def __init__(
+            self,
+            port_from,
+            port_to,
+            protocol_ref,
+            tls,
+            mode="regular",
+            min_version=None,
+            max_version=None
+    ):
+        dc = dict(
+            port_from=port_from,
+            port_to=port_to,
+            protocol_ref=protocol_ref,
+            tls=tls
+        )
+
+        if not is_api_version_less_than("7.0"):
+            dc.update(mode=mode)
+            dc.update(max_version=max_version)
+            dc.update(min_version=min_version)
+
+        super(ApplicationPort, self).__init__(data=dc)
+        # hack to fix "from" and "to" reserved python keyword
+        self.data["from"] = self.data.pop("port_from")
+        self.data["to"] = self.data.pop("port_to")
+
+    def __str__(self):
+        result = ""
+        result += "port_from = {}; ".format(self.port_from)
+        result += "port_to = {}; ".format(self.port_to)
+        result += "protocol_ref = {}; ".format(self.protocol_ref)
+        result += "tls = {}; ".format(self.tls)
+        result += "mode = {}; ".format(self.mode)
+        result += "min_version = {}; ".format(self.min_version)
+        result += "max_version = {}; ".format(self.max_version)
+        return result
+
+    @property
+    def port_from(self):
+        """
+        The inspected min port.
+        It is applicable for protocols that use ports: TCP, UDP and SCTP.
+        :rtype: int
+        """
+        return self.get("from")
+
+    @property
+    def port_to(self):
+        """
+        The inspected max port.
+        It is applicable for protocols that use ports: TCP, UDP and SCTP.
+        :rtype: int
+        """
+        return self.get("to")
+
+    @property
+    def protocol_ref(self):
+        """
+        The application protocol for this port setting.
+        :rtype: str
+        """
+        return self.get("protocol_ref")
+
+    @property
+    def tls(self):
+        """
+        The Application port TLS setting:
+        ***no***: it is forbidden to identify the traffic with the TLS match.
+        ***possible***: it is possible that the traffic is identified with the TLS match.
+        ***mandatory***: it is mandatory that the traffic is identified with the TLS match.
+        ***free***: it is free that the traffic is identified with the TLS match.
+        :rtype: str
+        """
+        return self.get("tls")
+
+    @property
+    def mode(self):
+        """
+        The Application port mode:
+        ***regular***: normal mode
+        ***quic***: applies only for NGFW engines where QUIC ports are included for web traffic
+        :rtype: str
+        .. note:: This method requires SMC version >= 7.0
+        """
+        return self.get("mode")
+
+    @property
+    def min_version(self):
+        """
+        Minimum version of engine that supports the port.
+        If not defined, the port applies to the same versions as the parent element
+        (eg. network application)
+        """
+        return self.get("min_version")
+
+    @property
+    def max_version(self):
+        """
+        Maximum version of engine that supports the port.
+        If not defined, the port applies to the same versions as the parent element
+        (eg. network application)
+        """
+        return self.get("max_version")
+
+
 class URLListApplication(Element):
     """
     URL List Application represents a list of URL's (typically by domain)
@@ -351,12 +482,17 @@ class URLListApplication(Element):
     typeof = "url_list_application"
 
     @classmethod
-    def create(cls, name, url_entry, comment=None):
+    def create(cls,
+               name,
+               url_entry,
+               application_ports=None,
+               comment=None):
         """
         Create the custom URL list
 
         :param str name: name of url list
         :param list url_entry: list of url's
+        :param list application_ports: list of ApplicationPort
         :param str comment: optional comment
         :raises CreateElementFailed: element creation failed with reason
         :return: instance with meta
@@ -364,7 +500,75 @@ class URLListApplication(Element):
         """
         json = {"name": name, "url_entry": url_entry, "comment": comment}
 
+        if application_ports:
+            json.update({"application_port": []})
+            for p in application_ports:
+                json["application_port"].append(p.data)
+
         return ElementCreator(cls, json)
+
+    @property
+    def application_port(self):
+        """
+        A collection of ApplicationPort
+
+        :rtype: list(ApplicationPort)
+        """
+        # fix "from" and "to" python reserved keywords
+        to_return = []
+        data_clone = copy.deepcopy(self.data.data)
+        for ap in data_clone.get("application_port", []):
+            if "from" in ap:
+                ap["port_from"] = ap.pop("from")
+            if "to" in ap:
+                ap["port_to"] = ap.pop("to")
+            to_return.append(ApplicationPort(**ap))
+        return to_return
+
+    @application_port.setter
+    def application_port(self, application_port_list):
+        """
+        set application port list
+
+        :param application_port_list: url list to add
+        :type application_port_list: list(ApplicationPort)
+        """
+        self.data["application_port"] = {}
+        for app in application_port_list:
+            self.data["application_port"].append(app.data)
+
+    def add_application_port(self, application_ports):
+        """
+        Add application_ports to this url list application.
+
+        :param application_ports: application ports to add
+        :type application_ports: list(ApplicationPort)
+        :raises UpdateElementFailed: failed updating the url list application
+        :return: None
+        """
+        if "application_port" not in self.data:
+            self.data["application_port"] = []
+
+        for p in application_ports:
+            self.data["application_port"].append(p.data)
+        self.update()
+
+    @property
+    def url_entry(self):
+        """
+        URL list
+        :rtype: list(str)
+        """
+        return self.data.get("url_entry")
+
+    @url_entry.setter
+    def url_entry(self, list_url):
+        """
+        set URL list
+        :param list_url: url list to add
+        :type list_url: list(str)
+        """
+        self.data["url_entry"] = list_url
 
 
 class IPListGroup(Element):
@@ -643,10 +847,6 @@ class Alias(Element):
 
     typeof = "alias"
 
-    def __init__(self, name, **meta):
-        super(Alias, self).__init__(name, **meta)
-        self.resolved_value = []  #: resolved value for alias
-
     @classmethod
     def create(cls, name, comment=None, default_values=None, alias_values=None):
         """
@@ -780,7 +980,6 @@ class Alias(Element):
             href = data.get("alias_ref")
             if alias.href == href:
                 _alias = Alias(alias.name, href=href)
-                _alias.resolved_value = data.get("resolved_value")
                 _alias.typeof = alias._meta.type
                 return _alias
 
@@ -799,13 +998,36 @@ class Alias(Element):
         :return: alias resolving values
         :rtype: list
         """
+        return self.make_request(
+                ElementNotFound, href=self.get_relation("resolve"), params={"for": engine}
+            ).get("resolved_value")
+
+    def full_resolve(self, engine):
+        """
+        Fully resolve this Alias to a specific value (both translated_element and resolved_value).
+        Specify the engine by name to find it's value.
+
+        ::
+
+            alias = Alias('$$ Interface ID 0.ip')
+            alias.full_resolve('smcpython-fw')
+
+        :param str engine: name of engine to resolve value
+        :raises ElementNotFound: if alias not found on engine
+        :return: alias resolving values:
+        {"resolved_value": [resolved type:str..],
+         "translated_element": [translated type:Element..]}
+        :rtype: {resolved_value:list str, translated_element: list Element}
+        """
         result = self.make_request(ElementNotFound, href=self.get_relation("resolve"),
                                    params={"for": engine})
-        if is_smc_version_less_than("7.0") or 'translated_element' not in result:
-            self.resolved_value = result.get('resolved_value')
-        else:
-            self.resolved_value = list(
-                filter(lambda resolved_element: resolved_element.name != 'NONE',
-                       map(lambda element: Element.from_href(element),
-                           result.get("translated_element"))))
-        return self.resolved_value
+
+        return {"resolved_value": result.get('resolved_value'),
+                # list of Element
+                "translated_element": list(
+                    # filter NONE
+                    filter(lambda resolved_element: resolved_element.name != 'NONE',
+                           # resolve Element from href
+                           map(lambda element: Element.from_href(element),
+                               # consider 'translated_element' if there is
+                               result.get("translated_element", []))))}

@@ -155,16 +155,17 @@ class Node(SubElement):
         for lb in self.data.get("loopback_node_dedicated_interface", []):
             yield LoopbackInterface(lb, self._engine)
 
-    def fetch_license(self):
+    def fetch_license(self, **kwargs):
         """
         Fetch the node level license
 
         :raises LicenseError: fetching license failure with reason
         :return: None
         """
-        self.make_request(LicenseError, method="create", resource="fetch")
+        params = {**kwargs}
+        self.make_request(LicenseError, method="create", resource="fetch", params=params)
 
-    def bind_license(self, license_item_id=None):
+    def bind_license(self, license_item_id=None, **kwargs):
         """
         Auto bind license, uses dynamic if POS is not found
 
@@ -172,26 +173,28 @@ class Node(SubElement):
         :raises LicenseError: binding license failed, possibly no licenses
         :return: None
         """
-        params = {"license_item_id": license_item_id}
+        params = {"license_item_id": license_item_id, **kwargs}
         self.make_request(LicenseError, method="create", resource="bind", params=params)
 
-    def unbind_license(self):
+    def unbind_license(self, **kwargs):
         """
         Unbind a bound license on this node.
 
         :raises LicenseError: failure with reason
         :return: None
         """
-        self.make_request(LicenseError, method="create", resource="unbind")
+        params = {**kwargs}
+        self.make_request(LicenseError, method="create", resource="unbind", params=params)
 
-    def cancel_unbind_license(self):
+    def cancel_unbind_license(self, **kwargs):
         """
         Cancel unbind for license
 
         :raises LicenseError: unbind failed with reason
         :return: None
         """
-        self.make_request(LicenseError, method="create", resource="cancel_unbind")
+        params = {**kwargs}
+        self.make_request(LicenseError, method="create", resource="cancel_unbind", params=params)
 
     def initial_contact(
         self,

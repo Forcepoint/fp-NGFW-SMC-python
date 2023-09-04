@@ -58,7 +58,7 @@ from smc.base.model import ElementCreator, Element, ElementRef, ElementList
 from smc.api.exceptions import CreateElementFailed
 from smc.base.structs import NestedDict
 from smc.base.util import element_resolver
-from smc.elements.servers import ContactAddressMixin
+from smc.elements.servers import ContactAddressMixin, MultiContactServer
 
 
 class AuthenticationMethod(Element):
@@ -273,6 +273,40 @@ class AuthenticationMethod(Element):
         """
         self.data['open_id_user_attribute'] = open_id_user_attribute
 
+    @classmethod
+    def create_tacacs_or_radius(
+            cls,
+            name,
+            authentication_server=None,
+            type="tacacs",
+            comment=None,
+            **kwargs
+    ):
+        """
+        Create Tacacs+/Radius authentication method using basic settings. You can also provide
+        additional kwargs documented in the class description::
+
+        AuthenticationMethod.create_tacacs_or_radius(name='someMethod',
+                authentication_server=[],
+                comment="test")
+                :param str name: Name of TACACS+/Radius element for display
+                :param list(TacacsServer/RadiusServer) authentication_server: Authentication server
+                    list.
+                :param str type: Type of authentication method.
+                :param str comment: optional comment.
+                :raises CreateElementFailed: failed creating element
+                :rtype: AuthenticationMethod
+        """
+        authentication_server = authentication_server if authentication_server else []
+        json = {
+            "name": name,
+            "authentication_server": [element_resolver(server) for server in authentication_server],
+            "type": type,
+            "comment": comment
+        }
+        json.update(kwargs)
+        return ElementCreator(cls, json)
+
 
 class DomainController(NestedDict):
     """
@@ -305,75 +339,377 @@ class DomainController(NestedDict):
         return "DomainController(ipaddress={})".format(self.ipaddress)
 
 
-class ActiveDirectoryServer(ContactAddressMixin, Element):
+class ActiveLdapServerMixin(Element, MultiContactServer):
     """
-    Create an Active Directory Element.
+     Create an Active Directory/Ldap Element.
 
-    At a minimum you must provide the name, address and base_dn for the connection.
-    If you do not provide bind_user_id and bind_password, the connection type will
-    use anonymous authentication (not recommended).
+     At a minimum you must provide the name, address and base_dn for the connection.
+     If you do not provide bind_user_id and bind_password, the connection type will
+     use anonymous authentication (not recommended).
 
-    You can also pass kwargs to customize aspects of the AD server configuration.
-    Valid kwargs are:
+     You can also pass kwargs to customize aspects of the AD server/Ldap server configuration.
+     Valid kwargs are:
 
-    :param TLSProfile tls_profile: TLS profile used when ldaps or start_tls specified
-    :param str user_id_attr: The name that the server uses for the UserID Attribute
-        (default: sAMAccountName)
-    :param str user_principal_name: The name of the attribute for storing the users UPN
-        (default: userPrincipalName)
-    :param str display_name_attr_name: The attribute storing the users friendly name
-        (default: displayName)
-    :param str email: The attribute storing the users email address (default: email)
-    :param str group_member_attr: The attribute storing group membership details
-        (default: member)
-    :param str job_title_attr_name: The attribute storing users job title (default: title)
-    :param str frame_ip_attr_name: The attribute storing the users IP address when user
-        is authenticated via RADIUS (default: msRADIUSFramedIPAddress)
-    :param str mobile_attr_name: The attribute storing the users mobile (default: mobile)
-    :param str office_location_attr: The attribute storing the users office location
-        (default: physicalDeliveryOfficeName)
-    :param str photo: The attribute with users photo used for display (default: photo)
-    :param list group_object_class: If your Active Directory or LDAP server has LDAP object
-        classes that are not defined in the SMC by default, you must add those object classes
-        to the LDAP Object classes in the server properties (default: ['group', 'organizationUnit',
-        'organization', 'country', 'groupOfNames', 'sggroup']
-    :param list user_object_class: LDAP classes used for user identification (default:
-        ['inetOrgPerson','organizationalPerson', 'person', 'sguser'])
-    :param str client_cert_based_user_search: Not implemented
-    :param int auth_port: required when internet authentication service is enabled (default: 1812)
-    :param str auth_ipaddress: required when internet authentication service is enabled
-    :param str shared_secret: required when internet authentication service is enabled
-    :param int retries: Used with IAS. Number of times firewall will try to connect to the
-        RADIUS or TACACS+ authentication server if the connection fails (default: 2)
-    """
-
-    typeof = "active_directory_server"
-    tls_profile = ElementRef("tls_profile_ref")
-    supported_method = ElementList("supported_method")
+     :param list group_object_class: If your Active Directory or LDAP server has LDAP object
+         classes that are not defined in the SMC by default, you must add those object classes
+         to the LDAP Object classes in the server properties (default: ['group', 'organizationUnit',
+         'organization', 'country', 'groupOfNames', 'sggroup']
+     :param list user_object_class: LDAP classes used for user identification (default:
+         ['inetOrgPerson','organizationalPerson', 'person', 'sguser'])
+     :param int auth_port: required when internet authentication service is enabled (default: 1812)
+     :param str auth_ipaddress: required when internet authentication service is enabled
+     :param str shared_secret: required when internet authentication service is enabled
+     :param int auth_attribute: Auth attribute name.
+     :param int retries: Used with IAS. Number of times firewall will try to connect to the
+            RADIUS or TACACS+ authentication server if the connection fails (default: 2)
+     """
 
     @classmethod
     def create(
-        cls,
-        name,
-        address,
-        base_dn,
-        bind_user_id=None,
-        bind_password=None,
-        port=389,
-        protocol="ldap",
-        tls_profile=None,
-        tls_identity=None,
-        domain_controller=None,
-        supported_method=None,
-        timeout=10,
-        max_search_result=0,
-        page_size=0,
-        internet_auth_service_enabled=False,
-        retries=3,
-        **kwargs
+            cls,
+            name,
+            address,
+            base_dn,
+            bind_user_id=None,
+            bind_password=None,
+            port=389,
+            protocol="ldap",
+            tls_profile=None,
+            tls_identity=None,
+            domain_controller=None,
+            supported_method=None,
+            timeout=10,
+            max_search_result=0,
+            page_size=0,
+            internet_auth_service_enabled=False,
+            email=None,
+            client_cert_based_user_search=None,
+            display_name_attr_name=None,
+            frame_ip_attr_name=None,
+            group_member_attr=None,
+            job_title_attr_name=None,
+            mobile_attr_name=None,
+            office_location_attr_name=None,
+            photo_attr_name=None,
+            user_id_attr=None,
+            user_principal_name=None,
+            secondary=None,
+            location_ref=None,
+            tools_profile_ref=None,
+            third_party_monitoring=None,
+            comment=None,
+            **kwargs
     ):
         """
-        Create an AD server element using basic settings. You can also provide additional
+        :param str name: name of AD/Ldap element for display
+        :param str address: address of AD/Ldap server
+        :param str base_dn: base DN for which to retrieve users, format is 'dc=domain,dc=com'
+        :param str bind_user_id: bind user ID credentials, fully qualified. Format is
+            'cn=admin,cn=users,dc=domain,dc=com'. If not provided, anonymous bind is used
+        :param str bind_password: bind password, required if bind_user_id set
+        :param int port: LDAP bind port, (default: 389)
+        :param TLSProfile tls_profile: TLS profile used when ldaps or start_tls specified
+        :param str protocol: Which LDAP protocol to use, options 'ldap/ldaps/ldap_tls'. If
+            ldaps or ldap_tls is used, you must provide a tls_profile element (default: ldap)
+        :param str,TLSProfile tls_profile by element of str href. Used when protocol is set
+            to ldaps or ldap_tls
+        :param str,TLSIdentity tls_identity: check server identity when establishing TLS connection
+        :param list(DomainController) domain_controller: list of domain controller objects to
+            add an additional domain controllers for AD communication
+        :param list(AuthenticationMethod) supported_method: authentication services allowed
+            for this resource
+        :param int timeout: The time (in seconds) that components wait for the server to reply
+        :param int max_search_result: The maximum number of LDAP entries that are returned in
+            an LDAP response (default: 0 for no limit)
+        :param int page_size: The maximum number of LDAP entries that are returned on each page
+            of the LDAP response. (default: 0 for no limit)
+        :param bool internet_auth_service_enabled: whether to attach an NPS service to this
+            AD controller (default: False). If setting to true, provide kwargs values for
+            auth_ipaddress, auth_port and shared_secret
+        :param str email: The name of the attribute for storing the users’ e-mail address. This
+            attribute is primarily used for linked Authentication Server Users. It can also be used
+            to identify users by their e-mail address in certificate authentication.
+        :param str client_cert_based_user_search: Text input field that specifies LDAP query filter
+            that must be used to find user entry from LDAP when "Certificate Subject - Distinguished
+            Name" is selected as identity type for TLS or VPN client uses DN as the identity type.
+            Query would be done starting from "Base DN". Because client certificate fields must be
+            able to be used in query filter in a configurable way, we need a way to reference
+            different client certificate fields in the query. Syntax defined need to be able to
+            reference different parts of the certificate subject
+            (DN) (CN1, CN2, CN<n>, etc, GN, SN, uid, DC1, DC2, DC<n>)
+        :param str display_name_attr_name: The name that the server uses for the Display Name
+            attribute.
+        :param str frame_ip_attr_name: The attribute storing the users IP address when user
+            is authenticated via RADIUS (default: msRADIUSFramedIPAddress)
+        :param str group_member_attr: The attribute storing group membership details
+            (default: member)
+        :param str job_title_attr_name: The attribute storing users job title (default: title)
+        :param str mobile_attr_name: The attribute storing the users mobile (default: mobile)
+        :param str office_location_attr_name: The name of the attribute for storing the user's
+                office location. (default: physicalDeliveryOfficeName)
+        :param str photo_attr_name: The name of the attribute for storing the users’ photo.
+        :param str user_id_attr: The name that the server uses for the UserID Attribute
+            (default: sAMAccountName)
+        :param str user_principal_name: The name of the attribute for storing the users’ UPN
+            (User Principal Name).
+        :param list(str) secondary: If the device has additional IP addresses, you can enter them
+            here instead of creating additional elements for the other IP addresses. The secondary
+            IP addresses are valid in policies and in routing and antispoofing. You can add several
+            IPv4 and IPv6 addresses (one by one)
+        :param Location location_ref: Location of the server.
+        :param DeviceToolsProfile tools_profile_ref: Allows you to add commands to the element’s
+            right-click menu. Not Required.
+        :param ThirdPartyMonitoring third_party_monitoring: The optional Third Party Monitoring.
+        :param str comment: optional comment.
+        :raises CreateElementFailed: failed creating element
+        :rtype: ActiveDirectoryServer
+        """
+        json = {
+            "name": name,
+            "address": address,
+            "base_dn": base_dn,
+            "bind_user_id": bind_user_id,
+            "bind_password": bind_password,
+            "port": port,
+            "protocol": protocol,
+            "timeout": timeout,
+            "max_search_result": max_search_result,
+            "page_size": page_size,
+            "supported_method": element_resolver(supported_method) or [],
+            "email": email,
+            "client_cert_based_user_search": client_cert_based_user_search,
+            "display_name_attr_name": display_name_attr_name,
+            "frame_ip_attr_name": frame_ip_attr_name,
+            "group_member_attr": group_member_attr,
+            "job_title_attr_name": job_title_attr_name,
+            "mobile_attr_name": mobile_attr_name,
+            "office_location_attr_name": office_location_attr_name,
+            "photo_attr_name": photo_attr_name,
+            "user_id_attr": user_id_attr,
+            "user_principal_name": user_principal_name,
+            "secondary": secondary or [],
+            "location_ref": element_resolver(location_ref),
+            "tools_profile_ref": element_resolver(tools_profile_ref),
+            "comment": comment
+        }
+        if third_party_monitoring:
+            json.update(third_party_monitoring=third_party_monitoring.data)
+
+        for obj_class in ("group_object_class", "user_object_class"):
+            json[obj_class] = kwargs.pop(obj_class, [])
+
+        if protocol in ("ldaps", "ldap_tls"):
+            if not tls_profile:
+                raise CreateElementFailed(
+                    "You must provide a TLS Profile when TLS "
+                    "connections are configured to the AD controller."
+                )
+            json.update(tls_profile_ref=element_resolver(tls_profile), tls_identity=tls_identity)
+
+        if cls.typeof == "active_directory_server":
+
+            json.update(domain_controller=[domain.data for domain in domain_controller] or [],
+                        internet_auth_service_enabled=internet_auth_service_enabled)
+            if internet_auth_service_enabled:
+                ias = {
+                    "auth_port": kwargs.pop("auth_port", 1812),
+                    "auth_ipaddress": kwargs.pop("auth_ipaddress", ""),
+                    "shared_secret": kwargs.pop("shared_secret"),
+                    "retries": kwargs.pop("retries", 2),
+                }
+                json.update(ias)
+        elif cls.typeof == "ldap_server":
+            json.update(auth_attribute=kwargs.pop("auth_attribute", None))
+        json.update(kwargs)
+        return ElementCreator(cls, json)
+
+    def check_connectivity(self):
+        """
+        Return a status for this active directory controller
+
+        :raises ActionCommandFailed: failed to check connectivity with reason
+        :rtype: bool
+        """
+        return self.make_request(href=self.get_relation("check_connectivity")) is None
+
+    @property
+    def port(self):
+        """
+        LDAP bind port, (default: 389)
+        :rtype: int
+        """
+        return self.data.get("port")
+
+    @property
+    def timeout(self):
+        """
+        Enter the time (in seconds) that components wait for the server to reply.
+        :rtype: int
+        """
+        return self.data.get("timeout")
+
+    @property
+    def base_dn(self):
+        """
+        Base DN for which to retrieve users, format is 'dc=domain,dc=com'
+        :rtype: str
+        """
+        return self.data.get("base_dn")
+
+    @property
+    def bind_user_id(self):
+        """
+        bind user ID credentials, fully qualified. Format is
+            'cn=admin,cn=users,dc=domain,dc=com'. If not provided, anonymous bind is used
+        :rtype: str
+        """
+        return self.data.get("bind_user_id")
+
+    @property
+    def bind_password(self):
+        """
+        Distinguished password of the User ID that the Firewalls and Management Servers use to
+            connect to the server.
+        :rtype: str
+        """
+        return self.data.get("bind_password")
+
+    @property
+    def protocol(self):
+        """
+        Which LDAP protocol to use, options 'ldap/ldaps/ldap_tls'. If ldaps or ldap_tls is used,
+            you must provide a tls_profile element (default: ldap)
+        """
+        return self.data.get("protocol")
+
+    @property
+    def user_id_attr(self):
+        """
+        The name that the server uses for the UserID Attribute (default: sAMAccountName)
+        :rtype: str
+        """
+        return self.data.get("user_id_attr")
+
+    @property
+    def group_member_attr(self):
+        """
+        The attribute storing group membership details (default: member)
+        :rtype: str
+        """
+        return self.data.get("group_member_attr")
+
+    @property
+    def display_name_attr_name(self):
+        """
+        The name that the server uses for the Display Name
+        :rtype: str
+        """
+        return self.data.get("display_name_attr_name")
+
+    @property
+    def photo_attr_name(self):
+        """
+        The name of the attribute for storing the users’ photo.
+        :rtype: str
+        """
+        return self.data.get("photo_attr_name")
+
+    @property
+    def email(self):
+        """
+        The name of the attribute for storing the users’ e-mail address.
+        :rtype: str
+        """
+        return self.data.get("email")
+
+    @property
+    def user_principal_name(self):
+        """
+        The name of the attribute for storing the users’ UPN (User Principal Name).
+        :rtype: str
+        """
+        return self.data.get("user_principal_name")
+
+    @property
+    def mobile_attr_name(self):
+        """
+        The attribute storing the users mobile (default: mobile)
+        :rtype: str
+        """
+        return self.data.get("mobile_attr_name")
+
+    @property
+    def job_title_attr_name(self):
+        """
+        The attribute storing users job title (default: title)
+        :rtype: str
+        """
+        return self.data.get("job_title_attr_name")
+
+    @property
+    def office_location_attr_name(self):
+        """
+        The name of the attribute for storing the user's office location.
+            (default: physicalDeliveryOfficeName)
+        :rtype: str
+        """
+        return self.data.get("office_location_attr_name")
+
+    @property
+    def frame_ip_attr_name(self):
+        """
+        The attribute storing the users IP address when user is authenticated via RADIUS
+            (default: msRADIUSFramedIPAddress)
+        :rtype: str
+        """
+        return self.data.get("frame_ip_attr_name")
+
+    @property
+    def supported_method(self):
+        """
+        Authentication services allowed for this resource
+        :rtype: AuthenticationMethod
+        """
+        return [AuthenticationMethod.from_href(methods) for methods in
+                self.data.get("supported_method")]
+
+    @property
+    def tls_profile_ref(self):
+        """
+        Represents a TLS Profile Contains common parameters for establishing TLS based connections.
+        :rtype TLSProfile
+        """
+        return Element.from_href(self.data.get("tls_profile_ref"))
+
+    @property
+    def tls_identity(self):
+        """
+        Check server identity when establishing TLS connection
+        :rtype: str
+        """
+        return self.data.get("tls_identity")
+
+    @property
+    def group_object_class(self):
+        """
+        The group LDAP object classes.
+        :rtype: list(str)
+        """
+        return self.data.get("group_object_class")
+
+    @property
+    def user_object_class(self):
+        """
+        LDAP classes used for user identification (default:
+        ['inetOrgPerson','organizationalPerson', 'person', 'sguser'])
+        :rtype: list(str)
+        """
+        return self.data.get("user_object_class")
+
+
+class ActiveDirectoryServer(ContactAddressMixin, ActiveLdapServerMixin):
+    """
+     Create an AD server element using basic settings. You can also provide additional
         kwargs documented in the class description::
 
             ActiveDirectoryServer.create(name='somedirectory',
@@ -393,72 +729,27 @@ class ActiveDirectoryServer(ContactAddressMixin, Element):
                 auth_port=1900,
                 shared_secret='123456')
 
-        :param str name: name of AD element for display
-        :param str address: address of AD server
-        :param str base_dn: base DN for which to retrieve users, format is 'dc=domain,dc=com'
-        :param str bind_user_id: bind user ID credentials, fully qualified. Format is
-            'cn=admin,cn=users,dc=domain,dc=com'. If not provided, anonymous bind is used
-        :param str bind_password: bind password, required if bind_user_id set
-        :param int port: LDAP bind port, (default: 389)
-        :param str protocol: Which LDAP protocol to use, options 'ldap/ldaps/ldap_tls'. If
-            ldaps or ldap_tls is used, you must provide a tls_profile element (default: ldap)
-        :param str,TLSProfile tls_profile by element of str href. Used when protocol is set
-            to ldaps or ldap_tls
-        :param str,TLSIdentity tls_identity: check server identity when establishing TLS connection
-        :param list(DomainController) domain_controller: list of domain controller objects to
-            add an additional domain controllers for AD communication
-        :param list(AuthenticationMethod) supported_method: authentication services allowed
-            for this resource
-        :param int timeout: The time (in seconds) that components wait for the server to reply
-        :param int max_search_result: The maximum number of LDAP entries that are returned in
-            an LDAP response (default: 0 for no limit)
-        :param int page_size: The maximum number of LDAP entries that are returned on each page
-            of the LDAP response. (default: 0 for no limit)
-        :param bool internet_auth_service_enabled: whether to attach an NPS service to this
-            AD controller (default: False). If setting to true, provide kwargs values for
-            auth_ipaddress, auth_port and shared_secret
-        :raises CreateElementFailed: failed creating element
-        :rtype: ActiveDirectoryServer
-        """
-        json = {
-            "name": name,
-            "address": address,
-            "base_dn": base_dn,
-            "bind_user_id": bind_user_id,
-            "bind_password": bind_password,
-            "port": port,
-            "protocol": protocol,
-            "timeout": timeout,
-            "domain_controller": domain_controller or [],
-            "retries": retries,
-            "max_search_result": max_search_result,
-            "page_size": page_size,
-            "internet_auth_service_enabled": internet_auth_service_enabled,
-            "supported_method": element_resolver(supported_method) or [],
-        }
+    At a minimum you must provide the name, address and base_dn for the connection.
+    If you do not provide bind_user_id and bind_password, the connection type will
+    use anonymous authentication (not recommended).
 
-        for obj_class in ("group_object_class", "user_object_class"):
-            json[obj_class] = kwargs.pop(obj_class, [])
+    You can also pass kwargs to customize aspects of the AD server configuration.
+    Valid kwargs are:
 
-        if protocol in ("ldaps", "ldap_tls"):
-            if not tls_profile:
-                raise CreateElementFailed(
-                    "You must provide a TLS Profile when TLS "
-                    "connections are configured to the AD controller."
-                )
-            json.update(tls_profile_ref=element_resolver(tls_profile), tls_identity=tls_identity)
+    :param list group_object_class: If your Active Directory or LDAP server has LDAP object
+        classes that are not defined in the SMC by default, you must add those object classes
+        to the LDAP Object classes in the server properties (default: ['group', 'organizationUnit',
+        'organization', 'country', 'groupOfNames', 'sggroup']
+    :param list user_object_class: LDAP classes used for user identification (default:
+        ['inetOrgPerson','organizationalPerson', 'person', 'sguser'])
+    :param int auth_port: required when internet authentication service is enabled (default: 1812)
+    :param str auth_ipaddress: required when internet authentication service is enabled
+    :param str shared_secret: required when internet authentication service is enabled
+    :param int retries: Used with IAS. Number of times firewall will try to connect to the
+            RADIUS or TACACS+ authentication server if the connection fails (default: 2)
+    """
 
-        if internet_auth_service_enabled:
-            ias = {
-                "auth_port": kwargs.pop("auth_port", 1812),
-                "auth_ipaddress": kwargs.pop("auth_ipaddress", ""),
-                "shared_secret": kwargs.pop("shared_secret"),
-                "retries": kwargs.pop("retries", 2),
-            }
-            json.update(ias)
-
-        json.update(kwargs)
-        return ElementCreator(cls, json)
+    typeof = "active_directory_server"
 
     @classmethod
     def update_or_create(cls, with_status=False, **kwargs):
@@ -490,6 +781,40 @@ class ActiveDirectoryServer(ContactAddressMixin, Element):
         return element
 
     @property
+    def auth_ipaddress(self):
+        """
+        Ip Address od internet authentication service.
+        :rtype: str
+        """
+        return self.data.get("auth_ipaddress")
+
+    @property
+    def internet_auth_service_enabled(self):
+        """
+        whether to attach an NPS service to this AD controller (default: False). If setting to true,
+            provide kwargs values for auth_ipaddress, auth_port and shared_secret
+        :rtype: bool
+        """
+        return self.data.get("internet_auth_service_enabled")
+
+    @property
+    def retries(self):
+        """
+        Specify the number of times Firewalls try to connect to the RADIUS or TACACS+ authentication
+        server if the connection fails. Required.
+        :rtype: int
+        """
+        return self.data.get("retries")
+
+    @property
+    def auth_port(self):
+        """
+        Auth Port number on which authentication service is running.
+        :rtype: int
+        """
+        return self.data.get("auth_port")
+
+    @property
     def domain_controller(self):
         """
         List of optional domain controllers specified for this AD resource.
@@ -500,11 +825,46 @@ class ActiveDirectoryServer(ContactAddressMixin, Element):
         """
         return [DomainController(**dc) for dc in self.data.get("domain_controller", [])]
 
-    def check_connectivity(self):
-        """
-        Return a status for this active directory controller
 
-        :raises ActionCommandFailed: failed to check connectivity with reason
-        :rtype: bool
-        """
-        return self.make_request(href=self.get_relation("check_connectivity")) is None
+class LDAPServer(ContactAddressMixin, ActiveLdapServerMixin):
+    """
+    This represents a LDAP Server.The LDAP Server element can be used to configure access to any
+    LDAP server as a user database for the Firewalls and/or the Management Server. The LDAP Server
+    element’s settings include an account that the Management Server and Firewall engines use to
+    connect to query the directory. The user account must exist in the LDAP Server’s user database.
+    Make sure the account you use has the privileges to manage other user accounts. There are also
+    values for some attributes that the Management Server and Firewall engines look for in the
+    directory. We recommend that you do not use special characters or accented letters in the
+    Distinguished Names or user ID attributes. For character limits for these settings, check the
+    documentation of your LDAP server.
+
+     Create an Ldap server element using basic settings. You can also provide additional
+        kwargs documented in the class description::
+
+            LDAPServer.create(name='ldap_server_test',
+                address='10.10.10.10',
+                base_dn='dc=domain,dc=net',
+                bind_user_id='cn=admin,cn=users,dc=domain,dc=net',
+                bind_password='somecrazypassword',
+                auth_attribute='sgauth')
+    At a minimum you must provide the name, address and base_dn for the connection.
+    If you do not provide bind_user_id and bind_password, the connection type will
+    use anonymous authentication (not recommended).
+
+    You can also pass kwargs to customize aspects of the Ldap server configuration.
+    Valid kwargs are:
+
+    :param list group_object_class: If your Active Directory or LDAP server has LDAP object
+        classes that are not defined in the SMC by default, you must add those object classes
+        to the LDAP Object classes in the server properties (default: ['group', 'organizationUnit',
+        'organization', 'country', 'groupOfNames', 'sggroup']
+    :param list user_object_class: LDAP classes used for user identification (default:
+        ['inetOrgPerson','organizationalPerson', 'person', 'sguser'])
+    :param int auth_attribute: Auth attribute name.
+    """
+
+    typeof = "ldap_server"
+
+    @property
+    def auth_attribute(self):
+        return self.data.get("auth_attribute")
