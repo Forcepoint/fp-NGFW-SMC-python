@@ -84,6 +84,33 @@ Roles
 	:members:
 	:show-inheritance:
 
+Alert Configuration
++++++++++++++++++++
+
+AlertChain
+**********
+
+.. autoclass:: smc.elements.alerts.AlertChain
+	:members:
+
+AlertChainRule
+**************
+
+.. autoclass:: smc.elements.alerts.AlertChainRule
+	:members:
+
+AlertPolicy
+**************
+
+.. autoclass:: smc.elements.alerts.AlertPolicy
+	:members:
+
+AlertRule
+**************
+
+.. autoclass:: smc.elements.alerts.AlertRule
+	:members:
+
 Certificates
 ++++++++++++
 
@@ -123,6 +150,13 @@ TLSCryptographySuite
 	:members:
 	:show-inheritance:
 
+TLSCertificateAuthority
+********************
+
+.. autoclass:: TLSCertificateAuthority
+	:members:
+	:show-inheritance:
+
 ClientProtectionCA
 ******************
 
@@ -130,6 +164,19 @@ ClientProtectionCA
 	:members:
 	:show-inheritance:
 
+VPNCertificateCA
+******************
+
+.. autoclass:: VPNCertificateCA
+	:members:
+	:show-inheritance:
+
+GatewayCertificate
+******************
+
+.. autoclass:: GatewayCertificate
+	:members:
+	:show-inheritance:
 
 Domains
 +++++++
@@ -141,6 +188,8 @@ Domains
 License
 +++++++
 
+License
+*******
 .. automodule:: smc.administration.license
 	:members:
 
@@ -172,8 +221,16 @@ Tasks
     :exclude-members: download, execute
     :show-inheritance:
 
+
+Upcoming Event
+++++++++++++++
+
+.. automodule:: smc.administration.upcoming_event
+    :members:
+    :show-inheritance:
+
 Updates
-++++++++
++++++++
 
 .. automodule:: smc.administration.updates
 	:members: PackageMixin
@@ -189,6 +246,27 @@ Dynamic Update
 **************
 
 .. autoclass:: UpdatePackage
+	:members:
+	:show-inheritance:
+
+SD-WAN
+------
+Other Elements
+++++++++++++++
+.. automodule:: smc.vpn.elements
+
+LinkUsageProfile
+****************
+.. autoclass:: LinkUsageProfile
+	:members:
+	:show-inheritance:
+
+Profiles
+++++++++
+
+VPNProfile
+**********
+.. autoclass:: VPNProfile
 	:members:
 	:show-inheritance:
 
@@ -396,12 +474,19 @@ URLCategoryGroup
 .. autoclass:: URLCategoryGroup
    :members:
    :show-inheritance:
+
+EthernetServiceGroup
+****************
+
+.. autoclass:: EthernetServiceGroup
+   :members:
+   :show-inheritance:
   
 Servers
 +++++++
 
 .. automodule:: smc.elements.servers
-	:members: MultiContactAddress, ContactAddressMixin
+	:members: MultiContactAddress, ContactAddressMixin, WebApp, TlsSettings, ManagementLogServerMixin, DataContext, NetflowCollector, AuthenticationMethod, ActiveLdapServerMixin, AuthenticationServerMixin
 
 LogServer
 *********
@@ -435,6 +520,84 @@ ProxyServer
 .. autoclass:: ProxyServer
 	:members:
 	:show-inheritance:
+
+DHCPServer
+***********
+
+.. autoclass:: DHCPServer
+	:members:
+	:show-inheritance:
+
+WebPortalServer
+***********
+
+.. autoclass:: WebPortalServer
+	:members:
+	:show-inheritance:
+
+EpoServer
+***********
+
+.. autoclass:: EpoServer
+	:members:
+	:show-inheritance:
+
+LDAPServer
+***********
+
+.. autoclass:: LDAPServer
+	:members:
+	:show-inheritance:
+
+ActiveDirectoryServer
+***********
+
+.. autoclass:: ActiveDirectoryServer
+	:members:
+	:show-inheritance:
+
+SmtpServer
+***********
+
+.. autoclass:: SmtpServer
+	:members:
+	:show-inheritance:
+
+IcapServer
+***********
+
+.. autoclass:: IcapServer
+	:members:
+	:show-inheritance:
+
+RadiusServer
+***********
+
+.. autoclass:: RadiusServer
+	:members:
+	:show-inheritance:
+
+TacacsServer
+***********
+
+.. autoclass:: TacacsServer
+	:members:
+	:show-inheritance:
+
+NTPServer
+***********
+
+.. autoclass:: NTPServer
+	:members:
+	:show-inheritance:
+
+ElasticsearchCluster
+********************
+
+.. autoclass:: ElasticsearchCluster
+	:members:
+	:show-inheritance:
+
 
 Other
 +++++
@@ -497,6 +660,33 @@ HTTPSInspectionExceptions
    :members:
    :show-inheritance:
 
+Sidewinder Elements
++++++++++++++++++++
+
+.. automodule:: smc.elements.ssm
+	:members:
+
+SSHProfile
+**********
+
+.. autoclass:: SSHProfile
+   :members:
+   :show-inheritance:
+
+SSHKnownHosts
+*************
+
+.. autoclass:: SSHKnownHosts
+   :members:
+   :show-inheritance:
+
+SSHKnownHostsLists
+******************
+
+.. autoclass:: SSHKnownHostsLists
+   :members:
+   :show-inheritance:
+
 Situations
 ++++++++++
 
@@ -523,6 +713,12 @@ SNMPAgent
 	.. autoclass:: SNMPAgent
 		:members:
 		:show-inheritance:
+
+LLDPProfile
+***********
+.. autoclass:: smc.core.lldp.LLDPProfile
+	:members:
+	:show-inheritance:
 
 Engine
 ------
@@ -559,6 +755,18 @@ UrlFiltering
 ************
 
 .. autoclass:: smc.core.addon.UrlFiltering
+	:members:
+
+ZTNAConnector
+************
+
+.. autoclass:: smc.core.addon.ZTNAConnector
+	:members:
+
+ClientInspection
+****************
+
+.. autoclass:: smc.core.addon.ClientInspection
 	:members:
 
 Sandbox
@@ -629,6 +837,13 @@ Layer2Settings
 
 .. autoclass:: smc.core.general.Layer2Settings
 	:members:
+
+NTPSettings
+**************
+
+.. autoclass:: smc.core.general.NTPSettings
+	:members:
+
 
 VPN
 +++
@@ -806,6 +1021,21 @@ TunnelInterface
     :members:
     :show-inheritance:
 
+VPNBrokerInterface
+******************
+
+.. autoclass:: VPNBrokerInterface
+    :members:
+    :show-inheritance:
+
+VlanInterface
+******************
+
+.. autoclass:: VlanInterface
+    :members:
+    :show-inheritance:
+
+
 Sub-Interfaces
 **************
 
@@ -909,6 +1139,12 @@ Policy Routing
 .. autoclass:: PolicyRoute
 	:members:
 
+TunnelMonitoringGroup
+*********************
+
+.. autoclass:: TunnelMonitoringGroup
+	:members:
+
 Snapshot
 ++++++++
 
@@ -922,6 +1158,12 @@ VirtualResource
 .. autoclass:: smc.core.engine.VirtualResource
 	:members:
 	:show-inheritance:
+
+AdvanceSettings
++++++++++++++++
+
+.. automodule:: smc.core.advanced_settings
+	:members:
 
 Engine Types
 ------------
@@ -1020,7 +1262,7 @@ BGP Elements
 ++++++++++++
 
 .. automodule:: smc.routing.bgp
-	:members: BGP
+	:members: BGP, BGPBMPSettings, BGPAggregationEntry, RedistributionEntry
 
 AutonomousSystem
 ****************
@@ -1432,6 +1674,12 @@ GatewayProfile
 	:members:
 	:show-inheritance:
 
+VPNProfile
+**********
+.. autoclass:: smc.vpn.elements.VPNProfile
+	:members:
+	:show-inheritance:
+
 GatewayTreeNode
 ***************
 
@@ -1450,6 +1698,20 @@ ConnectionType
 **************
 
 .. autoclass:: smc.vpn.elements.ConnectionType
+	:members:
+	:show-inheritance:
+
+VPNBrokerDomain
+***************
+
+.. autoclass:: smc.vpn.elements.VPNBrokerDomain
+	:members:
+	:show-inheritance:
+
+VPNBrokerConfigFile
+*******************
+
+.. autoclass:: smc.vpn.elements.VPNBrokerConfigFile
 	:members:
 	:show-inheritance:
 
@@ -1508,6 +1770,12 @@ SerializedIterable
 	:members:
 	:show-inheritance:
 
+Monitoring
+----------
+
+.. automodule:: smc.administration.monitoring_status
+	:members:
+	:show-inheritance:
 
 Advanced Usage
 --------------
