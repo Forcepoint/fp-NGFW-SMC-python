@@ -25,9 +25,10 @@ from smc.base.structs import NestedDict
 from smc.base.util import element_resolver
 from smc.compat import is_api_version_less_than, is_smc_version_less_than_or_equal
 from smc.api.common import fetch_entry_point
+from smc.elements.common import IPv6Node
 
 
-class Host(Element):
+class Host(Element, IPv6Node):
     """
     Class representing a Host object used in access rules
 
@@ -48,12 +49,17 @@ class Host(Element):
     :ivar str address: IPv4 address for this element
     :ivar str ipv6_address: IPv6 address for this host element
     :ivar list secondary: secondary IP addresses for this host
+    :ivar ThirdPartyMonitoring third_party_monitoring: The optional Third Party Monitoring
+            configuration.
+    :ivar DeviceToolsProfile tools_profile_ref: Allows you to add commands to the element’s
+            right-click menu. Not Required.
     """
 
     typeof = "host"
 
     @classmethod
-    def create(cls, name, address=None, ipv6_address=None, secondary=None, comment=None):
+    def create(cls, name, address=None, ipv6_address=None, secondary=None,
+               third_party_monitoring=None, tools_profile_ref=None, comment=None):
         """
         Create the host element
 
@@ -61,6 +67,10 @@ class Host(Element):
         :param str address: ipv4 address of host object (optional if ipv6)
         :param str ipv6_address: ipv6 address (optional if ipv4)
         :param list secondary: secondary ip addresses (optional)
+        :param ThirdPartyMonitoring third_party_monitoring: The optional Third Party Monitoring
+            configuration.
+        :param DeviceToolsProfile tools_profile_ref: Allows you to add commands to the element’s
+            right-click menu. Not Required.
         :param str comment: comment (optional)
         :raises CreateElementFailed: element creation failed with reason
         :return: instance with meta
@@ -76,21 +86,13 @@ class Host(Element):
             "address": address,
             "ipv6_address": ipv6_address,
             "secondary": secondaries,
+            "tools_profile_ref": element_resolver(tools_profile_ref),
             "comment": comment,
         }
+        if third_party_monitoring:
+            json.update(third_party_monitoring=third_party_monitoring.data)
 
         return ElementCreator(cls, json)
-
-    def add_secondary(self, address, append_lists=False):
-        """
-        Add secondary IP addresses to this host element. If append_list
-        is True, then add to existing list. Otherwise overwrite.
-
-        :param list address: ip addresses to add in IPv4 or IPv6 format
-        :param bool append_list: add to existing or overwrite (default: append)
-        :return: None
-        """
-        self.update(secondary=address, append_lists=append_lists)
 
 
 class AddressRange(Element):
@@ -130,7 +132,7 @@ class AddressRange(Element):
         return Element.from_href(fetch_entry_point("address_range")+'/0')
 
 
-class Router(Element):
+class Router(Element, IPv6Node):
     """
     Class representing a Router object used in access rules
 
@@ -148,12 +150,17 @@ class Router(Element):
     :ivar str address: IPv4 address for this router
     :ivar str ipv6_address: IPv6 address for this router
     :ivar list secondary: list of additional IP's for this router
+    :ivar ThirdPartyMonitoring third_party_monitoring: The optional Third Party Monitoring
+        configuration.
+    :ivar DeviceToolsProfile tools_profile_ref: Allows you to add commands to the element’s
+        right-click menu. Not Required.
     """
 
     typeof = "router"
 
     @classmethod
-    def create(cls, name, address=None, ipv6_address=None, secondary=None, comment=None):
+    def create(cls, name, address=None, ipv6_address=None, secondary=None,
+               third_party_monitoring=None, tools_profile_ref=None, comment=None):
         """
         Create the router element
 
@@ -161,6 +168,10 @@ class Router(Element):
         :param str address: ip address of host object (optional if ipv6)
         :param str ipv6_address: ipv6 address (optional if ipv4)
         :param list secondary: secondary ip address (optional)
+        :param ThirdPartyMonitoring third_party_monitoring: The optional Third Party Monitoring
+            configuration.
+        :param DeviceToolsProfile tools_profile_ref: Allows you to add commands to the element’s
+            right-click menu. Not Required.
         :param str comment: comment (optional)
         :raises CreateElementFailed: element creation failed with reason
         :return: instance with meta
@@ -176,8 +187,12 @@ class Router(Element):
             "address": address,
             "ipv6_address": ipv6_address,
             "secondary": secondary,
+            "tools_profile_ref": element_resolver(tools_profile_ref),
             "comment": comment,
         }
+
+        if third_party_monitoring:
+            json.update(third_party_monitoring=third_party_monitoring.data)
 
         return ElementCreator(cls, json)
 

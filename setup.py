@@ -41,7 +41,8 @@ setup(name='fp-NGFW-SMC-python',
       packages=find_packages(exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
       install_requires=[
         'requests>=2.31.0',
-        'pytz>=2022.6'
+        'pytz>=2022.6',
+        'urllib3>=1.26.18'
       ],
       include_package_data=True,
       classifiers=[

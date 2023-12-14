@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 #  Licensed under the Apache License, Version 2.0 (the "License"); you may
 #  not use this file except in compliance with the License. You may obtain
 #  a copy of the License at
@@ -10,29 +13,37 @@
 #  License for the specific language governing permissions and limitations
 #  under the License.
 """
-Example script to show how to use TacacsServer, Radius Server and IcapServer.
+Example script to show how to use different type of servers -
+TacacsServer, RadiusServer, IcapServer, SmtpServer, ProxyServer, ActiveDirectoryServer, LDAPServer,
+ManagementServer, EpoServer, NtpServer, HttpProxy and LogServer.
 """
 
 # Python SMC Import
-from smc import session
+import argparse
+import logging
+import sys
+
+sys.path.append('../../')  # smc-python
+from smc import session  # noqa
 from smc.administration.certificates.tls import TLSProfile, TLSServerCredential, \
-    TLSCryptographySuite
+    TLSCryptographySuite  # noqa
 from smc.administration.user_auth.servers import AuthenticationMethod, DomainController, \
-    ActiveDirectoryServer, LDAPServer
-from smc.elements.network import Host
-from smc.compat import is_smc_version_less_than_or_equal
-from smc.elements.other import Location
+    ActiveDirectoryServer, LDAPServer  # noqa
+from smc.elements.common import ThirdPartyMonitoring  # noqa
+from smc.elements.network import Host  # noqa
+from smc.compat import is_smc_version_less_than_or_equal  # noqa
+from smc.elements.other import Location  # noqa
 from smc.elements.servers import TacacsServer, LogServer, RadiusServer, IcapServer, SmtpServer, \
-    ProxyServer, ThirdPartyMonitoring, ManagementServer, WebApp, NetflowCollector, DataContext, \
-    EpoServer
-from smc.elements.ssm import LoggingProfile, ProbingProfile
-from smc_info import SMC_URL, API_KEY, API_VERSION
+    ProxyServer, ManagementServer, WebApp, NetflowCollector, DataContext, \
+    EpoServer, NTPServer, HttpProxy  # noqa
+from smc.elements.ssm import LoggingProfile, ProbingProfile  # noqa
 
 EMAIL_ADDRESS = "test@forcepoint.com"
 PRIMARY_ADDRESS1 = "192.168.1.10"
 SECONDARY_ADDRESS1 = "192.168.1.11"
 PRIMARY_ADDRESS2 = "192.168.2.10"
 SECONDARY_ADDRESS2 = "192.168.2.11"
+IPV6_ADDRESS = "2001:2db8:85a3:1111:2222:8a2e:1370:7334"
 TACACS_SERVER_NAME1 = "tacacs server test1"
 TACACS_SERVER_NAME2 = "tacacs server test2"
 AUTH_METHOD_NAME = "Tacacs Auth Test"
@@ -82,18 +93,47 @@ LDAP_SERVER_UPDATE_ERROR = "Failed to update LDAPServer."
 MGT_SERVER_NAME = "test_mgt_server"
 MGT_SERVER_CREATE_ERROR = "Failed to create ManagementServer."
 MGT_SERVER_UPDATE_ERROR = "Failed to update ManagementServer."
-# Epo Server
+
+# EpoServer
 EPO_SERVER_NAME = "test_epo_server"
 EPO_SERVER_CREATE_ERROR = "Failed to create EpoServer."
 EPO_SERVER_UPDATE_ERROR = "Failed to update EpoServer."
 PRIMARY_ADDRESS3 = "192.168.1.12"
 SECONDARY_ADDRESS3 = "192.168.1.13"
-if __name__ == "__main__":
 
-    session.login(url=SMC_URL, api_key=API_KEY, verify=False, timeout=120, api_version=API_VERSION)
-    print("session OK")
+# NtpServer
+NTP_SERVER_NAME = "test_ntp_server"
+NTP_SERVER_COMMENT = "NTP Server created by the SMC API"
+NTP_SERVER_CREATE_ERROR = "Failed to create NtpServer."
+NTP_SERVER_UPDATE_ERROR = "Failed to update NtpServer."
 
+# HttpProxy
+HTTP_PROXY_NAME = "test_http_proxy"
+HTTP_PROXY_COMMENT = "HttpProxy created by the SMC API"
+HTTP_PROXY_CREATE_ERROR = "Failed to create HttpProxy."
+HTTP_PROXY_UPDATE_ERROR = "Failed to update HttpProxy."
+PRIMARY_ADDRESS4 = "192.168.1.14"
+SECONDARY_ADDRESS4 = "192.168.1.15"
+
+# LogServer
+LOG_SERVER_NAME = "test_log_server"
+LOG_SERVER_COMMENT = "This is testing of element LogServer."
+LOG_SERVER_CREATE_ERROR = "Failed to create LogServer."
+LOG_SERVER_UPDATE_ERROR = "Failed to update LogServer."
+
+logging.getLogger()
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
+                                                '%(name)s - [%(levelname)s] : %(message)s')
+
+
+def main():
+    return_code = 0
     try:
+        arguments = parse_command_line_arguments()
+        session.login(url=arguments.api_url, api_key=arguments.api_key,
+                      login=arguments.smc_user,
+                      pwd=arguments.smc_pwd, api_version=arguments.api_version)
+        logging.info("session OK")
         log_server = list(LogServer.objects.all())[0]
         location = list(Location.objects.all())[0]
         logging_profile = list(LoggingProfile.objects.all())[0]
@@ -114,7 +154,7 @@ if __name__ == "__main__":
                tacacs_server1.secondary and \
                tacacs_server1.third_party_monitoring.monitoring_log_server_ref.href == \
                log_server.href, CREATE_TACACS_ERROR
-        print("TacacsServer created successfully.")
+        logging.info("TacacsServer created successfully.")
         tacacs_server1.update(location_ref=location.href, clear_text=True)
         tacacs_server1 = TacacsServer(TACACS_SERVER_NAME1)
         assert tacacs_server1.location_ref.href == location.href and tacacs_server1.clear_text, \
@@ -134,12 +174,12 @@ if __name__ == "__main__":
                tacacs_server2.secondary and \
                tacacs_server2.third_party_monitoring.monitoring_log_server_ref.href == \
                log_server.href, CREATE_TACACS_ERROR
-        print("TacacsServer created successfully.")
+        logging.info("TacacsServer created successfully.")
         tacacs_server2.update(location_ref=location.href, clear_text=True)
         tacacs_server2 = TacacsServer(TACACS_SERVER_NAME2)
         assert tacacs_server2.location_ref.href == location.href and tacacs_server2.clear_text, \
             UPDATE_TACACS_ERROR
-        print("TacacsServer updated successfully.")
+        logging.info("TacacsServer updated successfully.")
 
         # Example of Radius Server.
         # create Radius Server without Authentication Method
@@ -151,7 +191,7 @@ if __name__ == "__main__":
                radius_server1.secondary and \
                radius_server1.third_party_monitoring.monitoring_log_server_ref.href == \
                log_server.href, CREATE_RADIUS_ERROR
-        print("RadiusServer created successfully.")
+        logging.info("RadiusServer created successfully.")
         radius_server1.update(location_ref=location.href)
         radius_server1 = RadiusServer(RADIUS_SERVER_NAME1)
         assert radius_server1.location_ref.href == location.href, UPDATE_RADIUS_ERROR
@@ -169,11 +209,11 @@ if __name__ == "__main__":
         assert radius_server2.address == PRIMARY_ADDRESS2 and SECONDARY_ADDRESS2 in radius_server2.\
             secondary and radius_server2.third_party_monitoring.monitoring_log_server_ref.href == \
                log_server.href, CREATE_RADIUS_ERROR
-        print("Radius created successfully.")
+        logging.info("Radius created successfully.")
         radius_server2.update(location_ref=location.href)
         radius_server2 = RadiusServer(RADIUS_SERVER_NAME2)
         assert radius_server2.location_ref.href == location.href, UPDATE_RADIUS_ERROR
-        print("RadiusServer updated successfully.")
+        logging.info("RadiusServer updated successfully.")
 
         # IcapServer
         tl_profile = list(TLSProfile.objects.all())[0]
@@ -195,14 +235,14 @@ if __name__ == "__main__":
         )
         assert icap_server.icap_path == "test_path" and icap_server.icap_port == 1344 and \
                icap_server.address == PRIMARY_ADDRESS1, CREATE_ICAP_SERVER_ERROR
-        print("IcapServer created successfully.")
+        logging.info("IcapServer created successfully.")
 
         icap_server.update(icap_secure=False, icap_include_xhdrs=False, icap_port=11344)
         icap_server = IcapServer(ICAP_SERVER_NAME)
         assert icap_server.icap_port == 11344 and not (icap_server.icap_secure and
                                                        icap_server.icap_include_xhdrs), \
             UPDATE_ICAP_SERVER_ERROR
-        print("IcapServer updated successfully.")
+        logging.info("IcapServer updated successfully.")
 
         # SmtpServer
         smtp_server = SmtpServer.create(
@@ -285,8 +325,8 @@ if __name__ == "__main__":
                proxy_server.third_party_monitoring.snmp_trap and \
                proxy_server.third_party_monitoring.netflow and is_ftp and is_default and is_smtp \
                and is_http and is_https, PROXY_SERVER_CREATE_ERROR
-        print("ProxyServer successfully created with service {} Configuration.".format(
-            PROXY_SERVICE1))
+        logging.info(
+            f"ProxyServer successfully created with service {PROXY_SERVICE1} Configuration.")
 
         # update with proxy service forcepoint_ap-web_cloud
         proxy_server.update(http_proxy=PROXY_SERVICE2, fp_proxy_key_id=3,
@@ -294,8 +334,8 @@ if __name__ == "__main__":
         proxy_server = ProxyServer(PROXY_SERVER_NAME)
         assert proxy_server.proxy_service == PROXY_SERVICE2 and proxy_server.fp_proxy_key_id == 3 \
                and proxy_server.fp_proxy_user_id == '2', PROXY_SERVER_UPDATE_ERROR
-        print(
-            "ProxyServer successfully update with service {} Configuration.".format(PROXY_SERVICE2))
+        logging.info(
+            f"ProxyServer successfully update with service {PROXY_SERVICE2} Configuration.")
 
         # update with proxy service generic
         proxy_server.update(http_proxy=PROXY_SERVICE3, add_x_forwarded_for=True,
@@ -303,8 +343,8 @@ if __name__ == "__main__":
         proxy_server = ProxyServer(PROXY_SERVER_NAME)
         assert proxy_server.proxy_service == PROXY_SERVICE3 and proxy_server.add_x_forwarded_for \
                and proxy_server.trust_host_header, PROXY_SERVER_UPDATE_ERROR
-        print(
-            "ProxyServer successfully update with service {} Configuration.".format(PROXY_SERVICE3))
+        logging.info(
+            f"ProxyServer successfully update with service {PROXY_SERVICE3} Configuration.")
 
         # Active Directory Server
         domain_controller = DomainController("test_user", SECONDARY_ADDRESS1, SHARE_SECRET,
@@ -365,7 +405,7 @@ if __name__ == "__main__":
                active_directory_server.user_id_attr == "sAMAccountName" and \
                active_directory_server.user_principal_name \
                == "userPrincipalName", ACTIVE_DIRECTORY_SERVER_CREATE_ERROR
-        print("ActiveDirectoryServer created successfully.")
+        logging.info("ActiveDirectoryServer created successfully.")
         active_directory_server.update(mobile_attr_name=MOBILE_NUMBER, timeout=20,
                                        user_principal_name="changeduserPrincipalName",
                                        location_ref=location.href,
@@ -376,7 +416,7 @@ if __name__ == "__main__":
                active_directory_server.user_principal_name == "changeduserPrincipalName" and \
                active_directory_server.location_ref.href \
                == location.href, ACTIVE_DIRECTORY_SERVER_UPDATE_ERROR
-        print("ActiveDirectoryServer updated successfully.")
+        logging.info("ActiveDirectoryServer updated successfully.")
 
         # Ldap Server
         ldap_server = LDAPServer.create(
@@ -427,7 +467,7 @@ if __name__ == "__main__":
                ldap_server.base_dn == 'dc=domain,dc=net' and \
                ldap_server.user_id_attr == "sAMAccountName" and \
                ldap_server.user_principal_name == "userPrincipalName", LDAP_SERVER_CREATE_ERROR
-        print("LDAPServer created successfully.")
+        logging.info("LDAPServer created successfully.")
         ldap_server.update(mobile_attr_name=MOBILE_NUMBER, timeout=20,
                            user_principal_name="changeduserPrincipalName",
                            location_ref=location.href,
@@ -437,7 +477,7 @@ if __name__ == "__main__":
                ldap_server.user_principal_name == "changeduserPrincipalName" and \
                ldap_server.location_ref.href == location.href and \
                ldap_server.third_party_monitoring.snmp_trap, LDAP_SERVER_UPDATE_ERROR
-        print("LDAPServer updated successfully.")
+        logging.info("LDAPServer updated successfully.")
 
         sms_http_channel = [
                                {
@@ -502,7 +542,8 @@ if __name__ == "__main__":
                                  )]
         host = list(Host.objects.all())[0]
         data_context = list(DataContext.objects.all())[0]
-        netflow_collector = [NetflowCollector(data_context, host, 2055, "tcp", "xml")]
+        netflow_collector = [NetflowCollector(data_context, host, 2055,
+                                              "tcp", "xml")]
         mgt_server = ManagementServer.create(
             MGT_SERVER_NAME,
             address=PRIMARY_ADDRESS1,
@@ -538,14 +579,14 @@ if __name__ == "__main__":
                and mgt_server.updates_proxy_username == MGT_SERVER_NAME and \
                mgt_server.db_replication and \
                mgt_server.snmp_gateways == PRIMARY_ADDRESS2, MGT_SERVER_CREATE_ERROR
-        print("ManagementServer created successfully.")
+        logging.info("ManagementServer created successfully.")
         mgt_server.update(db_replication=False, announcement_message="changed message",
                           web_app=web_app)
         mgt_server = ManagementServer(MGT_SERVER_NAME)
 
         assert mgt_server.web_app and not mgt_server.db_replication and \
                mgt_server.announcement_message == "changed message", MGT_SERVER_UPDATE_ERROR
-        print("ManagementServer updated successfully.")
+        logging.info("ManagementServer updated successfully.")
 
         # EpoServer
         is_epo_server = False
@@ -565,7 +606,7 @@ if __name__ == "__main__":
             assert epo_server.address == PRIMARY_ADDRESS3 and SECONDARY_ADDRESS3 in epo_server \
                 .secondary and monitoring.monitoring_log_server_ref.href == log_server.href and \
                    monitoring.netflow and monitoring.snmp_trap, EPO_SERVER_CREATE_ERROR
-            print("EpoServer created successfully.")
+            logging.info("EpoServer created successfully.")
             monitoring["snmp_trap"] = False
             monitoring["netflow"] = False
             epo_server.update(third_party_monitoring=monitoring,
@@ -574,33 +615,172 @@ if __name__ == "__main__":
             monitoring = epo_server.third_party_monitoring
             assert epo_server.epo_login == "epo_login_changed" and not monitoring.snmp_trap \
                    and not monitoring.netflow, EPO_SERVER_UPDATE_ERROR
-            print("EpoServer updated successfully.")
-    except Exception as ex:
-        print("Exception is {}".format(ex))
-        exit(-1)
+            logging.info("EpoServer updated successfully.")
+
+        # NtpServer
+        ntp_server = NTPServer().create(NTP_SERVER_NAME,
+                                        address=PRIMARY_ADDRESS1,
+                                        ipv6_address=IPV6_ADDRESS,
+                                        ntp_auth_key="ntp_auth_key",
+                                        ntp_auth_key_id=65533,
+                                        ntp_auth_key_type="MD5",
+                                        ntp_host_name="test ntp",
+                                        secondary=[SECONDARY_ADDRESS1],
+                                        third_party_monitoring=third_party_monitoring,
+                                        comment=NTP_SERVER_COMMENT
+                                        )
+        monitoring = ntp_server.third_party_monitoring
+        assert ntp_server.address == PRIMARY_ADDRESS1 and \
+               SECONDARY_ADDRESS1 in ntp_server.secondary and \
+               monitoring.monitoring_log_server_ref.href == log_server.href and \
+               monitoring.netflow and monitoring.snmp_trap and \
+               ntp_server.ntp_auth_key_type == "MD5" and \
+               ntp_server.ipv6_address == IPV6_ADDRESS, NTP_SERVER_CREATE_ERROR
+        logging.info("NtpServer created successfully.")
+        ntp_server.add_secondary([SECONDARY_ADDRESS2], True)
+        monitoring["snmp_trap"] = False
+        monitoring["netflow"] = False
+        ntp_server.update(third_party_monitoring=monitoring)
+        ntp_server = NTPServer(NTP_SERVER_NAME)
+        assert not ntp_server.third_party_monitoring.snmp_trap and \
+               not ntp_server.third_party_monitoring.netflow and \
+               SECONDARY_ADDRESS2 in ntp_server.secondary, NTP_SERVER_UPDATE_ERROR
+        logging.info("NtpServer update successfully.")
+
+        # HttpProxy
+        http_proxy = HttpProxy.create(
+            HTTP_PROXY_NAME,
+            proxy_port=8080,
+            address=PRIMARY_ADDRESS4,
+            username=HTTP_PROXY_NAME,
+            password=SHARE_SECRET,
+            secondary=[SECONDARY_ADDRESS4],
+            third_party_monitoring=third_party_monitoring,
+            comment=HTTP_PROXY_COMMENT)
+        monitoring = http_proxy.third_party_monitoring
+        assert http_proxy.address == PRIMARY_ADDRESS4 and \
+               SECONDARY_ADDRESS4 in http_proxy.secondary and \
+               monitoring.monitoring_log_server_ref.href == log_server.href and \
+               monitoring.netflow and monitoring.snmp_trap and \
+               http_proxy.http_proxy_username == HTTP_PROXY_NAME, HTTP_PROXY_CREATE_ERROR
+        logging.info("HttpProxy created successfully.")
+        http_proxy.add_secondary([SECONDARY_ADDRESS2], True)
+        monitoring["snmp_trap"] = False
+        monitoring["netflow"] = False
+        http_proxy.update(third_party_monitoring=monitoring)
+        http_proxy = HttpProxy(HTTP_PROXY_NAME)
+        assert not http_proxy.third_party_monitoring.snmp_trap and \
+               not http_proxy.third_party_monitoring.netflow and \
+               SECONDARY_ADDRESS2 in http_proxy.secondary, HTTP_PROXY_UPDATE_ERROR
+        logging.info("HttpProxy update successfully.")
+
+        # LogServer
+        test_log_server = LogServer.create(LOG_SERVER_NAME, address=PRIMARY_ADDRESS1,
+                                           ipv6_address=IPV6_ADDRESS,
+                                           secondary=[SECONDARY_ADDRESS1, SECONDARY_ADDRESS2],
+                                           location_ref=location,
+                                           netflow_collector=netflow_collector,
+                                           log_disk_space_handling_mode="overwrite_oldest",
+                                           backup_log_server=[log_server],
+                                           comment=LOG_SERVER_COMMENT)
+        assert test_log_server.address == PRIMARY_ADDRESS1 and \
+               test_log_server.ipv6_address == IPV6_ADDRESS and \
+               test_log_server.log_disk_space_handling_mode == "overwrite_oldest" and \
+               test_log_server.backup_log_server[0].href == log_server.href and \
+               not test_log_server.inactive, LOG_SERVER_CREATE_ERROR
+        logging.info("LogServer created successfully.")
+        test_log_server.update(inactive=True, secondary=[SECONDARY_ADDRESS1, SECONDARY_ADDRESS2],
+                               backup_log_server=[])
+        test_log_server = LogServer(LOG_SERVER_NAME)
+        assert test_log_server.inactive and SECONDARY_ADDRESS2 in test_log_server.secondary \
+               and not test_log_server.backup_log_server, LOG_SERVER_UPDATE_ERROR
+        logging.info("LogServer updated successfully.")
+    except BaseException as ex:
+        logging.error(f"Exception:{ex}")
+        return_code = 1
     finally:
         AuthenticationMethod(AUTH_METHOD_NAME1).delete()
-        print("AuthenticationMethod deleted successfully.")
+        logging.info("AuthenticationMethod deleted successfully.")
         TacacsServer(TACACS_SERVER_NAME1).delete()
         TacacsServer(TACACS_SERVER_NAME2).delete()
-        print("TacacsServer deleted successfully.")
+        logging.info("TacacsServer deleted successfully.")
         AuthenticationMethod(AUTH_METHOD_NAME2).delete()
-        print("AuthenticationMethod deleted successfully.")
+        logging.info("AuthenticationMethod deleted successfully.")
         RadiusServer(RADIUS_SERVER_NAME1).delete()
         RadiusServer(RADIUS_SERVER_NAME2).delete()
-        print("RadiusServer deleted successfully.")
+        logging.info("RadiusServer deleted successfully.")
         IcapServer(ICAP_SERVER_NAME).delete()
-        print("IcapServer deleted successfully.")
+        logging.info("IcapServer deleted successfully.")
         ProxyServer(PROXY_SERVER_NAME).delete()
-        print("ProxyServer deleted successfully.")
+        logging.info("ProxyServer deleted successfully.")
         ActiveDirectoryServer(ACTIVE_DIRECTORY_SERVER).delete()
-        print("ActiveDirectoryServer deleted successfully.")
+        logging.info("ActiveDirectoryServer deleted successfully.")
         LDAPServer(LDAP_SERVER).delete()
-        print("LDAPServer deleted successfully.")
+        logging.info("LDAPServer deleted successfully.")
         ManagementServer(MGT_SERVER_NAME).delete()
-        print("ManagementServer deleted successfully.")
+        logging.info("ManagementServer deleted successfully.")
         SmtpServer(SMTP_SERVER_NAME).delete()
-        print("SmtpServer deleted successfully.")
+        logging.info("SmtpServer deleted successfully.")
         if is_epo_server:
             EpoServer(EPO_SERVER_NAME).delete()
-            print("EpoServer deleted successfully.")
+            logging.info("EpoServer deleted successfully.")
+        NTPServer(NTP_SERVER_NAME).delete()
+        logging.info("NtpServer deleted successfully.")
+        HttpProxy(HTTP_PROXY_NAME).delete()
+        logging.info("HttpProxy deleted successfully.")
+        LogServer(LOG_SERVER_NAME).delete()
+        logging.info("LogServer deleted successfully.")
+        session.logout()
+    return return_code
+
+
+def parse_command_line_arguments():
+    """ Parse command line arguments. """
+
+    parser = argparse.ArgumentParser(
+        description='Example script to show how to use different type of servers - TacacsServer, '
+                    'RadiusServer, IcapServer, SmtpServer, ProxyServer, ActiveDirectoryServer, '
+                    'LDAPServer, ManagementServer, EpoServer, NtpServer, HttpProxy and LogServer.',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        add_help=False)
+    parser.add_argument(
+        '-h', '--help',
+        action='store_true',
+        help='show this help message and exit')
+
+    parser.add_argument(
+        '--api-url',
+        type=str,
+        help='SMC API url like https://192.168.1.1:8082')
+    parser.add_argument(
+        '--api-version',
+        type=str,
+        help='The API version to use for run the script'
+    )
+    parser.add_argument(
+        '--smc-user',
+        type=str,
+        help='SMC API user')
+    parser.add_argument(
+        '--smc-pwd',
+        type=str,
+        help='SMC API password')
+    parser.add_argument(
+        '--api-key',
+        type=str, default=None,
+        help='SMC API api key (Default: None)')
+
+    arguments = parser.parse_args()
+
+    if arguments.help:
+        parser.print_help()
+        sys.exit(1)
+    if arguments.api_url is None:
+        parser.print_help()
+        sys.exit(1)
+
+    return arguments
+
+
+if __name__ == '__main__':
+    sys.exit(main())

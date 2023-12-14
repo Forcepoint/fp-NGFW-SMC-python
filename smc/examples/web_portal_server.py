@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 #  not use this file except in compliance with the License. You may obtain
 #  a copy of the License at
@@ -9,27 +12,36 @@
 #  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #  License for the specific language governing permissions and limitations
 #  under the License.
-
-from smc.administration.certificates.tls import TLSServerCredential, TLSCryptographySuite
-from smc.elements.other import Location
-from smc.elements.servers import WebPortalServer, LogServer, WebApp
-
 """
 Example script to show how to use Web Portal Server.
 """
+import argparse
+import logging
+import sys
 
-from smc import session
-from smc_info import SMC_URL, API_KEY, API_VERSION
+sys.path.append('../../')  # smc-python
+from smc import session  # noqa
+from smc.administration.certificates.tls import TLSServerCredential, TLSCryptographySuite  # noqa
+from smc.elements.other import Location  # noqa
+from smc.elements.servers import WebPortalServer, LogServer, WebApp  # noqa
 
 WEB_SERVER_NAME = "web_server_test"
 WEB_SERVER_PORTAL_CREATE_ERROR = "Failed to create web portal server with parameter."
 WEB_SERVER_PORTAL_UPDATE_ERROR = "Failed to update web portal server."
 
-if __name__ == "__main__":
+logging.getLogger()
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
+                                                '%(name)s - [%(levelname)s] : %(message)s')
+
+
+def main():
+    return_code = 0
     try:
-        session.login(url=SMC_URL, api_key=API_KEY, verify=False, timeout=120,
-                      api_version=API_VERSION)
-        print("session OK")
+        arguments = parse_command_line_arguments()
+        session.login(url=arguments.api_url, api_key=arguments.api_key,
+                      login=arguments.smc_user,
+                      pwd=arguments.smc_pwd, api_version=arguments.api_version)
+        logging.info("session OK")
         alert_server = list(LogServer.objects.all())[0]
         location = list(Location.objects.all())[0]
         tls_server_creds = list(TLSServerCredential.objects.all())[0]
@@ -59,14 +71,66 @@ if __name__ == "__main__":
             address == "5.5.5.5" and web_app.server_credentials_ref.href == tls_server_creds.href
         web_app.tls_cipher_suites.href == tls_cryptography_suite.\
             href, WEB_SERVER_PORTAL_CREATE_ERROR
-        print("WebPortalServer created successfully.")
+        logging.info("WebPortalServer created successfully.")
         web_portal_server.update(location_ref=location.href)
         web_portal_server = WebPortalServer(WEB_SERVER_NAME)
         assert web_portal_server.location_ref.href == location.href, WEB_SERVER_PORTAL_UPDATE_ERROR
-        print("WebPortalServer updated successfully.")
+        logging.info("WebPortalServer updated successfully.")
     except BaseException as e:
-        print("Exception:{}".format(e))
-        exit(-1)
+        logging.error(f"Exception:{e}")
+        return_code = 1
     finally:
         WebPortalServer(WEB_SERVER_NAME).delete()
-        print("WebPortalServer deleted successfully.")
+        logging.info("WebPortalServer deleted successfully.")
+        session.logout()
+    return return_code
+
+
+def parse_command_line_arguments():
+    """ Parse command line arguments. """
+
+    parser = argparse.ArgumentParser(
+        description='Example script to show how to use Web Portal Server',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        add_help=False)
+    parser.add_argument(
+        '-h', '--help',
+        action='store_true',
+        help='show this help message and exit')
+
+    parser.add_argument(
+        '--api-url',
+        type=str,
+        help='SMC API url like https://192.168.1.1:8082')
+    parser.add_argument(
+        '--api-version',
+        type=str,
+        help='The API version to use for run the script'
+    )
+    parser.add_argument(
+        '--smc-user',
+        type=str,
+        help='SMC API user')
+    parser.add_argument(
+        '--smc-pwd',
+        type=str,
+        help='SMC API password')
+    parser.add_argument(
+        '--api-key',
+        type=str, default=None,
+        help='SMC API api key (Default: None)')
+
+    arguments = parser.parse_args()
+
+    if arguments.help:
+        parser.print_help()
+        sys.exit(1)
+    if arguments.api_url is None:
+        parser.print_help()
+        sys.exit(1)
+
+    return arguments
+
+
+if __name__ == "__main__":
+    sys.exit(main())

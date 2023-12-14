@@ -285,8 +285,74 @@ class RPCService(Element):
 
     typeof = "rpc_service"
 
+    @classmethod
+    def create(cls, name, program_number=None, transport=None, rpc_version=None, comment=None):
+        """
+        This represents a SUN-RPC service.
+        :param str name: name of rpc service.
+        :param str program_number: The programe number. Not Required.
+        :param str transport: The transport type:
+                        tcp: Allows the RPC message when transported over TCP.
+                        udp: Allows the RPC message when transported over UDP.
+                        both: Allows the RPC message when transported over TCP and UDP.
+        :param str rpc_version: The remote program version number. If you do not enter
+            a program version, the element matches traffic of any version.
+        :param str comment: optional comment.
+        :rtype RPCService.
+        """
+        json = {"name": name, "program_number": program_number, "transport": transport,
+                "rpc_version": rpc_version, "comment": comment}
 
-class ICMPService(Element):
+        return ElementCreator(cls, json)
+
+    @property
+    def rpc_version(self):
+        """
+        The remote program version number
+        :rtype str
+        """
+        return self.data.get("rpc_version")
+
+    @property
+    def transport(self):
+        """
+        The transport type.
+        :rtype str
+        """
+        return self.data.get("transport")
+
+    @property
+    def program_number(self):
+        """
+        The programe number.
+        :rtype str
+        """
+        return self.data.get("program_number")
+
+
+class ICMPServiceMixin:
+    """
+    Represents ICMPService and ICMPIPv6Service common operation.
+    """
+
+    @property
+    def icmp_type(self):
+        """
+        The ICMP type number.
+        :rtype int
+        """
+        return self.data.get("icmp_type")
+
+    @property
+    def icmp_code(self):
+        """
+        The ICMP code number.
+        :rtype int
+        """
+        return self.data.get("icmp_code")
+
+
+class ICMPService(Element, ICMPServiceMixin):
     """
     Represents an ICMP Service in SMC
     Use the RFC icmp type and code fields to set values. ICMP
@@ -314,6 +380,7 @@ class ICMPService(Element):
         :param str name: name of service
         :param int icmp_type: icmp type field
         :param int icmp_code: icmp type code
+        :param str comment: optional comment.
         :raises CreateElementFailed: failure creating element with reason
         :return: instance with meta
         :rtype: ICMPService
@@ -324,7 +391,7 @@ class ICMPService(Element):
         return ElementCreator(cls, json)
 
 
-class ICMPIPv6Service(Element):
+class ICMPIPv6Service(Element, ICMPServiceMixin):
     """
     Represents an ICMPv6 Service type in SMC
     Set the icmp type field at minimum. At time of writing the
@@ -332,28 +399,31 @@ class ICMPIPv6Service(Element):
 
     Create an ICMPv6 service for Neighbor Advertisement Message::
 
-        >>> ICMPIPv6Service.create('api-Neighbor Advertisement Message', 139)
+        >>> ICMPIPv6Service.create('api-Neighbor Advertisement Message', icmp_type=4, icmp_code=8)
         ICMPIPv6Service(name=api-Neighbor Advertisement Message)
 
     Available attributes:
 
     :ivar int icmp_type: ipv6 icmp type field
+    :ivar int icmp_code: icmpv6 type code
     """
 
     typeof = "icmp_ipv6_service"
 
     @classmethod
-    def create(cls, name, icmp_type, comment=None):
+    def create(cls, name, icmp_type, icmp_code=None, comment=None):
         """
         Create the ICMPIPv6 service element
 
         :param str name: name of service
         :param int icmp_type: ipv6 icmp type field
+        :param int icmp_code: icmp type code
+        :param str comment: optional comment.
         :raises CreateElementFailed: failure creating element with reason
         :return: instance with meta
         :rtype: ICMPIPv6Service
         """
-        json = {"name": name, "icmp_type": icmp_type, "comment": comment}
+        json = {"name": name, "icmp_type": icmp_type, "icmp_code": icmp_code, "comment": comment}
 
         return ElementCreator(cls, json)
 

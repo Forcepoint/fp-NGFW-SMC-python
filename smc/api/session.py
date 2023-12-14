@@ -806,13 +806,13 @@ class Session(object):
             from requests.adapters import HTTPAdapter
             from requests.packages.urllib3.util.retry import Retry
 
-            method_whitelist = kwargs.pop("method_whitelist", []) or ["GET", "POST", "PUT"]
+            allowed_methods = kwargs.pop("method_whitelist", []) or ["GET", "POST", "PUT"]
             status_forcelist = frozenset(status_forcelist) if status_forcelist else frozenset([503])
             retry = Retry(
                 total=total,
                 backoff_factor=backoff_factor,
                 status_forcelist=status_forcelist,
-                method_whitelist=method_whitelist,
+                allowed_methods=allowed_methods,
             )
 
             for proto_str in ("http://", "https://"):

@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 #  Licensed under the Apache License, Version 2.0 (the "License"); you may
 #  not use this file except in compliance with the License. You may obtain
 #  a copy of the License at
@@ -19,63 +22,121 @@ Example script to show how to use MatchExpression, Expression
 """
 
 # Python Base Import
-import smc.examples
+import argparse
+import logging
+import sys
 
-from smc import session
-from smc.core.engine import Engine
-from smc.elements.network import Expression
-from smc.elements.service import ApplicationSituation, TCPService
-from smc.policy.rule_elements import MatchExpression
-from smc_info import *
+sys.path.append('../../')  # smc-python
+from smc import session  # noqa
+from smc.core.engine import Engine  # noqa
+from smc.elements.network import Expression  # noqa
+from smc.elements.service import ApplicationSituation, TCPService  # noqa
+from smc.policy.rule_elements import MatchExpression  # noqa
+
+logging.getLogger()
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
+                                                '%(name)s - [%(levelname)s] : %(message)s')
+
+
+def main():
+    return_code = 0
+    try:
+        arguments = parse_command_line_arguments()
+        session.login(url=arguments.api_url, api_key=arguments.api_key,
+                      login=arguments.smc_user,
+                      pwd=arguments.smc_pwd, api_version=arguments.api_version)
+        logging.info("session OK")
+
+        # check for all engines
+        engine_list = list(Engine.objects.all())
+
+        # Create a match_expression
+        me = MatchExpression.create(name='mymatch',
+                                    service=ApplicationSituation('FTP'),
+                                    service_ports=TCPService('Any TCP Service'))
+
+        # Get Name for first match_expression
+        name = MatchExpression.objects.iterator().first().name
+
+        # Get by name
+        logging.info(f"Retrieve {name} by name..")
+        match_expression = MatchExpression.get(name)
+        logging.info(f"match_expression={match_expression}")
+
+        # Get by filter
+        logging.info(f"Retrieve {name} by filter..")
+        it = MatchExpression.objects.iterator()
+        query1 = it.filter(name)
+        if query1.exists():
+            logging.info(f"match_expression={list(query1.all())}")
+
+        # Get All match_expression
+        logging.info("")
+        logging.info("Get All match_expression...")
+        for match_expression in MatchExpression.objects.all():
+            logging.info(f"match_expression={match_expression}")
+            for referenced_element in match_expression.values():
+                logging.info(f"ref={referenced_element}")
+
+        # Get All expression
+        logging.info("")
+        logging.info("Get All expression...")
+        for expression in Expression.objects.all():
+            logging.info(f"expression={expression}")
+    except BaseException as e:
+        logging.error(f"Exception:{e}")
+        return_code = 1
+    finally:
+        me.delete()
+        session.logout()
+    return return_code
+
+
+def parse_command_line_arguments():
+    """ Parse command line arguments. """
+
+    parser = argparse.ArgumentParser(
+        description='Example script to show how to use MatchExpression',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        add_help=False)
+    parser.add_argument(
+        '-h', '--help',
+        action='store_true',
+        help='show this help message and exit')
+
+    parser.add_argument(
+        '--api-url',
+        type=str,
+        help='SMC API url like https://192.168.1.1:8082')
+    parser.add_argument(
+        '--api-version',
+        type=str,
+        help='The API version to use for run the script'
+    )
+    parser.add_argument(
+        '--smc-user',
+        type=str,
+        help='SMC API user')
+    parser.add_argument(
+        '--smc-pwd',
+        type=str,
+        help='SMC API password')
+    parser.add_argument(
+        '--api-key',
+        type=str, default=None,
+        help='SMC API api key (Default: None)')
+
+    arguments = parser.parse_args()
+
+    if arguments.help:
+        parser.print_help()
+        sys.exit(1)
+    if arguments.api_url is None:
+        parser.print_help()
+        sys.exit(1)
+
+    return arguments
 
 
 if __name__ == '__main__':
-
-    session.login(url=SMC_URL, api_key=API_KEY, verify=False, timeout=120, api_version=API_VERSION)
-    print("session OK")
-
-try:
-    # check for all engines
-    engine_list = list(Engine.objects.all())
-
-    # Create a match_expression
-    me = MatchExpression.create(name='mymatch',
-                                service=ApplicationSituation('FTP'),
-                                service_ports=TCPService('Any TCP Service'))
-
-    # Get Name for first match_expression
-    name = MatchExpression.objects.iterator().first().name
-
-    # Get by name
-    print("Retrieve {} by name..".format(name))
-    match_expression = MatchExpression.get(name)
-    print("match_expression={}".format(match_expression))
-
-    # Get by filter
-    print("Retrieve {} by filter..".format(name))
-    it = MatchExpression.objects.iterator()
-    query1 = it.filter(name)
-    if query1.exists():
-        print("match_expression={}".format(list(query1.all())))
-
-    # Get All match_expression
-    print("")
-    print("Get All match_expression...")
-    for match_expression in MatchExpression.objects.all():
-        print("match_expression={}".format(match_expression))
-        for referenced_element in match_expression.values():
-            print("ref={}".format(referenced_element))
-
-    # Get All expression
-    print("")
-    print("Get All expression...")
-    for expression in Expression.objects.all():
-        print("expression={}".format(expression))
-
-
-except Exception as e:
-    print(e)
-    SystemExit(-1)
-finally:
-    me.delete()
-    session.logout()
+    sys.exit(main())

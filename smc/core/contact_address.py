@@ -60,6 +60,7 @@ from smc.base.model import SubElement
 from smc.elements.helpers import location_helper
 from smc.elements.other import ContactAddress
 from smc.base.collection import SubElementCollection
+from smc.compat import is_smc_version_less_than
 
 
 class InterfaceContactAddress(ContactAddress):
@@ -123,7 +124,7 @@ class ContactAddressNode(SubElement):
             updated = True
         return updated
 
-    def update_or_create(self, location, contact_address, with_status=False, **kw):
+    def update_or_create(self, location, contact_address, dynamic=False, with_status=False, **kw):
         """
         Update an existing contact address or create if the location does
         not exist.
@@ -132,31 +133,44 @@ class ContactAddressNode(SubElement):
             if it doesn't exist
         :param str contact_address: contact address IP. Can be the string 'dynamic'
             if this should be a dynamic contact address (i.e. on DHCP interface)
+        :param bool dynamic: flag to specify the dynamic FQDN contact address.
         :param bool with_status: if set to True, a 3-tuple is returned with
             (Element, modified, created), where the second and third tuple
             items are booleans indicating the status
         :raises UpdateElementFailed: failed to update element with reason
         :rtype: ContactAddressNode
+
+        As example for dynamic FQDN:
+            update_or_create(location=Location("SpecificLocation"),
+                             contract_address="your.fqdn",
+                             dynamic=True)
+        As example for dynamic:
+            update_or_create(location=Location("SpecificLocation"),
+                             contract_address="dynamic")
         """
         updated, created = False, False
         location_ref = location_helper(location)
+        updated_address = contact_address
+        dynamic_address = "true" if dynamic else "false"
+        if "dynamic" in updated_address:
+            # we force the dynamic flag
+            dynamic_address = "true"
+            # we mark 'unknown' to be sure that it will be re-evaluated later on by the SMC storage
+            updated_address = "First DHCP Interface ip" \
+                if is_smc_version_less_than("7.2") else "Unknown DHCP Interface ip"
         if location_ref in self:
             for ca in self:
                 if ca.location_ref == location_ref:
                     ca.update(
-                        address=contact_address
-                        if "dynamic" not in contact_address
-                        else "First DHCP Interface ip",
-                        dynamic="true" if "dynamic" in contact_address else "false",
+                        address=updated_address,
+                        dynamic=dynamic_address,
                     )
                     updated = True
         else:
             self.data.setdefault("contact_addresses", []).append(
                 dict(
-                    address=contact_address
-                    if "dynamic" not in contact_address
-                    else "First DHCP Interface ip",
-                    dynamic="true" if "dynamic" in contact_address else "false",
+                    address=updated_address,
+                    dynamic=dynamic_address,
                     location_ref=location_ref,
                 )
             )
@@ -168,7 +182,7 @@ class ContactAddressNode(SubElement):
             return self, updated, created
         return self
 
-    def add_contact_address(self, contact_address, location="Default"):
+    def add_contact_address(self, contact_address, location="Default", dynamic=False):
         """
         Add a contact address to this specified interface. A
         contact address is an alternative address which is
@@ -177,10 +191,21 @@ class ContactAddressNode(SubElement):
         contact address operation is committed immediately.
 
         :param str contact_address: IP address for this contact address.
+        :param str location: name of the location, the location will be added
+            if it doesn't exist
+        :param bool dynamic: flag to specify the dynamic FQDN contact address.
         :raises EngineCommandFailed: invalid contact address
         :return: ContactAddressNode
+
+        As example for dynamic FQDN:
+            add_contact_address(contract_address="your.fqdn",
+                                location=Location("SpecificLocation"),
+                                dynamic=True)
+        As example for dynamic:
+            update_or_create(contract_address="dynamic",
+                             location=Location("SpecificLocation"))
         """
-        return self.update_or_create(location, contact_address)
+        return self.update_or_create(location, contact_address, dynamic)
 
     def remove_contact_address(self, location):
         """

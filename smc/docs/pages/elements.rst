@@ -49,6 +49,8 @@ documentation: :ref:`element-reference-label`
 
 * *IPServiceGroup*
 
+* *RPCService*
+
 * *ICMPService*
 
 * *ICMPv6Service*

@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 #  Licensed under the Apache License, Version 2.0 (the "License"); you may
 #  not use this file except in compliance with the License. You may obtain
 #  a copy of the License at
@@ -12,23 +15,23 @@
 """
 Example script to show how to use Administration Domains, Administrators and WebPortalAdminUser.
 """
-
+import argparse
 import logging
+import sys
 import time
-import traceback
-from smc import session
-from smc.administration.reports import ReportDesign
-from smc.core.engines import IPS
-from smc.elements.servers import LogServer
-from smc.api.exceptions import UpdateElementFailed
-from smc.administration.system import AdminDomain
-from smc.elements.tags import FilterExpressionTag
-from smc.elements.user import AdminUser, ApiClient, WebPortalAdminUser
-from smc.policy.layer3 import FirewallSubPolicy, FirewallTemplatePolicy
-from smc_info import *
 
-logging.getLogger()
-logging.basicConfig(level=logging.INFO)
+sys.path.append('../../')  # smc-python
+from smc import session  # noqa
+from smc.administration.reports import ReportDesign  # noqa
+from smc.core.engines import IPS  # noqa
+from smc.elements.servers import LogServer  # noqa
+from smc.api.exceptions import UpdateElementFailed  # noqa
+from smc.administration.system import AdminDomain  # noqa
+from smc.administration.access_rights import Permission, AccessControlList  # noqa
+from smc.administration.role import Role  # noqa
+from smc.elements.tags import FilterExpressionTag  # noqa
+from smc.elements.user import AdminUser, ApiClient, WebPortalAdminUser  # noqa
+from smc.policy.layer3 import FirewallSubPolicy, FirewallTemplatePolicy  # noqa
 
 error_update = "Element reference breaks domain boundary restriction"
 domain_name = "domain_test"
@@ -44,16 +47,24 @@ receive_error_value = "Receive incorrect values"
 access_attribute_error = "Failed to access AdminDomain's attribute."
 pwd_meta_data_error = "Failed to get password meta data error."
 RETRY = 3
-if __name__ == "__main__":
 
+logging.getLogger()
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
+                                                '%(name)s - [%(levelname)s] : %(message)s')
+
+
+def main():
+    return_code = 0
     try:
-        session.login(url=SMC_URL, api_key=API_KEY, verify=False, timeout=120,
-                      api_version=API_VERSION)
+        arguments = parse_command_line_arguments()
+        session.login(url=arguments.api_url, api_key=arguments.api_key,
+                      login=arguments.smc_user,
+                      pwd=arguments.smc_pwd, api_version=arguments.api_version)
 
         # Create SMC Domain
         if AdminDomain.objects.filter(domain_name, exact_match=True):
             AdminDomain(domain_name).delete()
-            logging.info("Domain [%s] has been deleted", domain_name)
+            logging.info(f"Domain [{domain_name}] has been deleted")
 
         domain_obj = AdminDomain.create(name=domain_name, announcement_enabled=False,
                                         announcement_message=announcement_message,
@@ -63,10 +74,10 @@ if __name__ == "__main__":
                                         comment='test creation')
         assert domain_obj.announcement_message == announcement_message, "{} {}".format(
             access_attribute_error, 'announcement_message')
-        assert domain_obj.show_not_categorized, "{} {}".format(access_attribute_error,
-                                                               'show_not_categorized')
-        assert domain_obj.category_filter_system, "{} {}".format(access_attribute_error,
-                                                                 'category_filter_system')
+        assert domain_obj.show_not_categorized, (f"{access_attribute_error} "
+                                                 f"{'show_not_categorized'}")
+        assert domain_obj.category_filter_system, (f"{access_attribute_error} "
+                                                   f"{'category_filter_system'}")
         domain_obj.update(announcement_enabled=True)
         assert domain_obj.announcement_enabled, "Failed to update AdminDomain"
 
@@ -75,13 +86,13 @@ if __name__ == "__main__":
             WebPortalAdminUser(web_admin_test).delete()
         # create web portal admin user
         sub_policy = list(FirewallSubPolicy.objects.all())[0]
-        print("Accessing sub policy : {}".format(sub_policy))
+        logging.info(f"Accessing sub policy : {sub_policy}")
         filter_tag = list(FilterExpressionTag.objects.all())[0]
-        print("Accessing filter tag : {}".format(filter_tag))
+        logging.info(f"Accessing filter tag : {filter_tag}")
         report_design = list(ReportDesign.objects.all())[0]
-        print("Accessing report design : {}".format(report_design))
+        logging.info(f"Accessing report design : {report_design}")
         template_policy = list(FirewallTemplatePolicy.objects.all())[0]
-        print("Accessing template policy : {}".format(template_policy))
+        logging.info(f"Accessing template policy : {template_policy}")
         engine = list(IPS.objects.all())[0]
         admin = WebPortalAdminUser.create(web_admin_test, log_service_enabled=True,
                                           policy_service_enabled=True, report_service_enabled=True,
@@ -92,7 +103,7 @@ if __name__ == "__main__":
                                           show_main_policy=True, show_only_ip_addresses=True,
                                           show_sub_policy=True, show_template_policy=True,
                                           show_upload_comment=True, show_upload_history=True)
-        print("WebPortalAdminUser created successfully.")
+        logging.info("WebPortalAdminUser created successfully.")
         assert admin.log_service_enabled and admin.policy_service_enabled and admin. \
             report_service_enabled, receive_error_value
         # update some attributes
@@ -102,7 +113,7 @@ if __name__ == "__main__":
             admin.report_service_enabled, failed_update_web_user
         admin.update(granted_engine=[engine.href])
         assert admin.granted_engine, "Failed to update granted engine."
-        print("Updated WebPortalAdminUser successfully.")
+        logging.info("Updated WebPortalAdminUser successfully.")
         # change password
         admin.change_password(admin_password)
         # check enable disable is working for web admin user.
@@ -127,13 +138,13 @@ if __name__ == "__main__":
             retry += 1
         # check web admin user is enable
         assert admin.enabled, failed_update_web_user
-        print("Check enable disable request")
+        logging.info("Check enable disable request")
         # Create new SMC Admin
         if AdminUser.objects.filter(name=admin_name):
             AdminUser(admin_name).enable_disable()
             time.sleep(1)
             AdminUser(admin_name).delete()
-            logging.info("AdminUser [%s] has been deleted", admin_name)
+            logging.info(f"AdminUser [{admin_name}] has been deleted", )
 
         admin = AdminUser.create(admin_name, superuser=True)
         admin.change_password(admin_password)
@@ -150,40 +161,100 @@ if __name__ == "__main__":
         # small delay before connect with newly created user
         time.sleep(1)
 
-        session.login(url=SMC_URL, api_version=API_VERSION, login=admin_name, pwd=admin_password,
-                      domain=domain_name)
+        session.login(url=arguments.api_url,
+                      login=admin_name, domain=domain_name,
+                      pwd=admin_password, api_version=arguments.api_version)
 
         try:
             LogServer("Log Server").update(comment='updated in sub domain')
         except UpdateElementFailed as error:
-            logging.info("Update of log server failed but is is expected")
+            logging.error("Update of log server failed but is is expected")
             assert str(error).__contains__(error_update), \
-                logging.error("Expecting to have [%s] but got [%s]", error_update, error)
+                logging.error(f"Expecting to have [{error_update}] but got [{error}]")
+
+        # Create SMC Admin in sub domain
+        permissions = Permission.create([AccessControlList('ALL Elements')],
+                                        Role("Operator"),
+                                        domain=AdminDomain(domain_name))
+        admin = AdminUser.create(name=f"smc_user_{domain_name}", permissions=[permissions])
+        admin.change_password(password="MyComplexPassword00!")
 
         session.logout()
 
     except BaseException as e:
-        print("ex={}".format(e))
-        print(traceback.format_exc())
-        exit(-1)
+        logging.error(f"Exception:{e}")
+        return_code = 1
 
     finally:
         # Cleanup env
-        session.login(url=SMC_URL, api_key=API_KEY, verify=False, timeout=120,
-                      api_version=API_VERSION)
+        session.login(url=arguments.api_url, api_key=arguments.api_key,
+                      login=arguments.smc_user,
+                      pwd=arguments.smc_pwd, api_version=arguments.api_version)
 
         # Delete SMC Domain
         AdminDomain(domain_name).delete()
-        logging.info("Domain [%s] has been deleted", domain_name)
+        logging.info(f"Domain [{domain_name}] has been deleted")
 
         # Delete new SMC Admin
         AdminUser(admin_name).enable_disable()
         time.sleep(1)
         AdminUser(admin_name).delete()
-        logging.info("AdminUser [%s] has been deleted", admin_name)
+        logging.info(f"AdminUser [{admin_name}] has been deleted")
 
         # Delete Web Admin User
         WebPortalAdminUser(web_admin_test).delete()
-        logging.info("WebPortalAdminUser [%s] has been deleted", web_admin_test)
+        logging.info(f"WebPortalAdminUser [{web_admin_test}] has been deleted")
 
         session.logout()
+    return return_code
+
+
+def parse_command_line_arguments():
+    """ Parse command line arguments. """
+
+    parser = argparse.ArgumentParser(
+        description='Example script to show how to use Administration Domains, Administrators and '
+                    'WebPortalAdminUser',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        add_help=False)
+    parser.add_argument(
+        '-h', '--help',
+        action='store_true',
+        help='show this help message and exit')
+
+    parser.add_argument(
+        '--api-url',
+        type=str,
+        help='SMC API url like https://192.168.1.1:8082')
+    parser.add_argument(
+        '--api-version',
+        type=str,
+        help='The API version to use for run the script'
+    )
+    parser.add_argument(
+        '--smc-user',
+        type=str,
+        help='SMC API user')
+    parser.add_argument(
+        '--smc-pwd',
+        type=str,
+        help='SMC API password')
+    parser.add_argument(
+        '--api-key',
+        type=str, default=None,
+        help='SMC API api key (Default: None)')
+
+    arguments = parser.parse_args()
+
+    if arguments.help:
+        parser.print_help()
+        sys.exit(1)
+    if arguments.api_url is None:
+        parser.print_help()
+        sys.exit(1)
+
+    return arguments
+
+
+if __name__ == '__main__':
+    sys.exit(main())

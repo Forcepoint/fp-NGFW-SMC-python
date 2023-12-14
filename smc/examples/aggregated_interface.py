@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 #  Licensed under the Apache License, Version 2.0 (the "License"); you may
 #  not use this file except in compliance with the License. You may obtain
 #  a copy of the License at
@@ -12,54 +15,115 @@
 """
 Example of creating an aggregated interface
 """
+import argparse
+import logging
+import sys
 
-import smc.examples
+sys.path.append('../../')   # smc-python
+from smc.core.engines import Layer3Firewall  # noqa
+from smc import session  # noqa
 
-from smc.core.engines import Layer3Firewall
-from smc import session
-from smc_info import *
+logging.getLogger()
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
+                                                '%(name)s - [%(levelname)s] : %(message)s')
 
-if __name__ == "__main__":
-    session.login(url=SMC_URL, api_key=API_KEY, verify=False, timeout=120, api_version=API_VERSION)
-    print("session OK")
 
-try:
-    engine = Layer3Firewall.create(
-        name="myEngine",
-        mgmt_ip="172.18.1.1",
-        mgmt_network="172.18.1.0/24",
-        mgmt_interface=0,
+def main():
+    return_code = 0
+    try:
+        arguments = parse_command_line_arguments()
+        session.login(url=arguments.api_url, api_key=arguments.api_key,
+                      login=arguments.smc_user,
+                      pwd=arguments.smc_pwd, api_version=arguments.api_version)
+
+        engine = Layer3Firewall.create(
+            name="myEngine",
+            mgmt_ip="172.18.1.1",
+            mgmt_network="172.18.1.0/24",
+            mgmt_interface=0,
+        )
+        engine.physical_interface.add_layer3_interface(interface_id=1,
+                                                       address="172.18.2.10",
+                                                       network_value="172.18.2.0/24",
+                                                       comment="My aggregate interface",
+                                                       aggregate_mode="ha",
+                                                       second_interface_id=2)
+
+        # retrieve interface id
+        for interface in engine.physical_interface.all():
+            logging.info(f"Interfaced created:{interface.interface_id}:{interface}")
+
+        interface_keys = ['id', 'contact_addresse_ip']
+        engine = Layer3Firewall("myEngine")
+        # Contact Address information
+        interface_inventory = []
+        list_itf = []
+        for ca in engine.contact_addresses:
+            list_itf.append(ca.interface_id)
+        uniq_list_itf = list(set(list_itf))
+        for itf_id in uniq_list_itf:
+            contact = engine.interface.get(itf_id).contact_addresses
+            ip = contact[0].interface_ip
+            interface_values = [itf_id, ip]
+            interface_inventory.append(dict(zip(interface_keys, interface_values)))
+
+        logging.info(f"interface_inventory={interface_inventory}")
+    except BaseException as e:
+        logging.error(f"Exception:{e}")
+        return_code = 1
+
+    finally:
+        engine = Layer3Firewall("myEngine")
+        engine.delete()
+        session.logout()
+        return return_code
+
+
+def parse_command_line_arguments():
+    """ Parse command line arguments. """
+
+    parser = argparse.ArgumentParser(
+        description='Example of creating an aggregated interface',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        add_help=False)
+    parser.add_argument(
+        '-h', '--help',
+        action='store_true',
+        help='show this help message and exit')
+
+    parser.add_argument(
+        '--api-url',
+        type=str,
+        help='SMC API url like https://192.168.1.1:8082')
+    parser.add_argument(
+        '--api-version',
+        type=str,
+        help='The API version to use for run the script'
     )
-    engine.physical_interface.add_layer3_interface(interface_id=1,
-                                                   address="172.18.2.10",
-                                                   network_value="172.18.2.0/24",
-                                                   comment="My aggregate interface",
-                                                   aggregate_mode="ha",
-                                                   second_interface_id=2)
+    parser.add_argument(
+        '--smc-user',
+        type=str,
+        help='SMC API user')
+    parser.add_argument(
+        '--smc-pwd',
+        type=str,
+        help='SMC API password')
+    parser.add_argument(
+        '--api-key',
+        type=str, default=None,
+        help='SMC API api key (Default: None)')
 
-    # retrieve interface id
-    for interface in engine.physical_interface.all():
-        print("Interfaced created:{}:{}".format(interface.interface_id, interface))
+    arguments = parser.parse_args()
 
-    interface_keys = ['id', 'contact_addresse_ip']
-    engine = Layer3Firewall("myEngine")
-    # Contact Address information
-    interface_inventory = []
-    list_itf = []
-    for ca in engine.contact_addresses:
-        list_itf.append(ca.interface_id)
-    uniq_list_itf = list(set(list_itf))
-    for itf_id in uniq_list_itf:
-        contact = engine.interface.get(itf_id).contact_addresses
-        ip = contact[0].interface_ip
-        interface_values = [itf_id, ip]
-        interface_inventory.append(dict(zip(interface_keys, interface_values)))
+    if arguments.help:
+        parser.print_help()
+        sys.exit(1)
+    if arguments.api_url is None:
+        parser.print_help()
+        sys.exit(1)
 
-    print("interface_inventory={}".format(interface_inventory))
-except BaseException as e:
-    print("Exception:{}".format(e))
-    exit(-1)
+    return arguments
 
-finally:
-    engine = Layer3Firewall("myEngine")
-    engine.delete()
+
+if __name__ == '__main__':
+    sys.exit(main())

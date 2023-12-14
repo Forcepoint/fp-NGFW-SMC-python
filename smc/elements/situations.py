@@ -467,6 +467,13 @@ class CorrelationSituation(Situation):
     typeof = "correlation_situation"
 
 
+class EcaOperatingSystemSituation(Situation):
+    """
+        Used to configure ECA Endpoint setting
+    """
+    typeof = "eca_operating_system_situation"
+
+
 class TLSMatchSituationContext(SituationContext):
     """
     Used by TLSMatchSituation

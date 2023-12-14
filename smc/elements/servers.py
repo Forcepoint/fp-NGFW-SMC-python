@@ -17,7 +17,9 @@ from smc.api.exceptions import CreateElementFailed, SMCOperationFailure, Certifi
     CertificateExportError, CertificateError, UnsupportedEngineFeature
 from smc.base.model import SubElement, ElementCreator, Element, ElementRef
 from smc.base.structs import NestedDict
-from smc.compat import is_smc_version_less_than, is_smc_version_less_than_or_equal
+from smc.compat import is_smc_version_less_than, is_smc_version_less_than_or_equal, \
+    is_api_version_less_than_or_equal, is_smc_version_equal
+from smc.elements.common import MultiContactServer, NodeElement, IPv6Node
 from smc.elements.helpers import location_helper
 from smc.elements.other import ContactAddress, Location
 from smc.base.util import element_resolver, save_to_file
@@ -95,7 +97,7 @@ class MultiContactAddress(SubElement):
         return updated
 
     def update_or_create(
-        self, location, contact_addresses, with_status=False, overwrite_existing=False, **kw
+            self, location, contact_addresses, with_status=False, overwrite_existing=False, **kw
     ):
         """
         Update or create a contact address and location pair. If the
@@ -303,176 +305,36 @@ class WebApp(NestedDict):
 
 
 class TlsSettings(NestedDict):
-    """
-    TLS Settings.
-    """
+
     def __init__(self, data):
         super(TlsSettings, self).__init__(data=data)
 
-
-class ThirdPartyMonitoring(NestedDict):
-    """
-    This represents Monitoring Settings for Third Party Monitoring.
-    """
-
-    def __init__(self, data):
-        super(ThirdPartyMonitoring, self).__init__(data=data)
-
     @classmethod
-    def create(cls,
-               encoding="UTF-8",
-               logging_profile_ref=None,
-               monitoring_log_server_ref=None,
-               netflow=False,
-               probing_profile_ref=None,
-               snmp_trap=False,
-               time_zone="Europe/Paris"
-               ):
+    def create(cls, use_internal_credentials=None, tls_credentials=None):
         """
-        :param str encoding: The log reception the encoding.
-        :param LoggingProfile logging_profile_ref: Activates syslog reception from this device. You
-            must select the Logging Profile that contains the definitions for converting the syslog
-            entries to log entries.You must also select the Time Zone in which the device is located
-            By default, the local time zone of the computer you are using is selected.Not Required.
-        :param LogServer monitoring_log_server_ref: Select the Monitoring Log Server that monitors
-            this device (third-party monitoring).You must select a Log Server to activate the other
-            options. Not Required.
-        :param bool netflow: Activates NetFlow (v6 and v16) and IPFIX (NetFlow v20) data reception
-            from this device. Not Required.
-        :param ProbingProfile probing_profile_ref: Activates status monitoring for this device. You
-            must also select the Probing Profile that contains the definitions for the monitoring.
-            When you select this option, the element is added to the tree in the System Status view.
-            Not Required.
-        :param bool snmp_trap: Activates SNMP trap reception from this device. The data that the
-            device sends must be formatted according to the MIB definitions currently active in the
-            system. Not Required.
-        :param str time_zone: The log reception the time zone.
+        TLS credentials used for Elasticsearch/Log Forwarding If useInternalCredentials is set to
+        FALSE, this attribute will be read. If this field is set to null, no authentication will
+        be requested.
+        :param bool use_internal_credentials: Indicate if we need to use the server's internal TLS
+            credentials for Elasticsearch/Log Forwarding TRUE if we want to use internal credentials
+            FALSE if we want to use the tlsServerCredentials attribute.
+        :param TLSServerCredential tls_credentials: TLS credentials used for Elasticsearch/Log
+            Forwarding If useInternalCredentials is set to FALSE, this attribute will be read.
+            If this field is set to null, no authentication will be requested.
         """
         data = {
-            "encoding": encoding,
-            "logging_profile_ref": element_resolver(logging_profile_ref),
-            "monitoring_log_server_ref": element_resolver(monitoring_log_server_ref),
-            "probing_profile_ref": element_resolver(probing_profile_ref),
-            "snmp_trap": snmp_trap,
-            "time_zone": time_zone,
-            "netflow": netflow,
+            "use_internal_credentials": use_internal_credentials,
+            "tls_credentials": element_resolver(tls_credentials)
         }
         return cls(data)
 
     @property
-    def encoding(self):
-        """
-        The log reception the encoding.
-        :rtype str
-        """
-        return self.data.get("encoding")
+    def use_internal_credentials(self):
+        return self.data.get("use_internal_credentials")
 
     @property
-    def snmp_trap(self):
-        """
-        Activates SNMP trap reception from this device. The data that the device sends must be
-        formatted according to the MIB definitions currently active in the system.
-        :rtype bool
-        """
-        return self.data.get("snmp_trap")
-
-    @property
-    def netflow(self):
-        """
-        Activates NetFlow (v6 and v16) and IPFIX (NetFlow v20) data reception from this device.
-        :rtype bool
-        """
-        return self.data.get("netflow")
-
-    @property
-    def time_zone(self):
-        """
-        The log reception the time zone.
-        :rtype str
-        """
-        return self.data.get("time_zone")
-
-    @property
-    def logging_profile_ref(self):
-        """
-        Activates syslog reception from this device.
-        :rtype LoggingProfile
-        """
-        return Element.from_href(self.data.get("logging_profile_ref"))
-
-    @property
-    def monitoring_log_server_ref(self):
-        """
-        Monitoring Log Server that monitors this device (third-party monitoring)
-        :rtype LogServer
-        """
-        return Element.from_href(self.data.get("monitoring_log_server_ref"))
-
-    @property
-    def probing_profile_ref(self):
-        """
-        Probing Profile that contains the definitions for the monitoring.
-        :rtype ProbingProfile
-        """
-        return Element.from_href(self.data.get("probing_profile_ref"))
-
-
-class ElementWithLocation:
-
-    @property
-    def location_ref(self):
-        """
-        The location of server
-        :rtype Location:
-        """
-        return Element.from_href(self.data.get("location_ref"))
-
-
-class NodeElement(ElementWithLocation):
-    @property
-    def tools_profile_ref(self):
-        """
-        Allows you to add commands to the element’s right-click menu.
-        :rtype DeviceToolsProfile
-        """
-        return Element.from_href(self.data.get("tools_profile_ref"))
-
-    @property
-    def third_party_monitoring(self):
-        """
-        This represents Monitoring Settings for Third Party Monitoring.
-        """
-        return ThirdPartyMonitoring(self.data.get("third_party_monitoring"))
-
-    @property
-    def secondary(self):
-        """
-        If the device has additional IP addresses, you can enter them here instead of creating
-        additional elements for the other IP addresses. The secondary IP addresses are valid in
-        policies and in routing and antispoofing. You can add several IPv4 and IPv6 addresses
-        (one by one)
-        :rtype list
-        """
-        return self.data.get("secondary")
-
-
-class MultiContactServer(NodeElement):
-
-    @property
-    def address(self):
-        """
-        Single valid IPv4 address.
-        :rtype str
-        """
-        return self.data.get("address")
-
-    @property
-    def ipv6_address(self):
-        """
-        Single valid IPv6 address.
-        :rtype str
-        """
-        return self.data.get("ipv6_address")
+    def tls_credentials(self):
+        return Element.from_href(self.data.get("tls_credentials"))
 
 
 class ManagementLogServerMixin(MultiContactServer):
@@ -491,7 +353,16 @@ class ManagementLogServerMixin(MultiContactServer):
         Elasticsearch TLS Settings.
         :rtype: TlsSettings
         """
-        return TlsSettings(self.data.get("es_tls_settings"))
+        return _elasticsearch_es_tls_settings_prop_compat(
+            self.data,
+            "elasticsearch_authentication_settings")
+
+    @property
+    def elasticsearch_authentication_settings(self):
+        """
+        Elasticsearch authentication settings.
+        """
+        return self.data.get("elasticsearch_authentication_settings")
 
     @property
     def forwarding_tls_settings(self):
@@ -696,6 +567,7 @@ class ManagementServer(ContactAddressMixin, Element, ManagementLogServerMixin):
             tls_profile=None,
             tls_credentials=None,
             es_tls_settings=None,
+            elasticsearch_authentication_settings=None,
             forwarding_tls_settings=None,
             netflow_collector=None,
             mgt_integration_container=None,
@@ -761,6 +633,12 @@ class ManagementServer(ContactAddressMixin, Element, ManagementLogServerMixin):
             login with Client Certificate authentication.
         :param TlsSettings es_tls_settings: Elasticsearch TLS Settings. Not null when we decide to
             override the ES Tls Settings in the Log Server or Management Server.
+        :param dict elasticsearch_authentication_settings: if we want to override defined
+               authentication setting of Elasticsearch Server (> 7.1)
+               dict : method: None, basic, api_key, certificate
+                      api_key : api_key
+                      certificate : es_tls_settings aside
+                      basic : login, password
         :param TlsSettings forwarding_tls_settings: Log Forwarding TLS Settings. Should be NULL if
             no Log Forwarding has been defined for this Log Server. Not required
         :param list(NetflowCollector) netflow_collector: Log Servers can be configured to forward
@@ -825,13 +703,21 @@ class ManagementServer(ContactAddressMixin, Element, ManagementLogServerMixin):
             "announcement_message": announcement_message,
             "comment": comment
         }
-        if es_tls_settings:
-            json.update(es_tls_settings=es_tls_settings)
         if forwarding_tls_settings:
             json.update(forwarding_tls_settings=forwarding_tls_settings)
         if external_pki_certificate_settings:
             json.update(external_pki_certificate_settings=external_pki_certificate_settings.data)
+        _elasticsearch_create_compat(json,
+                                     "elasticsearch_authentication_settings",
+                                     es_tls_settings,
+                                     elasticsearch_authentication_settings)
         return ElementCreator(cls, json)
+
+    def update(self, *exception, **kwargs):
+        super().update(*exception,
+                       **_elasticsearch_update_compat(
+                           "elasticsearch_authentication_settings",
+                           **kwargs))
 
     @property
     def alert_server_ref(self):
@@ -1021,7 +907,7 @@ class ManagementServer(ContactAddressMixin, Element, ManagementLogServerMixin):
 
         session = _get_session(SMCRequest._session_manager)
         response = session.session.put(
-            url=self.href+"/restart_web_access"
+            url=self.href + "/restart_web_access"
         )
 
         if response.status_code != 200:
@@ -1052,15 +938,16 @@ class NetflowCollector(NestedDict):
     """
 
     def __init__(
-        self,
-        data_context,
-        host,
-        netflow_collector_port,
-        netflow_collector_service,
-        netflow_collector_version,
-        filter=None,
-        tls_profile=None,
-        tlsIdentity=None,
+            self,
+            data_context,
+            host,
+            netflow_collector_port,
+            netflow_collector_service,
+            netflow_collector_version,
+            filter=None,
+            tls_profile=None,
+            tlsIdentity=None,
+            kafka_topic=None,
     ):
         dc = dict(
             data_context=element_resolver(data_context),
@@ -1070,18 +957,21 @@ class NetflowCollector(NestedDict):
             netflow_collector_service=netflow_collector_service,
             netflow_collector_version=netflow_collector_version,
             tls_profile=tls_profile,
-            tlsIdentity=tlsIdentity
+            tlsIdentity=tlsIdentity,
+            kafkaTopic=kafka_topic
         )
         super(NetflowCollector, self).__init__(data=dc)
 
     def __str__(self):
         str = ""
-        str += "data_context = {}; ".format(self.data_context)
-        str += "filter = {}; ".format(self.filter)
-        str += "host = {}; ".format(self.host)
-        str += "netflow_collector_port = {}; ".format(self.netflow_collector_port)
-        str += "netflow_collector_service = {}; ".format(self.netflow_collector_service)
-        str += "netflow_collector_version = {}; ".format(self.netflow_collector_version)
+        str += f"data_context = {self.data_context}; "
+        str += f"filter = {self.filter}; "
+        str += f"host = {self.host}; "
+        str += f"netflow_collector_port = {self.netflow_collector_port}; "
+        str += f"netflow_collector_service = {self.netflow_collector_service}; "
+        str += f"netflow_collector_version = {self.netflow_collector_version}; "
+        str += f"kafkaTopic = {self.kafkaTopic};"
+
         return str
 
     @property
@@ -1164,7 +1054,7 @@ class NetflowCollector(NestedDict):
         *Mandatory* when service is "tcp_with_tls"
         :rtype: TlSProfile
         """
-        return Element.from_href(self.get("tls_profile"))\
+        return Element.from_href(self.get("tls_profile")) \
             if self.get("tls_profile") is not None else None
 
     @property
@@ -1177,6 +1067,14 @@ class NetflowCollector(NestedDict):
         :rtype:
         """
         return self.data["tlsIdentity"]
+
+    @property
+    def kafka_topic(self):
+        """
+        Kafka Topic: used only in the case forwarding logs through KAFKA.
+        :rtype str
+        """
+        return self.data["kafkaTopic"]
 
 
 class DataContext(Element):
@@ -1197,7 +1095,7 @@ class LogServer(ContactAddressMixin, Element, ManagementLogServerMixin):
     may be useful to set a contact address location and IP mapping if the Log Server
     needs to be reachable from an engine across NAT
 
-     It's easiest to get the management server reference through a collection::
+     It's easiest to get the log server reference through a collection::
 
         >>> LogServer.objects.first()
         LogServer(name=LogServer 172.18.1.150)
@@ -1205,8 +1103,135 @@ class LogServer(ContactAddressMixin, Element, ManagementLogServerMixin):
 
     typeof = "log_server"
 
+    @classmethod
+    def create(
+            cls,
+            name,
+            address=None,
+            ipv6_address=None,
+            location_ref=None,
+            external_pki_certificate_settings=None,
+            uiid="N/A",
+            tools_profile_ref=None,
+            secondary=None,
+            es_tls_settings=None,
+            elasticsearch_authentication_settings=None,
+            forwarding_tls_settings=None,
+            netflow_collector=None,
+            log_disk_space_handling_mode=None,
+            backup_log_server=None,
+            channel_port=3020,
+            inactive=False,
+            comment=None
+    ):
+        """
+        Log Server elements are used to receive log data from the security engines Most settings on
+        Log Server generally do not need to be changed, however it may be useful to set a contact
+        address location and IP mapping if the Log Server needs to be reachable from an engine
+        across NAT
+        :param str name: Name of the Log Server.
+        :param str address: Single valid IPv4 address. Required.
+        :param str ipv6_address: IPv6 address.
+        :param Location location_ref: Location of the server.
+        :param PkiCertificateSettings external_pki_certificate_settings: Certificate Settings for
+            External PKI mode.
+        :param str uiid: Mgt Server Installation ID (aka UUID).
+        :param tools_profile tools_profile_ref: Allows you to add commands to the element’s
+            right-click menu.
+        :param list(str) secondary: If the device has additional IP addresses, you can enter them
+            here instead of creating additional elements for the other IP addresses. The secondary
+            IP addresses are valid in policies and in routing and antispoofing. You can add several
+            IPv4 and IPv6 addresses (one by one)
+        :param TlsSettings es_tls_settings: Elasticsearch TLS Settings. Not null when we decide to
+            override the ES Tls Settings in the Log Server or Management Server.
+        :param dict elasticsearch_authentication_settings: if we want to override defined
+               authentication setting of Elasticsearch Server (> 7.1)
+               dict : method: None, basic, api_key, certificate
+                      api_key : api_key
+                      certificate : es_tls_settings aside
+                      basic : login, password
+        :param TlsSettings forwarding_tls_settings: Log Forwarding TLS Settings. Should be NULL if
+            no Log Forwarding has been defined for this Log Server. Not required
+        :param list(NetflowCollector) netflow_collector: Log Servers can be configured to forward
+            log data to external hosts. You can define which type of log data you want to forward
+            and in which format. You can also use Filters to specify in detail which log data is
+            forwarded.
+        :param str log_disk_space_handling_mode: Mode chosen to handle extra logs when disk runs out
+            of space.
+        :param list(LogServer) backup_log_server: You can specify several backup Log Servers. The
+            same Log Server can simultaneously be the main Log Server for some components and a
+            backup Log Server for components that primarily use another Log Server. You can also set
+            Log Servers to be backup Log Servers for each other so that whenever one goes down, the
+            other Log Server is used. If Domain elements have been configured, a Log Server and its
+            backup Log Server(s) must belong to the same Domain.
+            Caution: If the log volumes are very high, make sure that the backup Log Server can
+            handle the traffic load in fail-over situations.
+        :param int channel_port: Log Server's TCP Port Number. We recommend using default port 3020
+            if possible. To use a non-standard port, manually add Access rules to allow
+            communications using the new port from the NGFW Engines to the Log Server.
+        :param bool inactive: Is excluded from Log Browsing, Reporting and Statistics.
+        :param str comment: optional comment.
+        """
 
-class HttpProxy(Element):
+        netflow_collector = netflow_collector if netflow_collector else []
+        backup_log_server = backup_log_server if backup_log_server else []
+        json = {
+            "name": name,
+            "address": address,
+            "ipv6_address": ipv6_address,
+            "location_ref": element_resolver(location_ref),
+            "secondary": secondary if secondary else [],
+            "uiid": uiid,
+            "tools_profile_ref": element_resolver(tools_profile_ref),
+            "netflow_collector": [netflow.data for netflow in netflow_collector],
+            "log_disk_space_handling_mode": log_disk_space_handling_mode,
+            "backup_log_server": element_resolver(backup_log_server),
+            "channel_port": channel_port,
+            "inactive": inactive,
+            "comment": comment
+        }
+        if forwarding_tls_settings:
+            json.update(forwarding_tls_settings=forwarding_tls_settings)
+        if external_pki_certificate_settings:
+            json.update(external_pki_certificate_settings=external_pki_certificate_settings.data)
+        _elasticsearch_create_compat(json,
+                                     "elasticsearch_authentication_settings",
+                                     es_tls_settings,
+                                     elasticsearch_authentication_settings)
+        return ElementCreator(cls, json)
+
+    def update(self, *exception, **kwargs):
+        super().update(*exception,
+                       **_elasticsearch_update_compat(
+                           "elasticsearch_authentication_settings",
+                           **kwargs))
+
+    @property
+    def backup_log_server(self):
+        """
+        Several backup Log Servers.
+        :rtype list(LogServer)
+        """
+        return [Element.from_href(server) for server in self.data.get("backup_log_server", [])]
+
+    @property
+    def channel_port(self):
+        """
+        Log Server's TCP Port Number.
+        :rtype int
+        """
+        return self.data.get("channel_port")
+
+    @property
+    def inactive(self):
+        """
+        Is excluded from Log Browsing, Reporting and Statistics.
+        :rtype bool
+        """
+        return self.data.get("inactive")
+
+
+class HttpProxy(Element, NodeElement):
     """
     An HTTP Proxy based element. Used in various areas of the configuration
     such as engine properties to define proxies for File Reputation, etc.
@@ -1217,14 +1242,16 @@ class HttpProxy(Element):
 
     @classmethod
     def create(
-        cls,
-        name,
-        address,
-        proxy_port=8080,
-        username=None,
-        password=None,
-        secondary=None,
-        comment=None,
+            cls,
+            name,
+            address,
+            proxy_port=8080,
+            username=None,
+            password=None,
+            secondary=None,
+            third_party_monitoring=None,
+            tools_profile_ref=None,
+            comment=None,
     ):
         """
         Create a new HTTP Proxy service. Proxy must define at least
@@ -1236,8 +1263,12 @@ class HttpProxy(Element):
         :param int proxy_port: proxy port (default: 8080)
         :param str username: optional username for authentication (default: None)
         :param str password: password for username if defined (default: None)
-        :param str comment: optional comment
         :param list secondary: secondary list of proxy server addresses
+        :param ThirdPartyMonitoring third_party_monitoring: The optional Third Party Monitoring
+            configuration.
+        :param DeviceToolsProfile tools_profile_ref: Allows you to add commands to the element’s
+            right-click menu. Not Required.
+        :param str comment: optional comment
         :raises CreateElementFailed: Failed to create the proxy element
         :rtype: HttpProxy
         """
@@ -1249,9 +1280,36 @@ class HttpProxy(Element):
             "http_proxy_username": username if username else "",
             "http_proxy_password": password if password else "",
             "secondary": secondary if secondary else [],
+            "tools_profile_ref": element_resolver(tools_profile_ref),
         }
+        if third_party_monitoring:
+            json.update(third_party_monitoring=third_party_monitoring.data)
 
         return ElementCreator(cls, json)
+
+    @property
+    def address(self):
+        """
+        Single valid IPv4 address.
+        :rtype str
+        """
+        return self.data.get("address")
+
+    @property
+    def http_proxy_username(self):
+        """
+        Username for authentication.
+        :rtype str
+        """
+        return self.data.get("http_proxy_username")
+
+    @property
+    def http_proxy_port(self):
+        """
+        Listening proxy port.
+        :rtype int
+        """
+        return self.data.get("http_proxy_port")
 
 
 class DNSServer(Element):
@@ -1275,7 +1333,7 @@ class DNSServer(Element):
 
     @classmethod
     def create(
-        cls, name, address, time_to_live=20, update_interval=10, secondary=None, comment=None
+            cls, name, address, time_to_live=20, update_interval=10, secondary=None, comment=None
     ):
         """
         Create a DNS Server element.
@@ -1515,8 +1573,8 @@ class ProxyServer(ContactAddressMixin, Element, MultiContactServer):
 
         if not created:
             if (
-                "proxy_service" in element.data
-                and element.http_proxy != element.data["proxy_service"]
+                    "proxy_service" in element.data
+                    and element.http_proxy != element.data["proxy_service"]
             ):
                 element.data["http_proxy"] = element.data.pop("proxy_service")
                 updated = True
@@ -1582,19 +1640,20 @@ class ElasticsearchCluster(ContactAddressMixin, Element):
 
     @classmethod
     def create(
-        cls,
-        name,
-        addresses,
-        port=9200,
-        es_retention_period=30,
-        es_shard_number=0,
-        es_replica_number=0,
-        enable_cluster_sniffer=False,
-        location=None,
-        comment=None,
-        tls_profile=None,
-        use_internal_credentials=True,
-        tls_credentials=None,
+            cls,
+            name,
+            addresses,
+            port=9200,
+            es_retention_period=30,
+            es_shard_number=0,
+            es_replica_number=0,
+            enable_cluster_sniffer=False,
+            location=None,
+            comment=None,
+            tls_profile=None,
+            es_tls_settings=None,
+            authentication_settings=None
+
     ):
         """
         Create a Elasticsearch Cluster Server element.
@@ -1613,9 +1672,14 @@ class ElasticsearchCluster(ContactAddressMixin, Element):
         is a NAT device between the server and other SMC components.
         :param str comment: Comment for Elasticsearch cluster Server element
         :param str tls_profile: tls profile name to use
-        :param bool use_internal_credentials: use internal credentials
-        :param str tls_credentials: tls credentials name to use
-
+        :param TlsSettings es_tls_settings: Elasticsearch TLS Settings.
+        :param dict authentication_settings:
+        method: str can be none, basic, api_key or certificate
+        for basic
+            login : elasticsearch user login
+            password : elasticsearch user password
+        for api_key:
+            api_key: elasticsearch api key for user
         :raises CreateElementFailed: Failed to create with reason
         :rtype: ElasticsearchCluster
         """
@@ -1640,48 +1704,141 @@ class ElasticsearchCluster(ContactAddressMixin, Element):
         if tls_profile:
             tls_profile_ref = tls.TLSProfile(tls_profile).href
             json.update(tls_profile=tls_profile_ref)
-        if tls_credentials:
-            tls_credentials_ref = tls.TLSServerCredential(tls_credentials).href
-            json.update(
-                es_tls_settings={
-                    "use_internal_credentials": use_internal_credentials,
-                    "tls_credentials": tls_credentials_ref,
-                }
-            )
-        else:
-            json.update(es_tls_settings={"use_internal_credentials": use_internal_credentials})
-
+        _elasticsearch_create_compat(json,
+                                     "authentication_settings",
+                                     es_tls_settings,
+                                     authentication_settings)
         return ElementCreator(cls, json)
 
+    def update(self, *exception, **kwargs):
+        super().update(*exception,
+                       **_elasticsearch_update_compat(
+                           "authentication_settings",
+                           **kwargs))
 
-#     @classmethod
-#     def create(cls, service_type, port, comment=None):
-#         """
-#         Create a service type defintion for a proxy server protocol.
-#
-#         :param str service_type: service type to use, HTTP, HTTPS, FTP or
-#             SMTP
-#         :param str,int port: port for this service
-#         :param str comment: optional comment
-#         """
-#         json = {'service_type': service_type.upper(),
-#             'port': port, 'comment': comment}
-#         data = ElementCache(data=json)
-#         return type(cls.__name__, (cls,), {'data': data})()
+    @property
+    def port(self):
+        """
+        The port on which connection is established on Elasticsearch Cluster nodes.
+        :rtype: int
+        """
+        return self.data.get("port")
 
-class NTPServer(Element):
+    @property
+    def es_tls_settings(self):
+        """
+        Elasticsearch TLS Settings.
+        :rtype: TlsSettings
+        """
+        return _elasticsearch_es_tls_settings_prop_compat(
+            self.data,
+            "authentication_settings")
+
+    @property
+    def authentication_settings(self):
+        """
+        Elasticsearch authentication settings.
+        """
+        return self.data.get("authentication_settings")
+
+    @property
+    def addresses(self):
+        """
+        The list of hostnames / IP addresses (at least one) used to establish connection to the
+            Elasticsearch Cluster.
+        :rtype: list(str)
+        """
+        return self.data.get("addresses")
+
+    @property
+    def es_retention_period(self):
+        """
+        Retention period (in days) for logs in Elasticsearch cluster.
+        :rtype: int
+        """
+        return self.data.get("es_retention_period")
+
+    @property
+    def es_shard_number(self):
+        """
+        The number of shards for the fwlogsandalerts indices, a strictly positive number, or auto
+            (default value).
+        :rtype: int
+        """
+        return self.data.get("es_shard_number")
+
+    @property
+    def es_enable_cluster_sniffer(self):
+        """
+        Enabling the cluster sniffer. Default: false.
+        :rtype: bool
+        """
+        return self.data.get("es_enable_cluster_sniffer")
+
+
+def _elasticsearch_create_compat(json,
+                                 authentication_property_name: str,
+                                 tls_settings=None,
+                                 authentication_settings=None):
+    """Backward-compatibility function for Elasticsearch-related components' create method"""
+    if tls_settings:
+        # Backward-compatibility for deprecated es_tls_settings
+        if is_api_version_less_than_or_equal("7.1"):
+            # Below 7.2 use es_tls_settings as-is
+            json.update(es_tls_settings=tls_settings)
+            # Since 7.1.2 add authentication method as well
+            if not is_api_version_less_than_or_equal("7.0") and not is_smc_version_equal("7.1.1"):
+                authentication_settings = {
+                    "method": "certificate"
+                }
+        else:
+            # 7.2 and above -> transform es_tls_settings into authentication_settings
+            authentication_settings = _elasticsearch_convert_tls_settings(tls_settings)
+    if authentication_settings and not is_api_version_less_than_or_equal("7.0"):
+        json.update({authentication_property_name: authentication_settings})
+
+
+def _elasticsearch_update_compat(authentication_property_name: str,
+                                 **kwargs):
+    """Backward-compatibility function for Elasticsearch-related components' update"""
+    if not is_api_version_less_than_or_equal("7.1") and "es_tls_settings" in kwargs:
+        kwargs.update({authentication_property_name: _elasticsearch_convert_tls_settings(
+            kwargs.pop("es_tls_settings"))})
+    return kwargs
+
+
+def _elasticsearch_convert_tls_settings(tls_settings):
+    """Convert TLS Settings to equivalent Elasticsearch Authentication Settings"""
+    return {
+        "method": "certificate",
+        "tls_credentials": None if tls_settings.use_internal_credentials else
+        tls_settings.tls_credentials.href
+    } if tls_settings else None
+
+
+def _elasticsearch_es_tls_settings_prop_compat(data,
+                                               authentication_property_name: str):
+    """Backward-compatibility function for Elasticsearch-related components' es_tls_settings
+    property"""
+    if is_api_version_less_than_or_equal("7.1"):
+        tls_settings = data.get("es_tls_settings")
+        return TlsSettings(tls_settings) if tls_settings else None
+    else:
+        # Backward-compatibility: craft TlsSettings out of authentication_settings
+        authentication_settings = data.get(authentication_property_name)
+        if authentication_settings and authentication_settings.get("method") == "certificate":
+            credentials = authentication_settings.get("tls_credentials")
+            return TlsSettings.create(credentials is None, credentials)
+        else:
+            return None
+
+
+class NTPServer(Element, IPv6Node):
     """
     This represents an NTP server: A Network Element that represents an NTP instance of server.
     """
 
     typeof = "ntp"
-
-    @property
-    def address(self):
-        """
-        The NTP address (Required)
-        """
-        return self.data.get("ntp_host_name")
 
     @property
     def ntp_host_name(self):
@@ -1722,23 +1879,33 @@ class NTPServer(Element):
             cls,
             name,
             address,
+            ipv6_address=None,
             ntp_host_name=None,
             ntp_auth_key_type="none",
             ntp_auth_key_id=None,
             ntp_auth_key=None,
+            secondary=None,
+            third_party_monitoring=None,
+            tools_profile_ref=None,
             comment=None
     ):
         """
         Create NTP server
 
         :param str name: name for the Element
+        :param str address: The NTP address (Required)
+        :param str ipv6_address: Single valid IPv6 address.
         :param str ntp_host_name: NTP server name to use
         :param str ntp_auth_key_type:The NTP Authentication Key Type (Required)
         possible values are (none, md5, sha1, sha256)
         :param str ntp_auth_key_id:The NTP Authentication Key ID (Not Required)
         value between 1 - 65534
         :param str ntp_auth_key:The NTP Authentication Key (Not Required)
-        :param str address: The NTP address (Required)
+        :param list secondary: secondary ip address (optional)
+        :param ThirdPartyMonitoring third_party_monitoring: The optional Third Party Monitoring
+            configuration.
+        :param DeviceToolsProfile tools_profile_ref: Allows you to add commands to the element’s
+            right-click menu. Not Required.
         :param str comment: comment for the element
 
         :raises CreateElementFailed: Failed to create with reason
@@ -1746,13 +1913,19 @@ class NTPServer(Element):
         """
         ntp_server_json = {
             "address": address,
+            "ipv6_address": ipv6_address,
             "comment": comment,
             "name": name,
             "ntp_host_name": ntp_host_name,
             "ntp_auth_key_type": ntp_auth_key_type,
             "ntp_auth_key_id": ntp_auth_key_id,
             "ntp_auth_key": ntp_auth_key,
+            "secondary": secondary if secondary else [],
+            "tools_profile_ref": element_resolver(tools_profile_ref),
         }
+
+        if third_party_monitoring:
+            ntp_server_json.update(third_party_monitoring=third_party_monitoring.data)
         return ElementCreator(cls, ntp_server_json)
 
 
@@ -2237,7 +2410,7 @@ class SmtpServer(Element, ContactAddressMixin, MultiContactServer):
         return self.data.get("email_sender_name")
 
 
-class EpoServer(Element, ContactAddressMixin, MultiContactServer):
+class EpoServer(Element, ContactAddressMixin, IPv6Node):
     """
     This represents an ePO server: A Network Element that represents an ePO instance of server.
     """

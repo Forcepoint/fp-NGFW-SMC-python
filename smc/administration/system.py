@@ -98,13 +98,18 @@ class System(SubElement):
             system.bind_license(LogServer.objects.first())  # bind automatically license
             system.bind_license(MgtServer.objects.first(), "123456787")  # bind license based on id
         """
-        if "node2" in kwargs:
-            node2 = kwargs.pop("node2")
+        if is_api_version_less_than("7.2"):
+            self.make_request(method="create", resource="license_bind",
+                              json={"component_href": element_href,
+                                    "license_item_id": license_id})
         else:
-            node2 = False
-        self.make_request(method="create", resource="license_bind",
-                          json={"component_href": element_href, "license_item_id": license_id,
-                                "node2": node2})
+            if "node2" in kwargs:
+                node2 = kwargs.pop("node2")
+            else:
+                node2 = False
+            self.make_request(method="create", resource="license_bind",
+                              json={"component_href": element_href, "license_item_id": license_id,
+                                    "node2": node2})
 
     @property
     def massive_license_bind(self):

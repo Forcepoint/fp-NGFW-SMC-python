@@ -212,7 +212,7 @@ class InternalUser(UserElement):
     @classmethod
     def create(
             cls, name, user_group=None, activation_date=None, expiration_date=None,
-            authentication_method=[], password=None, pre_shared_key=None, comment=None
+            authentication_method=[], password=None, pre_shared_key=None, comment=None,
     ):
         """
         Create an internal user.
@@ -239,6 +239,7 @@ class InternalUser(UserElement):
             "name": name,
             "unique_id": "cn={},{}".format(name, InternalUserDomain.user_dn),
             "comment": comment,
+            "subject_alt_names": f"CN={name}"
         }
 
         limits = {"activation_date": activation_date, "expiration_date": expiration_date}

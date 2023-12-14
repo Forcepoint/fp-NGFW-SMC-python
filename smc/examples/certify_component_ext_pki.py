@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 #  Licensed under the Apache License, Version 2.0 (the "License"); you may
 #  not use this file except in compliance with the License. You may obtain
 #  a copy of the License at
@@ -10,72 +13,74 @@
 #  License for the specific language governing permissions and limitations
 #  under the License.
 """
-Example script to show how to use Servers
--get logserver
--create Netflow collector
--add Netflow collectors to log server
--remove a Netflow collector from log server
+Example script to show the use of Single and Cluster Firewalls
 """
 # Python Base Import
-
-from smc import session
-from smc.administration.system import System
-from smc.core.engines import Layer3Firewall, FirewallCluster
-from smc.core.external_pki import PkiCertificateSettings
-from smc.elements.servers import LogServer
-from smc_info import SMC_URL, API_KEY, API_VERSION
+import argparse
+import logging
+import sys
+sys.path.append('../../')  # smc-python
+from smc import session  # noqa
+from smc.administration.system import System  # noqa
+from smc.core.engines import Layer3Firewall, FirewallCluster  # noqa
+from smc.core.external_pki import PkiCertificateSettings  # noqa
+from smc.elements.servers import LogServer  # noqa
 
 engine_name = "myFw"
 
+logging.getLogger()
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
+                                                '%(name)s - [%(levelname)s] : %(message)s')
+
 
 def test_smc_ca():
-    print("-----get smc CAs ---")
+    logging.info("-----get smc CAs ---")
     system = System()
 
     system_cas = system.smc_certificate_authority()
     for ca in system_cas:
-        print("CA={} {}".format(ca.name, ca.certificate_state))
+        logging.info(f"CA={ca.name} {ca.certificate_state}")
 
-    print("-----create new smc CAs ---")
+    logging.info("-----create new smc CAs ---")
     system.import_new_certificate_authority_certificate("c:/tmp/ca3.crt")
-    print("new CA imported.")
+    logging.info("new CA imported.")
 
     for ca in system.smc_certificate_authority():
         cert = ca.export_certificate()
-        print("CA={} {}".format(ca.name, cert[0:26]))
+        logging.info(f"CA={ca.name} {cert[0:26]}")
 
-    print("---- un trust ca ----")
+    logging.info("---- un trust ca ----")
     try:
         for ca in system.smc_certificate_authority():
             if ca.certificate_state != "active":
                 ca.un_trust()
-                print("un-trust ca {}".format(ca.name))
+                logging.info(f"un-trust ca {ca.name}")
     except Exception as ex:
-        print(ex)
+        print(f"Exception:{ex}")
 
 
 def test_log_server_cert_settings():
     for log_server in LogServer.objects.all():
-        print("LS={}".format(log_server))
+        logging.info(f"LS={log_server}")
     log_server = LogServer.get("LogServer1")
     # log_server.pki_export_certificate_request("c:/tmp/log.csr")
-    # print("csr exported for log server")
+    # logging.info("csr exported for log server")
 
     # log_server.pki_import_certificate("c:/tmp/log.crt")
-    # print("cert imported for log server")
+    # logging.info("cert imported for log server")
 
     # log_server.pki_export_certificate("c:/tmp/copy_log.crt")
-    # print("cert exported for log server")
-    print("-----get settings---")
-    print("cert type: {}".format(log_server.pki_certificate_settings().certificate_type))
-    print("subject_name: {}".format(log_server.pki_certificate_settings().subject_name))
-    print("subject_alt_name: {}".format(log_server.pki_certificate_settings().subject_alt_name))
-    print("check_revocation: {}".format(log_server.pki_certificate_settings().check_revocation))
-    print("ignore_revocation_on_failure: {}".format(log_server.pki_certificate_settings()
-                                                    .ignore_revocation_on_failure))
+    # logging.info("cert exported for log server")
+    logging.info("-----get settings---")
+    logging.info(f"cert type: {log_server.pki_certificate_settings().certificate_type}")
+    logging.info(f"subject_name: {log_server.pki_certificate_settings().subject_name}")
+    logging.info(f"subject_alt_name: {log_server.pki_certificate_settings().subject_alt_name}")
+    logging.info(f"check_revocation: {log_server.pki_certificate_settings().check_revocation}")
+    logging.info(f"ignore_revocation_on_failure: "
+                 f"{log_server.pki_certificate_settings().ignore_revocation_on_failure}")
 
     # set certificate settings
-    # print("-----test update---")
+    # logging.info("-----test update---")
     # log_server.pki_certificate_settings().certificate_type = "ecdsa_sha_512"
     # log_server.pki_certificate_settings().subject_name = "cn=testName"
     # # log_server.pki_certificate_settings().subject_alt_name = "testAltName"
@@ -84,23 +89,23 @@ def test_log_server_cert_settings():
     # log_server.update()
     #
     # settings = log_server.pki_certificate_settings()
-    # print("cert type: {}".format(settings.certificate_type))
-    # print("subject_name: {}".format(settings.subject_name))
-    # print("subject_alt_name: {}".format(settings.subject_alt_name))
-    # print("check_revocation: {}".format(settings.check_revocation))
-    # print("ignore_revocation_on_failure: {}".format(settings.ignore_revocation_on_failure))
+    # logging.info(f"cert type: {settings.certificate_type}")
+    # logging.info(f"subject_name: {settings.subject_name}")
+    # logging.info(f"subject_alt_name: {settings.subject_alt_name}")
+    # logging.info(f"check_revocation: {settings.check_revocation}")
+    # logging.info(f"ignore_revocation_on_failure: {settings.ignore_revocation_on_failure}")
 
-    # print("----get certificate info---")
+    # logging.info("----get certificate info---")
     # info = log_server.pki_certificate_info()
-    # print("certificate authority: {}".format(info["certificate_authority"]))
-    # print("subject_alt_name: {}".format(info.subject_alt_name))
-    # print("expiration_date: {}".format(info.expiration_date))
-    # print("valid_from: {}".format(info.valid_from))
+    # logging.info(f"certificate authority: {info["certificate_authority"]}")
+    # logging.info(f"subject_alt_name: {info.subject_alt_name}")
+    # logging.info(f"expiration_date: {info.expiration_date}")
+    # logging.info(f"valid_from: {info.valid_from}")
 
-    # print("--- test pki_start_certificate_renewal ---") # log server should be started
+    # logging.info("--- test pki_start_certificate_renewal ---") # log server should be started
     # log_server.pki_renew_certificate()
     # log_server.pki_export_certificate_request("c:/tmp/log_renew.csr")
-    # print("csr exported for log server")
+    # logging.info("csr exported for log server")
 
 
 def test_single_fw_pki():
@@ -117,11 +122,11 @@ def test_single_fw_pki():
                                                            ext_pki_node},
                                       extra_opts={"is_cert_auto_renewal": True},
                                       )
-    print("single fw {} created!".format(single_fw.name))
+    logging.info(f"single fw {single_fw.name} created!")
     # for node in single_fw.nodes:
     #     settings = node.pki_certificate_settings()
-    #     print("  engine cert type = {}".format(settings.certificate_type))
-    #     print("  engine cert dns = {}".format(settings.subject_alt_name))
+    #     logging.info(f"  engine cert type = {settings.certificate_type}")
+    #     logging.info(f"  engine cert dns = {settings.subject_alt_name}")
     single_fw.delete()
 
 
@@ -132,7 +137,7 @@ def test_single_fw():
                                       ntp_settings=None,
                                       extra_opts={"is_cert_auto_renewal": True},
                                       )
-    print("single fw created {}!".format(single_fw.name))
+    logging.info(f"single fw created {single_fw.name}!")
     single_fw.delete()
 
 
@@ -173,11 +178,11 @@ def test_fw_cluster_pki():
         default_nat=True,
         extra_opts={"is_cert_auto_renewal": True},
     )
-    print("cluster fw {} created!".format(engine_cluster.name))
+    logging.info(f"cluster fw {engine_cluster.name} created!")
     # for node in engine_cluster.nodes:
     #     settings = node.pki_certificate_settings()
-    #     print("  engine cert type = {}".format(settings.certificate_type))
-    #     print("  engine cert dns = {}".format(settings.subject_alt_name))
+    #     logging.info(f"  engine cert type = {settings.certificate_type}")
+    #     logging.info(f"  engine cert dns = {settings.subject_alt_name}")
     engine_cluster.delete()
 
 
@@ -209,34 +214,88 @@ def test_fw_cluster():
         default_nat=True,
         extra_opts={"is_cert_auto_renewal": True},
     )
-    print("cluster fw created {}!".format(engine_cluster.name))
+    logging.info("cluster fw created {engine_cluster.name}!")
     engine_cluster.delete()
 
 
+def main():
+    return_code = 0
+    arguments = parse_command_line_arguments()
+
+    try:
+        session.login(url=arguments.api_url, api_key=arguments.api_key,
+                      login=arguments.smc_user,
+                      pwd=arguments.smc_pwd, api_version=arguments.api_version)
+        logging.info("session OK")
+
+        # test_smc_ca()
+        # test_log_server_cert_settings()
+
+        test_single_fw()
+        test_single_fw_pki()
+        test_fw_cluster()
+        test_fw_cluster_pki()
+
+    except BaseException as e:
+        logging.error(f"Exception:{e}")
+        return_code = 1
+    finally:
+        logging.info("Finally: Cleaning...")
+        # reconnect to new session in case login refresh was not done automatically
+        # SMC return 404 instead of 401 case
+        session.logout()
+        session.login(url=arguments.api_url, api_key=arguments.api_key,
+                      login=arguments.smc_user,
+                      pwd=arguments.smc_pwd, api_version=arguments.api_version)
+        logging.info("Login Ok")
+    return return_code
+
+
+def parse_command_line_arguments():
+    """ Parse command line arguments. """
+
+    parser = argparse.ArgumentParser(
+        description='Example script to show the use of Single and Cluster Firewalls',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        add_help=False)
+    parser.add_argument(
+        '-h', '--help',
+        action='store_true',
+        help='show this help message and exit')
+
+    parser.add_argument(
+        '--api-url',
+        type=str,
+        help='SMC API url like https://192.168.1.1:8082')
+    parser.add_argument(
+        '--api-version',
+        type=str,
+        help='The API version to use for run the script'
+    )
+    parser.add_argument(
+        '--smc-user',
+        type=str,
+        help='SMC API user')
+    parser.add_argument(
+        '--smc-pwd',
+        type=str,
+        help='SMC API password')
+    parser.add_argument(
+        '--api-key',
+        type=str, default=None,
+        help='SMC API api key (Default: None)')
+
+    arguments = parser.parse_args()
+
+    if arguments.help:
+        parser.print_help()
+        sys.exit(1)
+    if arguments.api_url is None:
+        parser.print_help()
+        sys.exit(1)
+
+    return arguments
+
+
 if __name__ == "__main__":
-    session.login(url=SMC_URL, api_key=API_KEY, verify=False, timeout=120, api_version=API_VERSION)
-    print("session OK")
-
-try:
-
-    # test_smc_ca()
-    # test_log_server_cert_settings()
-
-    test_single_fw()
-    test_single_fw_pki()
-    test_fw_cluster()
-    test_fw_cluster_pki()
-
-except Exception as e:
-    print(e)
-finally:
-    print("Finally: Cleaning...")
-    # reconnect to new session in case login refresh was not done automatically
-    # SMC return 404 instead of 401 case
-    session.logout()
-    session.login(url=SMC_URL,
-                  api_key=API_KEY,
-                  verify=False,
-                  timeout=120,
-                  api_version=API_VERSION)
-    print("Login Ok")
+    sys.exit(main())

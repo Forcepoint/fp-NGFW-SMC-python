@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 #  Licensed under the Apache License, Version 2.0 (the "License"); you may
 #  not use this file except in compliance with the License. You may obtain
 #  a copy of the License at
@@ -14,12 +17,14 @@ Example script to show how to use Alert Policy
 -create/update/delete alert policy
 -create/update/delete alert rule
 """
-
+import argparse
+import logging
 import sys
-from smc import session
-from smc.elements.alerts import AlertChain, AlertPolicy
-from smc.elements.other import RuleValidityTime
-from smc_info import SMC_URL, API_KEY, API_VERSION
+
+sys.path.append('../../')  # smc-python
+from smc import session  # noqa
+from smc.elements.alerts import AlertChain, AlertPolicy  # noqa
+from smc.elements.other import RuleValidityTime  # noqa
 
 comment_msg = "add {} for testing purpose."
 alert_policy = 'alert_policy_test'
@@ -28,30 +33,37 @@ CREATE_POLICY_ERROR = "Failed to create alert policy."
 CREATE_RULE_ERROR = "Failed to create alert rule."
 DELETE_ERROR = "Failed to delete alert rule."
 
+logging.getLogger()
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
+                                                '%(name)s - [%(levelname)s] : %(message)s')
+
 
 def main():
+    return_code = 0
     try:
-        session.login(url=SMC_URL, api_key=API_KEY, verify=False, timeout=120,
-                      api_version=API_VERSION)
+        arguments = parse_command_line_arguments()
+        session.login(url=arguments.api_url, api_key=arguments.api_key,
+                      login=arguments.smc_user,
+                      pwd=arguments.smc_pwd, api_version=arguments.api_version)
 
         # delete if alert policy present
-        print("delete if alert policy present")
+        logging.info("delete if alert policy present")
         if AlertPolicy.objects.filter(alert_policy, exact_match=True):
             if AlertPolicy(alert_policy).is_locked():
                 AlertPolicy(alert_policy).unlock()
-                print("Alert policy is locked, unlocked it")
+                logging.info("Alert policy is locked, unlocked it")
 
             AlertPolicy(alert_policy).delete()
-            print("Deleted alert policy as it was already exist")
+            logging.info("Deleted alert policy as it was already exist")
 
         # create alert policy
         alert_policy_obj = AlertPolicy.create(alert_policy,
                                               comment=comment_msg.format(alert_policy))
         assert AlertPolicy.objects.filter(alert_policy,
                                           exact_match=True), CREATE_POLICY_ERROR
-        print("Alert policy is created successfully with name: {}.".format(alert_policy))
+        logging.info(f"Alert policy is created successfully with name: {alert_policy}.")
         alert_policy_obj.update(comment="Updating alert policy comment")
-        print("Successfully updated alert policy comment.")
+        logging.info("Successfully updated alert policy comment.")
         # add alert rule
         rule_validity_time = RuleValidityTime('Rule Validity Time 2')
         alert_chain = AlertChain("Default")
@@ -60,21 +72,68 @@ def main():
                                         comment=comment_msg.format(rule_name))
         assert [alert_rule for alert_rule in alert_policy_obj.alert_rules if
                 alert_rule.name == rule_name], CREATE_RULE_ERROR
-        print("Added alert rule successfully.")
+        logging.info("Added alert rule successfully.")
         alert_rule = alert_policy_obj.alert_rules[0]
         alert_rule_name = alert_rule.name
         alert_rule.delete()
         assert not [alert_rule for alert_rule in alert_policy_obj.alert_rules if
                     alert_rule.name == alert_rule_name], DELETE_ERROR
-        print("Alert rule deleted successfully")
+        logging.info("Alert rule deleted successfully")
     except BaseException as e:
-        print("Exception in checking alert policy : {}".format(str(e)))
-        exit(-1)
+        logging.error(f"Exception:{e}")
+        return_code = 1
     finally:
         # delete alert policy
         AlertPolicy(alert_policy).delete()
-        print("Alert Policy Deleted successfully")
+        logging.info("Alert Policy Deleted successfully")
         session.logout()
+    return return_code
+
+
+def parse_command_line_arguments():
+    """ Parse command line arguments. """
+
+    parser = argparse.ArgumentParser(
+        description='Example script to show how to use Alert Policy',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        add_help=False)
+    parser.add_argument(
+        '-h', '--help',
+        action='store_true',
+        help='show this help message and exit')
+
+    parser.add_argument(
+        '--api-url',
+        type=str,
+        help='SMC API url like https://192.168.1.1:8082')
+    parser.add_argument(
+        '--api-version',
+        type=str,
+        help='The API version to use for run the script'
+    )
+    parser.add_argument(
+        '--smc-user',
+        type=str,
+        help='SMC API user')
+    parser.add_argument(
+        '--smc-pwd',
+        type=str,
+        help='SMC API password')
+    parser.add_argument(
+        '--api-key',
+        type=str, default=None,
+        help='SMC API api key (Default: None)')
+
+    arguments = parser.parse_args()
+
+    if arguments.help:
+        parser.print_help()
+        sys.exit(1)
+    if arguments.api_url is None:
+        parser.print_help()
+        sys.exit(1)
+
+    return arguments
 
 
 if __name__ == '__main__':

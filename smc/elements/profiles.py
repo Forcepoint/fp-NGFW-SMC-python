@@ -54,6 +54,7 @@ from smc.base.model import Element, ElementCreator
 from smc.api.exceptions import ElementNotFound, UnsupportedAttribute
 from smc.base.util import element_resolver
 from smc.compat import is_smc_version_less_than
+from smc.elements.common import MultiContactServer
 
 
 class DNSRule(object):
@@ -364,7 +365,7 @@ class SandboxDataCenter(Element):
         return self.from_href(self.data.get("tls_profile"))
 
 
-class UserIDService(Element):
+class UserIDService(Element, MultiContactServer):
     """
     Represents a User ID Service element.
     """
@@ -375,36 +376,27 @@ class UserIDService(Element):
             cls,
             name,
             address=None,
+            ipv6_address=None,
             cache_expiration=300,
             connect_timeout=10,
             monitored_user_domains=None,
-            netflow=False,
-            snmp_trap=False,
             tls_field="DNSName",
             tls_value=None,
             tls_profile=None,
             port=5000,
             address_list=None,
-            encoding="UTF-8",
-            logging_profile=None,
-            monitoring_log_server=None,
-            probing_profile=None,
-            time_zone="Europe/Paris",
+            third_party_monitoring=None,
             comment=None
     ):
         """
         :param str name: Name of user id service.
         :param str address: IP addresses to contact the User ID Service.
+        :param str ipv6_address: Single valid IPv6 address to contact the User ID Service.
         :param int cache_expiration: The time in seconds for the cache expiration on the engine.
         :param int connect_timeout: The time in seconds for the connection from the engine to time
         out.
         :param List monitored_user_domains: Specific user domains to check. If not defined, it uses
         all known user domains by User ID service.
-        :param bool netflow: Activates NetFlow (v6 and v16) and IPFIX (NetFlow v20) data reception
-        from this device.
-        :param bool snmp_trap: Activates SNMP trap reception from this device. The data that the
-        device sends must be formatted according to the MIB definitions currently active in the
-        system.
         :param str tls_field: This id field from Field/value pair used to insure server identity
         when connecting to User ID service using TLS.
         :param str tls_value: This id value from Field/value pair used to insure server identity
@@ -417,17 +409,11 @@ class UserIDService(Element):
         communication between the Firewall and the User ID Service.
         :param List address_list: List of additional IP addresses to contact the User ID Service.
         You can add several IPv4 and IPv6 addresses (one by one).
-        :param encoding:
-        :param ThirdPartyLoggingProfile logging_profile: Activates syslog reception from this device
         You must select the Logging Profile that contains the definitions for converting the syslog
         entries to log entries.You must also select the Time Zone in which the device is located.
         By default, the local time zone of the computer you are using is selected
-        :param LogServer monitoring_log_server: Monitoring Log Server that monitors this device
-        (third-party monitoring).You must select a Log Server to activate the other options.
-        :param probing_profile: Activates status monitoring for this device. You must also select
-        the Probing Profile that contains the definitions for the monitoring. When you select this
-        option, the element is added to the tree in the System Status view.
-        :param time_zone:
+        :param ThirdPartyMonitoring third_party_monitoring: The optional Third Party Monitoring
+            configuration.
         :param str comment: comment
         :return UserIDService
         """
@@ -435,6 +421,7 @@ class UserIDService(Element):
             "name": name,
             "monitored_user_domains": monitored_user_domains,
             "address": address,
+            "ipv6_address": ipv6_address,
             "cache_expiration": cache_expiration,
             "connect_timeout": connect_timeout,
             "port": port,
@@ -443,18 +430,10 @@ class UserIDService(Element):
                              "tls_value": tls_value
                              },
             "tls_profile": element_resolver(tls_profile),
-            "third_party_monitoring": {
-                "encoding": encoding,
-                "logging_profile_ref": element_resolver(logging_profile),
-                "monitoring_log_server_ref": element_resolver(monitoring_log_server),
-                "probing_profile_ref": element_resolver(probing_profile),
-                "netflow": netflow,
-                "time_zone": time_zone,
-                "snmp_trap": snmp_trap
-            },
             "comment": comment,
         }
-
+        if third_party_monitoring:
+            json.update(third_party_monitoring=third_party_monitoring.data)
         return ElementCreator(cls, json)
 
     @property
@@ -476,13 +455,6 @@ class UserIDService(Element):
         service.
         """
         return self.data.get("monitored_user_domains")
-
-    @property
-    def address(self):
-        """
-        IP addresses to contact the User ID Service.
-        """
-        return self.data.get("address")
 
     @property
     def cache_expiration(self):
@@ -511,10 +483,3 @@ class UserIDService(Element):
         List of additional IP addresses to contact the User ID Service.
         """
         return self.data.get("list")
-
-    @property
-    def third_party_monitoring(self):
-        """
-        This represents Monitoring Settings for Third Party Monitoring.
-        """
-        return self.data.get("third_party_monitoring")

@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 #  Licensed under the Apache License, Version 2.0 (the "License"); you may
 #  not use this file except in compliance with the License. You may obtain
 #  a copy of the License at
@@ -19,14 +22,20 @@ Example script for template policy
 """
 
 # Python Base Import
-import smc.examples
+import argparse
+import logging
+import sys
 
-from smc import session
-from smc.policy.layer3 import FirewallTemplatePolicy
-from smc.elements.service import TCPService
-from smc_info import SMC_URL, API_KEY, API_VERSION
+sys.path.append('../../')  # smc-python
+from smc import session  # noqa
+from smc.policy.layer3 import FirewallTemplatePolicy  # noqa
+from smc.elements.service import TCPService  # noqa
 
 WRONG_RULE = "Wrong rule in assert!"
+
+logging.getLogger()
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
+                                                '%(name)s - [%(levelname)s] : %(message)s')
 
 
 def search_rule_by_name(policy, name):
@@ -37,12 +46,14 @@ def search_rule_by_name(policy, name):
     return None
 
 
-if __name__ == "__main__":
-
-    session.login(url=SMC_URL, api_key=API_KEY, verify=False, timeout=120, api_version=API_VERSION)
-
-    print("session OK")
+def main():
+    return_code = 0
     try:
+        arguments = parse_command_line_arguments()
+        session.login(url=arguments.api_url, api_key=arguments.api_key,
+                      login=arguments.smc_user,
+                      pwd=arguments.smc_pwd, api_version=arguments.api_version)
+        logging.info("session OK")
 
         # Create a Template Policy
         myPolicy = FirewallTemplatePolicy().create("myTemplatePolicy1",
@@ -72,9 +83,9 @@ if __name__ == "__main__":
                                                           insert_point_type="automatic",
                                                           add_pos=1)
 
-        print("All rules:")
+        logging.info("All rules:")
         for rule in myPolicy.fw_ipv4_access_rules:
-            print(rule)
+            logging.info(rule)
 
         # check automatic rules insert point is rule 1
         automatic_ip = myPolicy.fw_ipv4_access_rules.get(0)
@@ -90,17 +101,65 @@ if __name__ == "__main__":
 
         # search for the rule
         rule1 = search_rule_by_name(myPolicy, "newrule")
-        print("Search 'newrule': {} src={} dst={} action={}".format(rule1,
-                                                                    rule1.sources,
-                                                                    rule1.destinations,
-                                                                    rule1.action.action))
+        logging.info(f"Search 'newrule': {rule1} src={rule1.sources} "
+                     f"dst={rule1.destinations} action={rule1.action.action}")
 
-        print("All FW template policies:")
-        print(list(FirewallTemplatePolicy.objects.all()))
-
+        logging.info("All FW template policies:")
+        logging.info(list(FirewallTemplatePolicy.objects.all()))
     except BaseException as e:
-        print("ex={}".format(e))
-        exit(-1)
+        logging.error(f"Exception:{e}")
+        return_code = 1
     finally:
         FirewallTemplatePolicy("myTemplatePolicy1").delete()
         session.logout()
+    return return_code
+
+
+def parse_command_line_arguments():
+    """ Parse command line arguments. """
+
+    parser = argparse.ArgumentParser(
+        description='Example script to show how to use Template Policies',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        add_help=False)
+    parser.add_argument(
+        '-h', '--help',
+        action='store_true',
+        help='show this help message and exit')
+
+    parser.add_argument(
+        '--api-url',
+        type=str,
+        help='SMC API url like https://192.168.1.1:8082')
+    parser.add_argument(
+        '--api-version',
+        type=str,
+        help='The API version to use for run the script'
+    )
+    parser.add_argument(
+        '--smc-user',
+        type=str,
+        help='SMC API user')
+    parser.add_argument(
+        '--smc-pwd',
+        type=str,
+        help='SMC API password')
+    parser.add_argument(
+        '--api-key',
+        type=str, default=None,
+        help='SMC API api key (Default: None)')
+
+    arguments = parser.parse_args()
+
+    if arguments.help:
+        parser.print_help()
+        sys.exit(1)
+    if arguments.api_url is None:
+        parser.print_help()
+        sys.exit(1)
+
+    return arguments
+
+
+if __name__ == "__main__":
+    sys.exit(main())

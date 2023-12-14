@@ -18,7 +18,7 @@ is identical to creating Layer 2 Rules for layer 2 or IPS engines.
 """
 from smc.base.collection import rule_collection
 from smc.policy.policy import Policy
-from smc.policy.rule import IPv4Layer2Rule, EthernetRule
+from smc.policy.rule import IPv4Layer2Rule, IPv6Layer2Rule, EthernetRule
 from smc.api.exceptions import (
     ElementNotFound,
     LoadPolicyFailed,
@@ -49,7 +49,7 @@ class InterfaceRule(object):
 
         """
         # l2_interface_ipv6_access_rules
-        # return create_collection(self.layer2_ipv6_access_rules)
+        return rule_collection(self.get_relation("l2_interface_ipv6_access_rules"), IPv6Layer2Rule)
         pass
 
     @property
@@ -107,7 +107,7 @@ class InterfacePolicy(InterfaceRule, Policy):
         pass
 
 
-class InterfaceTemplatePolicy(InterfaceRule, Policy):
+class InterfaceTemplatePolicy(InterfacePolicy):
     """
     Interface Template Policy. Required when creating a new
     Interface Policy. Useful for containing global rules or
@@ -126,3 +126,46 @@ class InterfaceTemplatePolicy(InterfaceRule, Policy):
 
     def upload(self):
         pass  # Not supported on the template
+
+
+class InterfaceSubPolicy(Policy):
+    """
+    A Interface Sub Policy is a rule section within a Interface policy
+    that provides a container to create rules that are referenced from
+    a 'jump' rule. Typically rules in a sub policy are similar in some
+    fashion such as applying to a specific service. Sub Policies can also
+    be delegated from an administrative perspective.
+
+    Interface Sub Policies only provide access to creating IPv4 rules.
+
+        p = InterfaceSubPolicy('MySubPolicy')
+        p.layer2_ethernet_rules.create(
+            name='newule',
+            sources='any',
+            destinations='any',
+            services=[TCPService('SSH')],
+            action='discard')
+    """
+
+    typeof = "sub_l2_interface_policy"
+
+    @classmethod
+    def create(cls, name):
+        """
+        Create a sub policy. Only name is required. Other settings are
+        inherited from the parent firewall policy (template, policy, etc).
+
+        :param str name: name of sub policy
+        :raises CreateElementFailed: failed to create policy
+        :rtype: InterfaceSubPolicy
+        """
+        return ElementCreator(cls, json={"name": name})
+
+    @property
+    def layer2_ipv4_access_rules(self):
+        """
+        IPv4 rule entry point
+
+        :rtype: rule_collection(EthernetRule)
+        """
+        return rule_collection(self.get_relation("l2_interface_ipv4_access_rules"), EthernetRule)

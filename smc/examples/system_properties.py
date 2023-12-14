@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 #  Licensed under the Apache License, Version 2.0 (the "License"); you may
 #  not use this file except in compliance with the License. You may obtain
 #  a copy of the License at
@@ -12,12 +15,13 @@
 """
 Example script to show system properties usage.
 """
+import argparse
+import logging
+import sys
 
-import smc.examples
-
-from smc import session
-from smc.administration.system import System
-from smc_info import *
+sys.path.append('../../')  # smc-python
+from smc import session  # noqa
+from smc.administration.system import System  # noqa
 
 new_ebanner_text_value = 'Welcome in SMC!'
 ebanner_text_system_key = 55
@@ -25,38 +29,96 @@ ebanner_text_name = 'export_banner_text'
 get_ebanner_error_msg = '{} system_key does not point to {} global system property but on {}.'
 update_ebanner_error_msg = '{} system property has not been set correctly: {}. It should have {}.'
 
-if __name__ == "__main__":
+logging.getLogger()
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
+                                                '%(name)s - [%(levelname)s] : %(message)s')
 
-    session.login(url=SMC_URL, api_key=API_KEY, verify=False, timeout=120, api_version=API_VERSION)
 
-    print("session OK")
-
+def main():
+    return_code = 0
     try:
+        arguments = parse_command_line_arguments()
+        session.login(url=arguments.api_url, api_key=arguments.api_key,
+                      login=arguments.smc_user,
+                      pwd=arguments.smc_pwd, api_version=arguments.api_version)
+        logging.info("session OK")
+
         system = System()
 
         for system_property in system.system_properties():
-            print("system_property= {}".format(system_property))
+            logging.info(f"system_property= {system_property}")
 
-        print("Retrieve {} system property from "
-              "its system_key ({})...".format(ebanner_text_name, ebanner_text_system_key))
+        logging.info(f"Retrieve {ebanner_text_name} system property "
+                     f"from its system_key ({ebanner_text_system_key})...")
         ebanner_text_property = system.system_property(system_key=ebanner_text_system_key)
         assert ebanner_text_property.name == ebanner_text_name,\
             get_ebanner_error_msg.format(ebanner_text_system_key,
                                          ebanner_text_name, ebanner_text_property.name)
 
-        print("Update {} system property...".format(ebanner_text_name))
+        logging.info(f"Update {ebanner_text_name} system property...")
         system.update_system_property(system_key=ebanner_text_system_key,
                                       new_value=new_ebanner_text_value)
 
-        print("Check the update {} system property...".format(ebanner_text_name))
+        logging.info(f"Check the update {ebanner_text_name} system property...")
         ebanner_text_property = system.system_property(system_key=ebanner_text_system_key)
 
-        assert ebanner_text_property.value == new_ebanner_text_value,\
+        assert ebanner_text_property.value == new_ebanner_text_value, \
             update_ebanner_error_msg.format(ebanner_text_name,
                                             ebanner_text_property.value, new_ebanner_text_value)
 
-    except Exception as e:
-        print("Error:{}".format(e))
-        exit(-1)
+    except BaseException as e:
+        logging.error(f"Exception:{e}")
+        return_code = 1
     finally:
         session.logout()
+    return return_code
+
+
+def parse_command_line_arguments():
+    """ Parse command line arguments. """
+
+    parser = argparse.ArgumentParser(
+        description='Example script to show system properties usage',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        add_help=False)
+    parser.add_argument(
+        '-h', '--help',
+        action='store_true',
+        help='show this help message and exit')
+
+    parser.add_argument(
+        '--api-url',
+        type=str,
+        help='SMC API url like https://192.168.1.1:8082')
+    parser.add_argument(
+        '--api-version',
+        type=str,
+        help='The API version to use for run the script'
+    )
+    parser.add_argument(
+        '--smc-user',
+        type=str,
+        help='SMC API user')
+    parser.add_argument(
+        '--smc-pwd',
+        type=str,
+        help='SMC API password')
+    parser.add_argument(
+        '--api-key',
+        type=str, default=None,
+        help='SMC API api key (Default: None)')
+
+    arguments = parser.parse_args()
+
+    if arguments.help:
+        parser.print_help()
+        sys.exit(1)
+    if arguments.api_url is None:
+        parser.print_help()
+        sys.exit(1)
+
+    return arguments
+
+
+if __name__ == "__main__":
+    sys.exit(main())

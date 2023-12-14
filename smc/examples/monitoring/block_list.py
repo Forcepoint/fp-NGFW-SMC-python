@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 #  Licensed under the Apache License, Version 2.0 (the "License"); you may
 #  not use this file except in compliance with the License. You may obtain
 #  a copy of the License at
@@ -14,8 +17,8 @@ Example script to show how to subscribe to BLOCK LIST notifications using websoc
 or smc_monitoring extension
 """
 
-
 # Python Base Import
+import argparse
 import json
 import logging
 import math
@@ -24,22 +27,19 @@ import sys
 import threading
 import time
 import datetime
-import smc.examples
-
 
 from websocket import create_connection, WebSocketTimeoutException
 
-from smc import session
-from smc_monitoring.monitors.block_list import BlockListQuery
-
-from smc.administration.system import System
-from smc.core.engines import Layer3Firewall
-from smc.elements.other import Blocklist
-from smc.policy.layer3 import FirewallPolicy
-from smc_info import SMC_URL, API_KEY, API_VERSION, WS_URL
-from smc_monitoring.models.values import FieldValue, IPValue
-from smc_monitoring.models.filters import InFilter
-from smc_monitoring.models.constants import LogField
+sys.path.append('../../')  # smc-python
+from smc import session  # noqa
+from smc_monitoring.monitors.block_list import BlockListQuery  # noqa
+from smc.administration.system import System  # noqa
+from smc.core.engines import Layer3Firewall  # noqa
+from smc.elements.other import Blocklist  # noqa
+from smc.policy.layer3 import FirewallPolicy  # noqa
+from smc_monitoring.models.values import FieldValue, IPValue  # noqa
+from smc_monitoring.models.filters import InFilter  # noqa
+from smc_monitoring.models.constants import LogField  # noqa
 
 WRONG_ENTRIES_SIZE = "Couldn't retrieve the expected number of entries!"
 NOT_ONLINE = "Node is not online!"
@@ -59,255 +59,313 @@ logger.setLevel(logging.INFO)
 logger.addHandler(console_handler)
 logger.propagate = False
 
+logging.getLogger()
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
+                                                '%(name)s - [%(levelname)s] : %(message)s')
+
 
 # create a block list entry each 5 second
 def add_block_list_entry(idx, engine, nb_to_add=1):
-    print()
-    print("Thread started: add new entries...")
+    logging.info("")
+    logging.info("Thread started: add new entries...")
     for i in range(nb_to_add):
         # Add block list entry
         time.sleep(5)
-        ip_src = "{}.{}.0.1/32".format(idx, i+1)
-        print("Thread: add new entry:src={}".format(ip_src))
+        ip_src = f"{idx}.{i+1}.0.1/32"
+        logging.info(f"Thread: add new entry:src={ip_src}")
         engine.block_list(src=ip_src, dst="10.0.0.2/32")
-    print("Thread terminated")
+    logging.info("Thread terminated")
+
+
+def main():
+    return_code = 0
+    try:
+        arguments = parse_command_line_arguments()
+        session.login(url=arguments.api_url, api_key=arguments.api_key,
+                      login=arguments.smc_user,
+                      pwd=arguments.smc_pwd, api_version=arguments.api_version)
+        logging.info("session OK")
+
+        smc_system = System()
+        logging.info(f"{datetime.datetime.now().strftime('%H:%M:%S')} "
+                     f"=> Create Engine:{ENGINENAME}..")
+        engine = Layer3Firewall.create(name=ENGINENAME,
+                                       mgmt_ip="192.168.10.1",
+                                       mgmt_network="192.168.10.0/24")
+        logging.info("initial contact and license..")
+        for node in engine.nodes:
+            node.initial_contact()
+            node.bind_license()
+
+        # wait time for engine to be online
+        online = False
+        retry = 0
+        while not online and retry < RETRY_ONLINE:
+            status = engine.nodes[0].status().monitoring_state
+            online = status == "READY"
+            logging.info(f"{datetime.datetime.now().strftime('%H:%M:%S')} =>state={status}")
+            time.sleep(5)
+            retry += 1
+
+        logging.info(f"{datetime.datetime.now().strftime('%H:%M:%S')} =>create and upload policy..")
+        policy = FirewallPolicy().create("myPolicy1")
+
+        poller = engine.upload(policy="myPolicy1", wait_for_finish=True)
+        while not poller.done():
+            poller.wait(5)
+            logging.info(f"Task Progress {poller.task.progress}%")
+        logging.info(poller.last_message())
+
+        # wait time for engine to be online
+        online = False
+        retry = 0
+        while not online and retry < RETRY_ONLINE:
+            status = engine.nodes[0].status().monitoring_state
+            online = status == "READY"
+            logging.info(f"{datetime.datetime.now().strftime('%H:%M:%S')} =>state={status}")
+            time.sleep(5)
+            retry += 1
+
+        assert online, NOT_ONLINE
+
+        # Add block_list to all defined engines.
+        logging.info(f"{datetime.datetime.now().strftime('%H:%M:%S')} "
+                     f"=> Add block_list to all defined engines..")
+        smc_system.block_list("11.11.0.1/32", "11.11.0.2/32")
+
+        engine = Layer3Firewall(ENGINENAME)
+
+        # create 10 entries
+        logging.info(f"{datetime.datetime.now().strftime('%H:%M:%S')} "
+                     f"=> Add 10 block list entries to engine..")
+        bl = Blocklist()
+        for i in range(10):
+            ip_src = f"11.0.0.{i}/32"
+            logging.info(f"{datetime.datetime.now().strftime('%H:%M:%S')} "
+                         f"=> add entry:src={ip_src}")
+            bl.add_entry(src=ip_src, dst="10.0.0.2/32")
+        engine.block_list_bulk(bl)
+
+        # wait time for entries to be added
+        time.sleep(5)
+
+        logging.info("")
+        logging.info(f"{datetime.datetime.now().strftime('%H:%M:%S')} "
+                     f"=> Retrieve Block list using websocket library")
+        ws = create_connection(
+            f"{arguments.ws_url}/{str(arguments.api_version)}/monitoring/session/socket",
+            cookie=session.session_id,
+            timeout=10,
+            socket=session.sock,
+            sslopt={"cert_reqs": ssl.CERT_NONE}
+        )
+
+        query = {
+            "query": {"definition": "BLOCK_LIST", "target": ENGINENAME},
+            "fetch": {},
+            "format": {"type": "texts"},
+        }
+
+        try:
+            ws.send(json.dumps(query))
+            result = ws.recv()
+            logging.info(f"Received '{result}'")
+            fetch_id = json.loads(result)['fetch']
+
+            retry = 0
+            entry_added = False
+            while not entry_added:
+                try:
+                    result = ws.recv()
+                    logging.info(f"Received '{result}'")
+                    added = json.loads(result).get("records").get("added")
+                    entry_added = len(added) >= 1
+                except WebSocketTimeoutException as e:
+                    # No entry has been received within 10s
+                    logging.info(e)
+                    logging.info(f"{datetime.datetime.now().strftime('%H:%M:%S')} "
+                                 f"=> add entry:src='1.1.1.1/32")
+                    engine.block_list(src="1.1.1.1/32", dst="100.0.0.1/32")
+                finally:
+                    assert retry < 10, WRONG_ENTRIES_SIZE
+                    retry += 1
+        except BaseException as e:
+            logging.error(f"Exception:{e}")
+            return_code = 1
+        finally:
+            ses_mon_abort_query = {"abort": fetch_id}
+            ws.send(json.dumps(ses_mon_abort_query))
+            ws.close()
+        logging.info(f"{datetime.datetime.now().strftime('%H:%M:%S')} => Retrieved:{len(added)} !")
+
+        # create 10 entries
+        logging.info(f"{datetime.datetime.now().strftime('%H:%M:%S')} "
+                     f"=> Add 10 block list entries to engine..")
+        bl = Blocklist()
+        for i in range(10):
+            ip_src = f"10.0.0.{i}/32"
+            logging.info(f"{datetime.datetime.now().strftime('%H:%M:%S')} "
+                         f"=> add entry:src={ip_src}")
+            bl.add_entry(src=ip_src, dst="100.0.0.2/32")
+        engine.block_list_bulk(bl)
+
+        # wait time for entries to be added
+        time.sleep(5)
+
+        logging.info("")
+
+        # create 5 entries to all defined engies
+        logging.info(f"{datetime.datetime.now().strftime('%H:%M:%S')} "
+                     f"=> Add 5 block list entries to all defined engines..")
+        bl = Blocklist()
+        for i in range(5):
+            ip_src = f"10.0.0.{i}/32"
+            logging.info(f"{datetime.datetime.now().strftime('%H:%M:%S')} "
+                         f"=> add entry:src={ip_src}")
+            bl.add_entry(src=ip_src, dst="100.0.0.2/32")
+        smc_system.block_list_bulk(bl)
+
+        # wait time for entries to be added
+        time.sleep(5)
+
+        logging.info("")
+
+        logging.info(f"{datetime.datetime.now().strftime('%H:%M:%S')} "
+                     f"=> Retrieve Block list Data using smc_monitoring fetch_batch and filters")
+        query = BlockListQuery(ENGINENAME)
+        query.add_or_filter([
+            InFilter(FieldValue(LogField.BLOCK_LISTENTRYSOURCEIP), [IPValue('10.0.0.1')]),
+            InFilter(FieldValue(LogField.BLOCK_LISTENTRYDESTINATIONIP), [IPValue('10.0.0.2')])])
+        for record in query.fetch_batch(max_recv=0, query_timeout=120, inactivity_timeout=20):
+            logging.info(f"{datetime.datetime.now().strftime('%H:%M:%S')} [filtered]=> {record}")
+
+        # create thread to simulate adding 10 new entries every five seconds
+        t1 = threading.Thread(target=add_block_list_entry, args=(1, engine, 10))
+        t1.start()
+
+        logging.info("")
+        logging.info(f"{datetime.datetime.now().strftime('%H:%M:%S')} "
+                     f"=> Retrieve Block list Data using smc_monitoring fetch_batch while new "
+                     f"entries are received within inactivity delay (in this case all the entries "
+                     f"since they are generated every 5 seconds)")
+        query = BlockListQuery(ENGINENAME)
+        for record in query.fetch_batch(max_recv=0, query_timeout=120, inactivity_timeout=20):
+            logging.info(f"{datetime.datetime.now().strftime('%H:%M:%S')} => {record}")
+        logging.info(f"{datetime.datetime.now().strftime('%H:%M:%S')} => Retrieved !")
+
+        #
+        # create a large number of entries
+        #
+        logging.info(f"{datetime.datetime.now().strftime('%H:%M:%S')} "
+                     f"=> Add {NUMBER_BLOCK_LIST_ENTRIES} blocklist entries to engine..")
+        bl = Blocklist()
+        nb_block = math.floor(NUMBER_BLOCK_LIST_ENTRIES / 250)
+        for k in range(nb_block):
+            logging.info(f"{datetime.datetime.now().strftime('%H:%M:%S')} "
+                         f"=> add 250 entries block {k}...")
+            for i in range(250):
+                ip_src = f"{30+k}.0.0.{i}/32"
+                bl.add_entry(src=ip_src, dst="10.0.0.2/32")
+        nb_entries = NUMBER_BLOCK_LIST_ENTRIES - nb_block * 250
+        logging.info(f"{datetime.datetime.now().strftime('%H:%M:%S')} "
+                     f"=> add {nb_entries} entries block {k+1}...")
+        for i in range(nb_entries):
+            ip_src = f"{30+k+1}.0.0.{i}/32"
+            bl.add_entry(src=ip_src, dst="10.0.0.2/32")
+        engine.blacklist_bulk(bl)
+
+        #
+        # Retrieve all entries:
+        # use max_recv=0, inactivity_timeout=20
+        logging.info(f"{datetime.datetime.now().strftime('%H:%M:%S')} "
+                     f"=> Retrieve all BlocklistEntry elements using "
+                     f"smc_monitoring fetch_as_element")
+        query = BlockListQuery(ENGINENAME)
+        count = 0
+        for element in query.fetch_as_element(max_recv=0, inactivity_timeout=20):
+            logging.info(f"{datetime.datetime.now().strftime('%H:%M:%S')} "
+                         f"=> {element.first_fetch} {element.block_list_id} "
+                         f"{element.block_list_entry_key} {element.engine} {element.href} "
+                         f"{element.source} {element.destination} {element.protocol} "
+                         f"{element.duration}")
+            count += 1
+        logging.info(f"{datetime.datetime.now().strftime('%H:%M:%S')} => {count} entries retrieved")
+        logging.info(f"{datetime.datetime.now().strftime('%H:%M:%S')} => fetch ended, join..")
+        t1.join()
+        logging.info(f"{datetime.datetime.now().strftime('%H:%M:%S')} => join ended")
+    except Exception as e:
+        logging.error(f"Exception:{e}")
+        return_code = 1
+    finally:
+        # remove blacklist entries
+        logging.info("Remove block list entries..")
+        query = BlockListQuery(ENGINENAME)
+        for element in query.fetch_as_element(max_recv=0, query_timeout=5):
+            try:
+                logging.info(f"Remove {element.block_list_entry_key}")
+                element.delete()
+            except (BaseException, ):
+                logging.info(f"Remove {element.block_list_entry_key} failed but let's continue...")
+                pass
+        engine = Layer3Firewall(ENGINENAME)
+        engine.block_list_flush()
+        engine.delete()
+        FirewallPolicy("myPolicy1").delete()
+
+        session.logout()
+    return return_code
+
+
+def parse_command_line_arguments():
+    """ Parse command line arguments. """
+
+    parser = argparse.ArgumentParser(
+        description='Example script to show how to subscribe to BLOCK LIST notifications '
+                    'using websocket library or smc_monitoring extension',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        add_help=False)
+    parser.add_argument(
+        '-h', '--help',
+        action='store_true',
+        help='show this help message and exit')
+
+    parser.add_argument(
+        '--api-url',
+        type=str,
+        help='SMC API url like https://192.168.1.1:8082')
+    parser.add_argument(
+        '--ws-url',
+        type=str,
+        help='SMC WS url like https://192.168.1.1:8085')
+    parser.add_argument(
+        '--api-version',
+        type=str,
+        help='The API version to use for run the script'
+    )
+    parser.add_argument(
+        '--smc-user',
+        type=str,
+        help='SMC API user')
+    parser.add_argument(
+        '--smc-pwd',
+        type=str,
+        help='SMC API password')
+    parser.add_argument(
+        '--api-key',
+        type=str, default=None,
+        help='SMC API api key (Default: None)')
+
+    arguments = parser.parse_args()
+
+    if arguments.help:
+        parser.print_help()
+        sys.exit(1)
+    if arguments.api_url is None:
+        parser.print_help()
+        sys.exit(1)
+
+    return arguments
 
 
 if __name__ == '__main__':
-    session.login(url=SMC_URL, api_key=API_KEY, verify=False, timeout=120, api_version=API_VERSION)
-    print("session OK")
-
-try:
-    smc_system = System()
-    print("{} => Create Engine:{}..".format(datetime.datetime.now().strftime("%H:%M:%S"),
-                                            ENGINENAME))
-    engine = Layer3Firewall.create(name=ENGINENAME,
-                                   mgmt_ip="192.168.10.1",
-                                   mgmt_network="192.168.10.0/24")
-    print("initial contact and license..")
-    for node in engine.nodes:
-        node.initial_contact()
-        node.bind_license()
-
-    # wait time for engine to be online
-    online = False
-    retry = 0
-    while not online and retry < RETRY_ONLINE:
-        status = engine.nodes[0].status().monitoring_state
-        online = status == "READY"
-        print("{} =>state={}".format(datetime.datetime.now().strftime("%H:%M:%S"), status))
-        time.sleep(5)
-        retry += 1
-
-    print("{} =>create and upload policy..".format(datetime.datetime.now().strftime("%H:%M:%S")))
-    policy = FirewallPolicy().create("myPolicy1")
-
-    poller = engine.upload(policy="myPolicy1", wait_for_finish=True)
-    while not poller.done():
-        poller.wait(5)
-        print("Task Progress {}%".format(poller.task.progress))
-    print(poller.last_message())
-
-    # wait time for engine to be online
-    online = False
-    retry = 0
-    while not online and retry < RETRY_ONLINE:
-        status = engine.nodes[0].status().monitoring_state
-        online = status == "READY"
-        print("{} =>state={}".format(datetime.datetime.now().strftime("%H:%M:%S"), status))
-        time.sleep(5)
-        retry += 1
-
-    assert online, NOT_ONLINE
-
-    # Add block_list to all defined engines.
-    print("{} => Add block_list to all defined engines.."
-          .format(datetime.datetime.now().strftime("%H:%M:%S")))
-    smc_system.block_list("11.11.0.1/32", "11.11.0.2/32")
-
-    engine = Layer3Firewall(ENGINENAME)
-
-    # create 10 entries
-    print("{} => Add 10 block list entries to engine.."
-          .format(datetime.datetime.now().strftime("%H:%M:%S")))
-    bl = Blocklist()
-    for i in range(10):
-        ip_src = "11.0.0.{}/32".format(i)
-        print("{} => add entry:src={}".format(datetime.datetime.now().strftime("%H:%M:%S"), ip_src))
-        bl.add_entry(src=ip_src, dst="10.0.0.2/32")
-    engine.block_list_bulk(bl)
-
-    # wait time for entries to be added
-    time.sleep(5)
-
-    print()
-    print("{} => Retrieve Block list using websocket library"
-          .format(datetime.datetime.now().strftime("%H:%M:%S")))
-    ws = create_connection(
-        "{}/{}/monitoring/session/socket".format(WS_URL, str(API_VERSION)),
-        cookie=session.session_id,
-        timeout=10,
-        socket=session.sock,
-        sslopt={"cert_reqs": ssl.CERT_NONE}
-    )
-
-    query = {
-        "query": {"definition": "BLOCK_LIST", "target": ENGINENAME},
-        "fetch": {},
-        "format": {"type": "texts"},
-    }
-
-    try:
-        ws.send(json.dumps(query))
-        result = ws.recv()
-        print("Received '{}'".format(result))
-        fetch_id = json.loads(result)['fetch']
-
-        retry = 0
-        entry_added = False
-        while not entry_added:
-            try:
-                result = ws.recv()
-                print("Received '{}'".format(result))
-                added = json.loads(result).get("records").get("added")
-                entry_added = len(added) >= 1
-            except WebSocketTimeoutException as e:
-                # No entry has been received within 10s
-                print(e)
-                print("{} => add entry:src={}"
-                      .format(datetime.datetime.now().strftime("%H:%M:%S"), "1.1.1.1/32"))
-                engine.block_list(src="1.1.1.1/32", dst="100.0.0.1/32")
-            finally:
-                assert retry < 10, WRONG_ENTRIES_SIZE
-                retry += 1
-
-    except BaseException as e:
-        print("{} => Failed to retrieve entries:{} !"
-              .format(datetime.datetime.now().strftime("%H:%M:%S"), e))
-        exit(-1)
-    finally:
-        ses_mon_abort_query = {"abort": fetch_id}
-        ws.send(json.dumps(ses_mon_abort_query))
-        ws.close()
-    print("{} => Retrieved:{} !".format(datetime.datetime.now().strftime("%H:%M:%S"), len(added)))
-
-    # create 10 entries
-    print("{} => Add 10 block list entries to engine.."
-          .format(datetime.datetime.now().strftime("%H:%M:%S")))
-    bl = Blocklist()
-    for i in range(10):
-        ip_src = "10.0.0.{}/32".format(i)
-        print("{} => add entry:src={}".format(datetime.datetime.now().strftime("%H:%M:%S"), ip_src))
-        bl.add_entry(src=ip_src, dst="100.0.0.2/32")
-    engine.block_list_bulk(bl)
-
-    # wait time for entries to be added
-    time.sleep(5)
-
-    print()
-
-    # create 5 entries to all defined engies
-    print("{} => Add 5 block list entries to all defined engines.."
-          .format(datetime.datetime.now().strftime("%H:%M:%S")))
-    bl = Blocklist()
-    for i in range(5):
-        ip_src = "10.0.0.{}/32".format(i)
-        print("{} => add entry:src={}".format(datetime.datetime.now().strftime("%H:%M:%S"), ip_src))
-        bl.add_entry(src=ip_src, dst="100.0.0.2/32")
-    smc_system.block_list_bulk(bl)
-
-    # wait time for entries to be added
-    time.sleep(5)
-
-    print()
-
-    print("{} => Retrieve Block list Data using smc_monitoring fetch_batch and filters"
-          .format(datetime.datetime.now().strftime("%H:%M:%S")))
-    query = BlockListQuery(ENGINENAME)
-    query.add_or_filter([
-        InFilter(FieldValue(LogField.BLOCK_LISTENTRYSOURCEIP), [IPValue('10.0.0.1')]),
-        InFilter(FieldValue(LogField.BLOCK_LISTENTRYDESTINATIONIP), [IPValue('10.0.0.2')])])
-    for record in query.fetch_batch(max_recv=0, query_timeout=120, inactivity_timeout=20):
-        print("{} [filtered]=> {}".format(datetime.datetime.now().strftime("%H:%M:%S"), record))
-
-    # create thread to simulate adding 10 new entries every five seconds
-    t1 = threading.Thread(target=add_block_list_entry, args=(1, engine, 10))
-    t1.start()
-
-    print()
-    print("{} => Retrieve Block list Data using smc_monitoring fetch_batch while new entries"
-          " are received within inactivity delay (in this case all the entries since they are"
-          " generated every 5 seconds)"
-          .format(datetime.datetime.now().strftime("%H:%M:%S")))
-    query = BlockListQuery(ENGINENAME)
-    for record in query.fetch_batch(max_recv=0, query_timeout=120, inactivity_timeout=20):
-        print("{} => {}".format(datetime.datetime.now().strftime("%H:%M:%S"), record))
-    print("{} => Retrieved !".format(datetime.datetime.now().strftime("%H:%M:%S")))
-
-    #
-    # create a large number of entries
-    #
-    print("{} => Add {} blocklist entries to engine.."
-          .format(datetime.datetime.now().strftime("%H:%M:%S"), NUMBER_BLOCK_LIST_ENTRIES))
-    bl = Blocklist()
-    nb_block = math.floor(NUMBER_BLOCK_LIST_ENTRIES / 250)
-    for k in range(nb_block):
-        print("{} => add 250 entries block {}..."
-              .format(datetime.datetime.now().strftime("%H:%M:%S"), k))
-        for i in range(250):
-            ip_src = "{}.0.0.{}/32".format(30+k, i)
-            bl.add_entry(src=ip_src, dst="10.0.0.2/32")
-    nb_entries = NUMBER_BLOCK_LIST_ENTRIES - nb_block * 250
-    print("{} => add {} entries block {}..."
-          .format(datetime.datetime.now().strftime("%H:%M:%S"), nb_entries, k+1))
-    for i in range(nb_entries):
-        ip_src = "{}.0.0.{}/32".format(30+k+1, i)
-        bl.add_entry(src=ip_src, dst="10.0.0.2/32")
-    engine.blacklist_bulk(bl)
-
-    #
-    # Retrieve all entries:
-    # use max_recv=0, inactivity_timeout=20
-    print("{} => Retrieve all BlocklistEntry elements using smc_monitoring fetch_as_element"
-          .format(datetime.datetime.now().strftime("%H:%M:%S")))
-    query = BlockListQuery(ENGINENAME)
-    count = 0
-    for element in query.fetch_as_element(max_recv=0, inactivity_timeout=20):
-        print("{} => {} {} {} {} {} {}".format(datetime.datetime.now().strftime("%H:%M:%S"),
-                                               element.first_fetch,
-                                               element.block_list_id,
-                                               element.block_list_entry_key,
-                                               element.engine,
-                                               element.href,
-                                               element.source,
-                                               element.destination,
-                                               element.protocol,
-                                               element.duration))
-        count += 1
-    print("{} => {} entries retrieved"
-          .format(datetime.datetime.now().strftime("%H:%M:%S"), count))
-    print("{} => fetch ended, join..".format(datetime.datetime.now().strftime("%H:%M:%S")))
-    t1.join()
-    print("{} => join ended".format(datetime.datetime.now().strftime("%H:%M:%S")))
-
-except BaseException as e:
-    print(e)
-    exit(-1)
-
-finally:
-    # remove blacklist entries
-    print("Remove block list entries..")
-    query = BlockListQuery(ENGINENAME)
-    for element in query.fetch_as_element(max_recv=0, query_timeout=5):
-        try:
-            print("Remove {}".format(element.block_list_entry_key))
-            element.delete()
-        except (BaseException, ):
-            print("Remove {} failed but let's continue...".format(element.block_list_entry_key))
-            pass
-    engine = Layer3Firewall(ENGINENAME)
-    engine.block_list_flush()
-    engine.delete()
-    FirewallPolicy("myPolicy1").delete()
-
-    session.logout()
+    sys.exit(main())

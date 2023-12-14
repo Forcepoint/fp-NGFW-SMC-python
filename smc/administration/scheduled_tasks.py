@@ -100,13 +100,14 @@ date::
 """
 
 from smc.base.model import Element, SubElement, ElementCreator, ElementRef
-from smc.api.exceptions import ActionCommandFailed
+from smc.api.exceptions import ActionCommandFailed, UnsupportedEngineFeature
 from smc.administration.tasks import Task
-from smc.compat import min_smc_version
+from smc.base.structs import NestedDict
+from smc.compat import min_smc_version, is_api_version_less_than
 from smc.elements.servers import ManagementServer, LogServer
 from smc.core.engines import MasterEngine
 from smc.elements.other import FilterExpression
-from smc.base.util import datetime_from_ms
+from smc.base.util import datetime_from_ms, element_resolver
 
 
 def policy_validation_settings(**kwargs):
@@ -1055,3 +1056,119 @@ class ArchiveLogTask(ScheduledTaskMixin, Element):
         json.update(**server_directories_settings(server_directory_lst))
 
         return ElementCreator(cls, json)
+
+
+class TrafficCaptureInterfaceSettings(NestedDict):
+
+    def __init__(self, data):
+        super(TrafficCaptureInterfaceSettings, self).__init__(data=data)
+
+    @classmethod
+    def create(cls, node_ref=None, pint_ref=None, filter=None):
+        """
+
+        :param Node node_ref: Individual engine node on which traffic is being captured. Required.
+        :param PhysicalInterface pint_ref: Physical Interface Link on which traffic is being
+            captured. Required.
+        :param str filter: IP Address for filtering. By default, no ip address filtering.
+        :return: TrafficCaptureInterfaceSettings
+        """
+        interface_setting = {
+            "node_ref": element_resolver(node_ref),
+            "pint_ref": element_resolver(pint_ref),
+            "filter": filter
+        }
+        return cls(interface_setting)
+
+    @classmethod
+    def create_interface_setting_for_all_node(cls, engine, pint_ref=None, filter=None):
+        """
+        This method is used to create interface settings for all nodes of the engine with
+            the same filter for the given interface.
+        :param Engine engine: Engine on which traffic is being captured. Required.
+        :param PhysicalInterface pint_ref: Physical Interface Link on which traffic is being
+            captured. Required.
+        :param str filter: IP Address for filtering. By default, no ip address filtering.
+        :return: list(TrafficCaptureInterfaceSettings)
+        """
+        list_of_interface_settings = []
+        for node in engine.nodes:
+            interface_setting = {
+                "node_ref": element_resolver(node),
+                "pint_ref": element_resolver(pint_ref),
+                "filter": filter
+            }
+            list_of_interface_settings.append(cls(interface_setting))
+        return list_of_interface_settings
+
+
+class TrafficCaptureTask(ScheduledTaskMixin, Element):
+    typeof = "traffic_capture_task"
+
+    @classmethod
+    def create(
+            cls,
+            name,
+            interface_settings=None,
+            max_file_size_in_mb=500,
+            capture_headers_only=False,
+            description=None,
+            duration_in_sec=3600,
+            sg_info_option=False,
+            destination_file=None,
+            comment=None,
+    ):
+        """
+        This creates the Traffic Capture task element. It captures traffic on specific engine's
+        physical interface with some parameters given below.
+        :param str name: name of the traffic capture task.
+        :param list(TrafficCaptureInterfaceSettings) interface_settings: The traffic capture
+            interface settings to capture traffic.
+        :param int max_file_size_in_mb: The Maximum size of file the Traffic to be captured in MB.
+        :param bool capture_headers_only: Decide whether to capture only header or not.
+            By default: False
+        :param str description: The Description about traffic capture task.
+        :param int duration_in_sec: The duration in second traffic capture task will run.
+        :param int sg_info_option: This flag will decide to include sginfo.
+            By default: False.
+        :param str destination_file: The destination file path of traffic capture file to store.
+        :param str comment: optional comment.
+        @return:
+        """
+        if is_api_version_less_than("6.10"):
+            raise UnsupportedEngineFeature(
+                "The traffic capture task is not supported for API versions less than 6.10.")
+        interface_settings = interface_settings if interface_settings else []
+        json = {
+            "max_file_size": max_file_size_in_mb,
+            "capture_headers_only": capture_headers_only,
+            "description": description,
+            "duration": duration_in_sec,
+            "sg_info_option": sg_info_option,
+            "comment": comment,
+            "destination_file": destination_file,
+            "name": name,
+            "interface_setting": [setting.data for setting in interface_settings]
+        }
+
+        return ElementCreator(cls, json)
+
+    @property
+    def max_file_size(self):
+        return self.data.get("max_file_size")
+
+    @property
+    def capture_headers_only(self):
+        return self.data.get("capture_headers_only")
+
+    @property
+    def duration(self):
+        return self.data.get("duration")
+
+    @property
+    def interface_setting(self):
+        return self.data.get("interface_setting")
+
+    @property
+    def sg_info_option(self):
+        return self.data.get("sg_info_option")

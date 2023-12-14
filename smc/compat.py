@@ -77,6 +77,16 @@ def is_smc_version_less_than(check_version):
     return LooseVersion(smc_version) < LooseVersion(check_version)
 
 
+def is_smc_version_equal(check_version):
+    """
+    check smc version url is equal or not.
+    :param str check_version: smv version
+    """
+    smc_version = smc.administration.system.System().smc_version
+    smc_version = '.'.join(smc_version.split()[0].split('.')[:2])
+    return LooseVersion(smc_version) == LooseVersion(check_version)
+
+
 def is_api_version_less_than_or_equal(check_version):
     return LooseVersion(smc.session.api_version) <= LooseVersion(check_version)
 
