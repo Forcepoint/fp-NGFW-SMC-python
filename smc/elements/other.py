@@ -204,6 +204,15 @@ class FilterExpression(Element):
     typeof = "filter_expression"
 
 
+class QueryDataFilter(Element):
+    """
+    A Query Data Filter is an Internal filter container.
+    Created on the fly when adding filtering context in some components
+    """
+
+    typeof = "query_data_filter"
+
+
 class Location(Element):
     """
     Locations are used by elements to identify when they are behind a NAT

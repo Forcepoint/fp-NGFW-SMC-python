@@ -56,7 +56,7 @@ Generate a report based on an existing or created report design::
     >>> report.export_pdf(filename='/foo/bar/a.pdf')
 
 """
-from smc.base.model import Element
+from smc.base.model import Element, ElementCreator
 from smc.administration.tasks import Task
 from smc.base.util import datetime_from_ms, element_resolver
 from smc.api.exceptions import CreateElementFailed
@@ -89,7 +89,7 @@ class ReportDesign(Element):
     typeof = "report_design"
 
     def generate(
-        self, start_time=None, end_time=None, launch_time=None, overriding_duration=None,
+            self, start_time=None, end_time=None, launch_time=None, overriding_duration=None,
             use_elasticsearch=False, senders=None, wait_for_finish=False, timeout=5, **kw
     ):  # @ReservedAssignment
         """
@@ -245,3 +245,57 @@ class Report(Element):
 
         if not filename:
             return result.content
+
+
+class ReportOperation(Element):
+    """
+    A report operation is a way to launch a task to generate reports.
+    """
+
+    typeof = "report_operation"
+
+    @classmethod
+    def create(cls,
+               launch_time=None,
+               overriding_duration=None,
+               report_design=None,
+               report_per_sender=None,
+               use_elasticsearch=False,
+               export_in_txt=False,
+               export_in_pdf=False,
+               export_in_html=False,
+               stored=False,
+               email=None):
+        """
+        Create a report design based on an existing template
+        :param int launch_time: report launch time in seconds
+        :param int overriding_duration: period duration in seconds (new)
+        :param ReportDesign report_design: report design to base report operation on
+        :param bool report_per_sender: if true to activate report per sender
+        :param bool use_elasticsearch: if true will use elasticsearch storage
+        :param bool export_in_txt: if true will generate txt
+        :param bool export_in_pdf: if true will generate pdf
+        :param bool export_in_html: if true will generate html
+        :param bool stored: if true will be stored
+        :param str email: email address
+        :param str name: Name of new report operation
+        :raises CreateElementFailed: cannot create element
+        :return: Report operation
+        """
+        json = {
+            "launch_time": launch_time,
+            "report_design_ref": element_resolver(report_design),
+            "overriding_duration": overriding_duration,
+            "report_per_sender": report_per_sender,
+            "use_elasticsearch": use_elasticsearch,
+            "export_in_txt": export_in_txt,
+            "export_in_pdf": export_in_pdf,
+            "export_in_html": export_in_html,
+            "stored": stored,
+            "email": email}
+        return ElementCreator(cls, json)
+
+    @property
+    def status(self):
+        status = self.make_request(resource="status")
+        return status

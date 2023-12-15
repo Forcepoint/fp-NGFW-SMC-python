@@ -14,9 +14,10 @@ Groups that are used for element types, such as TCPServiceGroup,
 Group (generic), etc. All group types inherit from GroupMixin which
 allow for modifications of existing groups and their members.
 """
-from smc.base.model import Element, ElementCreator
 from smc.api.exceptions import ElementNotFound
+from smc.base.model import Element, ElementCreator
 from smc.base.util import element_resolver
+from smc.compat import min_smc_version
 
 
 class GroupMixin(object):
@@ -36,14 +37,13 @@ class GroupMixin(object):
         :param bool append_lists: add to existing members, if any
         :param bool remove_members: remove specified members instead of appending
             or overwriting
-        :paran dict kwargs: keyword arguments to satisfy the `create`
+        :param dict kwargs: keyword arguments to satisfy the `create`
             constructor if the group needs to be created.
         :raises CreateElementFailed: could not create element with reason
         :return: element instance by type
         :rtype: Element
         """
         was_created, was_modified = False, False
-        element = None
         try:
             element = cls.get(kwargs.get("name"))
             was_modified = element.update_members(append_lists=append_lists,
@@ -138,7 +138,7 @@ class Group(GroupMixin, Element):
     Available attributes:
 
     :ivar list element: list of elements by href. Call `~obtain_members` to
-        retrieved the resolved list of elements.
+        retrieve the resolved list of elements.
     """
 
     typeof = "group"
@@ -153,7 +153,7 @@ class Group(GroupMixin, Element):
         :type members: str,Element
         :param str comment: optional comment
         :param bool is_monitored: optional option
-        Enable or not monitoring of the group. Default: False
+            Enable or not monitoring of the group. Default: False
         :raises CreateElementFailed: element creation failed with reason
         :return: instance with meta
         :rtype: Group
@@ -162,6 +162,64 @@ class Group(GroupMixin, Element):
         json = {"name": name, "element": elements, "comment": comment, "is_monitored": is_monitored}
 
         return ElementCreator(cls, json)
+
+
+class ConnectionSynchronizationGroup(Element):
+    """
+    Class representing a Connection Synchronization Group object used in single engine for
+    high availability.
+    The elements cannot be added directly in the group.
+    They are added by selecting the group in engine.
+
+    Create a group element::
+
+        ConnectionSynchronizationGroup.create('mygroup') #no members
+
+    Available attributes:
+
+    :ivar list element: list of elements by href. Call `~obtain_members` to
+        retrieve the resolved list of elements.
+    """
+
+    typeof = "connection_sync_group"
+
+    @classmethod
+    def create(cls, name, comment=None, is_monitored=False):
+        """
+        Create the group
+
+        :param str name: Name of element
+        :param str comment: optional comment
+        :param bool is_monitored: optional option
+            Enable or not monitoring of the group. Default: False
+        :raises CreateElementFailed: element creation failed with reason
+        :return: instance with meta
+        :rtype: ConnectionSynchronizationGroup
+        """
+        if min_smc_version("7.2"):
+            json = {"name": name, "comment": comment, "is_monitored": is_monitored}
+
+            return ElementCreator(cls, json)
+
+    def obtain_members(self):
+        """
+        Obtain all group members from this group
+
+        :return: group members as elements
+        :rtype: list(Element)
+        """
+        return [Element.from_href(member) for member in self.data.get("element", [])]
+
+    @property
+    def members(self):
+        """
+        Return members in raw href format. If you want to obtain a
+        resolved list of elements as instance of Element, call
+        `~obtain_members`.
+
+        :rtype: list
+        """
+        return self.data.get("element", [])
 
 
 class ServiceGroup(GroupMixin, Element):
@@ -374,4 +432,29 @@ class EthernetServiceGroup(GroupMixin, Element):
         """
         element = [] if members is None else element_resolver(members)
         json = {"name": name, "element": element, "comment": comment}
+        return ElementCreator(cls, json)
+
+
+class RpcServiceGroup(GroupMixin, Element):
+    """
+    This represents a SUN-RPC Service Group, it groups a list of SUN-RPC Services.
+    """
+    typeof = "rpc_service_group"
+
+    @classmethod
+    def create(cls, name, members=None, comment=None):
+        """
+        Create the SUN-RPC Service Group element.
+
+        :param str name: name of rpc service group
+        :param list members: The elements that are included in the Service Group.
+        :type members: list(str,Element)
+        :param str comment: optional comment.
+        :raises CreateElementFailed: element creation failed with reason
+        :return: instance with meta
+        :rtype: RpcServiceGroup
+        """
+        elements = [] if members is None else element_resolver(members)
+        json = {"name": name, "element": elements, "comment": comment}
+
         return ElementCreator(cls, json)

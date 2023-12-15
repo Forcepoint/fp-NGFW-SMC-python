@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 #  Licensed under the Apache License, Version 2.0 (the "License"); you may
 #  not use this file except in compliance with the License. You may obtain
 #  a copy of the License at
@@ -19,21 +22,28 @@ Example script
 """
 
 # Python Base Import
-import smc.examples
+import argparse
+import logging
+import sys
 
-from smc import session
-from smc.compat import is_api_version_less_than_or_equal, is_api_version_less_than
-from smc.core.engines import Layer3Firewall
-from smc.elements.network import Host, Network
-from smc.policy.ips import IPSPolicy, IPSSubPolicy
-from smc.policy.layer3 import FirewallSubPolicy, FirewallIPv6SubPolicy
-from smc.elements.service import TCPService
-from smc.policy.rule_elements import Action, Source
-from smc.vpn.elements import ExternalGateway
-from smc.vpn.policy import PolicyVPN
-from smc_info import SMC_URL, API_KEY, API_VERSION
+sys.path.append('../../')  # smc-python
+from smc import session  # noqa
+from smc.compat import is_api_version_less_than_or_equal, is_api_version_less_than  # noqa
+from smc.core.engines import Layer3Firewall  # noqa
+from smc.elements.network import Host, Network  # noqa
+from smc.policy.ips import IPSPolicy, IPSSubPolicy  # noqa
+from smc.policy.layer3 import FirewallSubPolicy, FirewallIPv6SubPolicy  # noqa
+from smc.elements.service import TCPService  # noqa
+from smc.policy.rule_elements import Action, Source  # noqa
+from smc.vpn.elements import ExternalGateway  # noqa
+from smc.vpn.policy import PolicyVPN  # noqa
+
 
 WRONG_RULE = "Wrong rule in assert!"
+
+logging.getLogger()
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
+                                                '%(name)s - [%(levelname)s] : %(message)s')
 
 
 def search_rule_by_name(policy, name):
@@ -44,12 +54,14 @@ def search_rule_by_name(policy, name):
     return None
 
 
-if __name__ == "__main__":
-
-    session.login(url=SMC_URL, api_key=API_KEY, verify=False, timeout=120, api_version=API_VERSION)
-
-    print("session OK")
+def main():
+    return_code = 0
     try:
+        arguments = parse_command_line_arguments()
+        session.login(url=arguments.api_url, api_key=arguments.api_key,
+                      login=arguments.smc_user,
+                      pwd=arguments.smc_pwd, api_version=arguments.api_version)
+        logging.info("session OK")
 
         # Create a Sub Policy
         p = FirewallSubPolicy().create("mySubPolicy1")
@@ -64,13 +76,13 @@ if __name__ == "__main__":
             action="discard",
         )
 
-        print("Create Engine:myFW..")
+        logging.info("Create Engine:myFW..")
         engine = Layer3Firewall.create(name="myFw",
                                        mgmt_ip="192.168.10.1",
                                        mgmt_network="192.168.10.0/24")
 
         if not is_api_version_less_than("7.0"):
-            print("Create block_list rule:")
+            logging.info("Create block_list rule:")
             # add apply block list action rule with restricted allowed block lister
             block_list_action = Action()
             block_list_action.action = ["block_list"]
@@ -84,7 +96,7 @@ if __name__ == "__main__":
                 )
 
         # check backward compatibility for blacklist renaming
-        print("Create blacklist rule:")
+        logging.info("Create blacklist rule:")
         blacklist_action = Action()
         blacklist_action.action = ["blacklist"]
         blacklist_action.valid_blacklister = [engine.href]
@@ -155,7 +167,7 @@ if __name__ == "__main__":
                       destinations="any",
                       services=[TCPService("FTP")],
                       action=rule_action)
-        print("After update {} action={}".format(rule_a, rule_a.action.action))
+        logging.info(f"After update {rule_a} action={rule_a.action.action}")
         if is_api_version_less_than_or_equal("6.5"):
             assert search_rule_by_name(p, "newrule_a").action.action == "allow", WRONG_RULE
         else:
@@ -169,7 +181,7 @@ if __name__ == "__main__":
                      destinations=[host3],
                      services=[TCPService("FTP")],
                      action="allow")
-        print("After update {} src={} dst={}".format(rule1, rule1.sources, rule1.destinations))
+        logging.info(f"After update {rule1} src={rule1.sources} dst={rule1.destinations}")
         assert search_rule_by_name(p, "newrule").destinations.dst[0] == host3, WRONG_RULE
 
         # Need to keep backward compatibility and let user inject json code or Elements or href
@@ -178,10 +190,8 @@ if __name__ == "__main__":
                      destinations=[host3],
                      services=[TCPService("FTP").href],
                      action=["allow"])
-        print("After update {} src={} dst={} action={}".format(rule1,
-                                                               rule1.sources,
-                                                               rule1.destinations,
-                                                               rule1.action.action))
+        logging.info(f"After update {rule1} src={rule1.sources} dst={rule1.destinations} "
+                     f"action={rule1.action.action}")
         assert search_rule_by_name(p, "newrule").sources.src[0] == host1, WRONG_RULE
 
         # action can also be json injection both str and list are accepted
@@ -189,10 +199,9 @@ if __name__ == "__main__":
                      destinations=[host3],
                      services=[TCPService("FTP").href],
                      action={"action": "deny"})
-        print("After update {} src={} dst={} action={}".format(rule1,
-                                                               rule1.sources,
-                                                               rule1.destinations,
-                                                               rule1.action.action))
+        logging.info(f"After update {rule1} src={rule1.sources} dst={rule1.destinations} "
+                     f"action={rule1.action.action}")
+
         if is_api_version_less_than_or_equal("6.5"):
             assert search_rule_by_name(p, "newrule").action.action == "deny", WRONG_RULE
         else:
@@ -203,10 +212,9 @@ if __name__ == "__main__":
                      destinations=[host3],
                      services=[TCPService("FTP").href],
                      action={"action": ["deny"]})
-        print("After update {} src={} dst={} action={}".format(rule1,
-                                                               rule1.sources,
-                                                               rule1.destinations,
-                                                               rule1.action.action))
+        logging.info(f"After update {rule1} src={rule1.sources} dst={rule1.destinations} "
+                     f"action={rule1.action.action}")
+
         if is_api_version_less_than_or_equal("6.5"):
             assert search_rule_by_name(p, "newrule").action.action == "deny", WRONG_RULE
         else:
@@ -222,10 +230,9 @@ if __name__ == "__main__":
         rule1.save()
 
         rule1 = search_rule_by_name(p, "newrule")
-        print("Search 'newrule': {} src={} dst={} action={}".format(rule1,
-                                                                    rule1.sources,
-                                                                    rule1.destinations,
-                                                                    rule1.action.action))
+        logging.info(f"Search 'newrule': {rule1} src={rule1.sources} dst={rule1.destinations} "
+                     f"action={rule1.action.action}")
+
         assert rule1.sources.is_any, WRONG_RULE
         assert rule1.destinations.dst == [host2, host3], WRONG_RULE
         if is_api_version_less_than_or_equal("6.5"):
@@ -260,7 +267,7 @@ if __name__ == "__main__":
         jump_rule = p.search_rule("jump_rule")
         if jump_rule[0].action.action[0] == "jump":
             for r in jump_rule[0].action.sub_policy.fw_ipv4_access_rules.all():
-                print("sub rule:{}".format(r))
+                logging.info(f"sub rule:{r}")
 
         # Test IPS policy and Sub Policy
         ips_policy = IPSPolicy.create("myIPSPolicy1")
@@ -289,16 +296,16 @@ if __name__ == "__main__":
         jump_rule = ips_policy.search_rule("ips_jump_rule")
         if jump_rule[0].action.action[0] == "jump":
             for r in jump_rule[0].action.sub_policy.ips_ipv4_access_rules.all():
-                print("sub ips rule:{}".format(r))
+                logging.info(f"sub ips rule:{r}")
 
-        print("All FW sub-policies:")
-        print(list(FirewallSubPolicy.objects.all()))
+        logging.info("All FW sub-policies:")
+        logging.info(list(FirewallSubPolicy.objects.all()))
 
-        print("All IPS sub-policies:")
-        print(list(IPSSubPolicy.objects.all()))
+        logging.info("All IPS sub-policies:")
+        logging.info(list(IPSSubPolicy.objects.all()))
 
         # IPv6 SUB Policy
-        print("Add myIPv6SubPolicy1:")
+        logging.info("Add myIPv6SubPolicy1:")
         # Create a IPv6 Sub Policy
         p = FirewallIPv6SubPolicy()
         p.create("myIPv6SubPolicy1")
@@ -313,11 +320,11 @@ if __name__ == "__main__":
             action="discard",
         )
 
-        print(list(FirewallIPv6SubPolicy.objects.all()))
+        logging.info(list(FirewallIPv6SubPolicy.objects.all()))
 
     except BaseException as e:
-        print("ex={}".format(e))
-        exit(-1)
+        logging.error(f"Exception:{e}")
+        return_code = 1
     finally:
         FirewallSubPolicy("mySubPolicy1").delete()
         Layer3Firewall("myFw").delete()
@@ -332,3 +339,54 @@ if __name__ == "__main__":
         IPSSubPolicy("myIPSSubPolicy1").delete()
         FirewallIPv6SubPolicy("myIPv6SubPolicy1").delete()
         session.logout()
+    return return_code
+
+
+def parse_command_line_arguments():
+    """ Parse command line arguments. """
+
+    parser = argparse.ArgumentParser(
+        description='Example script to show how to use Sub-policies',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        add_help=False)
+    parser.add_argument(
+        '-h', '--help',
+        action='store_true',
+        help='show this help message and exit')
+
+    parser.add_argument(
+        '--api-url',
+        type=str,
+        help='SMC API url like https://192.168.1.1:8082')
+    parser.add_argument(
+        '--api-version',
+        type=str,
+        help='The API version to use for run the script'
+    )
+    parser.add_argument(
+        '--smc-user',
+        type=str,
+        help='SMC API user')
+    parser.add_argument(
+        '--smc-pwd',
+        type=str,
+        help='SMC API password')
+    parser.add_argument(
+        '--api-key',
+        type=str, default=None,
+        help='SMC API api key (Default: None)')
+
+    arguments = parser.parse_args()
+
+    if arguments.help:
+        parser.print_help()
+        sys.exit(1)
+    if arguments.api_url is None:
+        parser.print_help()
+        sys.exit(1)
+
+    return arguments
+
+
+if __name__ == "__main__":
+    sys.exit(main())

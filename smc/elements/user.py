@@ -188,6 +188,9 @@ class AdminUser(UserMixin, Element):
         allowed_to_login_in_shared=True,
         auth_method=None,
         comment=None,
+        permissions=None,
+        ldap_user_href=None,
+        ldap_group_href=None
     ):
         """
         Create an admin user account.
@@ -208,6 +211,9 @@ class AdminUser(UserMixin, Element):
         :param bool enabled: is account enabled
         :param list engine_target: engine to allow remote access to
         :param comment: object comment
+        :param permissions object in case SMC admin is not superuser
+        :param ldap_user_href External user href to link as SMC admin
+        :param ldap_group_href External user href to link as SMC admin
         :raises CreateElementFailed: failure creating element with reason
         :return: instance with meta
         :rtype: AdminUser
@@ -225,7 +231,13 @@ class AdminUser(UserMixin, Element):
             "superuser": superuser,
             "can_use_api": can_use_api,
             "comment": comment,
+            "permissions": {"permission": []},
+            "ldap_user": ldap_user_href,
+            "ldap_group": ldap_group_href
         }
+        if permissions:
+            for p in permissions:
+                json["permissions"]["permission"].append(p.data)
 
         if auth_method:
             auth_method_ref = servers.AuthenticationMethod(auth_method).href

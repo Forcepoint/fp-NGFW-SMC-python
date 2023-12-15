@@ -65,7 +65,7 @@ class SNMP(object):
         """
         self.engine.data.update(snmp_agent_ref=None, snmp_location="", snmp_interface=[])
 
-    def enable(self, snmp_agent, snmp_location=None, snmp_interface=None):
+    def enable(self, snmp_agent, snmp_location=None, snmp_interface=None, snmp_engine_id=None):
         """
         Enable SNMP on the engine. Specify a list of interfaces
         by ID to enable only on those interfaces. Only interfaces
@@ -80,6 +80,7 @@ class SNMP(object):
         :param str,Element snmp_agent: the SNMP agent reference for this engine
         :param str snmp_location: the SNMP location identifier for the engine
         :param list snmp_interface: list of interface IDs to enable SNMP
+        :param str snmp_engine_id: Specify snmp engine id. If None the it will be automatic.
         :raises ElementNotFound: unable to resolve snmp_agent
         :raises InterfaceNotFound: specified interface by ID not found
         """
@@ -92,6 +93,9 @@ class SNMP(object):
             snmp_location=snmp_location if snmp_location else "",
             snmp_interface=interfaces,
         )
+        if snmp_engine_id:
+            for node in self.engine.nodes:
+                node.update(snmp_engine_id=snmp_engine_id)
 
     def _iface_dict(self, snmp_interface):
         return [

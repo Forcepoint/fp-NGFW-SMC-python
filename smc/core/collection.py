@@ -1386,31 +1386,52 @@ class PhysicalInterfaceCollection(InterfaceCollection):
         return self.add_inline_interface(**_interface)
 
     def add_dhcp_interface(
-        self, interface_id, dynamic_index, zone_ref=None, vlan_id=None, comment=None
-    ):
+            self, interface_id, dynamic_index, zone_ref=None, vlan_id=None, comment=None,
+            pppoe_settings=None, ipv6=False, **kw):
         """
         Add a DHCP interface on a single engine
-
         :param int interface_id: interface id
-        :param int dynamic_index: index number for dhcp interface
+        :param int vlan_id: vlan id
+        :param int dynamic_index: index number for dhcp interface (IPv4/IPv6)
         :param bool primary_mgt: whether to make this primary mgt
         :param str zone_ref: zone reference, can be name, href or Zone
+        :param bool ipv6: to set IPv6 dynamic interface mode
+        :param dict pppoe_settings: set pppoe settings with a dict
+         pppoe_dict = {"pppoe_password": "password", "pppoe_servicename": "sn",
+         "pppoe_username": "name"}
+        :param str comment: comment
         :raises EngineCommandFailed: failure creating interface
         :return: None
 
         See :class:`~DHCPInterface` for more information
         """
-        _interface = {
-            "interface_id": interface_id,
-            "interfaces": [
-                {"nodes": [{"dynamic": True, "dynamic_index": dynamic_index}], "vlan_id": vlan_id}
-            ],
-            "comment": comment,
-            "zone_ref": zone_ref,
-        }
+        if ipv6:
+            _interface = {
+                "interface_id": interface_id,
+                "interfaces": [
+                    {"nodes": [{"dynamic": True, "dynamic_ipv6_index": dynamic_index}],
+                     "vlan_id": vlan_id}
+                ],
+                "comment": comment,
+                "zone_ref": zone_ref,
+            }
+        else:
+            _interface = {
+                "interface_id": interface_id,
+                "interfaces": [
+                    {"nodes": [{"dynamic": True, "dynamic_index": dynamic_index}],
+                     "vlan_id": vlan_id}],
+                "comment": comment,
+                "zone_ref": zone_ref,
+            }
 
         if "single_fw" in self._engine.type:
             _interface.update(interface="single_node_interface")
+            if pppoe_settings:
+                _interface['interfaces'][0]['nodes'][0].update(pppoe=True)
+                for k, v in pppoe_settings.items():
+                    _interface['interfaces'][0]['nodes'][0].update({k: v})
+            _interface.update(kw)
 
         try:
             interface = self._engine.interface.get(interface_id)
@@ -1419,7 +1440,7 @@ class PhysicalInterfaceCollection(InterfaceCollection):
             # exists
             if vlan is None:
                 interface._add_interface(**_interface)
-                interface.update()
+                interface.update(kw)
 
         except InterfaceNotFound:
             interface = Layer3PhysicalInterface(**_interface)

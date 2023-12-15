@@ -13,16 +13,20 @@
 from collections import namedtuple
 import pytz
 
+from smc.base.util import save_to_file
 from smc.core.advanced_settings import LogModeration
 from smc.core.lldp import LLDPProfile
 from smc.core.policy import AutomaticRulesSettings
 from smc.elements.helpers import domain_helper, location_helper
-from smc.base.model import Element, SubElement, lookup_class, ElementCreator
+from smc.base.model import Element, SubElement, lookup_class, ElementCreator, \
+    ElementRef, ElementCache
+
 from smc.api.exceptions import (
     UnsupportedEngineFeature,
     UnsupportedInterfaceType,
     EngineCommandFailed,
-    SMCConnectionError, CreateElementFailed,
+    SMCConnectionError, CreateElementFailed, UpdateElementFailed, CertificateExportError,
+    CertificateImportError
 )
 from smc.core.node import Node
 from smc.core.resource import Snapshot, PendingChanges
@@ -37,6 +41,8 @@ from smc.core.collection import (
     SwitchInterfaceCollection,
 )
 from smc.administration.tasks import Task
+from smc.administration.certificates.tls_common import pem_as_string
+from smc.elements.group import ConnectionSynchronizationGroup
 from smc.elements.other import prepare_block_list, prepare_blacklist
 from smc.elements.network import Alias
 from smc.vpn.elements import VPNSite, LinkUsageProfile
@@ -56,18 +62,20 @@ from smc.core.addon import (
     TLSInspection,
     ClientInspection,
     ZTNAConnector,
+    EndpointIntegration
 )
 from smc.elements.servers import LogServer
 from smc.base.collection import create_collection, sub_collection
 from smc.base.util import element_resolver
-from smc.administration.access_rights import AccessControlList, Permission
+from smc.administration.access_rights import AccessControlList, Permission, \
+    GrantedElementPermissions
 from smc.base.decorators import cacheable_resource
 from smc.administration.certificates.vpn import GatewayCertificate, GatewayCertificateRequest
 from smc.base.structs import BaseIterable, NestedDict
 from smc.elements.profiles import SNMPAgent
 from smc.elements.ssm import SSHKnownHostsLists
 from smc.compat import is_smc_version_less_than_or_equal, is_api_version_less_than_or_equal, \
-    min_smc_version, is_api_version_less_than
+    min_smc_version, is_api_version_less_than, is_smc_version_equal
 
 
 class LinkUsageExceptionRules(NestedDict):
@@ -777,6 +785,24 @@ class Engine(Element):
         )
 
     @property
+    def endpoint_integration(self):
+        """
+        Endpoint Integration status on engine. Note that for master engines
+        the endpoint integrations settings are configured on Virtual Engines.
+        Get current status::
+
+            engine.endpoint_integration.status
+
+        :raises UnsupportedEngineFeature: Invalid engine type for file rep
+        :rtype: EndpointIntegration
+        """
+        if not self.type.startswith("master"):
+            return EndpointIntegration(self)
+        raise UnsupportedEngineFeature(
+            "Endpoint Integration cannot be configured on master engine"
+        )
+
+    @property
     def dns_relay(self):
         """
         Enable, disable or get status for the DNS Relay Service
@@ -887,14 +913,14 @@ class Engine(Element):
         return resource
 
     @property
-    def permissions(self):
+    def granted_permissions(self):
         """
-        Retrieve the permissions for this engine instance.
+        Retrieve the access control list permissions for this engine instance.
         ::
 
             >>> from smc.core.engine import Engine
             >>> engine = Engine('myfirewall')
-            >>> for x in engine.permissions:
+            >>> for x in engine.permissions.granted_permissions:
             ...   print(x)
             ...
             AccessControlList(name=ALL Elements)
@@ -910,35 +936,62 @@ class Engine(Element):
             for elem in acl_list:
                 if elem.href == elem_href:
                     return elem
-
-        acls = self.make_request(UnsupportedEngineFeature, resource="permissions")
-        for acl in acls["granted_access_control_list"]:
+        for acl in self.permissions.granted_access_control_list:
             yield (acl_map(acl))
+
+    @property
+    def permissions(self):
+        """
+        Retrieve the permissions for this engine instance.
+        :rtype: GrantedElementPermissions
+
+        .. note:: This method has changed in fp-NGFW-SMC-python >= 1.0.24 so need to make your
+            script compatible with this change."
+            .. seealso:: :class:`smc.administration.access_rights.GrantedElementPermissions`.
+        """
+        data = self.make_request(UnsupportedEngineFeature, resource="permissions")
+        return GrantedElementPermissions(data)
 
     @permissions.setter
     def permissions(self, permissions):
         """
-            update the permissions for this engine instance.
+        Update the permissions for this engine instance.
         Example to update permission:
             >>> algiers = Engine('Algiers')
-            >>> all_elements_acl = AccessControlList('ALL Elements')
-            >>> all_fws_acl = AccessControlList('ALL Firewalls')
-            >>> permissions_object = Permission.create(elements=[all_elements_acl, all_fws_acl],\
-             role=None, domain=algiers.href)
+            >>> all_elements_acl = AccessControlList('ALL Elements').href
+            >>> all_fws_acl = AccessControlList('ALL Engines').href
+            >>> permissions_object = algiers.permissions
+            >>> permissions_object.update(granted_access_control_list=[all_elements_acl,
+            >>> all_fws_acl])
             >>> algiers.permissions = permissions_object
+
+        Example to create permission:
+            >>> admin_user=list(AdminUser.objects.all())[0]
+            >>> admin_domain=list(AdminDomain.objects.all())[0]
+            >>> roles=list(Role.objects.all())
+            >>> cluster_ref = algiers.href
+            >>> all_elements_acl = AccessControlList('ALL Elements')
+            >>> all_fws_acl = AccessControlList('ALL Engines')
+            >>> role_container = [AdminRoleContainer.create(roles=roles,
+            >>> granted_domain=admin_domain,admin=admin_user)]
+            >>> permissions_object = GrantedElementPermissions.create(cluster_ref=cluster_ref,
+            >>> granted_access_control_list=[all_elements_acl, all_fws_acl],
+            >>> role_containers=role_container)
+            >>> algiers.permissions = permissions_object
+
+        .. note:: This method has changed in fp-NGFW-SMC-python >= 1.0.24, so need to make your
+            script compatible with this change."
+        .. seealso:: :py:class:`smc.administration.access_rights.GrantedElementPermissions` and
+                     :py:class:`smc.administration.access_rights.AdminRoleContainer`
 
         :param permissions: permissions object
         """
+        if is_smc_version_equal("7.0"):
+            raise UpdateElementFailed("Update permission is not supported in smc 7.0.")
         etag = self.make_request(UnsupportedEngineFeature, resource="permissions",
                                  raw_result=True).etag.strip('"')
-        granted_element = [element.href for element in
-                           list(permissions.granted_elements)]
-
-        json = {'cluster_ref': permissions.granted_domain_ref,
-                'granted_access_control_list': granted_element,
-                'role_containers': permissions.role_ref}
         self.make_request(UnsupportedEngineFeature, resource="permissions", method="update",
-                          json=json, etag=etag)
+                          json=permissions.data, etag=etag)
 
     @property
     def pending_changes(self):
@@ -1446,10 +1499,11 @@ class Engine(Element):
                 params = dict()
                 params["full"] = False
             result = self.make_request(EngineCommandFailed, resource=sesmon_type, params=params)
-
-            return SessionMonitoringResult(sesmon_type, result)
+            if result:
+                return SessionMonitoringResult(sesmon_type, result)
+            return None
         except SMCConnectionError:
-            raise EngineCommandFailed("Timed out waiting for routes")
+            raise EngineCommandFailed(f"Timed out waiting for {sesmon_type}")
 
     @property
     def antispoofing(self):
@@ -2094,6 +2148,97 @@ class Engine(Element):
             method="update",
             resource="ldap_replication",
             params={"enable": enable},
+        )
+
+    def generate_and_sign_user_authentication_certificate(self):
+        """
+        Generate and internally sign User Authentication certificate.
+        """
+
+        return Task.execute(
+            self,
+            "web_auth_https_generate_and_sign_certificate",
+            wait_for_finish=True
+        )
+
+    def delete_user_authentication_certificate(self):
+        """
+        Delete the certificate if any is defined for this component.
+        """
+        self.make_request(method="delete",
+                          resource="web_auth_https_delete_certificate")
+
+    def delete_user_authentication_certificate_request(self):
+        """
+        Delete the certificate request if any is defined for this component.
+        """
+        self.make_request(method="delete",
+                          resource="web_auth_https_delete_certificate_request")
+
+    def export_user_authentication_certificate(self, filename=None):
+        """
+         Export the certificate if any is defined for this component.
+         """
+        result = self.make_request(
+            CertificateExportError, raw_result=True, resource="web_auth_https_export_certificate"
+        )
+
+        if filename is not None:
+            save_to_file(filename, result.content)
+            return
+
+        return result.content
+
+    def generate_user_authentication_certificate_request(self):
+        """
+        Export the certificate request for the node when working external CA.
+        This can return None if the engine type does not have a certificate request.
+
+        :raises CertificateExportError: error exporting certificate
+        :rtype: str or None
+        """
+        return self.make_request(
+            CertificateExportError,
+            method="create",
+            resource="web_auth_https_generate_certificate_request"
+        )
+
+    def export_user_authentication_certificate_request(self, filename=None):
+        """
+         Export the certificate request if any is defined for this component.
+         """
+        result = self.make_request(
+            CertificateExportError, raw_result=True,
+            resource="web_auth_https_export_certificate_request"
+        )
+
+        if filename is not None:
+            save_to_file(filename, result.content)
+            return
+
+        return result.content
+
+    def user_authentication_import_certificate(self, certificate):
+        """
+        Import a valid certificate. Certificate can be either a file path
+        or a string of the certificate. If string certificate, it must include
+        the -----BEGIN CERTIFICATE----- string.
+
+        :param str certificate: fully qualified path or string
+        :raises CertificateImportError: failure to import cert with reason
+        :raises IOError: file not found, permissions, etc.
+        """
+        self.make_request(
+            CertificateImportError,
+            method="create",
+            resource="web_auth_https_import_certificate",
+            headers={"content-type": "multipart/form-data"},
+            files={
+                # decode certificate or use it as it is
+                "signed_certificate": open(certificate, "rb")
+                if not pem_as_string(certificate)
+                else certificate
+            },
         )
 
 
@@ -2877,3 +3022,117 @@ class LocalLogStorageSettings(NestedDict):
         values must be set up.
         """
         return self.data.get("local_log_storage_activated")
+
+
+class HAForSingleEngine(object):
+    """
+    High availability configuration on the single engine. Access through an engine reference::
+
+        engine.ha_settings.ha_backup_unit
+        engine.ha_settings.set_ha_backup_unit(pos='1234567890-1234567890')
+        engine.ha_settings.disable_ha_backup_unit()
+
+        engine.ha_settings.connection_sync_mode
+        engine.ha_settings.set_connection_sync(ha_connection_sync_interface=0,
+                                               connection_sync_group=connection_sync_group_name)
+        engine.ha_settings.disable_connection_sync()
+
+    When making changes to the HA configuration, any methods
+    called that change the configuration also require that
+    engine.update() is called once changes are complete. This way
+    you can make multiple changes without refreshing the engine cache.
+
+    :ivar ConnectionSynchronizationGroup connection_sync_group: ConnectionSynchronizationGroup
+    reference for this engine. Applicable when HA mode is connection_sync.
+    """
+
+    connection_sync_group = ElementRef("connection_sync_group")
+
+    def __init__(self, data=None):
+        self.data = data if data else ElementCache()
+
+    @property
+    def ha_backup_unit_mode(self):
+        """
+        Get high availability backup unit mode for this engine
+
+        :return: str or None
+        """
+        return self.data.get("ha_backup_unit_mode")
+
+    @property
+    def connection_sync_mode(self):
+        """
+        Get connection synchronization for external high availability mode for this engine
+
+        :return: str or None
+        """
+        return self.data.get("connection_sync_mode")
+
+    @property
+    def pos(self):
+        """
+        proof of serial for hugh availability.
+        Applicable when HA backup unit mode is enabled.
+
+        :rtype: str or None
+        """
+        return self.data.get("ha_pos_for_backup_unit")
+
+    @property
+    def sync_interface(self):
+        """
+        ID of the interface for unicast state
+        Applicable when HA mode is connection_sync.
+
+        :rtype: int or None
+        """
+        return self.data.get("ha_connection_sync_interface")
+
+    def disable_ha_backup_unit(self):
+        """
+        Disable HA backup unit mode on this engine.
+
+        :return: None
+        """
+        self.data.update(ha_backup_unit_mode='disabled')
+
+    def disable_connection_sync(self):
+        """
+        Disable connection synchronization for external high availability on this engine.
+
+        :return: None
+        """
+        self.data.update(connection_sync_mode='disabled')
+
+    def set_ha_backup_unit(self, pos=None):
+        """
+        Enable high availability backup unit on this engine.
+        Disable connection synchronization for external high availability.
+
+        :param str pos: proof of serial for pairing
+        :return: None
+        """
+        self.data.update(ha_backup_unit_mode='enabled', ha_pos_for_backup_unit=pos,
+                         connection_sync_mode='disabled')
+
+    def set_connection_sync(self, connection_sync_group, ha_connection_sync_interface):
+        """
+        Enable connection synchronization for external high availability on this engine.
+        Disable high availability backup unit.
+
+        :param str,ConnectionSynchronizationGroup connection_sync_group:
+         ConnectionSynchronizationGroup element or str href
+        :param str ha_connection_sync_interface: ID of the interface for unicast state
+        synchronization
+        :raises ElementNotFound: ConnectionSynchronizationGroup not found
+        :return: None
+        """
+        if isinstance(connection_sync_group, str):
+            sync_group = ConnectionSynchronizationGroup(connection_sync_group).href
+        else:
+            sync_group = connection_sync_group.href
+
+        self.data.update(connection_sync_mode='enabled', connection_sync_group=sync_group,
+                         ha_connection_sync_interface=ha_connection_sync_interface,
+                         ha_backup_unit_mode='disabled')

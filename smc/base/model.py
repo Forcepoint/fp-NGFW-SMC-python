@@ -752,6 +752,10 @@ class Element(ElementBase):
         return bytes_to_unicode(self._name)
 
     @property
+    def smc_admin_domain(self):
+        return Element.from_href(self.admin_domain)
+
+    @property
     def comment(self):
         """
         Comment for element

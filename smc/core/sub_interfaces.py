@@ -494,7 +494,8 @@ class SingleNodeInterface(NodeInterface):
                 data["auth_request"] = False
 
             if data.get("dynamic_index", None) is None:
-                data["dynamic_index"] = 1
+                if data.get("dynamic_ipv6_index", None) is None:
+                    data["dynamic_index"] = 1
             elif data.get("automatic_default_route") is None:
                 data.update(automatic_default_route=True)
 

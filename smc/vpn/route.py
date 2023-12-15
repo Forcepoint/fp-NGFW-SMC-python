@@ -197,18 +197,18 @@ class RouteVPN(Element):
 
     @classmethod
     def _create_ipsec_tunnel_65(
-        cls,
-        name,
-        local_endpoint,
-        remote_endpoint,
-        preshared_key=None,
-        monitoring_group=None,
-        vpn_profile=None,
-        mtu=0,
-        pmtu_discovery=True,
-        ttl=0,
-        enabled=True,
-        comment=None,
+            cls,
+            name,
+            local_endpoint,
+            remote_endpoint,
+            preshared_key=None,
+            monitoring_group=None,
+            vpn_profile=None,
+            mtu=0,
+            pmtu_discovery=True,
+            ttl=0,
+            enabled=True,
+            comment=None,
     ):
         group = monitoring_group or RouteVPNTunnelMonitoringGroup("Uncategorized")
         profile = vpn_profile or VPNProfile("VPN-A Suite")
@@ -235,18 +235,18 @@ class RouteVPN(Element):
 
     @classmethod
     def _create_ipsec_tunnel_66(
-        cls,
-        name,
-        local_endpoint,
-        remote_endpoint,
-        preshared_key=None,
-        monitoring_group=None,
-        vpn_profile=None,
-        mtu=0,
-        pmtu_discovery=True,
-        ttl=0,
-        enabled=True,
-        comment=None,
+            cls,
+            name,
+            local_endpoint,
+            remote_endpoint,
+            preshared_key=None,
+            monitoring_group=None,
+            vpn_profile=None,
+            mtu=0,
+            pmtu_discovery=True,
+            ttl=0,
+            enabled=True,
+            comment=None,
     ):
         group = monitoring_group or TunnelMonitoringGroup("Uncategorized")
         profile = vpn_profile or VPNProfile("VPN-A Suite")
@@ -273,16 +273,16 @@ class RouteVPN(Element):
 
     @classmethod
     def create_gre_tunnel_mode(
-        cls,
-        name,
-        local_endpoint,
-        remote_endpoint,
-        policy_vpn,
-        mtu=0,
-        pmtu_discovery=True,
-        ttl=0,
-        enabled=True,
-        comment=None,
+            cls,
+            name,
+            local_endpoint,
+            remote_endpoint,
+            policy_vpn,
+            mtu=0,
+            pmtu_discovery=True,
+            ttl=0,
+            enabled=True,
+            comment=None,
     ):
         """
         Create a GRE based tunnel mode route VPN. Tunnel mode GRE wraps the
@@ -316,6 +316,7 @@ class RouteVPN(Element):
             "comment": comment,
             "rbvpn_tunnel_side_a": local_endpoint.data,
             "rbvpn_tunnel_side_b": remote_endpoint.data,
+            "tunnel_mode_vpn_ref": policy_vpn.href
         }
         if policy_vpn is None:
             json["tunnel_encryption"] = "no_encryption"
@@ -329,31 +330,59 @@ class RouteVPN(Element):
 
     @classmethod
     def create_gre_tunnel_no_encryption(
-        cls,
-        name,
-        local_endpoint,
-        remote_endpoint,
-        mtu=0,
-        pmtu_discovery=True,
-        ttl=0,
-        enabled=True,
-        comment=None,
-    ):
-        """
-        Create a GRE Tunnel with no encryption. See `create_gre_tunnel_mode` for
-        constructor descriptions.
-        """
-        return cls.create_gre_tunnel_mode(
+            cls,
             name,
             local_endpoint,
             remote_endpoint,
-            policy_vpn=None,
-            mtu=mtu,
-            pmtu_discovery=pmtu_discovery,
-            ttl=ttl,
-            enabled=enabled,
-            comment=comment,
-        )
+            mtu=0,
+            pmtu_discovery=True,
+            ttl=0,
+            enabled=True,
+            comment=None,
+            gre_keepalive_period=None,
+            gre_keepalive_retry=None,
+    ):
+        """
+        Create a GRE No Encryption route Based VPN.
+
+        :param str name: name of VPN
+        :param TunnelEndpoint local_endpoint: the local side endpoint for
+            this VPN.
+        :param TunnelEndpoint remote_endpoint: the remote side endpoint for
+            this VPN.
+        :param TunnelMonitoringGroup monitoring_group: the group to place
+            this VPN in for monitoring. (default: 'Uncategorized')
+        :param int mtu: Set MTU for this VPN tunnel (default: 0)
+        :param boolean pmtu_discovery: enable pmtu discovery (default: True)
+        :param int ttl: ttl for connections on the VPN (default: 0)
+        :param int gre_keepalive_period: in s (1-32767s)
+        :param int gre_keepalive_retry: (0-255)
+        :param str comment: optional comment
+        :raises CreateVPNFailed: failed to create the VPN with reason
+        :rtype: RouteVPN
+        """
+        json = {
+            "name": name,
+            "ttl": ttl,
+            "mtu": mtu,
+            "pmtu_discovery": pmtu_discovery,
+            "tunnel_encryption": "no_encryption",
+            "tunnel_mode": "gre",
+            "enabled": enabled,
+            "comment": comment,
+            "rbvpn_tunnel_side_a": local_endpoint.data,
+            "rbvpn_tunnel_side_b": remote_endpoint.data,
+        }
+        if gre_keepalive_period or gre_keepalive_retry is not None:
+            json.update(
+                gre_keepalive=True,
+                gre_keepalive_period=gre_keepalive_period if not None else 10,
+                gre_keepalive_retry=gre_keepalive_retry if not None else 3
+            )
+        try:
+            return ElementCreator(cls, json)
+        except CreateElementFailed as err:
+            raise CreateVPNFailed(err)
 
     @classmethod
     def create_gre_transport_mode(cls, *args, **kwargs):
@@ -385,18 +414,18 @@ class RouteVPN(Element):
 
     @classmethod
     def _create_gre_transport_mode_65(
-        cls,
-        name,
-        local_endpoint,
-        remote_endpoint,
-        preshared_key,
-        monitoring_group=None,
-        vpn_profile=None,
-        mtu=0,
-        ttl=0,
-        pmtu_discovery=True,
-        enabled=True,
-        comment=None,
+            cls,
+            name,
+            local_endpoint,
+            remote_endpoint,
+            preshared_key,
+            monitoring_group=None,
+            vpn_profile=None,
+            mtu=0,
+            ttl=0,
+            pmtu_discovery=True,
+            enabled=True,
+            comment=None,
     ):
         group = monitoring_group or RouteVPNTunnelMonitoringGroup("Uncategorized")
         profile = vpn_profile or VPNProfile("VPN-A Suite")
@@ -424,18 +453,18 @@ class RouteVPN(Element):
 
     @classmethod
     def _create_gre_transport_mode_66(
-        cls,
-        name,
-        local_endpoint,
-        remote_endpoint,
-        preshared_key,
-        monitoring_group=None,
-        vpn_profile=None,
-        mtu=0,
-        ttl=0,
-        pmtu_discovery=True,
-        enabled=True,
-        comment=None,
+            cls,
+            name,
+            local_endpoint,
+            remote_endpoint,
+            preshared_key,
+            monitoring_group=None,
+            vpn_profile=None,
+            mtu=0,
+            ttl=0,
+            pmtu_discovery=True,
+            enabled=True,
+            comment=None,
     ):
         group = monitoring_group or TunnelMonitoringGroup("Uncategorized")
         profile = vpn_profile or VPNProfile("VPN-A Suite")
@@ -456,6 +485,63 @@ class RouteVPN(Element):
             "comment": comment,
         }
 
+        try:
+            return ElementCreator(cls, json)
+        except CreateElementFailed as err:
+            raise CreateVPNFailed(err)
+
+    @classmethod
+    def create_geneve_mode(
+            cls,
+            name,
+            local_endpoint,
+            remote_endpoint,
+            geneve_vni=0,
+            geneve_destination_port=6081,
+            mtu=0,
+            pmtu_discovery=True,
+            ttl=0,
+            enabled=True,
+            comment=None,
+    ):
+        """
+        Create a Geneve (Generic Network Virtualization Encapsulation) No Encryption tunnel.
+        The Geneve packet format consists of a compact tunnel header encapsulated in UDP over
+        either IPv4 or IPv6.
+        :param bool enabled: to enable/disable the tunnel by default
+        :param int geneve_destination_port: default 6081 (1-65535)
+        :param int geneve_vni: Virtual network interface (0-16777215)
+        :param str name: name of VPN
+        :param TunnelEndpoint local_endpoint: the local side endpoint for
+            this VPN.
+        :param TunnelEndpoint remote_endpoint: the remote side endpoint for
+            this VPN.
+        :param int mtu: Set MTU for this VPN tunnel (default: 0)
+        :param boolean pmtu_discovery: enable pmtu discovery (default: True)
+        :param int ttl: ttl for connections on the VPN (default: 0)
+        :param str comment: optional comment
+        :raises CreateVPNFailed: failed to create the VPN with reason
+        :rtype: RouteVPN
+        """
+        json = {
+            "name": name,
+            "ttl": ttl,
+            "mtu": mtu,
+            "pmtu_discovery": pmtu_discovery,
+            "tunnel_encryption": "no_encryption",
+            "tunnel_mode": "geneve",
+            "enabled": enabled,
+            "comment": comment,
+            "rbvpn_tunnel_side_a": local_endpoint.data,
+            "rbvpn_tunnel_side_b": remote_endpoint.data,
+        }
+        geneve_settings = {
+            "geneve_destination_port": geneve_destination_port,
+            "geneve_vni": geneve_vni
+        }
+        json.update(
+            geneve_settings=geneve_settings
+        )
         try:
             return ElementCreator(cls, json)
         except CreateElementFailed as err:
@@ -592,7 +678,7 @@ class TunnelEndpoint(object):
     gateway = ElementRef("gateway_ref")
 
     def __init__(
-        self, gateway_ref=None, tunnel_interface_ref=None, endpoint_ref=None, ip_address=None
+            self, gateway_ref=None, tunnel_interface_ref=None, endpoint_ref=None, ip_address=None
     ):
         self.gateway_ref = gateway_ref
         self.tunnel_interface_ref = tunnel_interface_ref
@@ -631,6 +717,25 @@ class TunnelEndpoint(object):
         """
         Create the GRE tunnel mode or no encryption mode endpoint.
         If the GRE tunnel mode endpoint is an SMC managed device,
+        both an endpoint and a tunnel interface is required. If the
+        endpoint is externally managed, only an IP address is required.
+
+        :param InternalEndpoint,ExternalEndpoint endpoint: the endpoint
+            element for this tunnel endpoint.
+        :param TunnelInterface tunnel_interface: the tunnel interface for
+            this tunnel endpoint. Required for SMC managed devices.
+        :param str remote_address: IP address, only required if the tunnel
+            endpoint is a remote gateway.
+        :rtype: TunnelEndpoint
+        """
+        return cls.create_tunnel_endpoint(endpoint, tunnel_interface,
+                                          remote_address)
+
+    @classmethod
+    def create_tunnel_endpoint(cls, endpoint=None, tunnel_interface=None, remote_address=None):
+        """
+        Create the and endpoint in tunnel mode or no encryption.
+        If the tunnel mode endpoint is an SMC managed device,
         both an endpoint and a tunnel interface is required. If the
         endpoint is externally managed, only an IP address is required.
 

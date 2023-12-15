@@ -56,15 +56,21 @@ route add route=10.12.1.236/255.255.255.252 gateway=10.12.127.33 distance=1 desc
 route add route=10.6.4.0/255.255.255.0 gateway=10.12.127.33 distance=1 description=''
 
 """
+import argparse
+import logging
 import re
+import sys
 import smc.examples
-
-
-from smc import session
-from smc.core.engine import Engine
+sys.path.append('../../')  # smc-python
+from smc import session  # noqa
+from smc.core.engine import Engine  # noqa
 
 filename = "/Users/username/statis routes.txt"
 firewall = "mcafee2"
+
+logging.getLogger()
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
+                                                '%(name)s - [%(levelname)s] : %(message)s')
 
 
 def mask_convertor(network_and_netmask):
@@ -74,28 +80,86 @@ def mask_convertor(network_and_netmask):
     return "/".join(netmask)
 
 
-if __name__ == "__main__":
+def main():
+    return_code = 0
+    arguments = parse_command_line_arguments()
+    # session.login(url="http://172.18.1.150:8082", api_key="EiGpKD4QxlLJ25dbBEp20001")
+    session.login(url=arguments.api_url, api_key=arguments.api_key, login=arguments.smc_user,
+                  pwd=arguments.smc_pwd, api_version=arguments.api_version)
 
-    session.login(url="http://172.18.1.150:8082", api_key="EiGpKD4QxlLJ25dbBEp20001")
+    try:
+        # Load the engine configuration; raises LoadEngineFailed for not found
+        # engine
+        engine = Engine(firewall).load()
 
-    # Load the engine configuration; raises LoadEngineFailed for not found
-    # engine
-    engine = Engine(firewall).load()
+        with (open(filename) as f):
+            for line in f:
+                for match in re.finditer("route=(.*) gateway=(.*) distance.*?", line, re.S):
+                    network = mask_convertor(match.group(1))
+                    gateway = match.group(2)
+                    logging.info(f"Adding route to network: {network}, via gateway: {gateway}")
 
-    with open(filename) as f:
-        for line in f:
-            for match in re.finditer("route=(.*) gateway=(.*) distance.*?", line, re.S):
-                network = mask_convertor(match.group(1))
-                gateway = match.group(2)
-                print("Adding route to network: {}, via gateway: {}".format(network, gateway))
+                    result = engine.add_route(gateway, str(network))
+                    if not result.href:
+                        logging.error(f"Failed adding network: {network} with gateway: {gateway}, "
+                                      f"reason: {result.msg}")
+                    else:
+                        logging.info(f"Success adding route to network: {network} via gateway: "
+                                     f"{gateway}")
+    except BaseException as e:
+        logging.error(f"Exception:{e}")
+        return_code = 1
+    finally:
+        session.logout()
 
-                result = engine.add_route(gateway, str(network))
-                if not result.href:
-                    print("Failed adding network: {} with gateway: {}, reason: {}".format(
-                        network, gateway, result.msg
-                    ))
-                else:
-                    print("Success adding route to network: {} via gateway: {}".format(
-                        network, gateway
-                    ))
-    session.logout()
+    return return_code
+
+
+def parse_command_line_arguments():
+    """ Parse command line arguments. """
+
+    parser = argparse.ArgumentParser(
+        description='Example script for Migration of Sidewinder routes into SMC',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        add_help=False)
+    parser.add_argument(
+        '-h', '--help',
+        action='store_true',
+        help='show this help message and exit')
+
+    parser.add_argument(
+        '--api-url',
+        type=str,
+        help='SMC API url like https://192.168.1.1:8082')
+    parser.add_argument(
+        '--api-version',
+        type=str,
+        help='The API version to use for run the script'
+    )
+    parser.add_argument(
+        '--smc-user',
+        type=str,
+        help='SMC API user')
+    parser.add_argument(
+        '--smc-pwd',
+        type=str,
+        help='SMC API password')
+    parser.add_argument(
+        '--api-key',
+        type=str, default=None,
+        help='SMC API api key (Default: None)')
+
+    arguments = parser.parse_args()
+
+    if arguments.help:
+        parser.print_help()
+        sys.exit(1)
+    if arguments.api_url is None:
+        parser.print_help()
+        sys.exit(1)
+
+    return arguments
+
+
+if __name__ == '__main__':
+    sys.exit(main())

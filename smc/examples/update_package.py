@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 #  Licensed under the Apache License, Version 2.0 (the "License"); you may
 #  not use this file except in compliance with the License. You may obtain
 #  a copy of the License at
@@ -17,23 +20,27 @@ Example script to show how to use UpdatePackage object.
 """
 
 # Python Base Import
+import argparse
 import logging
-import smc.examples
+import sys
+import time
 
 # Python SMC Import
-import time
-from os.path import exists
-
-from smc import session
-from smc.administration.system import System
-from smc.api.exceptions import ActionCommandFailed
-from smc.base.model import LoadElement
-from smc_info import SMC_URL, API_KEY, API_VERSION
+sys.path.append('../../')  # smc-python
+from os.path import exists  # noqa
+from smc import session  # noqa
+from smc.administration.system import System  # noqa
+from smc.api.exceptions import ActionCommandFailed  # noqa
+from smc.base.model import LoadElement  # noqa
 
 FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
 UPDATE_PACKAGE_FILE = "/tmp/sgpkg-ips-2711t-5242.jar"
 NOT_IMPORTED_ERR = "Update package is not correctly imported!"
 NOT_ACTIVATED_ERR = "Update package is not correctly activated!"
+
+logging.getLogger()
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
+                                                '%(name)s - [%(levelname)s] : %(message)s')
 
 
 def refresh_update_package(update_package_to_refresh, state):
@@ -45,13 +52,14 @@ def refresh_update_package(update_package_to_refresh, state):
         nb_iter += 1
 
 
-if __name__ == "__main__":
-
-    session.login(url=SMC_URL, api_key=API_KEY, verify=False, timeout=120, api_version=API_VERSION)
-
-    print("session OK")
-
+def main():
+    return_code = 0
     try:
+        arguments = parse_command_line_arguments()
+        session.login(url=arguments.api_url, api_key=arguments.api_key,
+                      login=arguments.smc_user,
+                      pwd=arguments.smc_pwd, api_version=arguments.api_version)
+        logging.info("session OK")
 
         system = System()
 
@@ -65,42 +73,93 @@ if __name__ == "__main__":
 
         # download and import next available update package received
         if next_update is not None:
-            logging.info("download update package {}..".format(next_update))
+            logging.info(f"download update package {next_update}..")
             poller = next_update.download(wait_for_finish=True)
             while not poller.done():
                 poller.wait(5)
-                logging.info('Percentage complete {}%'.format(poller.task.progress))
+                logging.info(f'Percentage complete {poller.task.progress}')
 
             # refresh next_update after download ( needed to refresh "state" attribute)
             refresh_update_package(next_update, "imported")
             assert next_update.state.lower() == "imported", NOT_IMPORTED_ERR
 
-            logging.info("activate update package:{}".format(next_update))
+            logging.info(f"activate update package:{next_update}")
             poller = next_update.activate(wait_for_finish=True)
             while not poller.done():
                 poller.wait(10)
-                logging.info('Percentage complete {}%'.format(poller.task.progress))
+                logging.info(f'Percentage complete {poller.task.progress}')
 
             # refresh next_update after activation ( needed to refresh "state" attribute)
             refresh_update_package(next_update, "active")
             assert next_update.state.lower() == "active", NOT_ACTIVATED_ERR
 
         else:
-            print("The latest update package is already installed")
+            logging.info("The latest update package is already installed")
 
         # this part is not run in robot tests
         logging.info("Import update package from file")
         if exists(UPDATE_PACKAGE_FILE):
             imported_packages = system.update_package_import(UPDATE_PACKAGE_FILE)
             for update_package in imported_packages:
-                logging.info("imported update package update package:{}".format(update_package))
+                logging.info(f"imported update package update package:{update_package}")
 
     except ActionCommandFailed as exception:
         logging.error("Task failed: " + str(exception))
         exit(-1)
     except BaseException as e:
-        print("ex={}".format(e))
-        exit(-1)
+        logging.error(f"Exception:{e}")
+        return_code = 1
 
     finally:
         session.logout()
+    return return_code
+
+
+def parse_command_line_arguments():
+    """ Parse command line arguments. """
+
+    parser = argparse.ArgumentParser(
+        description='Example script to show how to use UpdatePackage object',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        add_help=False)
+    parser.add_argument(
+        '-h', '--help',
+        action='store_true',
+        help='show this help message and exit')
+
+    parser.add_argument(
+        '--api-url',
+        type=str,
+        help='SMC API url like https://192.168.1.1:8082')
+    parser.add_argument(
+        '--api-version',
+        type=str,
+        help='The API version to use for run the script'
+    )
+    parser.add_argument(
+        '--smc-user',
+        type=str,
+        help='SMC API user')
+    parser.add_argument(
+        '--smc-pwd',
+        type=str,
+        help='SMC API password')
+    parser.add_argument(
+        '--api-key',
+        type=str, default=None,
+        help='SMC API api key (Default: None)')
+
+    arguments = parser.parse_args()
+
+    if arguments.help:
+        parser.print_help()
+        sys.exit(1)
+    if arguments.api_url is None:
+        parser.print_help()
+        sys.exit(1)
+
+    return arguments
+
+
+if __name__ == '__main__':
+    sys.exit(main())

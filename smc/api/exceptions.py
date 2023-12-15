@@ -247,6 +247,12 @@ class InvalidRuleValue(SMCException):
     """
 
 
+class InvalidLogSeverity(SMCException):
+    """
+    Used within log option to prevent invalid submissions.
+    """
+
+
 class CreateRuleFailed(SMCException):
     """
     Indicates a failed response when creating a rule of any type.
@@ -396,4 +402,10 @@ class UnsupportedAlertChannel(AlertChainError):
 class UnsupportedAttribute(SMCException):
     """
     The exception occurs when an unsupported attribute is used.
+    """
+
+
+class EcaClientConfigExportError(SMCException):
+    """
+    Failure to export an ECA client config
     """

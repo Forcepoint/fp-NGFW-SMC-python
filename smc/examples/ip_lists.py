@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 #  Licensed under the Apache License, Version 2.0 (the "License"); you may
 #  not use this file except in compliance with the License. You may obtain
 #  a copy of the License at
@@ -46,11 +49,17 @@ Requirements:
 * Forcepoint NGFW Management Center >= 6.2
 
 """
-import smc.examples
+import argparse
+import logging
+import sys
 
-from smc import session
-from smc.elements.network import IPList
-from smc_info import *
+sys.path.append('../../')  # smc-python
+from smc import session  # noqa
+from smc.elements.network import IPList  # noqa
+
+logging.getLogger()
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
+                                                '%(name)s - [%(levelname)s] : %(message)s')
 
 
 def upload_as_zip(name, filename):
@@ -162,34 +171,87 @@ def create_iplist_with_data(name, iplist):
     return iplist
 
 
+def main():
+    return_code = 0
+    try:
+        arguments = parse_command_line_arguments()
+        session.login(url=arguments.api_url, api_key=arguments.api_key,
+                      login=arguments.smc_user,
+                      pwd=arguments.smc_pwd, api_version=arguments.api_version)
+        logging.info("session OK")
+        # Create initial list
+        result = create_iplist_with_data(name="mylist", iplist=["123.123.123.123", "23.23.23.23"])
+        logging.info(f"This is the href location for the newly created list: {result.href}")
+
+        logging.info(download_as_text('mylist', filename='/tmp/iplist.txt'))
+
+        logging.info(download_as_zip('mylist', filename='/tmp/iplist.zip'))
+
+        upload_as_text('mylist', '/tmp/iplist.txt')
+
+        upload_as_json('mylist', {'ip': ['1.1.1.1', '2.2.2.2', '3.3.3.3']})
+        logging.info(download_as_json('mylist'))
+
+        upload_as_zip('mylist', '/tmp/iplist.zip')
+        logging.info(download_as_json('mylist'))
+
+        logging.info(create_iplist(name='newlist'))
+    except BaseException as e:
+        logging.error(f"Exception:{e}")
+        return_code = 1
+    finally:
+        logging.info("delete elements..")
+        IPList("mylist").delete()
+        IPList("newlist").delete()
+        session.logout()
+    return return_code
+
+
+def parse_command_line_arguments():
+    """ Parse command line arguments. """
+
+    parser = argparse.ArgumentParser(
+        description='Example script to show how to use IP Lists',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        add_help=False)
+    parser.add_argument(
+        '-h', '--help',
+        action='store_true',
+        help='show this help message and exit')
+
+    parser.add_argument(
+        '--api-url',
+        type=str,
+        help='SMC API url like https://192.168.1.1:8082')
+    parser.add_argument(
+        '--api-version',
+        type=str,
+        help='The API version to use for run the script'
+    )
+    parser.add_argument(
+        '--smc-user',
+        type=str,
+        help='SMC API user')
+    parser.add_argument(
+        '--smc-pwd',
+        type=str,
+        help='SMC API password')
+    parser.add_argument(
+        '--api-key',
+        type=str, default=None,
+        help='SMC API api key (Default: None)')
+
+    arguments = parser.parse_args()
+
+    if arguments.help:
+        parser.print_help()
+        sys.exit(1)
+    if arguments.api_url is None:
+        parser.print_help()
+        sys.exit(1)
+
+    return arguments
+
+
 if __name__ == '__main__':
-    session.login(url=SMC_URL, api_key=API_KEY, verify=False, timeout=120, api_version=API_VERSION)
-    print("session OK")
-
-try:
-    # Create initial list
-    result = create_iplist_with_data(name="mylist", iplist=["123.123.123.123", "23.23.23.23"])
-    print("This is the href location for the newly created list: %s" % result.href)
-
-    print(download_as_text('mylist', filename='/tmp/iplist.txt'))
-
-    print(download_as_zip('mylist', filename='/tmp/iplist.zip'))
-
-    upload_as_text('mylist', '/tmp/iplist.txt')
-
-    upload_as_json('mylist', {'ip': ['1.1.1.1', '2.2.2.2', '3.3.3.3']})
-    print(download_as_json('mylist'))
-
-    upload_as_zip('mylist', '/tmp/iplist.zip')
-    print(download_as_json('mylist'))
-
-    print(create_iplist(name='newlist'))
-
-except Exception as e:
-    print(e)
-    exit(1)
-finally:
-    print("delete elements..")
-    IPList("mylist").delete()
-    IPList("newlist").delete()
-    session.logout()
+    sys.exit(main())

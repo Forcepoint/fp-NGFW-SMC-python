@@ -12,6 +12,7 @@
 
 from smc.base.model import Element
 from smc_monitoring.wsocket import SMCSocketProtocol
+from smc.compat import is_api_version_less_than_or_equal
 
 
 EVENT_ACTIONS = set(["create",
@@ -109,14 +110,25 @@ class Notification(object):
                 self.subscription_map.update(
                     context=result.get("context"),
                     subscription_id=result.get("subscription_id"))
-            if "events" in result:
-                if as_type is not None:
-                    for event in result["events"]:
-                        event.update(
+            # api 6.5 and lower ==> events
+            # otherwise event
+            if is_api_version_less_than_or_equal('6.5'):
+                if "events" in result:
+                    if as_type is not None:
+                        for event in result["events"]:
+                            event.update(
+                                subscription_id=result.get("subscription_id"))
+                            yield as_type(**event)
+                    else:
+                        yield result
+            else:
+                if "event" in result:
+                    if as_type is not None:
+                        result["event"].update(
                             subscription_id=result.get("subscription_id"))
-                        yield as_type(**event)
-                else:
-                    yield result
+                        yield as_type(**result['event'])
+                    else:
+                        yield result
 
 
 class Event(object):
@@ -136,7 +148,11 @@ class Event(object):
 
     @property
     def element(self):
-        return Element.from_href(self._element)
+        element = Element.from_href(self._element)
+        if element:
+            return element
+        else:
+            return self._element
 
     def __repr__(self):
         return "%s(subscription_id=%s,action=%s,element=%s)" % (

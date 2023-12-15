@@ -105,7 +105,7 @@ from smc.policy.rule_elements import (
     Source,
     Service,
     AuthenticationOptions,
-    SourceVpn,
+    SourceVpn, SituationMatchPart, ActionMixin,
 )
 from smc.base.util import element_resolver
 from smc.base.decorators import cacheable_resource
@@ -504,7 +504,7 @@ class RuleCommon(object):
             params = {"before": before}
         return params
 
-    def update_targets(self, sources=None, destinations=None, services=None):
+    def update_targets(self, sources=None, destinations=None, services=None, situations=None):
 
         if isinstance(sources, Source):
             source = sources
@@ -553,12 +553,30 @@ class RuleCommon(object):
                 # still allow json as parameter
                 elif isinstance(services, dict):
                     service.unset_any()
-                    destination.add_many(destinations.get("service"))
+                    service.add_many(services.get("service"))
                 else:
                     service.unset_any()
                     service.add_many(services)
             else:
                 service.set_none()
+
+        if isinstance(situations, SituationMatchPart):
+            situation = situations
+        else:
+            situation = SituationMatchPart()
+            if situations is not None:
+                situation.clear()
+                if isinstance(situations, str) and situations.lower() == "any":
+                    situation.set_any()
+                # still allow json as parameter
+                elif isinstance(situations, dict):
+                    situation.unset_any()
+                    situation.add_many(situations.get("situation"))
+                else:
+                    situation.unset_any()
+                    situation.add_many(situations)
+            else:
+                situation.set_none()
 
         e = {}
         if sources is not None:
@@ -567,6 +585,8 @@ class RuleCommon(object):
             e.update(destinations=destination.data)
         if services is not None:
             e.update(services=service.data)
+        if situations is not None:
+            e.update(situations=situation.data)
         return e
 
     def update_logical_if(self, logical_interfaces):
@@ -586,6 +606,13 @@ class RuleCommon(object):
                 )
         return e
 
+    def get_action(self):
+        """
+        Return action instance.
+        rtype: Action
+        """
+        return Action()
+
     def _get_action(self, action):
         """
         Get the action field for a rule. In SMC 6.6 actions have to be in list
@@ -601,12 +628,12 @@ class RuleCommon(object):
         return versioned_method(action)
 
     def _get_action_6_6(self, action):
-        if isinstance(action, Action):
+        if isinstance(action, ActionMixin):
             rule_action = action
             if isinstance(action.action, str):
                 rule_action.action = [action.action]
         else:
-            rule_action = Action()
+            rule_action = self.get_action()
             if isinstance(action, str):
                 rule_action.action = [action]
             else:
@@ -635,12 +662,12 @@ class RuleCommon(object):
         :rtype: Action
         :raises CreateRuleFailed: invalid rule based on rule
         """
-        if isinstance(action, Action):
+        if isinstance(action, ActionMixin):
             rule_action = action
             if isinstance(action.action, list):
                 rule_action.action = action.action[0]
         else:
-            rule_action = Action()
+            rule_action = self.get_action()
             if isinstance(action, str):
                 rule_action.action = action
             elif isinstance(action, list):
@@ -1138,3 +1165,16 @@ class IPv6Rule(IPv4Rule):
     """
 
     typeof = "fw_ipv6_access_rule"
+
+
+class IPv6Layer2Rule(IPv4Layer2Rule):
+    """
+    IPv6 access rule defines sources and destinations that must be
+    in IPv6 format.
+
+    .. note:: It is possible to submit a source or destination in
+              IPv4 format, however this will fail validation when
+              attempting to push policy.
+    """
+
+    typeof = "layer2_ipv6_access_rule"

@@ -12,7 +12,7 @@
 
 from smc.base.model import Element, ElementCreator
 from smc.base.structs import NestedDict
-from smc.api.exceptions import ElementNotFound, InvalidRuleValue
+from smc.api.exceptions import ElementNotFound, InvalidRuleValue, InvalidLogSeverity
 from smc.base.util import element_resolver
 from smc.compat import is_api_version_less_than_or_equal, \
     is_api_version_less_than, is_smc_version_less_than
@@ -311,9 +311,9 @@ class Service(RuleElement, NestedDict):
         self.update(service=value)
 
 
-class Action(NestedDict):
+class ActionMixin(NestedDict):
     """
-    This represents the action associated with the rule.
+    This represents the common actions associated with the rule.
     """
 
     def __init__(self, rule=None):
@@ -327,7 +327,7 @@ class Action(NestedDict):
             action.update(scan_detection="undefined")
         else:
             action = rule.data.get("action", {})
-        super(Action, self).__init__(data=action)
+        super(ActionMixin, self).__init__(data=action)
 
     @property
     def action(self):
@@ -364,6 +364,12 @@ class Action(NestedDict):
         :rtype: ConnectionTracking
         """
         return ConnectionTracking(self)
+
+
+class Action(ActionMixin):
+    """
+    This represents the action associated with the rule.
+    """
 
     @property
     def decrypting(self):
@@ -989,13 +995,24 @@ class LogOptions(NestedDict):
     def log_severity(self):
         """
         Read only log severity level
-
-        :return: str
+        :return: int
         """
         return self.get("log_severity")
 
     @log_severity.setter
     def log_severity(self, value):
+        """
+        If Log Level is set to Alert, allows you to override the severity defined
+        in the Alert element.
+        :param int value: Severity values are given below.
+            10: Critical
+            7: High
+            4: Low
+            1: Information
+        """
+        if value not in [1, 4, 7, 10]:
+            raise InvalidLogSeverity("Invalid log severity, please pass correct log severity.")
+
         self.update(log_severity=value)
 
     @property
@@ -1310,3 +1327,219 @@ class MatchExpression(Element):
 
     def values(self):
         return [Element.from_href(ref) for ref in self.data.get("ref")]
+
+
+class SituationMatchPart(RuleElement, NestedDict):
+    """
+    situations fields for a rule
+    """
+
+    typeof = "situation"
+
+    def __init__(self, rule=None):
+        situations = dict(none=True) if not rule else rule.data.get("situations")
+        self.rule = rule
+        super(SituationMatchPart, self).__init__(data=situations)
+
+    def __str__(self):
+        return "ANY={}, NONE={}, SITUATIONS={}".format(self.is_any, self.is_none, self.situations)
+
+    @property
+    def situation(self):
+        """
+        All elements corresponding to the matching criteria (if not any or none).
+
+        :return: list value: situation elements
+        """
+        elements = self.get("situation")
+        return [Element.from_href(element) for element in elements] \
+            if elements is not None else None
+
+    @situation.setter
+    def situation(self, value):
+        self.update(situation=value)
+
+
+class FileFilteringRuleAction(ActionMixin):
+
+    @property
+    def rematch_archive_content(self):
+        """
+        Is Rematch Archive Content enabled?
+        :rtype: bool
+        """
+        return self.get("rematch_archive_content")
+
+    @rematch_archive_content.setter
+    def rematch_archive_content(self, value):
+        self.update(rematch_archive_content=value)
+
+    @property
+    def file_reputation(self):
+        """
+        Is File Reputation enabled?
+        :rtype: bool
+        """
+        return self.get("file_reputation")
+
+    @file_reputation.setter
+    def file_reputation(self, value):
+        self.update(file_reputation=value)
+
+    @property
+    def antivirus(self):
+        """
+        Is Anti-Malware enabled?
+        :rtype: bool
+        """
+        return self.get("antivirus")
+
+    @antivirus.setter
+    def antivirus(self, value):
+        self.update(antivirus=value)
+
+    @property
+    def sandbox(self):
+        """
+        Is Sandbox enabled?
+        :rtype: bool
+        """
+        return self.get("sandbox")
+
+    @sandbox.setter
+    def sandbox(self, value):
+        self.update(sandbox=value)
+
+    @property
+    def sandbox_delay_file_transfer(self):
+        """
+        Is Sandbox Delay enabled?
+        Delay file transfer until the analysis results are received
+        :rtype: bool
+        """
+        return self.get("sandbox_delay_file_transfer")
+
+    @sandbox_delay_file_transfer.setter
+    def sandbox_delay_file_transfer(self, value):
+        self.update(sandbox_delay_file_transfer=value)
+
+    @property
+    def sandbox_allow_level(self):
+        """
+        Sandbox allow level.
+        :rtype: str
+
+        """
+        return self.get("sandbox_allow_level")
+
+    @sandbox_allow_level.setter
+    def sandbox_allow_level(self, value):
+        self.update(sandbox_allow_level=value)
+
+    @property
+    def file_reputation_allow_level(self):
+        """
+        File reputation allow level.
+        :rtype: str
+        """
+        return self.get("file_reputation_allow_level")
+
+    @file_reputation_allow_level.setter
+    def file_reputation_allow_level(self, value):
+        self.update(file_reputation_allow_level=value)
+
+    @property
+    def file_reputation_discard_level(self):
+        """
+        File reputation discard level.
+        :rtype: str
+        """
+        return self.get("file_reputation_discard_level")
+
+    @file_reputation_discard_level.setter
+    def file_reputation_discard_level(self, value):
+        self.update(file_reputation_discard_level=value)
+
+    @property
+    def spooling_level(self):
+        """
+        Spooling level.
+        :rtype: str
+        """
+        return self.get("spooling_level")
+
+    @spooling_level.setter
+    def spooling_level(self, value):
+        self.update(spooling_level=value)
+
+    @property
+    def dirty_log_level(self):
+        """
+        Dirty log level.
+        :rtype: str
+        """
+        return self.get("dirty_log_level")
+
+    @dirty_log_level.setter
+    def dirty_log_level(self, value):
+        self.update(dirty_log_level=value)
+
+    @property
+    def default_behavior(self):
+        """
+        Default behavior.
+        :rtype: str
+        """
+        return self.get("default_behavior")
+
+    @default_behavior.setter
+    def default_behavior(self, value):
+        self.update(default_behavior=value)
+
+    @property
+    def icap_dlp_scan_enabled(self):
+        """
+        Is ICAP DLP Scan enabled?
+        :rtype: bool
+        """
+        return self.get("icap_dlp_scan_enabled")
+
+    @icap_dlp_scan_enabled.setter
+    def icap_dlp_scan_enabled(self, value):
+        self.update(icap_dlp_scan_enabled=value)
+
+    @property
+    def icap_dlp_service_fail_action(self):
+        """
+        ICAP DLP Scan service fail action.
+        :rtype: str
+        """
+        return self.get("icap_dlp_service_fail_action")
+
+    @icap_dlp_service_fail_action.setter
+    def icap_dlp_service_fail_action(self, value):
+        self.update(icap_dlp_service_fail_action=value)
+
+    @property
+    def icap_dlp_file_size_exceeded_action(self):
+        """
+        ICAP DLP file size exceeded action.
+        :rtype: str
+        """
+        return self.get("icap_dlp_file_size_exceeded_action")
+
+    @icap_dlp_file_size_exceeded_action.setter
+    def icap_dlp_file_size_exceeded_action(self, value):
+        self.update(icap_dlp_file_size_exceeded_action=value)
+
+    @property
+    def icap_dlp_max_file_size(self):
+        """
+        ICAP DLP max file size.
+        :rtype: int
+        """
+        return self.get("icap_dlp_max_file_size")
+
+    @icap_dlp_max_file_size.setter
+    def icap_dlp_max_file_size(self, value):
+        self.update(icap_dlp_max_file_size=value)

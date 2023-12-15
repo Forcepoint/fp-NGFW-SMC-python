@@ -246,7 +246,7 @@ class AlertRule(SubElement):
         :param object self: object of AlertPolicy.
         :param str name: name of alert rule.
         :param str(AlertChain) alert_chain_ref: The Alert Chain.
-        :param str match_sender_ref: The senders. If empty, it is considered as ANY.
+        :param list match_sender_ref: The senders. If empty, it is considered as ANY.
         :param list alert_and_situation_ref: The alerts and situations. If empty, it is considered
             as ANY.
         :param int min_severity: The minimum value for the severity (value between 1 and 10):Matches

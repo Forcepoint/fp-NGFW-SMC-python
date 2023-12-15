@@ -170,6 +170,13 @@ class Task(SubElement):
             raise IOError("Task is not finshed!")
         return self.get_relation("result")
 
+    def get_result(self):
+        """
+        Get result of task.
+        :rtype SMCResult.
+        """
+        return self.make_request(TaskRunFailed, href=self.result_url, raw_result=True).content
+
     def update_status(self):
         """
         Gets the current status of this task and returns a
@@ -229,6 +236,13 @@ class Task(SubElement):
         task = self.make_request(TaskRunFailed, method="create", resource=resource, params=params)
 
         return DownloadTask(timeout=timeout, max_tries=max_tries, filename=filename, task=task)
+
+    def download_only(self, filename, timeout=5, max_tries=36):
+        """
+        This does not start task only return a Download Task.
+        :rtype: DownloadTask(TaskOperationPoller)
+        """
+        return DownloadTask(timeout=timeout, max_tries=max_tries, filename=filename, task=self.data)
 
 
 class TaskOperationPoller(object):

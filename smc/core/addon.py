@@ -35,6 +35,7 @@ Then enable or disable::
 from smc.base.model import Element
 from smc.base.structs import NestedDict
 from smc.compat import is_api_version_less_than
+from smc.elements.network import Network, Zone
 from smc.elements.profiles import SandboxService, SandboxDataCenter
 from smc.elements.tags import TrustedCATag
 from smc.base.util import element_resolver
@@ -668,3 +669,98 @@ class ClientInspection(object):
 
     def __str__(self):
         return 'ClientInspection for {}'.format(self.engine.name)
+
+
+class EndpointIntegration(NestedDict):
+    """
+    Engine ECA settings..
+
+        engine.EndpointIntegration.enable(
+            license_key='123',
+            license_token='456',
+            http_proxy=[HttpProxy('myproxy')])
+
+    .. note:: You must call engine.update() to commit any changes.
+    """
+
+    def __init__(self, engine):
+        self.engine = engine
+        eca = engine.data.get("eca_settings", {})
+        super(EndpointIntegration, self).__init__(data=eca)
+
+    @property
+    def status(self):
+        """
+        Status of Endpoint Integration on this engine
+
+        :rtype: bool
+        """
+        if "eca_settings" in self.engine.data:
+            return True
+        return False
+
+    def disable(self):
+        """
+        Disable the Endpoint Integration on this engine.
+        """
+        self.engine.data.pop("eca_settings", None)
+
+    def enable(
+        self,
+        eca_client_config=None,
+        eca_client_network_ref=None,
+        eca_server_network_ref=None,
+        enabled_interface=None,
+        listened_zone_ref=None,
+        listening_port=9111,
+    ):
+        """
+        Enable Endpoint Integration with Forcepoint Endpoint Context Agent
+        on this engine.
+        :param str eca_client_config: name of ECA client configuration
+        :param list eca_client_network_ref: List of source network or zone
+        :param list eca_server_network_ref: List of destination network or zone
+        :param list enabled_interface: List of listening interfaces (nic id and address)
+        :param list listened_zone_ref: List of zones to listen on
+        :param int listening_port: default 9111
+        :return: None
+        """
+        eca_client_config_ref = element_resolver(eca_client_config)
+        eca_client_network_ref_list = []
+        eca_server_network_ref_list = []
+        listened_zone_ref_list = []
+        if eca_client_network_ref is not None:
+            for e in eca_client_network_ref:
+                i = element_resolver(e)
+                eca_client_network_ref_list.append(i)
+        if eca_server_network_ref is not None:
+            for e in eca_server_network_ref:
+                i = element_resolver(e)
+                eca_server_network_ref_list.append(i)
+        if listened_zone_ref is not None:
+            for e in listened_zone_ref:
+                i = element_resolver(e)
+                listened_zone_ref_list.append(i)
+        self.update(
+            eca_client_config=eca_client_config_ref,
+            eca_client_network_ref=eca_client_network_ref_list,
+            eca_server_network_ref=eca_server_network_ref_list,
+            enabled_interface=enabled_interface,
+            listened_zone_ref=listened_zone_ref_list,
+            listening_port=listening_port,
+        )
+
+        self.engine.data.setdefault("eca_settings", {}).update(self.data)
+
+    @property
+    def eca_client_config(self):
+        """
+        Return eca_client_config that is configured for ECA.
+        :return: eca_client_config object
+        :rtype: object(eca_client_config)
+        """
+        config = self.get("eca_client_config")
+        return Element.from_href(config)
+
+    def __repr__(self):
+        return "{0}(enabled={1})".format(self.__class__.__name__, self.status)

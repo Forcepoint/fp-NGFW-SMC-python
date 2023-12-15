@@ -18,7 +18,7 @@ from smc.core.interfaces import (
     SwitchPhysicalInterface, SwitchInterface,
 )
 from smc.core.sub_interfaces import LoopbackInterface
-from smc.core.engine import Engine
+from smc.core.engine import Engine, HAForSingleEngine
 from smc.api.exceptions import CreateEngineFailed, CreateElementFailed, ElementNotFound
 from smc.base.model import ElementCreator
 from smc.compat import min_smc_version
@@ -322,7 +322,7 @@ class Layer3Firewall(Engine):
         :param NTPSettings ntp_settings: NTP settings
         :param LLDPProfile lldp_profile: LLDP Profile represents a set of attributes used for
         configuring LLDP
-        :param LinkUsageProfule link_usage_profile
+        :param LinkUsageProfile link_usage_profile
         :param dict extra_opts: extra options as a dict to be passed to the top level engine
         :param kw: optional keyword arguments specifying additional interfaces
         :param bool quic_enabled: (optional) include QUIC ports for web traffic
@@ -509,6 +509,16 @@ class Layer3Firewall(Engine):
     def quic_enabled(self, value):
         if min_smc_version("7.0"):
             self.data["quic_enabled"] = value
+
+    @property
+    def ha_settings(self):
+        """
+        HA settings for the engine
+
+        :rtype: HAForSingleEngine or None
+        """
+        if min_smc_version("7.2"):
+            return HAForSingleEngine(self.data)
 
 
 class CloudSGSingleFW(Layer3Firewall):

@@ -370,6 +370,12 @@ EthernetService
    :members:
    :show-inheritance:
 
+RPCService
+**********
+.. autoclass:: RPCService
+   :members:
+   :show-inheritance:
+
 ICMPService
 ***********
 
@@ -437,6 +443,12 @@ IPServiceGroup
 **************
 
 .. autoclass:: IPServiceGroup
+   :members:
+   :show-inheritance:
+
+RpcServiceGroup
+***************
+.. autoclass:: RpcServiceGroup
    :members:
    :show-inheritance:
 

@@ -28,7 +28,7 @@ For example, to load an engine and run node level commands::
 import collections
 from smc.base.util import save_to_file, b64encode
 from smc.base.model import SubElement, Element
-from smc.compat import get_best_version
+from smc.compat import get_best_version, is_smc_version_less_than
 from smc.core.sub_interfaces import LoopbackInterface
 from smc.api.exceptions import LicenseError, NodeCommandFailed, UnsupportedEngineFeature, \
     CertificateImportError, CertificateExportError, CertificateError
@@ -1003,6 +1003,38 @@ class HardwareStatus(SerializedIterable):
     def _filesystem_6_7(self):
         for item in self:
             if item.name.startswith("File System"):
+                for s in item_status_6_7(item):
+                    yield s
+
+    @property
+    def cloud_sync(cls):
+        """
+        A collection of Connection Synchronisation related statuses
+
+        :rtype: Status
+        """
+        if not is_smc_version_less_than("7.2"):
+            return cls._cloud_sync()
+
+    def _cloud_sync(self):
+        for item in self:
+            if item.name.startswith("Connection Synchronization"):
+                for s in item_status_6_7(item):
+                    yield s
+
+    @property
+    def single_ip_ha(cls):
+        """
+        A collection of Single IP High Availability related statuses
+
+        :rtype: Status
+        """
+        if not is_smc_version_less_than("7.2"):
+            return cls._single_ip_ha()
+
+    def _single_ip_ha(self):
+        for item in self:
+            if item.name.startswith("Single IP HA"):
                 for s in item_status_6_7(item):
                     yield s
 

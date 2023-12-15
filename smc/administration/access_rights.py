@@ -170,3 +170,92 @@ class Permission(NestedDict):
         return "Permission(elements={}, role={}, domain={})".format(
             self.granted_elements, self.role, self.domain
         )
+
+
+class GrantedElementPermissions(NestedDict):
+    """
+    The Granted Element permissions container.
+    """
+
+    def __init__(self, data):
+        super(GrantedElementPermissions, self).__init__(data=data)
+
+    @classmethod
+    def create(cls, cluster_ref=None, granted_access_control_list=[], role_containers=[]):
+        """
+        :param str cluster_ref: The associated cluster with granted permission.
+        :param list(str) granted_access_control_list: Granted Access Control Lists.
+        :param list role_containers: Granted Role containers.
+        """
+
+        json = {
+            "cluster_ref": element_resolver(cluster_ref),
+            "granted_access_control_list": element_resolver(granted_access_control_list),
+            "role_containers": [containers.data for containers in role_containers]
+
+        }
+        return cls(json)
+
+    @property
+    def cluster_ref(self):
+        """
+        The associated cluster with granted permission.
+        """
+        return self.data.get("cluster_ref")
+
+    def granted_access_control_list(self):
+        """
+        Granted Access Control Lists.
+        """
+        return self.data.get("granted_access_control_list")
+
+    @property
+    def role_containers(self):
+        """
+        Granted Role containers.
+        """
+        return [AdminRoleContainer(container) for container in self.data.get("role_containers")]
+
+
+class AdminRoleContainer(NestedDict):
+    """
+    Represents a permission for a Granted Element: Role <-> Administrator <-> Granted Domain
+    """
+
+    def __init__(self, data):
+        super(AdminRoleContainer, self).__init__(data=data)
+
+    @classmethod
+    def create(cls, roles=[], admin=None, granted_domain=None):
+        """
+        Represents a permission for a Granted Element: Role <-> Administrator <-> Granted Domain.
+        :param Role roles: The dedicated Administrative Roles for access rights.
+        :param AdminUser admin: The dedicated Administrator.
+        :param AdminDomain granted_domain: The dedicated Administrative Domain.
+        """
+        json = {"roles": element_resolver(roles),
+                "admin_ref": element_resolver(admin),
+                "granted_domain_ref": element_resolver(granted_domain)
+                }
+        return cls(json)
+
+    @property
+    def roles(self):
+        """
+        The dedicated Administrative Roles for access rights.
+        """
+        return self.data.get("roles")
+
+    @property
+    def admin_ref(self):
+        """
+        The dedicated Administrator.
+        """
+        return self.data.get("admin_ref")
+
+    @property
+    def granted_domain_ref(self):
+        """
+        The dedicated Administrative Domain.
+        """
+        return self.data.get("granted_domain_ref")
