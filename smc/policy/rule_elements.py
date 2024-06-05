@@ -580,7 +580,17 @@ class Action(ActionMixin):
         """
         Read-only user response setting
         """
-        return self.get("user_response")
+        return Element.from_href(self.get("user_response"))
+
+    @user_response.setter
+    def user_response(self, user_response):
+        """
+        Set user response.
+        :param UserResponse user_response: It defines additional notification actions for rule
+            matches, such as redirecting access to a forbidden URL to a page on an internal web
+            server instead.
+        """
+        self.update(user_response=element_resolver(user_response))
 
     @property
     def vpn(self):

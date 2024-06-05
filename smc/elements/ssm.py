@@ -17,11 +17,64 @@ Logging Profiles, SSH Profiles, SSH Known Hosts, and SSH Known Hosts Lists.
 
 """
 from smc.base.model import Element, ElementCreator
+from smc.base.structs import NestedDict
+from smc.base.util import element_resolver
 
 
-class SSMLoggingProfile(Element):
+class SidewinderLoggingProfileSettings(NestedDict):
+    """
+    Sidewinder Logging Profile Settings.
+    """
+
+    @classmethod
+    def create(cls, element=None, enable=None, interval=None, threshold=None):
+        """
+        :param element: This associate either situation|category element.
+        :param str enable: Enable value.
+        :param int interval: Interval value, in seconds.
+        :param int threshold: Threshold  value for the setting.
+        :rtype: SidewinderLoggingProfileSettings
+        """
+        json = {
+            "element": element_resolver(element),
+            "enable": enable
+        }
+        if interval:
+            json.update(interval=interval)
+        if threshold:
+            json.update(threshold=threshold)
+        return cls(json)
+
+
+class SidewinderLoggingProfile(Element):
+    """
+    Sidewinder Logging Profile.
+    """
 
     typeof = "sidewinder_logging_profile"
+
+    @classmethod
+    def create(cls, name, sidewinder_logging_profile_setting=[]):
+        """
+        Create Sidewinder Logging Profile.
+        :param str name: Name of the  Sidewinder Logging Profile.
+        :param list<SidewinderLoggingProfileSettings> sidewinder_logging_profile_setting:
+            Sidewinder Logging Profile Settings.
+        :rtype: SidewinderLoggingProfile
+        """
+        json = {"name": name,
+                "sidewinder_logging_profile_setting": [profile_setting.data for profile_setting in
+                                                       sidewinder_logging_profile_setting]}
+        return ElementCreator(cls, json)
+
+    @property
+    def sidewinder_logging_profile_setting(self):
+        """
+        Sidewinder Logging Profile Settings.
+        :rtype: list(SidewinderLoggingProfileSettings)
+        """
+        return [SidewinderLoggingProfileSettings(**profile_setting) for profile_setting in
+                self.data.get("sidewinder_logging_profile_setting")]
 
 
 class LoggingProfile(Element):

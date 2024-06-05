@@ -105,7 +105,7 @@ from smc.administration.tasks import Task
 from smc.base.structs import NestedDict
 from smc.compat import min_smc_version, is_api_version_less_than
 from smc.elements.servers import ManagementServer, LogServer
-from smc.core.engines import MasterEngine
+from smc.core.engines import MasterEngine, MasterEngineCluster
 from smc.elements.other import FilterExpression
 from smc.base.util import datetime_from_ms, element_resolver
 
@@ -181,6 +181,36 @@ def log_target_types(all_logs=False, **kwargs):
             log_types[key] = value
 
     return log_types
+
+
+def counter_target_types(all_counters=False, **kwargs):
+    """
+    Data counters for counters tasks. A data target defines the data types
+    that will be affected by the operation. For example, when creating
+    a DeleteCounterDataTask, you can specify which counter data types are deleted.
+
+    :param bool for_application_health_counter_type: any counter data logs (default: False)
+    :param bool for_default_counter_type: any counter data (default: False)
+    :param bool for_elasticsearch_counter_type: any elasticsearch data (default: False)
+    :param bool for_netlink_status_counter_type: any netlink status counter data (default: False)
+    :param bool for_status_counter_type: any status counter data (default: False)
+    """
+    counter_types = {
+        "for_application_health_counter_type": False,
+        "for_default_counter_type": False,
+        "for_elasticsearch_counter_type": False,
+        "for_netlink_status_counter_type": False,
+        "for_status_counter_type": False,
+    }
+
+    if all_counters:
+        for key in counter_types.keys():
+            counter_types[key] = True
+    else:
+        for key, value in kwargs.items():
+            counter_types[key] = value
+
+    return counter_types
 
 
 def server_directory(**kwargs):
@@ -431,7 +461,7 @@ class RefreshPolicyTask(ScheduledTaskMixin, Element):
             arguments and default values.
         :raises ElementNotFound: engine specified does not exist
         :raises CreateElementFailed: failure to create the task
-        :return: the task
+        :return: a task object
         :rtype: RefreshPolicyTask
         """
         json = {"resources": [engine.href for engine in engines], "name": name, "comment": comment}
@@ -480,7 +510,7 @@ class UploadPolicyTask(ScheduledTaskMixin, Element):
             arguments and default values.
         :raises ElementNotFound: engine or policy specified does not exist
         :raises CreateElementFailed: failure to create the task
-        :return: the task
+        :return: a task object
         :rtype: UploadPolicyTask
         """
         json = {
@@ -519,7 +549,7 @@ class RemoteUpgradeTask(ScheduledTaskMixin, Element):
         :param str comment: optional comment
         :raises ElementNotFound: engine specified does not exist
         :raises CreateElementFailed: failure to create the task
-        :return: the task
+        :return: a task object
         :rtype: RemoteUpgradeTask
         """
         nodeList = []
@@ -563,7 +593,7 @@ class ValidatePolicyTask(ScheduledTaskMixin, Element):
             arguments and default values.
         :raises ElementNotFound: engine or policy specified does not exist
         :raises CreateElementFailed: failure to create the task
-        :return: the task
+        :return: a task object
         :rtype: ValidatePolicyTask
         """
         json = {
@@ -600,13 +630,14 @@ class RefreshMasterEnginePolicyTask(ScheduledTaskMixin, Element):
         :param kwargs: to support new attributes like preserve_connections, snapshot_creation.
         :raises CreateElementFailed: failed to create the task, i.e. no
             valid engines provided
-        :return: the task
+        :return: a task object
         :rtype: RefreshMasterEnginePolicyTask
         """
         json = {
             "name": name,
             "comment": comment,
-            "resources": [eng.href for eng in master_engines if isinstance(eng, MasterEngine)],
+            "resources": [eng.href for eng in master_engines if
+                          (isinstance(eng, MasterEngine) or isinstance(eng, MasterEngineCluster))],
         }
         for k, v in kwargs.items():
             json.update({k: v})
@@ -660,7 +691,7 @@ class DeleteLogTask(ScheduledTaskMixin, Element):
             arguments and default values.
         :raises ElementNotFound: specified servers were not found
         :raises CreateElementFailed: failure to create the task
-        :return: the task
+        :return: a task object
         :rtype: DeleteLogTask
         """
         if not servers:
@@ -721,7 +752,7 @@ class ServerBackupTask(ScheduledTaskMixin, Element):
         :param script: Script to execute after backup has been generated
         :raises ElementNotFound: specified servers were not found
         :raises CreateElementFailed: failure to create the task
-        :return: the task
+        :return: a task object
         :rtype: ServerBackupTask
         """
         if not servers:
@@ -782,7 +813,7 @@ class SGInfoTask(ScheduledTaskMixin, Element):
             slapcat command in output (default: False)
         :raises ElementNotFound: engine not found
         :raises CreateElementFailed: create the task failed
-        :return: the task
+        :return: a task object
         :rtype: SGInfoTask
         """
         json = {
@@ -796,7 +827,7 @@ class SGInfoTask(ScheduledTaskMixin, Element):
         return ElementCreator(cls, json)
 
 
-class SystemSnapsotTask(ScheduledTaskMixin, Element):
+class SystemSnapshotTask(ScheduledTaskMixin, Element):
     """
     A read-only task that will make a snapshot of all system
     elements after a updating a dynamic package on SMC.
@@ -942,7 +973,7 @@ class ExportLogTask(ScheduledTaskMixin, Element):
             arguments and default values.
         :raises ElementNotFound: specified servers were not found
         :raises CreateElementFailed: failure to create the task
-        :return: the task
+        :return: a task object
         :rtype: ExportLogTask
         """
         if not servers:
@@ -1029,7 +1060,7 @@ class ArchiveLogTask(ScheduledTaskMixin, Element):
             arguments and default values.
         :raises ElementNotFound: specified servers were not found
         :raises CreateElementFailed: failure to create the task
-        :return: the task
+        :return: a task object
         :rtype: ArchiveLogTask
         """
         if not servers:
@@ -1172,3 +1203,57 @@ class TrafficCaptureTask(ScheduledTaskMixin, Element):
     @property
     def sg_info_option(self):
         return self.data.get("sg_info_option")
+
+
+class DeleteCounterDataTask(ScheduledTaskMixin, Element):
+
+    typeof = "delete_counter_data_task"
+
+    @classmethod
+    def create(
+            cls,
+            name,
+            all_counters=False,
+            servers=None,
+            time_range="yesterday",
+            comment=None,
+            **kwargs
+    ):
+        """
+        Create a new delete counter data task. Provides True to all_counters to delete
+        all counter types. Otherwise provide kwargs to specify each log by
+        type of interest.
+
+        :param str name: name for this task
+        :param servers: servers to delete counter data. Servers must be instances of
+            management servers or log servers. If no value is provided, all
+            servers are backed up.
+        :type servers: list(ManagementServer or LogServer)
+        :param str time_range: specify a time range for the archive. Valid
+            options are 'yesterday', 'last_full_week_sun_sat',
+            'last_full_week_mon_sun', 'last_full_month' (default 'yesterday')
+        :param kwargs: see :func:`~counter_target_types` for keyword
+            arguments and default values.
+        :raises ElementNotFound: specified servers were not found
+        :raises CreateElementFailed: failure to create the task
+        :return: a task object
+        :rtype: DeleteCounterDataTask
+        """
+        if not servers:
+            servers = [svr.href for svr in ManagementServer.objects.all()]
+            servers.extend([svr.href for svr in LogServer.objects.all()])
+        else:
+            servers = [svr.href for svr in servers]
+
+        json = {
+            "name": name,
+            "resources": servers,
+            "time_limit_type": time_range,
+            "start_time": 0,
+            "end_time": 0,
+            "comment": comment
+        }
+
+        json.update(**counter_target_types(all_counters, **kwargs))
+
+        return ElementCreator(cls, json)

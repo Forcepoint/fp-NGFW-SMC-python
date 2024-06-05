@@ -14,7 +14,8 @@ Module that represents server based configurations
 """
 from smc.api.common import SMCRequest, _get_session
 from smc.api.exceptions import CreateElementFailed, SMCOperationFailure, CertificateImportError, \
-    CertificateExportError, CertificateError, UnsupportedEngineFeature
+    CertificateExportError, CertificateError, UnsupportedEngineFeature, UnsupportedAttribute
+from smc.base.decorators import deprecated
 from smc.base.model import SubElement, ElementCreator, Element, ElementRef
 from smc.base.structs import NestedDict
 from smc.compat import is_smc_version_less_than, is_smc_version_less_than_or_equal, \
@@ -337,87 +338,7 @@ class TlsSettings(NestedDict):
         return Element.from_href(self.data.get("tls_credentials"))
 
 
-class ManagementLogServerMixin(MultiContactServer):
-
-    @property
-    def log_disk_space_handling_mode(self):
-        """
-        Mode chosen to handle extra logs when disk runs out of space.
-        :rtype: str
-        """
-        return self.data.get("log_disk_space_handling_mode")
-
-    @property
-    def es_tls_settings(self):
-        """
-        Elasticsearch TLS Settings.
-        :rtype: TlsSettings
-        """
-        return _elasticsearch_es_tls_settings_prop_compat(
-            self.data,
-            "elasticsearch_authentication_settings")
-
-    @property
-    def elasticsearch_authentication_settings(self):
-        """
-        Elasticsearch authentication settings.
-        """
-        return self.data.get("elasticsearch_authentication_settings")
-
-    @property
-    def forwarding_tls_settings(self):
-        """
-        Log Forwarding TLS Settings.
-        :rtype: TlsSettings
-        """
-        return TlsSettings(self.data.get("forwarding_tls_settings"))
-
-    @property
-    def netflow_collector(self):
-        """
-        A collection of NetflowCollector
-
-        :rtype: list(NetflowCollector)DomainController
-        """
-        return [NetflowCollector(**nc) for nc in self.data.get("netflow_collector", [])]
-
-    def add_netflow_collector(self, netflow_collectors):
-        """
-        Add netflow collector/s to this log server.
-
-        :param netflow_collectors: netflow_collector/s to add to log server
-        :type netflow_collectors: list(netflow_collectors)
-        :raises UpdateElementFailed: failed updating log server
-        :return: None
-        """
-        if "netflow_collector" not in self.data:
-            self.data["netflow_collector"] = {"netflow_collector": []}
-
-        for p in netflow_collectors:
-            self.data["netflow_collector"].append(p.data)
-        self.update()
-
-    def remove_netflow_collector(self, netflow_collector):
-        """
-        Remove a netflow collector from this log server.
-
-        :param NetflowCollector netflow_collector: element to remove
-        :return: remove element if it exists and return bool
-        :rtype: bool
-        """
-        _netflow_collector = []
-        changed = False
-        for nf in self.netflow_collector:
-            if nf != netflow_collector:
-                _netflow_collector.append(nf.data)
-            else:
-                changed = True
-
-        if changed:
-            self.data["netflow_collector"] = _netflow_collector
-            self.update()
-
-        return changed
+class ExternalPki:
 
     def pki_certificate_settings(self):
         """
@@ -505,20 +426,107 @@ class ManagementLogServerMixin(MultiContactServer):
                           resource="pki_delete_certificate_request")
 
     @property
-    def uiid(self):
-        """
-        Installation ID (aka UUID).
-        :rtype: str
-        """
-        return self.data.get("uiid")
-
-    @property
     def external_pki_certificate_settings(self):
         """
         Get the certificate info of this component when working with External PKI.
         :rtype: PkiCertificateSettings
         """
         return PkiCertificateSettings(self)
+
+
+class ManagementLogServerMixin(MultiContactServer, ExternalPki):
+
+    @property
+    def log_disk_space_handling_mode(self):
+        """
+        Mode chosen to handle extra logs when disk runs out of space.
+        :rtype: str
+        """
+        return self.data.get("log_disk_space_handling_mode")
+
+    @property
+    @deprecated("elasticsearch_authentication_settings")
+    def es_tls_settings(self):
+        """
+        Elasticsearch TLS Settings.
+        :rtype: TlsSettings
+        """
+        return _ElasticsearchCompatibility.es_tls_settings_property(
+            self.data,
+            "elasticsearch_authentication_settings")
+
+    @property
+    def elasticsearch_authentication_settings(self):
+        """
+        Elasticsearch authentication settings.
+        """
+        return _ElasticsearchCompatibility.authentication_settings_property(
+            self.data,
+            "elasticsearch_authentication_settings",
+            None)
+
+    @property
+    def forwarding_tls_settings(self):
+        """
+        Log Forwarding TLS Settings.
+        :rtype: TlsSettings
+        """
+        return TlsSettings(self.data.get("forwarding_tls_settings"))
+
+    @property
+    def netflow_collector(self):
+        """
+        A collection of NetflowCollector
+
+        :rtype: list(NetflowCollector)DomainController
+        """
+        return [NetflowCollector(**nc) for nc in self.data.get("netflow_collector", [])]
+
+    def add_netflow_collector(self, netflow_collectors):
+        """
+        Add netflow collector/s to this log server.
+
+        :param netflow_collectors: netflow_collector/s to add to log server
+        :type netflow_collectors: list(netflow_collectors)
+        :raises UpdateElementFailed: failed updating log server
+        :return: None
+        """
+        if "netflow_collector" not in self.data:
+            self.data["netflow_collector"] = {"netflow_collector": []}
+
+        for p in netflow_collectors:
+            self.data["netflow_collector"].append(p.data)
+        self.update()
+
+    def remove_netflow_collector(self, netflow_collector):
+        """
+        Remove a netflow collector from this log server.
+
+        :param NetflowCollector netflow_collector: element to remove
+        :return: remove element if it exists and return bool
+        :rtype: bool
+        """
+        _netflow_collector = []
+        changed = False
+        for nf in self.netflow_collector:
+            if nf != netflow_collector:
+                _netflow_collector.append(nf.data)
+            else:
+                changed = True
+
+        if changed:
+            self.data["netflow_collector"] = _netflow_collector
+            self.update()
+
+        return changed
+
+    @property
+    def uiid(self):
+        """
+        Installation ID (aka UUID).
+        :rtype: str
+        """
+        return self.data.get("uiid")
 
     @property
     def announcement_message(self):
@@ -707,15 +715,15 @@ class ManagementServer(ContactAddressMixin, Element, ManagementLogServerMixin):
             json.update(forwarding_tls_settings=forwarding_tls_settings)
         if external_pki_certificate_settings:
             json.update(external_pki_certificate_settings=external_pki_certificate_settings.data)
-        _elasticsearch_create_compat(json,
-                                     "elasticsearch_authentication_settings",
-                                     es_tls_settings,
-                                     elasticsearch_authentication_settings)
+        _ElasticsearchCompatibility.create_helper(json,
+                                                  "elasticsearch_authentication_settings",
+                                                  es_tls_settings,
+                                                  elasticsearch_authentication_settings)
         return ElementCreator(cls, json)
 
     def update(self, *exception, **kwargs):
         super().update(*exception,
-                       **_elasticsearch_update_compat(
+                       **_ElasticsearchCompatibility.update_helper(
                            "elasticsearch_authentication_settings",
                            **kwargs))
 
@@ -904,16 +912,12 @@ class ManagementServer(ContactAddressMixin, Element, ManagementLogServerMixin):
         :raises SMCOperationFailure: failed to restart SMC Web Access
         :return: None
         """
-
-        session = _get_session(SMCRequest._session_manager)
-        response = session.session.put(
-            url=self.href + "/restart_web_access"
-        )
-
-        if response.status_code != 200:
-            raise SMCOperationFailure(response)
-
-        return 0
+        if not is_smc_version_less_than("7.1.0") and not is_api_version_less_than_or_equal("7.0"):
+            return self.make_request(
+                SMCOperationFailure,
+                method="update",
+                resource="restart_web_access"
+            )
 
 
 class DataContext(Element):
@@ -1194,15 +1198,15 @@ class LogServer(ContactAddressMixin, Element, ManagementLogServerMixin):
             json.update(forwarding_tls_settings=forwarding_tls_settings)
         if external_pki_certificate_settings:
             json.update(external_pki_certificate_settings=external_pki_certificate_settings.data)
-        _elasticsearch_create_compat(json,
-                                     "elasticsearch_authentication_settings",
-                                     es_tls_settings,
-                                     elasticsearch_authentication_settings)
+        _ElasticsearchCompatibility.create_helper(json,
+                                                  "elasticsearch_authentication_settings",
+                                                  es_tls_settings,
+                                                  elasticsearch_authentication_settings)
         return ElementCreator(cls, json)
 
     def update(self, *exception, **kwargs):
         super().update(*exception,
-                       **_elasticsearch_update_compat(
+                       **_ElasticsearchCompatibility.update_helper(
                            "elasticsearch_authentication_settings",
                            **kwargs))
 
@@ -1652,8 +1656,8 @@ class ElasticsearchCluster(ContactAddressMixin, Element):
             comment=None,
             tls_profile=None,
             es_tls_settings=None,
-            authentication_settings=None
-
+            authentication_settings=None,
+            product=None
     ):
         """
         Create a Elasticsearch Cluster Server element.
@@ -1681,6 +1685,7 @@ class ElasticsearchCluster(ContactAddressMixin, Element):
         for api_key:
             api_key: elasticsearch api key for user
         :raises CreateElementFailed: Failed to create with reason
+        :param: str product: product type can be elasticsearch or opensearch (default:elasticsearch)
         :rtype: ElasticsearchCluster
         """
         json = {
@@ -1704,15 +1709,16 @@ class ElasticsearchCluster(ContactAddressMixin, Element):
         if tls_profile:
             tls_profile_ref = tls.TLSProfile(tls_profile).href
             json.update(tls_profile=tls_profile_ref)
-        _elasticsearch_create_compat(json,
-                                     "authentication_settings",
-                                     es_tls_settings,
-                                     authentication_settings)
+        _ElasticsearchCompatibility.create_helper(json,
+                                                  "authentication_settings",
+                                                  es_tls_settings,
+                                                  authentication_settings,
+                                                  product)
         return ElementCreator(cls, json)
 
     def update(self, *exception, **kwargs):
         super().update(*exception,
-                       **_elasticsearch_update_compat(
+                       **_ElasticsearchCompatibility.update_helper(
                            "authentication_settings",
                            **kwargs))
 
@@ -1725,12 +1731,13 @@ class ElasticsearchCluster(ContactAddressMixin, Element):
         return self.data.get("port")
 
     @property
+    @deprecated("authentication_settings")
     def es_tls_settings(self):
         """
         Elasticsearch TLS Settings.
         :rtype: TlsSettings
         """
-        return _elasticsearch_es_tls_settings_prop_compat(
+        return _ElasticsearchCompatibility.es_tls_settings_property(
             self.data,
             "authentication_settings")
 
@@ -1739,7 +1746,12 @@ class ElasticsearchCluster(ContactAddressMixin, Element):
         """
         Elasticsearch authentication settings.
         """
-        return self.data.get("authentication_settings")
+        return _ElasticsearchCompatibility.authentication_settings_property(
+            self.data,
+            "authentication_settings",
+            {
+                "method": "none"
+            })
 
     @property
     def addresses(self):
@@ -1776,61 +1788,149 @@ class ElasticsearchCluster(ContactAddressMixin, Element):
         return self.data.get("es_enable_cluster_sniffer")
 
 
-def _elasticsearch_create_compat(json,
-                                 authentication_property_name: str,
-                                 tls_settings=None,
-                                 authentication_settings=None):
-    """Backward-compatibility function for Elasticsearch-related components' create method"""
-    if tls_settings:
-        # Backward-compatibility for deprecated es_tls_settings
-        if is_api_version_less_than_or_equal("7.1"):
-            # Below 7.2 use es_tls_settings as-is
-            json.update(es_tls_settings=tls_settings)
-            # Since 7.1.2 add authentication method as well
-            if not is_api_version_less_than_or_equal("7.0") and not is_smc_version_equal("7.1.1"):
-                authentication_settings = {
-                    "method": "certificate"
-                }
+class _ElasticsearchCompatibility:
+    @staticmethod
+    def _supports_authentication_settings() -> bool:
+        return (not is_api_version_less_than_or_equal("7.0")
+                and not is_smc_version_equal("7.1.1"))
+
+    @staticmethod
+    def _uses_es_tls_settings_settings() -> bool:
+        return is_api_version_less_than_or_equal("7.1")
+
+    @staticmethod
+    def _support_product() -> bool:
+        return not is_smc_version_less_than("7.1.3")
+
+    @classmethod
+    def create_helper(cls,
+                      json,
+                      authentication_property_name: str,
+                      tls_settings=None,
+                      authentication_settings=None,
+                      product=None):
+        """Backward-compatibility function for Elasticsearch-related components' create method"""
+        if (not tls_settings and authentication_settings
+                and cls._uses_es_tls_settings_settings()):
+            # Forward-compatibility of authentication settings in lower versions
+            method = authentication_settings["method"]
+            if method == "none":
+                pass
+            elif method == "certificate":
+                credentials = authentication_settings.get("tls_credentials")
+                tls_settings = TlsSettings.create(credentials is None, credentials)
+            elif not cls._supports_authentication_settings():
+                raise UnsupportedAttribute(f"Unsupported authentication method {method} in this "
+                                           f"API version")
+        if tls_settings:
+            # Backward-compatibility for deprecated es_tls_settings
+            if cls._uses_es_tls_settings_settings():
+                # Below 7.2 use es_tls_settings as-is
+                json.update(es_tls_settings=tls_settings)
+                # Since 7.1.2 add authentication method as well
+                if cls._supports_authentication_settings():
+                    authentication_settings = {
+                        "method": "certificate"
+                    }
+            else:
+                # 7.2 and above -> transform es_tls_settings into authentication_settings
+                authentication_settings = cls._convert_tls_settings(tls_settings)
+        if authentication_settings:
+            if cls._supports_authentication_settings():
+                json.update({authentication_property_name: authentication_settings})
+        # 7.1.3 and above -> product can be elasticsearch (default or opensearch)
+        if product:
+            if cls._support_product():
+                if product is not None:
+                    json.update(product=product)
+                else:
+                    json.update({"product": "elasticsearch"})
+            else:
+                raise UnsupportedAttribute(f"Unsupported parameter product in this "
+                                           f"SMC version")
+
+    @classmethod
+    def update_helper(cls,
+                      authentication_property_name: str,
+                      **kwargs):
+        """Backward-compatibility function for Elasticsearch-related components' update"""
+        # Backward-compatibility of deprecated "es_tls_settings" with version 7.2 and above
+        if not cls._uses_es_tls_settings_settings() and "es_tls_settings" in kwargs:
+            kwargs.update({
+                authentication_property_name: cls._convert_tls_settings(
+                    kwargs.pop("es_tls_settings"))})
+        # Forward-compatibility of authentication settings in lower versions
+        if cls._uses_es_tls_settings_settings() and authentication_property_name in kwargs:
+            # Extract info from supported authentication method below 7.1.1 (certificate or none)
+            if not cls._supports_authentication_settings():
+                authentication_settings = kwargs.pop(authentication_property_name)
+                if authentication_settings:
+                    method = authentication_settings.get("method")
+                    if method == "none":
+                        kwargs.update(es_tls_settings=None)
+                    elif method == "certificate":
+                        credentials = authentication_settings.get("tls_credentials")
+                        kwargs.update(es_tls_settings=TlsSettings.create(credentials is None,
+                                                                         credentials))
+                else:
+                    kwargs.update(es_tls_settings=None)
+            else:
+                authentication_settings = kwargs.get(authentication_property_name)
+                method = authentication_settings.get("method") if authentication_settings \
+                    else "none"
+                if method == "none":
+                    kwargs.update(es_tls_settings=None)
+                elif method == "certificate":
+                    credentials = authentication_settings.pop("tls_credentials")
+                    kwargs.update(
+                        es_tls_settings=TlsSettings.create(credentials is None, credentials))
+        if not cls._support_product() and "product" in kwargs:
+            raise UnsupportedAttribute(f"Unsupported parameter product in this "
+                                       f"SMC version")
+        return kwargs
+
+    @staticmethod
+    def _convert_tls_settings(tls_settings: TlsSettings):
+        """Convert TLS Settings to equivalent Elasticsearch Authentication Settings"""
+        return {
+            "method": "certificate",
+            "tls_credentials": None if tls_settings.use_internal_credentials else
+            tls_settings.tls_credentials.href
+        } if tls_settings else None
+
+    @classmethod
+    def es_tls_settings_property(cls,
+                                 data,
+                                 authentication_property_name: str):
+        """Backward-compatibility function for Elasticsearch-related components' es_tls_settings
+        property"""
+        if cls._uses_es_tls_settings_settings():
+            tls_settings = data.get("es_tls_settings")
+            return TlsSettings(tls_settings) if tls_settings else None
         else:
-            # 7.2 and above -> transform es_tls_settings into authentication_settings
-            authentication_settings = _elasticsearch_convert_tls_settings(tls_settings)
-    if authentication_settings and not is_api_version_less_than_or_equal("7.0"):
-        json.update({authentication_property_name: authentication_settings})
+            # Backward-compatibility: craft TlsSettings out of authentication_settings
+            authentication_settings = data.get(authentication_property_name)
+            if authentication_settings and authentication_settings.get("method") == "certificate":
+                credentials = authentication_settings.get("tls_credentials")
+                return TlsSettings.create(credentials is None, credentials)
+            else:
+                return None
 
-
-def _elasticsearch_update_compat(authentication_property_name: str,
-                                 **kwargs):
-    """Backward-compatibility function for Elasticsearch-related components' update"""
-    if not is_api_version_less_than_or_equal("7.1") and "es_tls_settings" in kwargs:
-        kwargs.update({authentication_property_name: _elasticsearch_convert_tls_settings(
-            kwargs.pop("es_tls_settings"))})
-    return kwargs
-
-
-def _elasticsearch_convert_tls_settings(tls_settings):
-    """Convert TLS Settings to equivalent Elasticsearch Authentication Settings"""
-    return {
-        "method": "certificate",
-        "tls_credentials": None if tls_settings.use_internal_credentials else
-        tls_settings.tls_credentials.href
-    } if tls_settings else None
-
-
-def _elasticsearch_es_tls_settings_prop_compat(data,
-                                               authentication_property_name: str):
-    """Backward-compatibility function for Elasticsearch-related components' es_tls_settings
-    property"""
-    if is_api_version_less_than_or_equal("7.1"):
-        tls_settings = data.get("es_tls_settings")
-        return TlsSettings(tls_settings) if tls_settings else None
-    else:
-        # Backward-compatibility: craft TlsSettings out of authentication_settings
-        authentication_settings = data.get(authentication_property_name)
-        if authentication_settings and authentication_settings.get("method") == "certificate":
-            credentials = authentication_settings.get("tls_credentials")
-            return TlsSettings.create(credentials is None, credentials)
-        else:
-            return None
+    @classmethod
+    def authentication_settings_property(cls,
+                                         data,
+                                         property_name: str,
+                                         default_value):
+        authentication_settings = data.get(property_name)
+        # Backward compatibility below 7.2
+        if cls._uses_es_tls_settings_settings():
+            tls_settings = data.get("es_tls_settings")
+            if tls_settings:
+                authentication_settings = cls._convert_tls_settings(TlsSettings(tls_settings))
+            # No TLS settings and below 7.1.2 => none
+            elif not cls._supports_authentication_settings():
+                authentication_settings = default_value
+        return authentication_settings
 
 
 class NTPServer(Element, IPv6Node):
@@ -2039,7 +2139,7 @@ class AuthenticationServerMixin(Element, MultiContactServer):
         return self.data.get("port")
 
 
-class WebPortalServer(Element, MultiContactServer):
+class WebPortalServer(Element, MultiContactServer, ExternalPki):
     """
     This represents a Web Portal Server. A component of the Management Center responsible for
     browsing logs, Policy Snapshots and reports from a Web Browser.

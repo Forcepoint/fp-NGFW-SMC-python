@@ -19,10 +19,7 @@ from smc.base.util import import_submodules
 from .__version__ import __description__, __url__, __version__
 from .__version__ import __author__, __author_email__, __license__
 
-
-# session name to be used per thread
-session_name = threading.local()
-
+session_name = None
 manager = SessionManager.create()
 session = manager.get_default_session()
 

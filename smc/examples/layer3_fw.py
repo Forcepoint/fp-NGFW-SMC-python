@@ -18,15 +18,19 @@ Example of how to create a layer3 Firewall in SMC
 import argparse
 import logging
 import sys
+import time
 
 sys.path.append('../../')  # smc-python
 from smc import session  # noqa
 from smc.base.util import merge_dicts  # noqa
-from smc.administration.certificates.tls import ClientProtectionCA  # noqa
+from smc.administration.certificates.tls import ClientProtectionCA, TLSProfile  # noqa
 from smc.core.engines import Layer3Firewall  # noqa
 from smc.core.general import NTPSettings  # noqa
-from smc.elements.profiles import DNSRelayProfile  # noqa
+from smc.elements.profiles import DNSRelayProfile, WebAuthHtmlPage  # noqa
 from smc.elements.servers import NTPServer, DNSServer  # noqa
+from smc.core.engine import SidewinderProxyAdvancedSettings, ScanDetectionSetting, \
+    StaticMulticastRoute, WebAuthentication  # noqa
+from smc.elements.alerts import IdsAlert  # noqa
 
 engine_name = "myFw"
 PROTOCOL1 = 'tcp_syn_seen'
@@ -38,12 +42,32 @@ ERROR_CREATE_LOG_SETTING = "Failed to create engine with local log storage setti
 ERROR_UPDATE_LOG_SETTING = "Failed to update local log storage settings."
 ERROR_CREATE_LOG_MODERATION = "Failed to create engine with log moderation settings."
 ERROR_UPDATE_LOG_MODERATION = "Failed to update log moderation settings."
+SIDEWINDER_SETTING_UPDATE_ERROR = "Failed to update Sidewinder proxy advanced settings."
+SIDEWINDER_SETTING_CREATE_ERROR = "Failed to create Sidewinder proxy advanced settings."
 LOG_SETTING1 = 50
 LOG_SETTING2 = 60
 RATE = 100
 BURST = 1000
 LOG_EVENT1 = '1'
 LOG_EVENT2 = '2'
+
+# scan detection
+SCAN_DETECTION_CREATE_ERROR = "Fail to create engine with scan detection setting"
+SCAN_DETECTION_UPDATE_ERROR = "Fail to update engine with scan detection setting."
+TIME_UNIT = "minute"
+EVENT_COUNTS = 230
+TIME_WINDOW = 2
+
+# static_multicast_route
+ERROR_CREATE_STATIC_MULTICAST_ROUTE = "Fail to create engine with static multicast route setting."
+ERROR_UPDATE_STATIC_MULTICAST_ROUTE = "Fail to update engine with static multicast route setting."
+
+# Web Authentication
+ERROR_CREATE_WEB_AUTH_CONFIG = "Fail to create engine with web authentication setting."
+ERROR_UPDATE_WEB_AUTH_CONFIG = "Fail to update engine with web authentication setting."
+WEB_AUTH_PAGE = "Default User Authentication Pages"
+TIMEOUT1 = 3600
+TIMEOUT2 = 3000
 
 logging.getLogger()
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
@@ -87,6 +111,44 @@ def main():
                                                          {'switch_interface_port_comment': '',
                                                           'physical_switch_port_number': 6}]}]
                             }]
+        sidewinder_setting = [
+            SidewinderProxyAdvancedSettings.create(attribute="httpkey", sidewinder_type="HTTP",
+                                                   value="value1")]
+        # scan detection setting
+        alert = IdsAlert.objects.first()
+        scan_detection = ScanDetectionSetting.create(
+            scan_detection_icmp_events=EVENT_COUNTS,
+            scan_detection_icmp_timewindow=TIME_WINDOW,
+            scan_detection_icmp_unit=TIME_UNIT,
+            scan_detection_tcp_events=EVENT_COUNTS,
+            scan_detection_tcp_timewindow=TIME_WINDOW,
+            scan_detection_tcp_unit=TIME_UNIT,
+            scan_detection_type="default off",
+            scan_detection_udp_events=EVENT_COUNTS,
+            scan_detection_udp_timewindow=TIME_WINDOW,
+            scan_detection_udp_unit=TIME_UNIT
+        )
+
+        # static_multicast_route
+        static_multicast_route = StaticMulticastRoute.create(dest_interface=[
+            "1000"
+        ],
+            dest_ip="224.1.1.1",
+            source_interface="1000",
+            source_ip="192.168.1.1"
+        )
+
+        # Web Authentication
+        web_authentication_page = WebAuthHtmlPage(WEB_AUTH_PAGE)
+        tls_profile = TLSProfile.objects.first()
+        web_authentication = WebAuthentication.create(all_interfaces=True,
+                                                      authentication_idle_timeout=TIMEOUT1,
+                                                      authentication_timeout=TIMEOUT1,
+                                                      enforce_https=False,
+                                                      keep_alive_rate=30,
+                                                      page_ref=web_authentication_page,
+                                                      use_cert_bba=False)
+
         Layer3Firewall.create(name=engine_name,
                               mgmt_ip="192.168.10.1",
                               mgmt_network="192.168.10.0/24",
@@ -106,8 +168,100 @@ def main():
                                                   "log_event": LOG_EVENT1,
                                                   "rate": RATE
                                               }]
-                                          }
+                                          },
+                              ssm_advanced_setting=sidewinder_setting,
+                              sidewinder_proxy_enabled=True,
+                              scan_detection=scan_detection,
+                              static_multicast_route=[static_multicast_route],
+                              web_authentication=web_authentication
                               )
+        # SidewinderProxyAdvancedSettings
+        engine = Layer3Firewall(engine_name)
+        setting = engine.ssm_advanced_setting[0]
+        assert setting.attribute == "httpkey" and setting.type == "HTTP" and \
+               setting.value == "value1", SIDEWINDER_SETTING_CREATE_ERROR
+
+        scan_detection = engine.scan_detection
+        assert scan_detection.log_level == "stored" and \
+               scan_detection.scan_detection_icmp_events == EVENT_COUNTS and \
+               scan_detection.scan_detection_icmp_timewindow == TIME_WINDOW and \
+               scan_detection.scan_detection_icmp_unit == TIME_UNIT and \
+               scan_detection.scan_detection_tcp_events == EVENT_COUNTS and \
+               scan_detection.scan_detection_tcp_timewindow == TIME_WINDOW and \
+               scan_detection.scan_detection_tcp_unit == TIME_UNIT and \
+               scan_detection.scan_detection_type == "default off" and \
+               scan_detection.scan_detection_udp_events == EVENT_COUNTS and \
+               scan_detection.scan_detection_udp_timewindow == TIME_WINDOW and \
+               scan_detection.scan_detection_udp_unit == TIME_UNIT, SCAN_DETECTION_CREATE_ERROR
+
+        scan_detection.update(scan_detection_icmp_events=200, scan_detection_icmp_timewindow=3,
+                              scan_detection_icmp_unit="second", log_level="alert",
+                              alert_ref=alert.href, severity=TIME_WINDOW)
+        engine.update(scan_detection=scan_detection.data)
+
+        engine = Layer3Firewall(engine_name)
+        scan_detection = engine.scan_detection
+        assert scan_detection.log_level == "alert" and scan_detection.alert_ref == alert.href and \
+               scan_detection.scan_detection_icmp_events == 200 and \
+               scan_detection.severity == TIME_WINDOW and \
+               scan_detection.scan_detection_icmp_timewindow == 3 and \
+               scan_detection.scan_detection_icmp_unit == "second", SCAN_DETECTION_UPDATE_ERROR
+
+        logging.info("Successfully created the engine with sidewinder proxy advanced settings.")
+        temp = [
+            SidewinderProxyAdvancedSettings.create(attribute="sharedkey", sidewinder_type="SHARED",
+                                                   value="value2"),
+            SidewinderProxyAdvancedSettings.create(attribute="tcpkey", sidewinder_type="TCP",
+                                                   value="value3"),
+            SidewinderProxyAdvancedSettings.create(attribute="udpkey", sidewinder_type="UDP",
+                                                   value="value4"),
+            SidewinderProxyAdvancedSettings.create(attribute="sshkey", sidewinder_type="SSH",
+                                                   value="value4")]
+        engine.update(ssm_advanced_setting=[setting.data for setting in temp])
+        engine = Layer3Firewall(engine_name)
+        invalid_ssm_setting_type_detected = False
+        for setting in engine.ssm_advanced_setting:
+            if setting.type not in setting.types:
+                invalid_ssm_setting_type_detected = True
+                break
+        assert not invalid_ssm_setting_type_detected, SIDEWINDER_SETTING_UPDATE_ERROR
+        logging.info("Successfully updated the engine with sidewinder proxy advanced settings.")
+
+        # static multicast route
+        static_multicast_route = engine.static_multicast_route[0]
+        assert "1000" in static_multicast_route.dest_interface and \
+               static_multicast_route.dest_ip == "224.1.1.1" and \
+               static_multicast_route.source_interface == "1000" and \
+               static_multicast_route.source_ip == \
+               "192.168.1.1", ERROR_CREATE_STATIC_MULTICAST_ROUTE
+        static_multicast_route.update(source_ip="192.168.1.2", dest_ip="224.1.1.2")
+        engine.update(static_multicast_route=[static_multicast_route.data])
+        engine = Layer3Firewall(engine_name)
+        static_multicast_route = engine.static_multicast_route[0]
+        assert static_multicast_route.dest_ip == "224.1.1.2" and \
+               static_multicast_route.source_ip == \
+               "192.168.1.2", ERROR_UPDATE_STATIC_MULTICAST_ROUTE
+        # Web Authentication
+        web_config = engine.web_authentication
+        assert web_config.all_interfaces and \
+               web_config.authentication_idle_timeout == TIMEOUT1 and \
+               web_config.authentication_timeout == TIMEOUT1 and not web_config.enforce_https and \
+               web_config.page_ref == web_authentication_page.href and \
+               not web_config.session_handling, ERROR_CREATE_WEB_AUTH_CONFIG
+        web_authentication.update(tls_profile=tls_profile.href,
+                                  http_port=80,
+                                  authentication_idle_timeout=TIMEOUT2,
+                                  authentication_timeout=TIMEOUT2,
+                                  session_handling=False,
+                                  )
+        engine.generate_and_sign_user_authentication_certificate()
+        engine.update(web_authentication=web_authentication.data)
+        engine = Layer3Firewall(engine_name)
+        web_config = engine.web_authentication
+        assert web_config.authentication_idle_timeout == TIMEOUT2 and \
+               web_config.authentication_timeout == TIMEOUT2 and web_config.http_port == 80 and \
+               not web_config.session_handling and \
+               web_config.tls_profile == tls_profile.href, ERROR_UPDATE_WEB_AUTH_CONFIG
 
         # Update NTP server settings for the Firewall
         engine = Layer3Firewall(engine_name)

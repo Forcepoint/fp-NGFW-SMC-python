@@ -26,11 +26,16 @@ import sys
 sys.path.append('../../')  # smc-python
 from smc import session  # noqa
 from smc.base.model import Element  # noqa
-from smc.elements.situations import TLSMatchSituation  # noqa
+from smc.elements.situations import TLSMatchSituation, InspectionSituationContext, \
+    InspectionSituation, _severity_by_name  # noqa
 
 SUCCEED_TLS_MATCH: str = "myTestTLSMatch_succeed"
 NO_VALIDATION_TLS_MATCH: str = "myTestTLSMatch_no_validation"
 VALIDATION_FAILED_TLS_MATCH: str = "myTestTLSMatch_validation_failed"
+SITUATION_NAME = "test_inspection_situation"
+CREATE_SITUATION_ERROR = "Fail to create inspection situation."
+UPDATE_SITUATION_ERROR = "Fail to update inspection situation."
+
 
 logging.getLogger()
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
@@ -45,6 +50,32 @@ def main():
                       login=arguments.smc_user,
                       pwd=arguments.smc_pwd, api_version=arguments.api_version)
         logging.info("session OK")
+
+        situation_context = InspectionSituationContext("Executable File Stream")
+        logging.info("Creation of {} situation.".format(SITUATION_NAME))
+        is_situation = InspectionSituation.create(name=SITUATION_NAME,
+                                                  situation_context=situation_context,
+                                                  severity='critical')
+        is_situation.create_regular_expression("situation_regexp_content")
+        is_situation = InspectionSituation(SITUATION_NAME)
+        is_valid_pa = False
+        for parameter_value in is_situation.parameter_values:
+            if parameter_value.reg_exp == "situation_regexp_content":
+                is_valid_pa = True
+                break
+        assert is_situation.severity == "critical" and \
+               is_situation.situation_context.href == situation_context.href and \
+               is_valid_pa, CREATE_SITUATION_ERROR
+        logging.error(f"Successfully created InspectionSituation.")
+
+        is_situation = InspectionSituation(SITUATION_NAME)
+        situation_context = InspectionSituationContext("File Stream Redirection").href
+        is_situation.update(severity=_severity_by_name('information'),
+                            situation_context_ref=situation_context)
+        is_situation = InspectionSituation(SITUATION_NAME)
+        assert is_situation.severity == "information" and \
+               is_situation.situation_context.href == situation_context, UPDATE_SITUATION_ERROR
+        logging.error(f"Successfully updated InspectionSituation.")
 
         # create TLSMatchSituation validation succeed
         TLSMatchSituation.create(name=SUCCEED_TLS_MATCH,
@@ -84,6 +115,8 @@ def main():
         logging.error(f"Exception:{e}")
         return_code = 1
     finally:
+        InspectionSituation(SITUATION_NAME).delete()
+        logging.error(f"Successfully deleted InspectionSituation.")
         TLSMatchSituation(SUCCEED_TLS_MATCH).delete()
         TLSMatchSituation(NO_VALIDATION_TLS_MATCH).delete()
         TLSMatchSituation(VALIDATION_FAILED_TLS_MATCH).delete()

@@ -18,14 +18,27 @@ Example to show how to use create and delete SSM element objects in the SMC
 import argparse
 import logging
 import sys
+
 sys.path.append('../../')  # smc-python
 from smc import session  # noqa
 from smc.core.engines import Layer3Firewall  # noqa
 from smc.elements.ssm import *  # noqa
+from smc.elements.situations import InspectionSituation  # noqa
+from smc.elements.tags import SidewinderTag  # noqa
+from enum import Enum  # noqa
 
 logging.getLogger()
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
                                                 '%(name)s - [%(levelname)s] : %(message)s')
+
+SSM_NAME = "test_side_winder_logging_profile"
+SSM_CREATE_ERROR = "Fail to create SidewinderLoggingProfile."
+SSM_UPDATE_ERROR = "Fail to update SidewinderLoggingProfile."
+
+
+class Enable(Enum):
+    NEVER = "never"
+    LIMITED = "limited"
 
 
 def main():
@@ -73,6 +86,37 @@ def main():
                               mgmt_network="192.168.10.0/24",
                               sidewinder_proxy_enabled=True,
                               known_host_lists=[known_host_list.href, empty_known_host_list.href])
+        sidewinder_logging_profile_setting = []
+        side_winder_tag = list(SidewinderTag.objects.all())[0]
+        inspection_situation = list(InspectionSituation.objects.all())[0]
+        sidewinder_logging_profile_setting.append(
+            SidewinderLoggingProfileSettings.create(element=inspection_situation,
+                                                    enable=Enable.NEVER.value))
+        sidewinder_logging_profile_setting.append(
+            SidewinderLoggingProfileSettings.create(element=side_winder_tag,
+                                                    enable=Enable.LIMITED.value,
+                                                    threshold=6, interval=86400))
+        ssm_profile = SidewinderLoggingProfile.create(
+            name=SSM_NAME, sidewinder_logging_profile_setting=sidewinder_logging_profile_setting)
+        for profile_setting in ssm_profile.sidewinder_logging_profile_setting:
+            assert (profile_setting.element == inspection_situation.href and
+                    profile_setting.enable == Enable.NEVER.value) or \
+                   (profile_setting.element == side_winder_tag.href and
+                    profile_setting.enable == Enable.LIMITED.value and
+                    profile_setting.threshold == 6 and
+                    profile_setting.interval == 86400), SSM_CREATE_ERROR
+        logging.info("Successfully created SidewinderLoggingProfile.")
+        inspection_situation = list(InspectionSituation.objects.all())[1]
+        sidewinder_logging_profile_setting.append(
+            SidewinderLoggingProfileSettings.create(element=inspection_situation,
+                                                    enable=Enable.NEVER.value))
+        ssm_profile.update(
+            sidewinder_logging_profile_setting=[profile_setting.data for profile_setting in
+                                                sidewinder_logging_profile_setting])
+        ssm_profile = SidewinderLoggingProfile(SSM_NAME)
+        assert len(
+            ssm_profile.sidewinder_logging_profile_setting) == 3, SSM_UPDATE_ERROR
+        logging.info("Successfully updated SidewinderLoggingProfile.")
 
     except BaseException as e:
         logging.error(f"Exception:{e}")
@@ -86,7 +130,8 @@ def main():
         SSHKnownHostsLists("testKnownHostList").delete()
         SSHKnownHostsLists("emptyKnownHostList").delete()
         SSHKnownHosts("testKnownHost").delete()
-
+        SidewinderLoggingProfile(SSM_NAME).delete()
+        logging.info("Successfully deleted SidewinderLoggingProfile.")
         session.logout()
     return return_code
 

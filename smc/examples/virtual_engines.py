@@ -25,7 +25,7 @@ sys.path.append('../../')  # smc-python
 from smc import session  # noqa
 from smc.core.engines import MasterEngine, Layer3VirtualEngine  # noqa
 from smc.core.sub_interfaces import SingleNodeInterface  # noqa
-from smc.elements.network import Router, Network  # noqa
+from smc.elements.network import Router, Network, Zone  # noqa
 
 NAME = "master"
 DELETE_VLAN_ERROR = "Failed to delete all vlan interfaces of master engine."
@@ -60,7 +60,7 @@ def main():
         master_engine.physical_interface.add(interface_id=2, zone_ref="Southbound")
 
         # First create the Virtual Resources (Customer 1 - 8)
-        for vr in range(1, 9):
+        for vr in range(1, 11):
             master_engine.virtual_resource.create(name=f"Customer {vr}", vfw_id=vr)
 
         # Add the VLANs to the interfaces and attach the Virtual Resources
@@ -83,7 +83,23 @@ def main():
             name="southbound", address="10.1.2.254", comment="virtual engine gateway"
         )
 
+        # Add New Shared Virtual Interface
+        zone_ref = Zone.objects.first()
+        # Add two virtual resource mapping
+        virtual_resource_settings = [{"qos_limit": -1,
+                                      "virtual_mapping": "3",
+                                      "virtual_resource_name": "Customer 9"},
+                                     {"qos_limit": -1,
+                                      "virtual_mapping": "3",
+                                      "virtual_resource_name": "Customer 10"}]
+        master_engine.physical_interface. \
+            add_layer3_shared_virtual_interface(vlan_id=1,
+                                                interface_id=3,
+                                                mac_address_prefix="00:00:00:5e:13",
+                                                virtual_resource_settings=virtual_resource_settings,
+                                                zone_ref=zone_ref)
         logging.info(f"Master Engine created:{master_engine}")
+
         # Now create the Virtual Firewalls for each customer and set interface information
         # VirtualEngine interface numbering starts at interface 1!
         for vr in range(1, 9):
@@ -135,7 +151,7 @@ def main():
         master_engine = MasterEngine(NAME)
         for ifc in master_engine.physical_interface:
             # ignoring unwanted interface
-            if ifc.interface_id == '0':
+            if ifc.interface_id == '0' or ifc.interface_id == '3':
                 continue
             assert ifc.data.get("virtual_engine_vlan_ok") and \
                    ifc.data.get("virtual_resource_settings")[0][

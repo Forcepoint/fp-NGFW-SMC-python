@@ -676,7 +676,8 @@ class TunnelInterfaceCollection(InterfaceCollection):
         self._engine.add_interface(tunnel_interface, **kw)
 
     def add_layer3_interface(
-        self, interface_id, address=None, network_value=None, zone_ref=None, comment=None, **kw
+        self, interface_id, address=None, network_value=None, zone_ref=None, comment=None,
+            route_replies_back_mode=False, **kw
     ):
         """
         Creates a tunnel interface with sub-type single_node_interface. This is
@@ -690,6 +691,7 @@ class TunnelInterfaceCollection(InterfaceCollection):
         :param str network_value: network cidr for interface; format: 1.1.1.0/24
         :param str zone_ref: zone reference for interface can be name, href or Zone
         :param str comment: optional comment
+        :param bool route_replies_back_mode
         :raises EngineCommandFailed: failure during creation
         :return: None
         """
@@ -703,6 +705,7 @@ class TunnelInterfaceCollection(InterfaceCollection):
             "interfaces": interfaces,
             "zone_ref": zone_ref,
             "comment": comment,
+            "route_replies_back_mode": route_replies_back_mode
         }
         tunnel_interface = TunnelInterface(**interface)
         self._engine.add_interface(tunnel_interface, **kw)
@@ -1036,7 +1039,28 @@ class PhysicalInterfaceCollection(InterfaceCollection):
         :param str zone_ref: zone reference, can be name, href or Zone
         :param str comment: optional comment
         """
-        pass
+        interfaces = {
+            "virtual_resource_settings": virtual_resource_settings,
+            "shared_interface": True,
+            "vlan_id": vlan_id,
+            "zone_ref": zone_ref,
+        }
+
+        interfaces.update(kw)
+        _interface = {
+            "shared_interface": True,
+            "interface_id": interface_id,
+            "interfaces": [interfaces],
+            "mac_prefix": mac_address_prefix,
+            "comment": comment
+        }
+        try:
+            interface = self._engine.interface.get(interface_id)
+            interface._add_interface(**_interface)
+            return interface.update()
+        except InterfaceNotFound:
+            interface = Layer3PhysicalInterface(**_interface)
+            return self._engine.add_interface(interface, **kw)
 
     def add_layer3_cluster_interface(
         self,

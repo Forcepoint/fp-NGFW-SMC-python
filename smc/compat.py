@@ -61,20 +61,37 @@ def get_best_version(*versions):
     return best_value
 
 
-def is_smc_version_less_than_or_equal(check_version):
+# if check version is minor or major, corresponding smc version will be return (major/minor)
+def get_smc_version(check_version):
     smc_version = smc.administration.system.System().smc_version
-    smc_version = '.'.join(smc_version.split()[0].split('.')[:2])
+    if re.match(r"\d.\d+.\d", check_version):
+        smc_version = '.'.join(smc_version.split()[0].split('.')[:3])
+    else:
+        smc_version = '.'.join(smc_version.split()[0].split('.')[:2])
+    return smc_version
+
+
+def is_smc_version_less_than_or_equal(check_version):
+    smc_version = get_smc_version(check_version)
     return LooseVersion(smc_version) <= LooseVersion(check_version)
 
 
 def is_smc_version_less_than(check_version):
     """
     check smc version url is less or not
+    :param str check_version: smc version
+    """
+    smc_version = get_smc_version(check_version)
+    return LooseVersion(smc_version) < LooseVersion(check_version)
+
+
+def is_smc_version_equal(check_version):
+    """
+    check smc version url is equal or not.
     :param str check_version: smv version
     """
-    smc_version = smc.administration.system.System().smc_version
-    smc_version = '.'.join(smc_version.split()[0].split('.')[:2])
-    return LooseVersion(smc_version) < LooseVersion(check_version)
+    smc_version = get_smc_version(check_version)
+    return LooseVersion(smc_version) == LooseVersion(check_version)
 
 
 def is_smc_version_equal(check_version):

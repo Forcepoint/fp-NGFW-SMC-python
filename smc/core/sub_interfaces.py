@@ -174,9 +174,11 @@ class InlineInterface(SubInterface):
         """
         data = {
             "inspect_unspecified_vlans": True,
-            "nicid": "{}-{}".format(str(interface_id), str(second_interface_id))
-            if second_interface_id
-            else str(interface_id),
+            "nicid": (
+                "{}-{}".format(str(interface_id), str(second_interface_id))
+                if second_interface_id
+                else str(interface_id)
+            ),
             "logical_interface_ref": logical_interface_ref,
             "zone_ref": zone_ref,
         }
@@ -552,7 +554,7 @@ class LoopbackClusterInterface(ClusterVirtualInterface):
 
         self._engine.update()
 
-    def add_cvi_loopback(self, address, ospf_area=None, **kw):
+    def add_cvi_loopback(self, address, rank=None, ospf_area=None, **kw):
         """
         Add a loopback interface as a cluster virtual loopback. This enables
         the loopback to 'float' between cluster members. Changes are committed
@@ -570,11 +572,14 @@ class LoopbackClusterInterface(ClusterVirtualInterface):
             # there are existing entries
             loopbacks = self._engine.data[self.typeof]
 
-            last_rank = 1
-            for loopback in loopbacks:
-                if loopback["rank"] > last_rank:
-                    last_rank = loopback["rank"]
-            lb["rank"] = last_rank + 1
+            if rank:
+                lb["rank"] = rank
+            else:
+                last_rank = 1
+                for loopback in loopbacks:
+                    if loopback["rank"] > last_rank:
+                        last_rank = loopback["rank"]
+                lb["rank"] = last_rank + 1
             loopbacks.append(lb.data)
         else:
             # it is the first entry
@@ -637,6 +642,7 @@ class LoopbackInterface(NodeInterface):
                 raise UpdateElementFailed(
                     "The specified nodeid {} is linked to none node".format(str(nodeid))
                 )
+
             # compute the correct rank value
             last_rank = 1
             loopbacks = []
@@ -652,14 +658,20 @@ class LoopbackInterface(NodeInterface):
             ospfArea = None
             if "ospf_area" in lb_settings:
                 ospfArea = lb_settings["ospf_area"]
-            lb = self.create(lb_settings["address"], last_rank + 1, nodeid, ospfArea, **kwargs)
+
+            if lb_settings["rank"]:
+                lb = self.create(
+                    lb_settings["address"], lb_settings["rank"], nodeid, ospfArea, **kwargs
+                )
+            else:
+                lb = self.create(lb_settings["address"], last_rank + 1, nodeid, ospfArea, **kwargs)
             loopbacks.append(lb.data)
             engine_to_update = True
 
         if engine_to_update:
             self._engine.update()
 
-    def add_single(self, address, rank=1, nodeid=1, ospf_area=None, **kwargs):
+    def add_single(self, address, rank=None, nodeid=1, ospf_area=None, **kwargs):
         """
         Add a single loopback interface to this engine. This is used
         for single or virtual engines.
@@ -670,7 +682,7 @@ class LoopbackInterface(NodeInterface):
         :raises UpdateElementFailed: failure to create loopback address
         :return: None
         """
-        lb_settings = {nodeid: {"address": address, "ospf_area": ospf_area}}
+        lb_settings = {nodeid: {"address": address, "ospf_area": ospf_area, "rank": rank}}
         self.add_node_loopback(addresses=lb_settings, **kwargs)
 
     def delete(self):

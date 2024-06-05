@@ -31,8 +31,9 @@ from smc.base.util import element_resolver  # noqa
 from smc.elements.alerts import CustomAlert  # noqa
 from smc.elements.service import TCPService  # noqa
 from smc.policy.layer3 import FirewallPolicy  # noqa
-from smc.policy.rule_elements import SourceVpn  # noqa
+from smc.policy.rule_elements import SourceVpn, Action  # noqa
 from smc.vpn.policy import PolicyVPN  # noqa
+from smc.elements.profiles import UserResponse  # noqa
 
 
 custom_fw_policy = "myPolicy1"
@@ -116,6 +117,22 @@ def main():
                 assert rule.options.log_level == 'alert' and \
                        rule.options.log_alert == my_alert, \
                        f"Rule2 should be with alert log_level and {custom_alert_name} as alert."
+        # Add user response in action
+        user_response = UserResponse.objects.first()
+        actions = Action()
+        actions.user_response = user_response
+        actions.deep_inspection = True
+        actions.file_filtering = False
+        actions.network_application_latency_monitoring = False
+        actions.action = "discard"
+        p.fw_ipv4_access_rules.create(name='test_user_response',
+                                      sources='any',
+                                      destinations='any', services='any',
+                                      action=actions)
+        for rule in p.fw_ipv4_access_rules.all():
+            if rule.name == 'test_user_response':
+                assert rule.action.user_response.href == user_response.href, "Fail to set user " \
+                                                                             "response. "
     except BaseException as e:
         logging.error(f"Exception:{e}")
         return_code = 1

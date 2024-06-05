@@ -78,6 +78,10 @@ class Layer3Firewall(Engine):
         link_usage_profile=None,
         quic_enabled=True,
         discard_quic_if_cant_inspect=True,
+        ssm_advanced_setting=None,
+        scan_detection=None,
+        static_multicast_route=None,
+        web_authentication=None,
         **kw
     ):
         """
@@ -237,6 +241,10 @@ class Layer3Firewall(Engine):
                 lldp_profile=lldp_profile,
                 comment=comment,
                 discard_quic_if_cant_inspect=discard_quic_if_cant_inspect,
+                ssm_advanced_setting=ssm_advanced_setting,
+                scan_detection=scan_detection,
+                static_multicast_route=static_multicast_route,
+                web_authentication=web_authentication,
                 **extra_opts if extra_opts else {}
             )
 
@@ -283,6 +291,10 @@ class Layer3Firewall(Engine):
         quic_enabled=True,
         discard_quic_if_cant_inspect=True,
         node_definition=None,
+        ssm_advanced_setting=None,
+        scan_detection=None,
+        static_multicast_route=None,
+        web_authentication=None,
         **kw
     ):
         """
@@ -329,6 +341,14 @@ class Layer3Firewall(Engine):
         :param bool discard_quic_if_cant_inspect: (optional) discard or allow QUIC
         :param node_definition information for the node itself
          if inspection is not possible
+        :param list(SidewinderProxyAdvancedSettings) ssm_advanced_setting: Sidewinder proxy advanced
+            settings.
+        :param dict,ScanDetection scan_detection: This represents the definition of Scan Detection
+            on a NGFW.
+        :param list(dict),list(StaticMulticastRoute) static_multicast_route: Represents Firewall
+            multicast routing entry for Static/IGMP Proxy multicast routing modes.
+        :param WebAuthentication/dict web_authentication: This represents the Browser-Based User
+            Authentication settings for a NGFW.
         :raises CreateEngineFailed: Failure to create with reason
         :return: :py:class:`smc.core.engine.Engine`
         """
@@ -383,7 +403,11 @@ class Layer3Firewall(Engine):
             lldp_profile=lldp_profile,
             link_usage_profile=link_usage_profile,
             quic_enabled=quic_enabled,
-            discard_quic_if_cant_inspect=discard_quic_if_cant_inspect
+            discard_quic_if_cant_inspect=discard_quic_if_cant_inspect,
+            ssm_advanced_setting=ssm_advanced_setting,
+            scan_detection=scan_detection,
+            static_multicast_route=static_multicast_route,
+            web_authentication=web_authentication
         )
 
     @classmethod
@@ -413,6 +437,8 @@ class Layer3Firewall(Engine):
         quic_enabled=True,
         discard_quic_if_cant_inspect=True,
         node_definition=None,
+        ssm_advanced_setting=None,
+        web_authentication=None,
         **kw
     ):
         """
@@ -438,6 +464,8 @@ class Layer3Firewall(Engine):
         :param bool discard_quic_if_cant_inspect: (optional) discard or allow QUIC
         :param node_definition information for the node itself
          if inspection is not possible
+        :param WebAuthentication/dict web_authentication: This represents the Browser-Based User
+            Authentication settings for a NGFW.
         :raises CreateElementFailed: failed to create engine
         :return: :py:class:`smc.core.engine.Engine`
         """
@@ -493,7 +521,9 @@ class Layer3Firewall(Engine):
             lldp_profile=lldp_profile,
             link_usage_profile=link_usage_profile,
             quic_enabled=quic_enabled,
-            discard_quic_if_cant_inspect=discard_quic_if_cant_inspect
+            discard_quic_if_cant_inspect=discard_quic_if_cant_inspect,
+            ssm_advanced_setting=ssm_advanced_setting,
+            web_authentication=web_authentication
         )
 
     @property
@@ -640,6 +670,7 @@ class Layer2Firewall(Engine):
         lldp_profile=None,
         discard_quic_if_cant_inspect=True,
         node_definition=None,
+        scan_detection=None,
         **kw
     ):
         """
@@ -664,6 +695,8 @@ class Layer2Firewall(Engine):
          if inspection is not possible
         :param node_definition information for the node itself
         :param dict extra_opts: extra options as a dict to be passed to the top level engine
+        :param dict,ScanDetection scan_detection: This represents the definition of Scan Detection
+            on a NGFW.
         :raises CreateEngineFailed: Failure to create with reason
         :return: :py:class:`smc.core.engine.Engine`
         """
@@ -709,6 +742,7 @@ class Layer2Firewall(Engine):
             comment=comment,
             lldp_profile=lldp_profile,
             discard_quic_if_cant_inspect=discard_quic_if_cant_inspect,
+            scan_detection=scan_detection,
             **extra_opts if extra_opts else {},
         )
 
@@ -749,6 +783,7 @@ class IPS(Engine):
         lldp_profile=None,
         discard_quic_if_cant_inspect=True,
         node_definition=None,
+        scan_detection=None,
         **kw
     ):
         """
@@ -773,6 +808,8 @@ class IPS(Engine):
          if inspection is not possible
         :param dict extra_opts: extra options as a dict to be passed to the top level engine
         :param node_definition information for the node itself
+        :param dict,ScanDetection scan_detection: This represents the definition of Scan Detection
+            on a NGFW.
         :raises CreateEngineFailed: Failure to create with reason
         :return: :py:class:`smc.core.engine.Engine`
         """
@@ -818,6 +855,7 @@ class IPS(Engine):
             comment=comment,
             lldp_profile=lldp_profile,
             discard_quic_if_cant_inspect=discard_quic_if_cant_inspect,
+            scan_detection=scan_detection,
             **extra_opts if extra_opts else {},
         )
 
@@ -868,6 +906,10 @@ class Layer3VirtualEngine(Engine):
         extra_opts=None,
         quic_enabled=True,
         discard_quic_if_cant_inspect=True,
+        ssm_advanced_setting=None,
+        scan_detection=None,
+        static_multicast_route=None,
+        web_authentication=None,
         **kw
     ):
         """
@@ -890,6 +932,14 @@ class Layer3VirtualEngine(Engine):
         :param bool discard_quic_if_cant_inspect: (optional) discard or allow QUIC
          if inspection is not possible
         :param dict extra_opts: extra options as a dict to be passed to the top level engine
+        :param list(SidewinderProxyAdvancedSettings) ssm_advanced_setting: Sidewinder proxy advanced
+            settings.
+        :param dict,ScanDetection scan_detection: This represents the definition of Scan Detection
+            on a NGFW.
+        :param list(dict),list(StaticMulticastRoute) static_multicast_route: Represents Firewall
+            multicast routing entry for Static/IGMP Proxy multicast routing modes.
+        :param WebAuthentication/dict web_authentication: This represents the Browser-Based User
+            Authentication settings for a NGFW.
         :raises CreateEngineFailed: Failure to create with reason
         :raises LoadEngineFailed: master engine not found
         :return: :py:class:`smc.core.engine.Engine`
@@ -944,6 +994,10 @@ class Layer3VirtualEngine(Engine):
                 ospf_profile=ospf_profile,
                 comment=comment,
                 discard_quic_if_cant_inspect=discard_quic_if_cant_inspect,
+                ssm_advanced_setting=ssm_advanced_setting,
+                scan_detection=scan_detection,
+                static_multicast_route=static_multicast_route,
+                web_authentication=web_authentication,
                 **extra_opts if extra_opts else {}
             )
 
@@ -1017,6 +1071,10 @@ class FirewallCluster(Engine):
         link_usage_profile=None,
         quic_enabled=True,
         discard_quic_if_cant_inspect=True,
+        ssm_advanced_setting=None,
+        scan_detection=None,
+        static_multicast_route=None,
+        web_authentication=None,
         **kw
     ):
         """
@@ -1027,6 +1085,8 @@ class FirewallCluster(Engine):
         :param dict snmp: SNMP dict should have keys `snmp_agent` str defining name of SNMPAgent,
             `snmp_interface` which is a list of interface IDs, and optionally `snmp_location` which
             is a string with the SNMP location name.
+        :param list(dict),list(StaticMulticastRoute) static_multicast_route: Represents Firewall
+            multicast routing entry for Static/IGMP Proxy multicast routing modes.
         """
         primary_heartbeat = primary_mgt if not primary_heartbeat else primary_heartbeat
 
@@ -1097,6 +1157,10 @@ class FirewallCluster(Engine):
                 lldp_profile=lldp_profile,
                 link_usage_profile=link_usage_profile,
                 discard_quic_if_cant_inspect=discard_quic_if_cant_inspect,
+                ssm_advanced_setting=ssm_advanced_setting,
+                scan_detection=scan_detection,
+                static_multicast_route=static_multicast_route,
+                web_authentication=web_authentication,
                 ** extra_opts if extra_opts else {},
             )
             engine.update(cluster_mode=cluster_mode)
@@ -1143,6 +1207,9 @@ class FirewallCluster(Engine):
         link_usage_profile=None,
         quic_enabled=True,
         discard_quic_if_cant_inspect=True,
+        ssm_advanced_setting=None,
+        static_multicast_route=None,
+        web_authentication=None,
         **kw
     ):
         """
@@ -1188,6 +1255,12 @@ class FirewallCluster(Engine):
         :param bool quic_enabled: (optional) include QUIC ports for web traffic
         :param bool discard_quic_if_cant_inspect: (optional) discard or allow QUIC
          if inspection is not possible
+        :param list(SidewinderProxyAdvancedSettings) ssm_advanced_setting: Sidewinder proxy advanced
+            settings.
+        :param list(dict),list(StaticMulticastRoute) static_multicast_route: Represents Firewall
+            multicast routing entry for Static/IGMP Proxy multicast routing modes.
+        :param WebAuthentication/dict web_authentication: This represents the Browser-Based User
+            Authentication settings for a NGFW.
         :param dict extra_opts: extra options as a dict to be passed to the top level engine
         :raises CreateEngineFailed: Failure to create with reason
         :return: :py:class:`smc.core.engine.Engine`
@@ -1314,7 +1387,10 @@ class FirewallCluster(Engine):
             lldp_profile=lldp_profile,
             link_usage_profile=link_usage_profile,
             quic_enabled=quic_enabled,
-            discard_quic_if_cant_inspect=discard_quic_if_cant_inspect
+            discard_quic_if_cant_inspect=discard_quic_if_cant_inspect,
+            ssm_advanced_setting=ssm_advanced_setting,
+            static_multicast_route=static_multicast_route,
+            web_authentication=web_authentication
         )
 
     @property
@@ -1359,6 +1435,8 @@ class MasterEngine(Engine):
         cluster_mode="standby",
         reverse_connection=False,
         node_definition=None,
+        ssm_advanced_setting=None,
+        scan_detection=None,
         **kw
     ):
         """
@@ -1380,6 +1458,8 @@ class MasterEngine(Engine):
             traffic or whether one node is online at a time and the other engines are used as backup
         :param boolean reverse_connection: Reverse connection.
         :param node_definition information for the node itself
+        :param list(SidewinderProxyAdvancedSettings) ssm_advanced_setting: Sidewinder proxy advanced
+            settings.
         :raises CreateEngineFailed: Failure to create with reason
         :return: :py:class:`smc.core.engine.Engine`
         """
@@ -1412,6 +1492,8 @@ class MasterEngine(Engine):
             enable_antivirus=enable_antivirus,
             comment=comment,
             lldp_profile=lldp_profile,
+            ssm_advanced_setting=ssm_advanced_setting,
+            scan_detection=scan_detection,
             **extra_opts if extra_opts else {}
         )
 
@@ -1451,6 +1533,8 @@ class MasterEngineCluster(Engine):
         lldp_profile=None,
         cluster_mode="standby",
         reverse_connection=False,
+        ssm_advanced_setting=None,
+        scan_detection=None,
         **kw
     ):
         """
@@ -1473,6 +1557,10 @@ class MasterEngineCluster(Engine):
             traffic or whether one node is online at a time and the other engines are used as backup
         :param boolean reverse_connection: Reverse connection.
         :param list nodes_definition : list of node info (name, comment..)
+        :param list(SidewinderProxyAdvancedSettings) ssm_advanced_setting: Sidewinder proxy advanced
+            settings.
+        :param dict,ScanDetection scan_detection: This represents the definition of Scan Detection
+            on a NGFW.
         :raises CreateEngineFailed: Failure to create with reason
         :return: :py:class:`smc.core.engine.Engine`
 
@@ -1512,6 +1600,8 @@ class MasterEngineCluster(Engine):
             enable_antivirus=enable_antivirus,
             comment=comment,
             lldp_profile=lldp_profile,
+            ssm_advanced_setting=ssm_advanced_setting,
+            scan_detection=scan_detection,
             **extra_opts if extra_opts else {}
         )
 

@@ -32,8 +32,7 @@ To load the configuration for system, do::
 import logging
 import time
 
-
-from smc.administration.certificates.CertificateAuthority import CertificateAuthority
+from smc.administration.certificates.certificate_authority import CertificateAuthority
 from smc.administration.certificates.tls_common import pem_as_string
 from smc.administration.license import Licenses
 from smc.administration.system_properties import SystemProperty
@@ -127,6 +126,41 @@ class System(SubElement):
         """
         return self.make_request(resource="last_activated_package").get("value")
 
+    @property
+    def temporary_banned_source_ip_statuses(self):
+        """
+        Return the possible current temporary banned source ip statuses:
+        If no banned source ip:
+        []
+        If failure detected for one source ip:
+        [{
+            "last_failure": 1714660134161,
+            "source_ip": "127.0.0.1"
+        }]
+        If temporary banned source ip:
+        [{
+            "banned_until": 1714661934161,
+            "last_failure": 1714660134161,
+            "source_ip": "127.0.0.1"
+        }]
+        :raises ResourceNotFound is the operation is not supported by your SMC version.
+        """
+        return self.make_request(resource="temporary_banned_ip_statuses").get("statuses")
+
+    @property
+    def unlock_temporary_banned_source_ip(self, override_source_ip: str, unlock_reason: str):
+        """
+        Unlocks the possible temporary banned source ip.
+        By default, the considered source_ip is the request remote address. The default unlock
+        reason which
+        will be used for audit is: "Unlock source IP from SMC API"
+        :raises ResourceNotFound is the operation is not supported by your SMC version.
+        """
+        return self.make_request(method="update",
+                                 resource="unlock_source_ip_account",
+                                 params={"override_source_ip": override_source_ip,
+                                         "unlock_reason": unlock_reason})
+
     def empty_trash_bin(self):
         """
         Empty system level trash bin
@@ -180,11 +214,11 @@ class System(SubElement):
         update_packages_elements = []
         with open(import_update_package_file, "rb") as file:
             update_packages = self.make_request(
-                               method="create",
-                               resource="import_package",
-                               files={"package_file": file},
-                               raw_result=True
-                               )
+                method="create",
+                resource="import_package",
+                files={"package_file": file},
+                raw_result=True
+            )
 
             logger.info("import update package task succeeded")
             for update in update_packages.json:
@@ -277,7 +311,7 @@ class System(SubElement):
 
         :rtype: SystemProperty
         """
-        return Element.from_href(self.get_relation('system_properties')+'/{}'.format(system_key))
+        return Element.from_href(self.get_relation('system_properties') + '/{}'.format(system_key))
 
     def update_system_property(self, system_key, new_value):
         """
@@ -373,10 +407,10 @@ class System(SubElement):
             json = {"entries": [prepare_block_list(src, dst, duration, **kw)]}
 
         self.make_request(
-                method="create",
-                resource=resource,
-                json=json
-            )
+            method="create",
+            resource=resource,
+            json=json
+        )
 
     @property
     def licenses(self):

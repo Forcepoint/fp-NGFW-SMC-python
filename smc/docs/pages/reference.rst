@@ -178,6 +178,10 @@ GatewayCertificate
 	:members:
 	:show-inheritance:
 
+Endpoint Integration
+++++++++++++++++++++
+.. automodule:: smc.administration.eca_client_config
+
 Domains
 +++++++
 
@@ -411,6 +415,13 @@ UDPService
    :members:
    :show-inheritance:
 
+IntegratedUserIdService
+***********************
+
+.. autoclass:: IntegratedUserIdService
+   :members:
+   :show-inheritance:
+
 URLCategory
 ***********
 
@@ -493,7 +504,7 @@ EthernetServiceGroup
 .. autoclass:: EthernetServiceGroup
    :members:
    :show-inheritance:
-  
+
 Servers
 +++++++
 
@@ -685,6 +696,13 @@ SSHProfile
    :members:
    :show-inheritance:
 
+SidewinderLoggingProfile
+************************
+
+.. autoclass:: SidewinderLoggingProfile
+   :members:
+   :show-inheritance:
+
 SSHKnownHosts
 *************
 
@@ -723,6 +741,13 @@ SNMPAgent
 *********
 
 	.. autoclass:: SNMPAgent
+		:members:
+		:show-inheritance:
+
+UserResponse
+************
+
+	.. autoclass:: UserResponse
 		:members:
 		:show-inheritance:
 
@@ -791,6 +816,12 @@ TLSInspection
 *************
 
 .. autoclass:: smc.core.addon.TLSInspection
+	:members:
+
+User Authentication
+*******************
+
+.. autoclass:: smc.core.engine.WebAuthentication
 	:members:
 
 Dynamic Routing
@@ -1125,6 +1156,9 @@ Routing
 .. automodule:: smc.core.route
 	:members: RoutingTree
 
+.. automodule:: smc.core.engine
+	:members: StaticMulticastRoute
+
 Routing
 *******
 
@@ -1176,6 +1210,9 @@ AdvanceSettings
 
 .. automodule:: smc.core.advanced_settings
 	:members:
+
+.. automodule:: smc.core.engine
+	:members: ScanDetectionSetting
 
 Engine Types
 ------------

@@ -254,6 +254,20 @@ class AdminUser(UserMixin, Element):
         """
         return self.data.get("enabled")
 
+    def unlock_account(self, unlock_reason: str):
+        """
+        Unlock the SMC Administrator User account.
+        By default, the audit message for this operation will be:
+        "Unlocked account from SMC API" but can be overriden by 'unlock_reason' parameter
+
+        :raises ResourceNotFound is the operation is not supported by your SMC version.
+        """
+        self.make_request(
+            method="update",
+            resource="unlock_account",
+            params={"unlock_reason": unlock_reason},
+        )
+
     def change_engine_password(self, password):
         """Change Engine password for engines on allowed
         list.
@@ -288,7 +302,14 @@ class ApiClient(UserMixin, Element):
     typeof = "api_client"
 
     @classmethod
-    def create(cls, name, enabled=True, superuser=True):
+    def create(
+        cls,
+        name,
+        enabled=True,
+        superuser=True,
+        allowed_to_login_in_shared=True,
+        permissions=None,
+    ):
         """
         Create a new API Client. Once client is created,
         you can create a new password by::
@@ -301,11 +322,24 @@ class ApiClient(UserMixin, Element):
         :param str name: name of client
         :param bool enabled: enable client
         :param bool superuser: is superuser account
+        :param bool allowed_to_login_in_shared: can this user log in to the
+            shared domain
+        :param permissions object in case SMC admin is not superuser
         :raises CreateElementFailed: failure creating element with reason
         :return: instance with meta
         :rtype: ApiClient
         """
-        json = {"enabled": enabled, "name": name, "superuser": superuser}
+        json = {
+            "enabled": enabled,
+            "name": name,
+            "superuser": superuser,
+            "allowed_to_login_in_shared": allowed_to_login_in_shared,
+            "permissions": {"permission": []},
+        }
+
+        if permissions:
+            for p in permissions:
+                json["permissions"]["permission"].append(p.data)
 
         return ElementCreator(cls, json)
 
@@ -430,6 +464,20 @@ class WebPortalAdminUser(UserMixin, Element):
     @property
     def enabled(self):
         return self.data.get("enabled")
+
+    def unlock_account(self, unlock_reason: str):
+        """
+        Unlock the web portal admin user account.
+        By default, the audit message for this operation will be:
+        "Unlocked account from SMC API" but can be overriden by 'unlock_reason' parameter
+
+        :raises ResourceNotFound is the operation is not supported by your SMC version.
+        """
+        self.make_request(
+            method="update",
+            resource="unlock_account",
+            params={"unlock_reason": unlock_reason},
+        )
 
     @property
     def granted_engine(self):

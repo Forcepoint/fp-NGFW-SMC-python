@@ -66,7 +66,7 @@ master_doc = "index"
 
 # General information about the project.
 project = u"smc-python"
-copyright = u"© 2016-2021 Forcepoint"
+copyright = u"© 2023-2024 Forcepoint"
 author = u"Forcepoint"
 
 # The version info for the project you're documenting, acts as replacement for

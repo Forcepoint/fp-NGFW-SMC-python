@@ -211,10 +211,10 @@ class SessionManager(object):
         Register a session
         """
         user_name = session.name
-        smc.session_name.name = "{}-{}".format(user_name, session.api_version)
+        smc.session_name = "{}-{}".format(user_name, session.api_version)
         if user_name:
-            self._sessions[smc.session_name.name] = session
-        return smc.session_name.name
+            self._sessions[smc.session_name] = session
+        return smc.session_name
 
     def _deregister(self, session):
         """
@@ -275,13 +275,15 @@ class Session(object):
 
         self._connpool = None  # default is 10 connections
 
+        self._current_user = None
+
         # Transactions are supported in version 0.6.2 and beyond. When
         # run with atomic, this session parameter indicates whether the
         # operation in process is within an atomic block or not
         self.in_atomic_block = False
         # Transactions that are within the given atomic block
         self.transactions = []
-        smc.session_name.name = None
+        smc.session_name = None
 
     @property
     def manager(self):
@@ -459,16 +461,7 @@ class Session(object):
             version >= 6.4
         :rtype: Element
         """
-        if self.session:
-            try:
-                response = self.session.get(self.entry_points.get("current_user"))
-                if response.status_code in (200, 201):
-                    admin_href = response.json().get("value")
-                    request = SMCRequest(href=admin_href)
-                    smcresult = send_request(self, "get", request)
-                    return ElementFactory(admin_href, smcresult)
-            except UnsupportedEntryPoint:
-                pass
+        return self._current_user
 
     def login(
         self,
@@ -491,6 +484,8 @@ class Session(object):
         during times of increased load. Each session is managed by a global
         session manager making it possible to have more than one session per
         interpreter.
+        Warning, It appears requests.Session() is Not Thread-safe, so it is recommended to not use
+        threading objects like ThreadPoolExecutor but instead multiprocessing library and Process
 
         An example login and logout session::
 
@@ -612,6 +607,19 @@ class Session(object):
         if not self._resource:
             load_entry_points(self)
 
+        # Load current user info
+        try:
+            response = self._session.get(url=self.entry_points.get("current_user"))
+            if response.status_code in (200, 201):
+                admin_href = response.json().get("value")
+                request = SMCRequest(href=admin_href)
+                smcresult = send_request(self, "get", request)
+                self._current_user = ElementFactory(admin_href, smcresult)
+        except SMCOperationFailure:
+            # User does not have permissions to read Admin properties
+            self._current_user = login
+        logger.info("Current User:{}".format(self._current_user))
+
         logger.debug(
             "Login succeeded for admin: %s in domain: %s, session: %s",
             self.name,
@@ -666,7 +674,7 @@ class Session(object):
         """
         # build the user session
         if self.session is None:
-            _session = requests.sessions.Session()  # empty session
+            _session = requests.Session()  # empty session
             retry = Retry(
                 total=MAX_RETRY,
                 read=MAX_RETRY,
@@ -751,10 +759,9 @@ class Session(object):
                 "Session timed out, will try obtaining a new session using "
                 "previously saved credential information."
             )
-            try:
-                self.logout()  # Force log out session just in case
-            except SMCConnectionError:
-                logger.debug("Tried to logout but session is already closed, can continue..")
+            # just deregister the lost session
+            self.manager._deregister(self)
+
             self.login(**self.copy())
             if self.session:
                 return
