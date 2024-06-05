@@ -63,7 +63,7 @@ def subtract_from_now(td):
     Subtract timedelta from current time
     """
     now = datetime.now()
-    return int((now - td).strftime("%s")) * 1000
+    return int((now - td).timestamp() * 1000)
 
 
 def current_millis(): return int(round(time.time() * 1000))

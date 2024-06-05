@@ -51,7 +51,8 @@ Specify a DNS server to handle specific domains::
 
 """
 from smc.base.model import Element, ElementCreator
-from smc.api.exceptions import ElementNotFound, UnsupportedAttribute
+from smc.api.exceptions import ElementNotFound, UnsupportedAttribute, UnsupportedSMCVersion
+from smc.base.structs import NestedDict
 from smc.base.util import element_resolver
 from smc.compat import is_smc_version_less_than
 from smc.elements.common import MultiContactServer
@@ -251,18 +252,17 @@ class SNMPAgent(Element):
 
     @classmethod
     def create(
-        cls,
-        name,
-        snmp_users=[],
-        trap_destinations=[],
-        snmp_monitoring_contact=None,
-        snmp_monitoring_listening_port=161,
-        snmp_version="v3",
-        monitoring_user_names=[],
-        trap_user_names=[],
-        comment=None,
+            cls,
+            name,
+            snmp_users=[],
+            trap_destinations=[],
+            snmp_monitoring_contact=None,
+            snmp_monitoring_listening_port=161,
+            snmp_version="v3",
+            monitoring_user_names=[],
+            trap_user_name=None,
+            comment=None,
     ):
-
         json = {
             "boot": False,
             "go_offline": False,
@@ -278,6 +278,8 @@ class SNMPAgent(Element):
             "snmp_user_name": snmp_users,
             "snmp_version": snmp_version,
             "user_login": False,
+            "snmp_trap_user_name": trap_user_name,
+            "comment": comment
         }
 
         return ElementCreator(cls, json)
@@ -290,6 +292,13 @@ class SandboxService(Element):
     def create(cls, name, sandbox_data_center, portal_username=None, comment=None):
         """
         Create a Sandbox Service element
+        :param str name: name of Sandbox Service, if custom must be the same as data center
+        :param str,SandboxDataCenter sandbox_data_center: Object or name of sandbox data center
+        :param str portal_username: the username of the portal
+        :param str comment: optional comment for service
+        :raises CreateElementFailed: failure creating element with reason
+        :return: instance with meta
+        :rtype: SandboxService
         """
         json = {
             "name": name,
@@ -326,6 +335,42 @@ class SandboxService(Element):
 
 class SandboxDataCenter(Element):
     typeof = "sandbox_data_center"
+    """
+    Create a Sandbox Data Center element
+    :param str name: name of Sandbox Data Center
+    :param str hostname: The host name of the sandbox server.
+    :param str,TlsProfile Name or Object of Tls profile used
+    :param str api_key: The api key for sandbox datacenter
+    :param str api_url: The api url for sandbox datacenter
+    :param str portal_url: optional portal_url for the sandbox datacenter
+    :param str comment: optional comment for service
+    :raises CreateElementFailed: failure creating element with reason
+    :return: instance with meta
+    :rtype: SandboxDataCenter
+    """
+
+    @classmethod
+    def create(cls, name, hostname, tls_profile, sandbox_type=None, api_key=None, api_url=None,
+               portal_url=None, comment=None):
+        """
+        Create a Sandbox Datacenter element
+        """
+        json = {
+            "name": name,
+            "hostname": hostname,
+            "tls_profile": element_resolver(tls_profile),
+            "api_key": api_key,
+            "api_url": api_url if api_url else "",
+            "portal_url": portal_url if portal_url else "",
+            "comment": comment,
+        }
+        # api_key is available started 7.1
+        if not is_smc_version_less_than("7.1"):
+            json.update(api_key=api_key)
+            json.update(sandbox_type=sandbox_type)
+            return ElementCreator(cls, json)
+        else:
+            raise UnsupportedSMCVersion("Sandbox Datacenter only permitted in smc version > 7.1")
 
     @property
     def hostname(self):
@@ -363,6 +408,14 @@ class SandboxDataCenter(Element):
     def tls_profile(self):
         """Represents a TLS Profile."""
         return self.from_href(self.data.get("tls_profile"))
+
+    @property
+    def api_key(self):
+        """Sandbox Data Center API Key"""
+        if is_smc_version_less_than("7.1"):
+            raise UnsupportedAttribute("Unsupported Attribute, sandbox_type is available in "
+                                       "smc version > 7.1")
+        return self.data.get("api_key")
 
 
 class UserIDService(Element, MultiContactServer):
@@ -483,3 +536,96 @@ class UserIDService(Element, MultiContactServer):
         List of additional IP addresses to contact the User ID Service.
         """
         return self.data.get("list")
+
+
+class UserResponseEntry(NestedDict):
+    """
+    This represents an entry in a User Response.
+    """
+
+    def __init__(self, data):
+        super(UserResponseEntry, self).__init__(data)
+
+    @classmethod
+    def create(
+            cls,
+            reason=None,
+            response_type=None,
+            user_response_text=None,
+            user_response_message=None,
+            user_response_title=None,
+            redirect=None
+    ):
+        """
+        :param str reason: Reason for sending a response one from given below.
+            1. conn_blacklisted
+            2. conn_not_allowed
+            3. deep_inspection
+            4. url_not_allowed
+            5. virus_found
+            6. blocked_by_dlp
+        :param str response_type: Type of response.
+            1. tcp_close
+            2. response_page
+            3. html_page
+            4. url_redirect
+        :param str user_response_text: Html user response to be sent.
+        :param str user_response_message: The user response message.
+        :param str user_response_title: User response title.
+        :param str redirect: For URL redirect response: automatic or manual redirection.
+        :return UserResponseEntry
+        """
+        json = {
+            "reason": reason,
+            "type": response_type,
+            "user_response_text": user_response_text,
+            "user_response_message": user_response_message,
+            "user_response_title": user_response_title,
+            "redirect": redirect
+        }
+        return cls(json)
+
+
+class UserResponse(Element):
+    """
+    This represents a User Response. It defines additional notification actions for rule matches,
+    such as redirecting access to a forbidden URL to a page on an internal web server instead.
+    """
+    typeof = "user_response"
+
+    @classmethod
+    def create(
+            cls,
+            name,
+            user_response_entry=None,
+            comment=None
+    ):
+        """
+        :param str name: Name of user id service.
+        :param list(UserResponseEntry) user_response_entry: This represents an entry in a User
+            Response.
+        :param str comment: Optional comment.
+        :return UserResponse
+        """
+        json = {
+            "name": name,
+            "user_response_entry": user_response_entry,
+            "comment": comment
+        }
+        return ElementCreator(cls, json)
+
+    @property
+    def user_response_entry(self):
+        """
+        This represents an entry in a User Response.
+        :rtype: list(UserResponseEntry)
+        """
+        return [UserResponseEntry(response) for response in
+                self.data.get("user_response_entry", [])]
+
+
+class WebAuthHtmlPage(Element):
+    """
+    Represents the Browser-Based User Authentication HTML Page in case of not authorized page.
+    """
+    typeof = "web_authentication_page"

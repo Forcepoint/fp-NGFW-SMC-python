@@ -1044,6 +1044,10 @@ class TunnelInterface(Interface):
         if "comment" in kw:
             base_interface.update(comment=kw.pop("comment"))
 
+        if "route_replies_back_mode" in kw:
+            rrbi_mode = kw.pop("route_replies_back_mode")
+            base_interface.update(route_replies_back_mode=rrbi_mode)
+
         self.data = base_interface
 
         interfaces = kw.pop("interfaces", [])

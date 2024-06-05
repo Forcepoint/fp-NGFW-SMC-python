@@ -14,10 +14,11 @@ ECA Client configuration and ECA Endpoint Settings are used to configure endpoin
 """
 
 from smc.base.model import Element, ElementCreator
+from smc.base.structs import NestedDict
 from smc.base.util import element_resolver, save_to_file
-from smc.api.exceptions import EcaClientConfigExportError
+from smc.api.exceptions import EcaClientConfigExportError, ElementNotFound
 from smc.administration.system import AdminDomain
-from smc.elements.situations import EcaOperatingSystemSituation
+from smc.elements.situations import EcaOperatingSystemSituation, InspectionSituationContext
 
 
 class EcaClientConfig(Element):
@@ -234,9 +235,89 @@ class EcaEndpointSettings(Element):
         return self.data.get("os_update_unknown")
 
 
+class ECAExecutable(NestedDict):
+    """
+    ECA Executable object used by ECA Custom situations.
+    """
+
+    def __init__(self, data):
+        super(ECAExecutable, self).__init__(data=data)
+
+    @classmethod
+    def create(cls, file_name=None, md5_hash=None, product_name=None, sha256_hash=None,
+               version_number=None):
+        """
+        :param str file_name: Executable file name.
+        :param str md5_hash: Executable's md5 hash.
+        :param str product_name: Name of product.
+        :param str sha256_hash: Executable's sha256 hash.
+        :param str version_number: Product version number.
+        """
+        json = {
+            "file_name": file_name,
+            "md5_hash": md5_hash,
+            "product_name": product_name,
+            "sha256_hash": sha256_hash,
+            "version_number": version_number
+        }
+        return cls(json)
+
+
 class EndpointApplication(Element):
     """
-        ECA Endpoint Application
-        Identify an ECA Endpoint application
+    ECA Endpoint Application Identify an ECA Endpoint application
     """
     typeof = "ei_application_situation"
+    situation_context_name = "EI Correlation"
+
+    @classmethod
+    def create(cls, name=None, version_number=None, product_name=None,
+               signer_name=None, eca_custom_situation_type="signer_information", file_name=None,
+               eca_executable=None,
+               comment=None):
+        """
+        Create an eca endpoint setting
+        :param str name: Name of ECA Endpoint Application.
+        :param str version_number: Product version number.
+        :param str product_name: Name of the product.
+        :param str signer_name: Name of the signer.
+        :param str eca_custom_situation_type: One of eca custom situation type.
+            1. product_information
+            2. signer_information
+            3. executable_list
+        :param str file_name: Product file name.
+        :param list(ECAExecutable) eca_executable: Eca executables.
+        :param str comment: Optional comment.
+
+        :rtype: EndpointApplication
+        """
+        try:
+            situation_context_ref = InspectionSituationContext(
+                EndpointApplication.situation_context_name).href
+        except ElementNotFound as ex:
+            raise ex
+        eca_executable = eca_executable if eca_executable else []
+
+        json = {
+            "name": name,
+            "version_number": version_number,
+            "product_name": product_name,
+            "eca_custom_situation_type": eca_custom_situation_type,
+            "file_name": file_name,
+            "situation_context_ref": situation_context_ref,
+            "comment": comment,
+        }
+        if eca_custom_situation_type == "signer_information":
+            json.update(signer_name=signer_name)
+        elif eca_custom_situation_type == "executable_list":
+            json.update(eca_executable=[executable.data for executable in eca_executable])
+        return ElementCreator(cls, json)
+
+    @property
+    def eca_executable(self):
+        """
+        ECA Executable object used by ECA Custom situations.
+        :rtype: list(ECAExecutable)
+        """
+
+        return [ECAExecutable(executable) for executable in self.data.get("eca_executable", [])]

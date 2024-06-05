@@ -283,7 +283,7 @@ class ResourceNotFound(SMCException):
 
 class MissingRequiredInput(SMCException):
     """
-    Some functinos will flat out fail if certain fields are not provided.
+    Some functions will flat out fail if certain fields are not provided.
     This is to ensure that some functions have some protection in case the
     user doesn't read the doc's.
     """
@@ -405,7 +405,19 @@ class UnsupportedAttribute(SMCException):
     """
 
 
+class UnsupportedSidewinderType(SMCException):
+    """
+    The exception occurs when an unsupported sidewinder type.
+    """
+
+
 class EcaClientConfigExportError(SMCException):
     """
     Failure to export an ECA client config
+    """
+
+
+class UnsupportedSMCVersion(SMCException):
+    """
+    Failure in case SMC version is not supported
     """

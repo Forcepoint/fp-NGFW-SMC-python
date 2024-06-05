@@ -32,6 +32,7 @@ Then enable or disable::
 ..note:: Engine property settings require that you call engine.update() after
     making / queuing your changes.
 """
+from smc.api.common import SMCRequest, fetch_entry_point
 from smc.base.model import Element
 from smc.base.structs import NestedDict
 from smc.compat import is_api_version_less_than
@@ -39,6 +40,7 @@ from smc.elements.network import Network, Zone
 from smc.elements.profiles import SandboxService, SandboxDataCenter
 from smc.elements.tags import TrustedCATag
 from smc.base.util import element_resolver
+
 
 # TODO: This module feels like a mess, too many code paths. Options can
 # inherit similar enable/disable/off/on, etc, whatever makes sense
@@ -376,13 +378,13 @@ class Sandbox(NestedDict):
         self.engine.data.pop("sandbox_settings", None)
 
     def enable(
-        self,
-        license_key,
-        license_token,
-        sandbox_type="cloud_sandbox",
-        service="Automatic",
-        http_proxy=None,
-        sandbox_data_center="Automatic",
+            self,
+            license_key="",
+            license_token="",
+            sandbox_type="cloud_sandbox",
+            service="Automatic",
+            http_proxy=None,
+            sandbox_data_center="Automatic",
     ):
         """
         Enable sandbox on this engine. Provide a valid license key
@@ -421,11 +423,27 @@ class Sandbox(NestedDict):
     def http_proxy(self):
         """
         Return any HTTP Proxies that are configured for Sandbox.
-
         :return: list of http proxy instances
         :rtype: list(HttpProxy)
         """
         return [Element.from_href(proxy) for proxy in self.get("http_proxy")]
+
+    @staticmethod
+    def get_permalink(engine_key, file_id):
+        """
+        Return a report url for Sandbox.
+        :param str engine_key: the engine node key for the report generated
+        :param str file_id: given from the logs
+        :return: report url or error message
+        :rtype: str
+        """
+        result = SMCRequest(method="get", params={"engine_node_key": engine_key,
+                                                  "file_id": file_id},
+                            href=fetch_entry_point("sandbox_report_permalink")).read()
+        if result.code == 200:
+            return result.json['value']
+        else:
+            return result.msg
 
     def __repr__(self):
         return "{0}(enabled={1})".format(self.__class__.__name__, self.status)
@@ -571,7 +589,7 @@ class ClientInspection(object):
         :rtype: bool
         """
         if is_api_version_less_than('7.0'):
-            return self.engine.tls_client_protection is not None\
+            return self.engine.tls_client_protection is not None \
                    and len(self.engine.tls_client_protection) > 0
         else:
             return self.engine.tls_client_protection is not None
@@ -599,12 +617,11 @@ class ClientInspection(object):
                  'tls_trusted_ca_ref': element_resolver(tls_trusted_cas),
                  'proxy_usage': 'tls_inspection'}])
         else:
-            self.engine \
-                .data.update(tls_client_protection={
-                    'ca_for_signing_ref': element_resolver(ca_for_signing),
-                    'tls_trusted_ca_tag_ref': element_resolver(tls_trusted_ca_tags),
-                    'tls_trusted_ca_ref': element_resolver(tls_trusted_cas),
-                    'proxy_usage': 'tls_inspection'})
+            self.engine.data.update(tls_client_protection={
+                'ca_for_signing_ref': element_resolver(ca_for_signing),
+                'tls_trusted_ca_tag_ref': element_resolver(tls_trusted_ca_tags),
+                'tls_trusted_ca_ref': element_resolver(tls_trusted_cas),
+                'proxy_usage': 'tls_inspection'})
 
     def disable(self):
         """
@@ -626,10 +643,10 @@ class ClientInspection(object):
         if self.status:
             if is_api_version_less_than('7.0'):
                 return Element.from_href(self.engine
-                                             .tls_client_protection[0]['ca_for_signing_ref'])
+                                         .tls_client_protection[0]['ca_for_signing_ref'])
             else:
                 return Element.from_href(self.engine
-                                             .tls_client_protection['ca_for_signing_ref'])
+                                         .tls_client_protection['ca_for_signing_ref'])
         else:
             return None
 
@@ -706,13 +723,13 @@ class EndpointIntegration(NestedDict):
         self.engine.data.pop("eca_settings", None)
 
     def enable(
-        self,
-        eca_client_config=None,
-        eca_client_network_ref=None,
-        eca_server_network_ref=None,
-        enabled_interface=None,
-        listened_zone_ref=None,
-        listening_port=9111,
+            self,
+            eca_client_config=None,
+            eca_client_network_ref=None,
+            eca_server_network_ref=None,
+            enabled_interface=None,
+            listened_zone_ref=None,
+            listening_port=9111,
     ):
         """
         Enable Endpoint Integration with Forcepoint Endpoint Context Agent

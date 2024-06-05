@@ -31,7 +31,7 @@ def _get_session(session_manager=None):
         return session_manager._session_hook(session_manager)
 
     try:
-        session_name = smc.session_name.name
+        session_name = smc.session_name
     except AttributeError:
         session_name = None
     return smc.get_session_by_user(session_name)
@@ -106,6 +106,13 @@ class SMCRequest(object):
 
     def options(self):
         return self._make_request(method="OPTIONS")
+
+    def patch(self, merge=False):
+        if merge:
+            self.headers['accept'] = 'application/merge-patch+json'
+        else:
+            self.headers['accept'] = 'application/json-patch+json'
+        return self._make_request(method="PATCH")
 
     def _make_request(self, method):
         err = None

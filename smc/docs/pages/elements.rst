@@ -55,6 +55,8 @@ documentation: :ref:`element-reference-label`
 
 * *ICMPv6Service*
 
+* *IntegratedUserIdService*
+
 Oftentimes these objects are cross referenced within the configuration, like when creating rule or
 NAT policy.
 All calls to create() will return the href of the new element stored in the Management Server database

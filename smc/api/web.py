@@ -40,6 +40,7 @@ PUT = "PUT"
 POST = "POST"
 DELETE = "DELETE"
 OPTIONS = "OPTIONS"
+PATCH = "PATCH"
 
 
 def send_request(user_session, method, request):
@@ -120,7 +121,7 @@ def send_request(user_session, method, request):
                 if logger.isEnabledFor(logging.DEBUG):
                     debug(response)
 
-                if response.status_code != 200:
+                if response.status_code not in (200, 202):
                     raise SMCOperationFailure(response)
 
             elif method == DELETE:
@@ -147,6 +148,23 @@ def send_request(user_session, method, request):
             elif method == OPTIONS:
                 response = session.options(
                     request.href,
+                    headers=request.headers,
+                    timeout=user_session.timeout,
+                )
+
+                response.encoding = "utf-8"
+
+                if logger.isEnabledFor(logging.DEBUG):
+                    debug(response)
+
+                if response.status_code not in (200, 204, 304):
+                    raise SMCOperationFailure(response)
+
+            elif method == PATCH:
+                request.headers['If-Match'] = request.etag
+                response = session.patch(
+                    request.href,
+                    data=request.json,
                     headers=request.headers,
                     timeout=user_session.timeout,
                 )

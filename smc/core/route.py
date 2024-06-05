@@ -1145,6 +1145,7 @@ class PolicyRoute(SerializedIterable):
     """
 
     def __init__(self, engine):
+        self.engine = engine
         data = engine.data.get("policy_route")
         super(PolicyRoute, self).__init__(data, policy_route)
 
@@ -1157,9 +1158,13 @@ class PolicyRoute(SerializedIterable):
         :param str gateway: IP address, must be on source network
         :param str comment: optional comment
         """
+
+        route_dict = dict(source=source, destination=destination, gateway_ip=gateway_ip,
+                          comment=comment)
         self.items.append(
-            dict(source=source, destination=destination, gateway_ip=gateway_ip, comment=comment)
+            route_dict
         )
+        self.engine.data.policy_route.append(route_dict)
 
     def delete(self, **kw):
         """
@@ -1173,9 +1178,15 @@ class PolicyRoute(SerializedIterable):
         for field, val in kw.items():
             if val is not None:
                 delete_by.append(field)
-
-        self.items[:] = [
-            route
-            for route in self.items
-            if not all(route.get(field) == kw.get(field) for field in delete_by)
-        ]
+        temp_list = []
+        for route in self.items:
+            is_matched = False
+            for key, value in zip(route._fields, route):
+                if all(key == field and value == kw.get(field) for field in delete_by):
+                    is_matched = True
+            if not is_matched:
+                temp_list.append(route)
+        self.items = temp_list
+        self.engine.data.update(
+            policy_route=[item if isinstance(item, dict) else item._asdict() for item in
+                          temp_list])

@@ -47,11 +47,23 @@ from smc.core.engines import Engine  # noqa
 from smc.core.addon import EndpointIntegration  # noqa
 from smc.elements.network import Network, Zone  # noqa
 from smc.administration.eca_client_config import EcaEndpointSettings, EcaClientConfig, \
-    EcaOperatingSystemSituation, create_eca_os_situation_dict  # noqa
+    EcaOperatingSystemSituation, create_eca_os_situation_dict, EndpointApplication, \
+    ECAExecutable  # noqa
 
 ECA_SETTING_NAME = "test_eca_endpoint_settings"
 ECA_SETTING_CREATE_ERROR = "Fail to create eca endpoint settings."
 ECA_SETTING_UPDATE_ERROR = "Fail to update eca endpoint settings."
+
+# EndpointApplication
+ECA_APPLICATION_NAME = "test_eca_application"
+ECA_MD5_HASH = "76dea970d89477ed03dc5289f297443c"
+ECA_SHA256_HASH = "54a6483b8aca55c9df2a35baf71d9965ddfd623468d81d51229bd5eb7d1e1c1b"
+ECA_VERSION_NUMBER = "1.0.24"
+ECA_PRODUCT_NAME = "fp-NGFW-smc-python"
+ECA_FILE_NAME = "test_file"
+CREATE_ERROR_EP = "Fail to create Endpoint Application."
+UPDATE_ERROR_EP = "Fail to update Endpoint Application."
+
 
 logging.getLogger()
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - '
@@ -127,11 +139,41 @@ def main():
                not eca_endpoint_setting.os_update_time_enabled() and \
                eca_endpoint_setting.os_update_time_operator() == \
                "more_than", ECA_SETTING_UPDATE_ERROR
+        # EndpointApplication
+        eca_executable = ECAExecutable.create(file_name=ECA_FILE_NAME, md5_hash=ECA_MD5_HASH,
+                                              product_name=ECA_PRODUCT_NAME,
+                                              sha256_hash=ECA_SHA256_HASH,
+                                              version_number=ECA_VERSION_NUMBER)
+        ep = EndpointApplication.create(name=ECA_APPLICATION_NAME,
+                                        version_number=ECA_VERSION_NUMBER, file_name=ECA_FILE_NAME,
+                                        product_name=ECA_PRODUCT_NAME,
+                                        signer_name="FP",
+                                        eca_custom_situation_type="signer_information",
+                                        comment="This is to test endpoint application.")
+        assert ep.product_name == ECA_PRODUCT_NAME and ep.signer_name == "FP" and \
+               ep.eca_custom_situation_type == "signer_information" and \
+               ep.version_number == ECA_VERSION_NUMBER, CREATE_ERROR_EP
+        logging.info(f"Successfully created EndpointApplication.")
+        ep = EndpointApplication(ECA_APPLICATION_NAME)
+        ep.update(eca_custom_situation_type="executable_list",
+                  eca_executable=[eca_executable])
+        ep = EndpointApplication(ECA_APPLICATION_NAME)
+        assert ep.eca_custom_situation_type == "executable_list" and \
+               ep.eca_executable[0].file_name == ECA_FILE_NAME and \
+               ep.eca_executable[0].md5_hash == ECA_MD5_HASH and \
+               ep.eca_executable[0].product_name == ECA_PRODUCT_NAME and \
+               ep.eca_executable[0].sha256_hash == ECA_SHA256_HASH and \
+               ep.eca_executable[0].version_number == ECA_VERSION_NUMBER, UPDATE_ERROR_EP
+        logging.info(f"Successfully updated EndpointApplication.")
+
     except BaseException as e:
         logging.error(f"Exception:{e}")
         return_code = 1
     finally:
+        EcaClientConfig("eca client test").delete()
         EcaEndpointSettings(ECA_SETTING_NAME).delete()
+        EndpointApplication(ECA_APPLICATION_NAME).delete()
+        logging.info(f"Successfully deleted EndpointApplication.")
         session.logout()
     return return_code
 

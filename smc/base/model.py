@@ -527,6 +527,8 @@ class Element(ElementBase):
     href = ElementLocator()  # : href of this resource
 
     def __init__(self, name=None, **meta):
+        if name is not None:
+            name = str(name)
         if meta:
             meta.update(name=name)
         super(Element, self).__init__(**meta)

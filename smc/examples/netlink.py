@@ -13,7 +13,7 @@
 #  License for the specific language governing permissions and limitations
 #  under the License.
 """
-Example script to show how to use Multilink Element
+Example script to show how to use Multilink and ServerPool Element
 """
 
 # Python Base Import
@@ -23,13 +23,19 @@ import sys
 
 sys.path.append('../../')  # smc-python
 from smc import session  # noqa
-from smc.elements.netlink import StaticNetlink, MultilinkMember, Multilink  # noqa
+from smc.elements.netlink import StaticNetlink, MultilinkMember, Multilink, ServerPool, \
+    IpNetLinkWeight, ServerPoolMember  # noqa
 from smc.elements.network import Network, Router  # noqa
 from smc.vpn.elements import ConnectionType  # noqa
+from smc.elements.servers import LogServer, WebPortalServer  # noqa
+
 
 logging.getLogger()
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
                                                 '%(name)s - [%(levelname)s] : %(message)s')
+SERVER_POOL_NAME = "test_server_pool"
+CREATE_SERVER_POOL_ERROR = "Fail to create Server Pool."
+UPDATE_SERVER_POOL_ERROR = "Fail to update Server Pool."
 
 
 def main():
@@ -53,6 +59,7 @@ def main():
                                     output_speed=40000,
                                     input_speed=40000,
                                     probe_address=["10.1.16.1"],
+                                    ipv4_outbound="10.1.16.2",
                                     network=[network1],
                                     gateway=router1,
                                     connection_type=connection_type,
@@ -85,6 +92,37 @@ def main():
         logging.info("delete elements..")
         oml = Multilink.get(name="OML_TEST")
         oml.delete()
+        net_link1 = StaticNetlink("Algiers - Algérie Telecom")
+        net_link2 = StaticNetlink("Helsinki - Telia")
+        log_server = LogServer("Log Server")
+
+        # ServerPool
+        ip_netlink_weight = [IpNetLinkWeight.create(ipaddress="172.31.9.1", netlink=net_link1),
+                             IpNetLinkWeight.create(ipaddress="172.31.1.1", netlink=net_link2)]
+        member1 = ServerPoolMember.create(member_rank=0, member=log_server)
+        server_pool = ServerPool.create(name=SERVER_POOL_NAME, ip_netlink_weight=ip_netlink_weight,
+                                        members_list=[member1], monitoring_frequency=10,
+                                        monitoring_mode="http", monitoring_port=443,
+                                        server_allocation="connection",
+                                        monitoring_request="http request",
+                                        monitoring_response="http response", monitoring_url="/",
+                                        monitoring_host="localhost",
+                                        comment="This is to test of Server Pool")
+        assert server_pool.monitoring_frequency == 10 and server_pool.monitoring_port == 443 and \
+               server_pool.server_allocation == "connection" and \
+               len(server_pool.members_list) == 1 and \
+               len(server_pool.ip_netlink_weight) == 2, CREATE_SERVER_POOL_ERROR
+        logging.info("Successfully created Server Pool.")
+        web_portal_user = WebPortalServer("Web Portal Server")
+        members_list = server_pool.members_list
+        member2 = ServerPoolMember.create(member_rank=0, member=web_portal_user)
+        members_list.append(member2.data)
+
+        server_pool.update(monitoring_frequency=11, monitoring_port=22, members_list=members_list)
+        server_pool = ServerPool(SERVER_POOL_NAME)
+        assert server_pool.monitoring_frequency == 11 and server_pool.monitoring_port == 22 and \
+               server_pool.members_list, UPDATE_SERVER_POOL_ERROR
+        logging.info("Successfully updated Server Pool.")
     except BaseException as e:
         logging.error(f"Exception:{e}")
         return_code = 1
@@ -93,6 +131,8 @@ def main():
         snl1.delete()
         snl2 = StaticNetlink.get(name="SNL_Second-ISP")
         snl2.delete()
+        ServerPool(SERVER_POOL_NAME).delete()
+        logging.info("Successfully deleted Server Pool.")
         session.logout()
     return return_code
 

@@ -64,8 +64,6 @@ def main():
                       pwd=arguments.smc_pwd, api_version=arguments.api_version)
         logging.info("session OK")
         tls_cred_5 = TLSServerCredential("Helsinki Server Protection")
-        es_tls_settings_test = TlsSettings.create(use_internal_credentials=False,
-                                                  tls_credentials=tls_cred_5)
         es_server = ElasticsearchCluster.create(name=ES_NAME,
                                                 addresses=['1.2.3.4', 'demo.dns.net'],
                                                 enable_cluster_sniffer=True,
@@ -74,7 +72,10 @@ def main():
                                                 es_shard_number=2,
                                                 comment="ESPOWA!!!!",
                                                 tls_profile="Global Sandbox TLS Profile",
-                                                es_tls_settings=es_tls_settings_test)
+                                                authentication_settings={
+                                                    "method": "certificate",
+                                                    "tls_credentials": tls_cred_5.href
+                                                })
         es_server.add_contact_address('toto.titi.com', 'Default')
         es_server.add_contact_address('3.5.5.5', 'LocationHQ')
         assert es_server.es_replica_number == 10 and es_server.es_retention_period == -1 and \

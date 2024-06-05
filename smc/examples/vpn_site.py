@@ -13,7 +13,7 @@
 #  License for the specific language governing permissions and limitations
 #  under the License.
 """
-Example to show how to use an url list application
+Example script to show how to use Vpn Site.
 """
 import argparse
 import logging
@@ -21,9 +21,18 @@ import sys
 
 sys.path.append('../../')  # smc-python
 from smc import session  # noqa
-from smc.elements.network import URLListApplication, ApplicationPort  # noqa
-from smc.elements.service import IPService  # noqa
+from smc.core.engines import Layer3Firewall  # noqa
+from smc.vpn.elements import ConnectionType  # noqa
+from smc.core.engine import Engine  # noqa
+from smc.vpn.policy import PolicyVPN  # noqa
 
+ERROR_CREATE_VPN_SITE = "Fail to add vpn site."
+ERROR_UPDATE_VPN_SITE = "Fail to update vpn site."
+ENGINE_NAME = "Plano"
+ENABLED = "enabled"
+VPN_REFERENCE = "vpn_references"
+SITE_MODE = "site_mode"
+VPN_SITE_NAME = "test_vpn_site"
 logging.getLogger()
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
                                                 '%(name)s - [%(levelname)s] : %(message)s')
@@ -37,52 +46,29 @@ def main():
                       login=arguments.smc_user,
                       pwd=arguments.smc_pwd, api_version=arguments.api_version)
         logging.info("session OK")
-        # Create Url list application with default application port
-        URLListApplication().create(name="myUrlList_default",
-                                    url_entry=["www.foo.com", "www.bar.com"])
 
-        url_list = URLListApplication("myUrlList_default")
-        for ap in url_list.application_port:
-            logging.info(f"application_port={ap}")
-        logging.info(f"url_entry={url_list.url_entry}")
+        policy_vpn = PolicyVPN('Corporate SD-WAN')
+        policy_vpn.open()
+        engine = Engine(ENGINE_NAME)
+        policy_vpn.add_central_gateway(Engine(ENGINE_NAME))
 
-        # update url entry
-        url_list.url_entry = ["www.new-entry.com"]
-        url_list.update()
-
-        url_list = URLListApplication("myUrlList_default")
-        logging.info(f"url_entry={url_list.url_entry}")
-
-        # Create Url list application
-        application_port1 = ApplicationPort(port_from=443,
-                                            port_to=443,
-                                            protocol_ref=IPService("TCP").href,
-                                            tls="free")
-        URLListApplication().create(name="myUrlList",
-                                    url_entry=["www.foo.com", "www.bar.com"],
-                                    application_ports=[application_port1])
-
-        url_list = URLListApplication("myUrlList")
-        for ap in url_list.application_port:
-            logging.info(f"application_port={ap}")
-        logging.info(f"url_entry={url_list.url_entry}")
-
-        application_port2 = ApplicationPort(port_from=8080,
-                                            port_to=8080,
-                                            protocol_ref=IPService("TCP").href,
-                                            tls="no")
-        url_list.add_application_port(application_ports=[application_port2])
-
-        url_list = URLListApplication("myUrlList")
-        for ap in url_list.application_port:
-            logging.info(f"application_port={ap}")
-
+        policy_vpn.save()
+        policy_vpn.close()
+        engine.vpn.add_site(name=VPN_SITE_NAME, site_elements=[engine.href])
+        site = engine.vpn.sites.get_contains(VPN_SITE_NAME)
+        assert site.data[VPN_REFERENCE][0][ENABLED] and \
+               site.data[VPN_REFERENCE][0][SITE_MODE] == 'Normal', ERROR_CREATE_VPN_SITE
+        site.data[VPN_REFERENCE][0][ENABLED] = False
+        site.data[VPN_REFERENCE][0][SITE_MODE] = 'Hub'
+        site.update()
+        engine = Engine(ENGINE_NAME)
+        site = engine.vpn.sites.get_contains(VPN_SITE_NAME)
+        assert not site.data[VPN_REFERENCE][0][ENABLED] and \
+               site.data[VPN_REFERENCE][0][SITE_MODE] == 'Hub', ERROR_UPDATE_VPN_SITE
     except BaseException as e:
-        logging.error(f"ex={e}")
+        logging.error(f"Exception:{e}")
         return_code = 1
     finally:
-        URLListApplication("myUrlList_default").delete()
-        URLListApplication("myUrlList").delete()
         session.logout()
     return return_code
 
@@ -91,7 +77,7 @@ def parse_command_line_arguments():
     """ Parse command line arguments. """
 
     parser = argparse.ArgumentParser(
-        description='Example script to show how to use an url list application',
+        description='Example script to show how to use Vpn Site',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         add_help=False)
     parser.add_argument(

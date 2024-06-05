@@ -102,7 +102,7 @@ class Permission(NestedDict):
     primary fields associated with a permission:
 
     * Domain to grant access
-    * Elements to grant access to (Engines, Policies or AccessControlLists)
+    * List of elements to grant access to (Engines, Policies or AccessControlLists)
     * Role
 
     A permission might be used to grant read-only access to specific policies
@@ -113,10 +113,13 @@ class Permission(NestedDict):
     """
 
     def __init__(self, granted_elements=None, role_ref=None, granted_domain_ref=None):
+        if granted_elements is None:
+            granted_elements = []
         data = dict(
             granted_domain_ref=element_resolver(granted_domain_ref),
             role_ref=element_resolver(role_ref),
-            granted_elements=element_resolver(granted_elements),
+            granted_elements=[element_resolver(el)
+                              for el in granted_elements],
         )
         super(Permission, self).__init__(data=data)
 

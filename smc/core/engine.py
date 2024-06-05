@@ -26,9 +26,9 @@ from smc.api.exceptions import (
     UnsupportedInterfaceType,
     EngineCommandFailed,
     SMCConnectionError, CreateElementFailed, UpdateElementFailed, CertificateExportError,
-    CertificateImportError
+    CertificateImportError, UnsupportedSidewinderType
 )
-from smc.core.node import Node
+from smc.core.node import Node, HardwareStatus
 from smc.core.resource import Snapshot, PendingChanges
 from smc.core.interfaces import InterfaceOptions, PhysicalInterface
 from smc.core.collection import (
@@ -75,7 +75,7 @@ from smc.base.structs import BaseIterable, NestedDict
 from smc.elements.profiles import SNMPAgent
 from smc.elements.ssm import SSHKnownHostsLists
 from smc.compat import is_smc_version_less_than_or_equal, is_api_version_less_than_or_equal, \
-    min_smc_version, is_api_version_less_than, is_smc_version_equal
+    min_smc_version, is_api_version_less_than, is_smc_version_equal, is_smc_version_less_than
 
 
 class LinkUsageExceptionRules(NestedDict):
@@ -256,6 +256,10 @@ class Engine(Element):
         lldp_profile=None,
         link_usage_profile=None,
         discard_quic_if_cant_inspect=True,
+        ssm_advanced_setting=None,
+        scan_detection=None,
+        static_multicast_route=None,
+        web_authentication=None,
         **kw
     ):
         """
@@ -276,6 +280,14 @@ class Engine(Element):
         configuring LLDP
         :param bool discard_quic_if_cant_inspect: (optional) discard or allow QUIC
          if inspection is not possible
+        :param list(SidewinderProxyAdvancedSettings) ssm_advanced_setting: Sidewinder proxy advanced
+            settings.
+        :param dict,ScanDetection scan_detection: This represents the definition of Scan Detection
+            on a NGFW.
+        :param list(dict),list(StaticMulticastRoute) static_multicast_route: Represents Firewall
+            multicast routing entry for Static/IGMP Proxy multicast routing modes.
+        :param WebAuthentication/dict web_authentication: This represents the Browser-Based User
+            Authentication settings for a NGFW.
         """
         node_list = []
         for nodeid in range(1, nodes + 1):  # start at nodeid=1
@@ -400,6 +412,24 @@ class Engine(Element):
             else:
                 discard_quic = {"discard_quic_if_cant_inspect": "false"}
             base_cfg.update(discard_quic)
+        if ssm_advanced_setting:
+            base_cfg.update(ssm_advanced_setting=[setting.data for setting in ssm_advanced_setting])
+
+        if scan_detection:
+            scan_detection = scan_detection.data if isinstance(scan_detection,
+                                                               NestedDict) else scan_detection
+            base_cfg.update(scan_detection=scan_detection)
+
+        if static_multicast_route:
+            static_multicast_route = [route.data if isinstance(route,
+                                                               NestedDict) else route for route in
+                                      static_multicast_route]
+            base_cfg.update(static_multicast_route=static_multicast_route)
+
+        if web_authentication:
+            web_authentication = web_authentication.data \
+                if isinstance(web_authentication, WebAuthentication) else web_authentication
+            base_cfg.update(web_authentication=web_authentication)
 
         base_cfg.update(kw, comment=comment)  # Add rest of kwargs
         return base_cfg
@@ -1958,6 +1988,30 @@ class Engine(Element):
         if min_smc_version("7.0"):
             self.data["discard_quic_if_cant_inspect"] = value
 
+    @property
+    def administrator_authentication_method(self):
+        """
+        Authentication method for administrator
+
+        :rtype: AuthenticationMethod
+        """
+        if not self.type.startswith("virtual"):
+            return self.data.get("admin_auth_method")
+        raise UnsupportedEngineFeature(
+            "This engine type does not support administrator_authentication_method.")
+
+    @staticmethod
+    def supports_radius_authentication_settings() -> bool:
+        return (not is_api_version_less_than_or_equal("7.0")
+                and not is_smc_version_equal("7.2.0")
+                and not is_smc_version_less_than("7.1.4"))
+
+    @administrator_authentication_method.setter
+    def administrator_authentication_method(self, value):
+        if not self.type.startswith("virtual"):
+            if Engine.supports_radius_authentication_settings():
+                self.data["admin_auth_method"] = value
+
     def add_interface(self, interface, **kw):
         """
         Add interface is a lower level option to adding interfaces directly
@@ -1975,7 +2029,6 @@ class Engine(Element):
         params = None
         if "params" in kw:
             params = kw.pop("params")
-
         self.make_request(
             EngineCommandFailed,
             method="create",
@@ -2241,6 +2294,101 @@ class Engine(Element):
             },
         )
 
+    def get_hardware_status(self, subsystems: list[str] = None):
+        """
+        Returns dict representation hardware status.
+        :param str engine_name: The name of engine to get hardware status
+        :param list(str) subsystems: List of subsystem to get hardware status.
+            like sandbox_subsystem, cloud_sync, filesystem, logging_subsystem
+        Example:
+            >>> status_list = ["sandbox_subsystem", "cloud_sync", "filesystem"]
+            >>> dict_of_status = get_hardware_status(subsystems=status_list)
+            >>> print(dict_of_status)
+            >>> {'Atlanta node 1': {'File Systems': {
+                                     'Data': {'Size': '494 MB',
+                                              'Usage': '7.0%',
+                                              'status': 'OK'},
+                                     'Spool': {'Size': '2463 MB',
+                                               'Usage': '3.3%',
+                                               'status': 'OK'},
+                                     'Swap': {'Size': '494 MB',
+                                              'Usage': '0.0%',
+                                              'status': 'OK'},
+                                     'Tmp': {'Size': '997 MB',
+                                             'Usage': '96.7%',
+                                             'status': 'WARNING'}},
+                                    'Sandbox': {'Cloud connection': {'status': '1'}}},
+                 'Atlanta node 2': {'File Systems': {
+                                    'Data': {'Size': '494 MB',
+                                             'Usage': '7.0%',
+                                             'status': 'OK'},
+                                    'Spool': {'Size': '2463 MB',
+                                              'Usage': '3.3%',
+                                              'status': 'OK'},
+                                    'Swap': {'Size': '494 MB',
+                                             'Usage': '0.0%',
+                                             'status': 'OK'},
+                                    'Tmp': {'Size': '997 MB',
+                                            'Usage': '96.7%',
+                                            'status': 'WARNING'}},
+                                    'Sandbox': {'Cloud connection': {'status': '1'}}}}
+
+        :rtype: dict
+        """
+        json_result = {}
+
+        for node in self.nodes:
+            json_result[node.name] = {}
+
+            for item in node.hardware_status:
+                if subsystems and item.name not in subsystems:
+                    continue
+                json_result[node.name][item.name] = {}
+
+                for status in item.items:
+                    statuses = {}
+                    for sub_status in status.get("statuses", []):
+                        statuses.update({sub_status["param"]: sub_status["value"]})
+
+                    json_result[node.name][item.name][status["name"]] = \
+                        {'status': status["status"], **statuses}
+
+        return json_result
+
+    @property
+    def ssm_advanced_setting(self):
+        """
+        Sidewinder Proxy Advanced Settings.
+        :rtype: list(SidewinderProxyAdvancedSettings)
+        """
+        return [SidewinderProxyAdvancedSettings(setting) for setting in
+                self.data.get("ssm_advanced_setting", [])]
+
+    @property
+    def scan_detection(self):
+        """
+        This represents the definition of Scan Detection on a NGFW.
+        :rtype: ScanDetectionSetting
+        """
+        return ScanDetectionSetting(self.data.get("scan_detection"))
+
+    @property
+    def static_multicast_route(self):
+        """
+        Represents Firewall multicast routing entry for Static/IGMP Proxy multicast routing modes.
+        :rtype: list(StaticMulticastRoute)
+        """
+        return [StaticMulticastRoute(route) for route in
+                self.data.get("static_multicast_route", [])]
+
+    @property
+    def web_authentication(self):
+        """
+        The Browser-Based User Authentication settings
+        :rtype: WebAuthentication
+        """
+        return WebAuthentication(self.data.get("web_authentication", {}))
+
 
 class VPNMappingCollection(BaseIterable):
     def __init__(self, vpns):
@@ -2412,7 +2560,7 @@ class VPN(object):
         """
         return create_collection(self.internal_gateway.get_relation("vpn_site"), VPNSite)
 
-    def add_site(self, name, site_elements=None):
+    def add_site(self, name, site_elements=None, vpn_references=None):
         """
         Add a VPN site with site elements to this engine.
         VPN sites identify the sites with protected networks
@@ -2428,6 +2576,7 @@ class VPN(object):
         :param str name: name for VPN site
         :param list site_elements: network elements for VPN site
         :type site_elements: list(str,Element)
+        :param list(dict) vpn_references: Set of associations Site-VPN.
         :raises ElementNotFound: if site element is not found
         :raises UpdateElementFailed: failed to add vpn site
         :rtype: VPNSite
@@ -2435,7 +2584,7 @@ class VPN(object):
         .. note:: Update is immediate for this operation.
         """
         site_elements = site_elements if site_elements else []
-        return self.sites.create(name, site_elements)
+        return self.sites.create(name, site_elements, vpn_references)
 
     @property
     def internal_endpoint(self):
@@ -2618,6 +2767,17 @@ class InternalGateway(SubElement):
         :rtype: SubElementCollection(InternalEndpoint)
         """
         return sub_collection(self.get_relation("internal_endpoint"), InternalEndpoint)
+
+    @property
+    def vpn_site(self):
+        """
+        A VPN site defines a collection of IP's or networks that
+        identify address space that is defined on the other end of
+        the VPN tunnel.
+
+        :rtype: CreateCollection(VPNSite)
+        """
+        return create_collection(self.get_relation("vpn_site"), VPNSite)
 
 
 class InternalEndpoint(SubElement):
@@ -3136,3 +3296,211 @@ class HAForSingleEngine(object):
         self.data.update(connection_sync_mode='enabled', connection_sync_group=sync_group,
                          ha_connection_sync_interface=ha_connection_sync_interface,
                          ha_backup_unit_mode='disabled')
+
+
+class SidewinderProxyAdvancedSettings(NestedDict):
+    """
+    Represents Sidewinder Proxy Advanced settings.
+    """
+    types = ("SHARED", "HTTP", "SSH", "TCP", "UDP")
+
+    def __init__(self, data):
+        super(SidewinderProxyAdvancedSettings, self).__init__(data=data)
+
+    @classmethod
+    def create(cls, sidewinder_type=None, attribute=None, value=None):
+        """
+        :param str sidewinder_type: The allowed Sidewinder Types:
+                1. SHARED - Shared setting - will set the value for all proxies.
+                2. HTTP - HTTP proxy.  Sets the value for the HTTP Proxy.
+                3. SSH - SSH proxy.  Sets the value for the SSH Proxy.
+                4. TCP - TCP proxy.  Sets the value for the TCP Proxy.
+                5. UDP - UDP proxy.  Sets the value for the UDP Proxy.
+            Required.
+        :param str attribute: The attribute or name of the setting.
+        :param str value: The value of the setting.
+        """
+        if sidewinder_type not in cls.types:
+            raise UnsupportedSidewinderType("Invalid sidewinder proxy advanced settings type.")
+        json = {
+            "type": sidewinder_type,
+            "attribute": attribute,
+            "value": value
+        }
+        return cls(json)
+
+
+class ScanDetectionSetting(NestedDict):
+    """
+    This represents the definition of Scan Detection on a NGFW. Before an attack, potential
+    attackers may scan the network for open ports. When you enable Scan Detection on a Firewall,
+    IPS engine, Layer 2 Firewall, Master NGFW Engine, or Virtual Security Engine, the number of
+    connections or connection attempts within a time window is counted. If the number of events hits
+    the threshold, an alert is generated.
+    """
+
+    def __init__(self, data):
+        super(ScanDetectionSetting, self).__init__(data=data)
+
+    @classmethod
+    def create(cls, alert_ref=None, severity=1, log_level="stored",
+               scan_detection_type="default off", scan_detection_icmp_events=220,
+               scan_detection_icmp_timewindow=1, scan_detection_icmp_unit="minute",
+               scan_detection_tcp_events=220, scan_detection_tcp_timewindow=1,
+               scan_detection_tcp_unit="minute",
+               scan_detection_udp_events=220, scan_detection_udp_timewindow=1,
+               scan_detection_udp_unit="minute"):
+        """
+        :param alert_ref: If you selected Alert as the Log Level, enter the Alert.
+            Required if Alert chosen.
+        :param severity: If Log Level is set to Alert, allows you to override the severity defined
+            in the Alert element.
+            1. Info
+            2-4: Low
+            5-7: High
+            8-10: Critical
+        :param log_level: The Log Level
+            none: Does not create any log entry.
+            transient: Creates a log entry that is displayed in the Current Events mode in the Logs
+                view (if someone is viewing it at the moment) but is not stored.
+            stored: Creates a log entry that is stored on the Log Server.</li>
+            essential: Creates a log entry that is shown in the Logs view and saved for further use.
+                When the Log Server is unavailable, log entries are temporarily stored on the engine
+                When the engine is running out of space to store the log entries, it begins
+                discarding log data in the order of importance. Monitoring data is discarded first
+                followedby log entries marked as Transient and Stored, and finally log entries
+                marked as Essential.The Alert entries are the last log entries to be discarded.
+                Note! The settings for storing the logs temporarily on the engine are defined in the
+                log spooling policy.
+            alert: Triggers the alert you add to the Alert field.
+        :param scan_detection_type: The Type of Scan detection:
+            1. off: Scan Detection is not enabled.
+            2. default off: Scan Detection is not enabled, but you can override this setting in
+                individual Access rules. This is the default setting.
+            3. default on: Scan Detection is enabled. You can override this setting in individual
+                Access rules if scan detection is not needed or to avoid false positives.</li>
+        :param scan_detection_icmp_events: The ICMP Scan Events sensitivity.
+        :param scan_detection_icmp_timewindow: The ICMP Time windows in seconds.
+        :param scan_detection_icmp_unit: The ICMP Scan time window unit, By default in minutes.
+            1. second
+            2. minute
+            3. hour
+        :param scan_detection_tcp_events: The TCP Scan Events sensitivity.
+        :param scan_detection_tcp_timewindow: The TCP Time windows in seconds.
+        :param scan_detection_tcp_unit: The TCP Scan time window unit, By default in minutes.
+            1. second
+            2. minute
+            3. hour
+        :param scan_detection_udp_events: The UDP Scan Events sensitivity.
+        :param scan_detection_udp_timewindow: The UDP Time windows in seconds.
+        :param scan_detection_udp_unit: The UDP Scan time window unit, By default in minutes.
+            1. second
+            2. minute
+            3. hour
+        """
+
+        json = {
+            "log_level": log_level,
+            "scan_detection_icmp_events": scan_detection_icmp_events,
+            "scan_detection_icmp_timewindow": scan_detection_icmp_timewindow,
+            "scan_detection_icmp_unit": scan_detection_icmp_unit,
+            "scan_detection_tcp_events": scan_detection_tcp_events,
+            "scan_detection_tcp_timewindow": scan_detection_tcp_timewindow,
+            "scan_detection_tcp_unit": scan_detection_tcp_unit,
+            "scan_detection_type": scan_detection_type,
+            "scan_detection_udp_events": scan_detection_udp_events,
+            "scan_detection_udp_timewindow": scan_detection_udp_timewindow,
+            "scan_detection_udp_unit": scan_detection_udp_unit,
+        }
+        if log_level == "alert":
+            json.update(alert_ref=element_resolver(alert_ref), severity=severity)
+        return cls(json)
+
+
+class StaticMulticastRoute(NestedDict):
+    """
+    Represents Firewall multicast routing entry for Static/IGMP Proxy multicast routing modes.
+    """
+
+    def __init__(self, data):
+        super(StaticMulticastRoute, self).__init__(data=data)
+
+    @classmethod
+    def create(cls, source_ip=None, source_interface=None, dest_ip=None,
+               dest_interface=None):
+        """
+        :param source_ip: The Source IP Address.`
+        :param source_interface: The Source Interface given by its ID.
+        :param dest_ip: The Destination IP Address.
+        :param list(str) dest_interface: The Destination Interfaces given by their ID.
+        :rtype: StaticMulticastRoute
+        """
+
+        json = {
+            "source_ip": source_ip,
+            "source_interface": source_interface,
+            "dest_ip": dest_ip,
+            "dest_interface": dest_interface
+        }
+        return cls(json)
+
+
+class WebAuthentication(NestedDict):
+    """
+    The Browser-Based User Authentication settings
+    """
+
+    def __init__(self, data):
+        super(WebAuthentication, self).__init__(data=data)
+
+    @classmethod
+    def create(cls, all_interfaces=True, authentication_idle_timeout=3600,
+               authentication_timeout=3600, enabled_interface=None, enforce_https=False,
+               http_port=None, https_port=None, keep_alive_rate=30, key_length=0, page_ref=None,
+               session_handling=False, use_cert_bba=False, tls_profile=None):
+        """
+        :param bool all_interfaces: Flag to tell if we restrict listening interfaces. or if listen
+            on all interfaces. Ignored if HTTP or HTTPS are not enabled
+        :param int authentication_idle_timeout: Authentication Idle Time Out (seconds).
+        :param int authentication_timeout: Authentication Time Out (seconds).
+        :param enabled_interface: List of listening interfaces Ignored if HTTP or HTTPS are not
+            enabled.
+        :param bool enforce_https: Flag telling if HTTPS must be enforced. Ignored if HTTP or HTTPS
+            are not enabled.
+        :param int http_port: Port on which HTTP listens. If None, HTTP is not enabled.
+        :param int https_port: Port on which HTTPS listens. If null, HTTPS is not enabled.
+        :param int keep_alive_rate: Refresh status every X seconds. If null, it is disabled.
+            Ignored if HTTP or HTTPS are not enabled.
+        :param int key_length: Key length for certificate. Specified by username, together with
+            subject name. Ignored if HTTP or HTTPS are not enabled
+        :param WebAuthHtmlPage page_ref: Get template for login page. May be null if nothing is
+            defined. Ignored if HTTP or HTTPS are not enabled.
+        :param bool session_handling: Enable session handling. Ignored if HTTP or HTTPS are not
+            enabled
+        :param bool use_cert_bba: Use Certificate Base Authentication. Ignored if HTTP or HTTPS are
+            not enabled.
+        :param TLSProfile tls_profile: TLS Profile used Certificates Based Authentication.
+            Ignored if HTTP or HTTPS are not enabled
+        :rtype: WebAuthentication
+        """
+        enabled_interface = enabled_interface if enabled_interface else []
+        json = {
+            "all_interfaces": all_interfaces,
+            "authentication_idle_timeout": authentication_idle_timeout,
+            "authentication_timeout": authentication_timeout,
+            "key_length": key_length,
+            "enforce_https": enforce_https,
+            "page_ref": element_resolver(page_ref),
+            "session_handling": session_handling,
+            "enabled_interface": enabled_interface,
+            "use_cert_bba": use_cert_bba
+        }
+
+        if https_port or http_port:
+            json.update(keep_alive_rate=keep_alive_rate)
+            if https_port:
+                json.update(tls_profile=element_resolver(tls_profile), https_port=https_port)
+            if http_port:
+                json.update(http_port=http_port)
+
+        return cls(json)

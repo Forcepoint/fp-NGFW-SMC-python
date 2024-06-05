@@ -177,7 +177,7 @@ class RouteVPN(Element):
             this VPN.
         :param TunnelEndpoint remote_endpoint: the remote side endpoint for
             this VPN.
-        :param str preshared_key: required if remote endpoint is an ExternalGateway
+        :param str preshared_key: The preshared-Key used for this tunnel.
         :param TunnelMonitoringGroup monitoring_group: the group to place
             this VPN in for monitoring. Default: 'Uncategorized'.
         :param VPNProfile vpn_profile: VPN profile for this VPN.

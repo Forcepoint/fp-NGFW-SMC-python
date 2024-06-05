@@ -22,6 +22,7 @@ eligible to have a protocol agent attached.
 
 """
 from smc.base.model import Element, ElementCreator
+from smc.base.structs import NestedDict
 from smc.elements.protocols import ProtocolAgentMixin
 from smc.base.util import element_resolver
 
@@ -447,3 +448,92 @@ class URLCategory(Element):
     """
 
     typeof = "url_category"
+
+
+class IntegratedUisIgnoreValue(NestedDict):
+    """
+    This represents an entry in the Integrated User ID service's ignore list.
+    """
+
+    @classmethod
+    def create(cls, iuis_ignore_user=None, iuis_ignore_ip=None, ne_ref=None):
+        """
+        :param str iuis_ignore_user: The ignore username.  Omit for 'Any'.
+        :param str iuis_ignore_ip: The ignore ip address, subnet or range.  Omit for 'Any'.
+            Not allowed with ne_ref.
+        :param AddressRange/Host/Network ne_ref: The ignore network element which should be Host,
+            Range or Network type. Omit for 'Any'. Not allowed with iuis_ignore_ip.
+        :rtype: instance of IntegratedUisIgnoreValue.
+        """
+
+        json = {"iuis_ignore_user": iuis_ignore_user}
+        if iuis_ignore_ip:
+            json.update(iuis_ignore_ip=iuis_ignore_ip)
+        if ne_ref:
+            json.update(ne_ref=element_resolver(ne_ref))
+
+        return cls(json)
+
+
+class IntegratedUserIdService(Element):
+    """
+    This represents an Integrated User Identification Service.
+    """
+    typeof = "integrated_uis"
+
+    @classmethod
+    def create(cls, name, iuis_domain=None, iuis_ignore=None, iuis_initial_query_time=None,
+               iuis_polling_interval=None, comment=None):
+        """
+        Create the IntegratedUserIdService service.
+
+        :param str name: name of service
+        :param ExternalLdapUserDomain iuis_domain: The active directory domain object.
+        :param list(IntegratedUisIgnoreValue) iuis_ignore: The list of ignore entries.
+        :param int iuis_initial_query_time: The initial query time in seconds.
+        :param int iuis_polling_interval: The polling interval in seconds.
+        :param str comment: Optional comment.
+        :raises CreateElementFailed: failure creating element with reason
+        :return: instance with meta
+        :rtype: IntegratedUserIdService
+        """
+        iuis_ignore = iuis_ignore if iuis_ignore else []
+        json = {"name": name, "iuis_domain": element_resolver(iuis_domain),
+                "iuis_ignore": [ignore.data for ignore in iuis_ignore],
+                "iuis_initial_query_time": iuis_initial_query_time,
+                "iuis_polling_interval": iuis_polling_interval,
+                "comment": comment}
+
+        return ElementCreator(cls, json)
+
+    @property
+    def iuis_initial_query_time(self):
+        """
+        The initial query time in seconds.
+        :rtype: int
+        """
+        return self.data.get("iuis_initial_query_time")
+
+    @property
+    def iuis_polling_interval(self):
+        """
+        The polling interval in seconds.
+        :rtype: int
+        """
+        return self.data.get("iuis_polling_interval")
+
+    @property
+    def iuis_ignore(self):
+        """
+        The list of ignore entries.
+        :rtype: list(IntegratedUisIgnoreValue)
+        """
+        return [IntegratedUisIgnoreValue(value) for value in self.data.get("iuis_ignore")]
+
+    @property
+    def iuis_domain(self):
+        """
+        The active directory domain object.
+        :rtype: ExternalLdapUserDomain
+        """
+        return Element.from_href(self.data.get("iuis_domain"))

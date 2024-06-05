@@ -691,24 +691,28 @@ class VPNSite(SubElement):
     typeof = "vpn_site"
     gateway = ElementRef("gateway")
 
-    def create(self, name, site_element):
+    def create(self, name, site_element, vpn_references=None):
         """
         Create a VPN site for an internal or external gateway
 
         :param str name: name of site
         :param list site_element: list of protected networks/hosts
         :type site_element: list[str,Element]
+        :param list(dict) vpn_references: Set of associations Site-VPN.
         :raises CreateElementFailed: create element failed with reason
         :return: href of new element
         :rtype: str
         """
         site_element = element_resolver(site_element)
         json = {"name": name, "site_element": site_element}
+        if vpn_references:
+            json.update(vpn_references=vpn_references)
 
         return ElementCreator(self.__class__, href=self.href, json=json)
 
     @classmethod
-    def update_or_create(cls, external_gateway, name, site_element=None, with_status=False):
+    def update_or_create(cls, external_gateway, name, site_element=None, with_status=False,
+                         vpn_references=None):
         """
         Update or create a VPN Site elements or modify an existing VPN
         site based on value of provided site_element list. The resultant
@@ -723,21 +727,24 @@ class VPNSite(SubElement):
         :param bool with_status: If set to True, returns a 3-tuple of
             (VPNSite, modified, created), where modified and created
             is the boolean status for operations performed.
+        :param lidt(dict) vpn_references: Set of associations Site-VPN.
         :raises ElementNotFound: ExternalGateway or unresolved site_element
         """
         site_element = [] if not site_element else site_element
         site_elements = [element_resolver(element) for element in site_element]
+        vpn_references = vpn_references if vpn_references else []
         vpn_site = external_gateway.vpn_site.get_exact(name)
         updated = False
         created = False
         if vpn_site:  # If difference, reset
-            if set(site_elements) != set(vpn_site.data.get("site_element", [])):
+            if set(site_elements) != set(vpn_site.data.get("site_element", [])) and site_element:
                 vpn_site.data["site_element"] = site_elements
-                vpn_site.update()
-                updated = True
+            vpn_site.update(vpn_references=vpn_references)
+            updated = True
 
         else:
-            vpn_site = external_gateway.vpn_site.create(name=name, site_element=site_elements)
+            vpn_site = external_gateway.vpn_site.create(name=name, site_element=site_elements,
+                                                        vpn_references=vpn_references)
             created = True
 
         if with_status:
@@ -760,6 +767,14 @@ class VPNSite(SubElement):
         :rtype: list(Element)
         """
         return [Element.from_href(element) for element in self.data.get("site_element")]
+
+    @property
+    def vpn_references(self):
+        """
+        Set of associations Site-VPN
+        :rtype: list
+        """
+        return self.data.get("vpn_references", [])
 
     def add_site_element(self, element):
         """
@@ -1039,36 +1054,88 @@ class LinkUsagePreference(object):
         self.qos_class = qos_class.href
 
 
+class LinkUsageFEC(object):
+    """
+    Create a LinkUsageFEC object.
+    :param int link_fec_threshold: Packet drop threshold that will start Forward Erasure Correction
+    :param int link_fec_percent: FEC percentage indicating the ratio of correction packets
+     to data packets
+    :param list link_fec_qos: QoS Classes where Forward Erasure Correction will be applied
+    :param list link_fec_type: Link Types where Forward Erasure Correction will be applied.
+    :rtype: LinkUsageFEC
+    """
+
+    def __init__(self, link_fec_threshold, link_fec_percent, link_fec_qos, link_fec_type):
+        self.link_fec_threshold = link_fec_threshold
+        self.link_fec_percent = link_fec_percent
+        self.link_fec_qos = link_fec_qos
+        self.link_fec_type = link_fec_type
+
+    def link_fec_threshold(self):
+        return self.link_fec_threshold
+
+    def link_fec_percent(self):
+        return self.link_fec_percent
+
+    def link_fec_qos(self):
+        return self.link_fec_qos
+
+    def link_fec_type(self):
+        return self.link_fec_type
+
+
+class LinkUsageDUP(object):
+    """
+    Create a LinkUsageDUP object.
+    :param list link_dup_qos: QoS Classes where Packet Duplication will be applied
+    :param list link_dup_type: Link Types where Packet Duplication will be applied.
+    :rtype: LinkUsageDUP
+    """
+
+    def __init__(self, link_dup_qos, link_dup_type):
+        self.link_dup_qos = link_dup_qos
+        self.link_dup_type = link_dup_type
+
+    def link_dup_qos(self):
+        return self.link_dup_qos
+
+    def link_dup_type(self):
+        return self.link_dup_type
+
+
 class LinkUsageException(object):
     def __init__(self, link_type, link_usage_preference):
-        self.link_type = link_type.href
-        self.link_usage_preference = link_usage_preference
+        self.data = {"link_type": link_type.href, "link_usage_preference": link_usage_preference}
         link_usage_preferences_json = []
         for lup in link_usage_preference:
             link_usage_preferences_json.append({
                     "preference": lup.preference,
                     "qos_class": lup.qos_class
                 })
-        self.link_usage_preference = link_usage_preferences_json
+        self.data["link_usage_preference"] = link_usage_preferences_json
 
     def link_type(self):
-        return self.link_type
+        return self.data.link_type
 
     def link_usage_preference(self):
-        return self.link_usage_preference
+        return self.data.link_usage_preference
 
 
 class LinkUsageProfile(Element):
     typeof = "link_usage_profile"
 
     @classmethod
-    def create(cls, name, default_link_balancing_preference=0, link_usage_exception=None):
+    def create(cls, name, default_link_balancing_preference=0, link_usage_exception=None,
+               link_usage_fec=None, link_usage_dup=None):
         """
         Create a LinkUsageProfile.
         :param str name: name of Link usage profile
         :param int default_link_balancing_preference: The link balancing preference
         from 0 equal balancing to 4 best link
         :param list link_usage_exception: list of link_usage_exception
+        :param obj link_usage_fec: LinkUsageFEC object for FEC configuration (optional)
+        :param obj link_usage_dup: LinkUsageDUP object for Packet Duplication configuration
+        (optional)
         :raises CreateElementFailed: failed to create element with reason
         :raises ElementNotFound: specified element reference was not found
         :rtype: LinkUsageProfile
@@ -1080,10 +1147,30 @@ class LinkUsageProfile(Element):
         link_usage_exception_json = []
         link_usage_exception = [] if not link_usage_exception else link_usage_exception
         for lue in link_usage_exception:
-            link_usage_exception_temp_json = {"link_type": lue.link_type,
-                                              "link_usage_preference": lue.link_usage_preference}
+            link_usage_exception_temp_json = {"link_type": lue.data['link_type'],
+                                              "link_usage_preference":
+                                                  lue.data['link_usage_preference']}
             link_usage_exception_json.append(link_usage_exception_temp_json)
         link_usage_profile_json.update(link_usage_exception=link_usage_exception_json)
+
+        if link_usage_fec:
+            link_fec_qos_json = [link_fec_qos.href for link_fec_qos in link_usage_fec.link_fec_qos]
+            link_usage_profile_json.update(link_fec_qos_ref=link_fec_qos_json)
+
+            link_fec_type_json = \
+                [link_fec_type.href for link_fec_type in link_usage_fec.link_fec_type]
+            link_usage_profile_json.update(link_fec_type_ref=link_fec_type_json)
+
+            link_usage_profile_json.update(link_fec_threshold=link_usage_fec.link_fec_threshold)
+            link_usage_profile_json.update(link_fec_percentage=link_usage_fec.link_fec_percent)
+
+        if link_usage_dup:
+            link_dup_qos_json = [link_dup_qos.href for link_dup_qos in link_usage_dup.link_dup_qos]
+            link_usage_profile_json.update(link_duplicate_qos_ref=link_dup_qos_json)
+
+            link_dup_type_json = \
+                [link_dup_type.href for link_dup_type in link_usage_dup.link_dup_type]
+            link_usage_profile_json.update(link_dont_duplicate_link_type_ref=link_dup_type_json)
 
         return ElementCreator(cls, link_usage_profile_json)
 

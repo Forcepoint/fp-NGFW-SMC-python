@@ -13,29 +13,19 @@
 Module representing certificate authority in SMC
 """
 
-
-from smc.base.model import SubElement
+from smc.administration.tasks import TaskOperationPoller
+from smc.api.exceptions import TaskRunFailed
+from smc.base.model import SubElement, Element
 from smc.base.util import save_to_file
 from smc.api.exceptions import CertificateExportError
 
 
-class CertificateAuthority(SubElement):
+class CertificateAuthority(Element):
     """
     this class represents a Certificate Authority in SMC
     """
 
     typeof = 'certificate_authority'
-
-    def __init__(self, **kwargs):
-        super(SubElement, self).__init__(**kwargs)
-
-    @property
-    def name(self):
-        """
-        represents the name of the certificate authority.
-        :rtype: str
-        """
-        return self.get("name")
 
     @property
     def certificate_state(self):
@@ -43,10 +33,15 @@ class CertificateAuthority(SubElement):
         represents the state of the certificate authority.
         :rtype: str
         """
-        return self.get("certificate_state")
+        return self.data.get("certificate_state")
 
     def un_trust(self):
-        self.make_request(resource="untrust")
+        task = self.make_request(
+            TaskRunFailed, method="update", resource="untrust"
+        )
+        return TaskOperationPoller(
+            task=task, wait_for_finish=True
+        )
 
     def export_certificate(self, filename=None):
         """
@@ -63,3 +58,18 @@ class CertificateAuthority(SubElement):
             return
 
         return result.content
+
+    def duplicate(self, name):
+        raise NotImplementedError(f"This method is not supported for {self.__class__.__name__}")
+
+    def export(self, name):
+        raise NotImplementedError(f"This method is not supported for {self.__class__.__name__}")
+
+    def add_category(self, name):
+        raise NotImplementedError(f"This method is not supported for {self.__class__.__name__}")
+
+    def categories(self, name):
+        raise NotImplementedError(f"This method is not supported for {self.__class__.__name__}")
+
+    def rename(self, name):
+        raise NotImplementedError(f"This method is not supported for {self.__class__.__name__}")

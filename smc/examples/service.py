@@ -20,10 +20,15 @@ import logging
 import sys
 
 sys.path.append('../../')  # smc-python
+from smc.administration.user_auth.servers import ActiveDirectoryServer, DomainController  # noqa
+from smc.administration.user_auth.users import ExternalLdapUserDomain  # noqa
+from smc.elements.network import Network, AddressRange  # noqa
+
 from smc import session  # noqa
 from smc.elements.group import EthernetServiceGroup, RpcServiceGroup  # noqa
 from smc.elements.protocols import ProtocolAgent  # noqa
-from smc.elements.service import EthernetService, RPCService, ICMPService, ICMPIPv6Service  # noqa
+from smc.elements.service import EthernetService, RPCService, ICMPService, ICMPIPv6Service, \
+    IntegratedUserIdService, IntegratedUisIgnoreValue, TCPService  # noqa
 
 ETHERNET_SERVICE_CREATE_ERROR = "Fail to create an EthernetService."
 ETHERNET_SERVICE_UPDATE_ERROR = "Fail to update an EthernetService."
@@ -55,6 +60,27 @@ ICMPIPV6_SERVICE_NAME = "test_icmpipv6_service"
 ICMPIPV6_SERVICE_CREATE_ERROR = "Fail to create an ICMPIPv6Service."
 ICMPIPV6_SERVICE_UPDATE_ERROR = "Fail to update an ICMPIPv6Service."
 ICMPIPV6_SERVICE_COMMENT = "This is testing of icmpipv6 service comment."
+
+# IntegratedUserIdService
+INTEGRATED_UIS_NAME = "test_integrated_user_id_service"
+INTEGRATED_UIS_MSG = "This is to test of IntegratedUserIdService."
+INTEGRATED_UIS_CREATE_ERROR = "Fail to create IntegratedUserIdService."
+INTEGRATED_UIS_UPDATE_ERROR = "Fail to update IntegratedUserIdService."
+ACTIVE_DIRECTORY_SERVER = "test_active_directory_server"
+LDAP_DOMAIN = "test_ldapdomain"
+IP_ADDRESS1 = "192.168.1.1"
+IP_ADDRESS2 = "192.168.1.2"
+QUERY_TIME = 3600
+POLLING_INTERVAL = 1
+
+# TcpService
+TCP_SERVICE_NAME = "test_tcp_service"
+CREATE_TCP_SERVICE_ERROR = "Fail to create TCPService."
+UPDATE_TCP_SERVICE_ERROR = "Fail to update TCPService."
+SRC_MIN = 10
+SRC_MAX = 20
+DST_MIN = 20
+DST_MAX = 30
 
 logging.getLogger()
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
@@ -129,6 +155,91 @@ def main():
         icmpipv6_service = ICMPIPv6Service(ICMPIPV6_SERVICE_NAME)
         assert icmpipv6_service.icmp_type == 4 and \
                icmpipv6_service.icmp_code == 8, ICMPIPV6_SERVICE_UPDATE_ERROR
+
+        # IntegratedUserIdService
+        # create domain controller
+        domain_controller = DomainController("test_user", IP_ADDRESS2, "SHARE_SECRET",
+                                             expiration_time=28800, server_type="dc")
+        # create active directory server
+        active_directory_server = ActiveDirectoryServer.create(
+            ACTIVE_DIRECTORY_SERVER,
+            address=IP_ADDRESS1,
+            auth_ipaddress=IP_ADDRESS2,
+            base_dn='dc=domain,dc=net',
+            bind_password="test@12345",
+            bind_user_id="cn=admin,cn=users,dc=domain,dc=net",
+            client_cert_based_user_search="dc",
+            domain_controller=[
+                domain_controller],
+            frame_ip_attr_name=IP_ADDRESS2,
+            comment="This is testing of Active Directory Server"
+        )
+        list_of_iuis_ignore = []
+        address_range = list(AddressRange.objects.all())[0]
+        list_of_iuis_ignore.append(IntegratedUisIgnoreValue.create(iuis_ignore_ip=IP_ADDRESS1,
+                                                                   iuis_ignore_user="test_user1"))
+        list_of_iuis_ignore.append(
+            IntegratedUisIgnoreValue.create(ne_ref=address_range, iuis_ignore_user="test_user2"))
+
+        iuis_domain = ExternalLdapUserDomain.create(name=LDAP_DOMAIN,
+                                                    ldap_server=[active_directory_server],
+                                                    isdefault=True)
+        integrated_uis = IntegratedUserIdService.create(INTEGRATED_UIS_NAME,
+                                                        iuis_domain=iuis_domain,
+                                                        iuis_ignore=list_of_iuis_ignore,
+                                                        iuis_initial_query_time=QUERY_TIME,
+                                                        iuis_polling_interval=POLLING_INTERVAL,
+                                                        comment=INTEGRATED_UIS_MSG)
+        assert integrated_uis.iuis_domain.href == iuis_domain.href and \
+               integrated_uis.iuis_polling_interval == POLLING_INTERVAL and \
+               integrated_uis.iuis_initial_query_time == QUERY_TIME and \
+               len(integrated_uis.iuis_ignore) == 2, INTEGRATED_UIS_CREATE_ERROR
+        logging.info("successfully created IntegratedUserIdService.")
+        network = list(Network.objects.all())[0]
+        list_of_iuis_ignore.append(
+            IntegratedUisIgnoreValue.create(ne_ref=network, iuis_ignore_user="test_user3"))
+        list_of_iuis_ignore = [ignore.data for ignore in list_of_iuis_ignore]
+        integrated_uis.update(iuis_polling_interval=POLLING_INTERVAL + 1,
+                              iuis_initial_query_time=QUERY_TIME - 600,
+                              iuis_ignore=list_of_iuis_ignore)
+        integrated_uis = IntegratedUserIdService(INTEGRATED_UIS_NAME)
+        assert integrated_uis.iuis_domain.href == iuis_domain.href and \
+               integrated_uis.iuis_polling_interval == POLLING_INTERVAL + 1 and \
+               integrated_uis.iuis_initial_query_time == QUERY_TIME - 600 and \
+               len(integrated_uis.iuis_ignore) == 3, INTEGRATED_UIS_UPDATE_ERROR
+        logging.info("successfully updated IntegratedUserIdService.")
+
+        # TCPService
+        pa = ProtocolAgent("SSM DNS Proxy (TCP)")
+        tcp_service = TCPService.create(TCP_SERVICE_NAME,
+                                        min_dst_port=DST_MIN,
+                                        max_dst_port=DST_MAX,
+                                        min_src_port=SRC_MIN,
+                                        max_src_port=SRC_MAX,
+                                        protocol_agent=pa,
+                                        comment="This is to test TcpService.")
+        assert tcp_service.min_dst_port == DST_MIN and tcp_service.max_dst_port == DST_MAX and \
+               tcp_service.max_src_port == SRC_MAX and tcp_service.min_src_port == SRC_MIN and \
+               tcp_service.protocol_agent.href == pa.href and \
+               '1' not in [pa_values.value for pa_values in
+                           tcp_service.protocol_agent_values], CREATE_TCP_SERVICE_ERROR
+        logging.info("Successfully created TCPService.")
+        tcp_service = TCPService(TCP_SERVICE_NAME)
+        for pa_value in tcp_service.protocol_agent_values:
+            tcp_service.protocol_agent_values.update(name=pa_value.name, value=1)
+
+        tcp_service.update(min_dst_port=SRC_MIN,
+                           max_dst_port=SRC_MAX,
+                           min_src_port=DST_MIN,
+                           max_src_port=DST_MAX,
+                           comment="This is to test TcpService")
+        tcp_service = TCPService(TCP_SERVICE_NAME)
+        assert tcp_service.min_dst_port == SRC_MIN and tcp_service.max_dst_port == SRC_MAX and \
+               tcp_service.max_src_port == DST_MAX and tcp_service.min_src_port == DST_MIN and \
+               tcp_service.protocol_agent.href == pa.href and \
+               '0' not in [pa_value.value for pa_value in
+                           tcp_service.protocol_agent_values], UPDATE_TCP_SERVICE_ERROR
+        logging.info("Successfully updated TCPService.")
     except BaseException as e:
         logging.error(f"Exception:{e}")
         return_code = 1
@@ -145,6 +256,13 @@ def main():
         logging.info("successfully deleted ICMPService.")
         ICMPIPv6Service(ICMPIPV6_SERVICE_NAME).delete()
         logging.info("successfully deleted ICMPIPv6Service.")
+        IntegratedUserIdService(INTEGRATED_UIS_NAME).delete()
+        logging.info("successfully deleted IntegratedUserIdService.")
+        ExternalLdapUserDomain(LDAP_DOMAIN).delete()
+        ActiveDirectoryServer(ACTIVE_DIRECTORY_SERVER).delete()
+        TCPService(TCP_SERVICE_NAME).delete()
+        logging.info("successfully deleted TCPService.")
+
         session.logout()
     return return_code
 

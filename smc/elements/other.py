@@ -539,9 +539,64 @@ class HTTPSInspectionExceptions(Element):
 
 class RuleValidityTime(Element):
     """
-    This represents a Rule Validity Time.
+    This represents a Rule Validity Time object used in access rules
     """
+
     typeof = "rule_validity_time"
+
+    @classmethod
+    def create(cls, name, rule_time_active='always', rule_time_zone='utc', rule_time_start=None,
+               rule_time_end=None, rule_time_repeat_start=None, rule_time_repeat_end=None,
+               week_day=None, month_day=None,
+               yearly_day_start=None, yearly_day_end=None,
+               yearly_month_start=None, yearly_month_end=None):
+        """
+        Create a Validity Time element::
+
+            RuleValidityTime.create(name='ValidityTime', rule_time_active='always',
+                        rule_time_start='2019-12-24 08:52:15',
+                        rule_time_end='2020-12-24 08:52:15')
+
+        Available attributes:
+        :param str name: name for this element
+        :param str rule_time_active: periodicity for validity time element active.
+            Value should be one of those:
+            'always', 'time_of_day', 'day_of_week', 'day_of_month', 'date_of_year'
+        :param str rule_time_zone: Time zone for this element
+            Value should be one of those: 'utc', 'engine_time'
+        :param str rule_time_start: time for rule enabling
+            Following format should be used: 'YYYY-MM-DD HH:MM:SS', ie '2019-12-24 08:52:15'
+        :param str rule_time_end: time for rule disabling
+            Following format should be used: 'YYYY-MM-DD HH:MM:SS', ie '2019-12-24 08:52:15'
+        :param str rule_time_repeat_start: time to enable rule in repetition
+            Following format should be used: 'HH:MM', ie '08:15'
+        :param str rule_time_repeat_end: time to disable rule in repetition
+            Following format should be used: 'HH:MM', ie '08:15'
+        :param str week_day: day of the week to repeat rule enabling
+            Value should be one of those: 'mo', 'tu', 'we', 'th', 'fr', sa', 'su'
+        :param str month_day: day of the month to repeat rule enabling
+            Value is a number comprised between '1' and '31'
+        :param str yearly_day_start: day of the year to start rule enabling
+            Value is a number comprised between '1' and '366'
+        :param str yearly_day_end: day of the year to end rule enabling
+            Value is a number comprised between '1' and '366'
+        :param str yearly_month_start: month of the year to start rule enabling
+            Value is a number comprised between '1' and '12'
+        :param str yearly_month_end: month of the year to end rule enabling
+            Value is a number comprised between '1' and '12'
+        """
+
+        json = {
+            "name": name, "rule_time_active": rule_time_active,
+            "rule_time_zone": rule_time_zone, "rule_time_start": rule_time_start,
+            "rule_time_end": rule_time_end, "rule_time_repeat_start": rule_time_repeat_start,
+            "rule_time_repeat_end": rule_time_repeat_end, "week_day": week_day,
+            "month_day": month_day, "yearly_day_start": yearly_day_start,
+            "yearly_day_end": yearly_day_end, "yearly_month_start": yearly_month_start,
+            "yearly_month_end": yearly_month_end
+        }
+
+        return ElementCreator(cls, json)
 
 
 class UpdateServerProfile(Element):

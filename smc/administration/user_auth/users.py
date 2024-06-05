@@ -83,13 +83,65 @@ users and groups to delete a user named 'testuser'::
 
 """
 from smc.base.model import Element, ElementCreator, UserElement, ElementList, ElementRef
+from smc.base.structs import BaseIterable
 from smc.base.util import element_resolver, datetime_to_ms
+
+
+class ExternalLdapUserEntriesCollection(BaseIterable):
+    """
+    An external ldap user group collection provides top level search capabilities
+    to iterate or get external ldap user group from a given external ldap user domain.
+
+    All external ldap user groups can be fetched from the external ldap user domain::
+
+        >>> external_domain_obj = ExternalLdapUserDomain("Test Forcepoint Domain")
+        >>> for user in external_domain_obj.external_ldap_user_entries.all():
+        ...   print(user)
+        ...
+        ExternalLdapUser(name=External Test User1)
+        ExternalLdapUser(name=External Test User2)
+        ExternalLdapUser(name=External Test User3)
+        ExternalLdapUser(name=External Test User4)
+        ExternalLdapUserGroup(name=All Servers)
+        ExternalLdapUserGroup(name=All Members)
+        ExternalLdapUserGroup(name=All Users)
+
+    Or search for specific user:
+
+        >>> external_domain_obj.external_ldap_user_entries.get(name="All Member")
+        ExternalLdapUserGroup(name=All Members)
+    """
+
+    def __init__(self, external_ldap_user_group):
+
+        self.external_ldap_user_group = external_ldap_user_group
+        item = self.list_all()
+        super(ExternalLdapUserEntriesCollection, self).__init__(item)
+
+    def list_all(self):
+        """
+        Browse all External Ldap User Group.
+        """
+        all_entries = []
+        for user_or_group in self.external_ldap_user_group.browse():
+            self._browse_all(user_or_group, all_entries)
+        return all_entries
+
+    def _browse_all(self, user_entry: UserElement, all_entries):
+        """
+        Browse all External Ldap User element and return collectively.
+        :rtype: list(ExternalLdapUserGroup, ExternalLdapUser)
+        """
+        all_entries.append(user_entry)
+        if isinstance(user_entry, ExternalLdapUserGroup):
+            for child in user_entry.browse():
+                self._browse_all(child, all_entries)
 
 
 class Browseable(object):
     """
     Domain users represents common methods used by Internal and LDAP
-    domains to fetch user accounts
+    domains to fetch user accounts.
     """
 
     def browse(self):
@@ -161,6 +213,14 @@ class ExternalLdapUserDomain(Browseable, Element):
                 "comment": comment,
             },
         )
+
+    @property
+    def external_ldap_user_entries(self):
+        """
+        Retrieving list of an external LDAP group or user.
+        :rtype: ExternalLdapUserEntriesCollection.
+        """
+        return ExternalLdapUserEntriesCollection(self)
 
 
 class ExternalLdapUserGroup(Browseable, UserElement):
