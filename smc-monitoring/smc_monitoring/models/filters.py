@@ -69,6 +69,18 @@ class QueryFilter(object):
         self.filter.update(value=value)
 
 
+class ExistingFilter(QueryFilter):
+    """
+    Add reference to an existing filter expression element in a Monitoring API filter.
+    """
+    def __init__(self, element):
+        super(ExistingFilter, self).__init__("expression")
+        self.update_filter(element)
+
+    def update_filter(self, element):
+        self.filter.update(href=element.href)
+
+
 class InFilter(QueryFilter):
     """
     InFilter's are made up of two parts, a left and a right. An InFilter

@@ -328,3 +328,7 @@ class SecurityGroup(Element):
             href=vss_container.get_relation("security_groups"),
             json={"name": name, "isc_name": name, "isc_id": isc_id, "comment": comment or isc_id},
         )
+
+    @property
+    def is_obsolete(self):
+        return bool(self.data.get("obsolete"))

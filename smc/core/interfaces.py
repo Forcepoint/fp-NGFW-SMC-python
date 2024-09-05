@@ -2142,7 +2142,10 @@ class ClusterPhysicalInterface(PhysicalInterface):
                         _interface_id,
                         cluster_virtual,
                         network_value,
-                        auth_request=if_mgt.pop("auth_request", False),
+                        # made backward compatibility, used to override management settings
+                        # if auth_request parameter is present.
+                        auth_request=interface.pop('auth_request',
+                                                   if_mgt.pop("auth_request", False)),
                     )
 
                     _interface.append({cvi.typeof: cvi.data})

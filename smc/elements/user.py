@@ -190,7 +190,9 @@ class AdminUser(UserMixin, Element):
         comment=None,
         permissions=None,
         ldap_user_href=None,
-        ldap_group_href=None
+        ldap_group_href=None,
+        tls_field=None,
+        tls_value=None,
     ):
         """
         Create an admin user account.
@@ -214,6 +216,8 @@ class AdminUser(UserMixin, Element):
         :param permissions object in case SMC admin is not superuser
         :param ldap_user_href External user href to link as SMC admin
         :param ldap_group_href External user href to link as SMC admin
+        :param tls_field: TLS field name for client identity
+        :param tls_value: TLS value corresponding the field for client identity
         :raises CreateElementFailed: failure creating element with reason
         :return: instance with meta
         :rtype: AdminUser
@@ -233,8 +237,12 @@ class AdminUser(UserMixin, Element):
             "comment": comment,
             "permissions": {"permission": []},
             "ldap_user": ldap_user_href,
-            "ldap_group": ldap_group_href
+            "ldap_group": ldap_group_href,
         }
+
+        if tls_field:
+            json["client_identity"] = {"tls_field": tls_field, "tls_value": tls_value}
+
         if permissions:
             for p in permissions:
                 json["permissions"]["permission"].append(p.data)
@@ -349,6 +357,7 @@ class PasswordMetaData(NestedDict):
     Represents the password meta-data for AdminUser, ApiClient and WebPortalAdminUser. it provides
     creation_date and expiration_date of the password for AdminUser,ApiClient and WebPortalAdminUser
     """
+
     typeof = "pwd_meta_data"
 
     def __init__(self, value):
@@ -372,30 +381,31 @@ class WebPortalAdminUser(UserMixin, Element):
         admin.change_password('mynewpassword1')
         admin.enable_disable()
     """
+
     typeof = "web_portal_user"
 
     @classmethod
     def create(
-            cls,
-            name,
-            enabled=True,
-            granted_engine=None,
-            console_superuser=False,
-            log_service_enabled=True,
-            policy_service_enabled=True,
-            report_service_enabled=True,
-            show_inspection_policy=True,
-            show_main_policy=True,
-            show_only_ip_addresses=True,
-            show_sub_policy=True,
-            show_template_policy=False,
-            show_upload_comment=True,
-            show_upload_history=True,
-            granted_template_policy=None,
-            granted_sub_policy=None,
-            granted_report_design=None,
-            filter_tag=None,
-            comment=None
+        cls,
+        name,
+        enabled=True,
+        granted_engine=None,
+        console_superuser=False,
+        log_service_enabled=True,
+        policy_service_enabled=True,
+        report_service_enabled=True,
+        show_inspection_policy=True,
+        show_main_policy=True,
+        show_only_ip_addresses=True,
+        show_sub_policy=True,
+        show_template_policy=False,
+        show_upload_comment=True,
+        show_upload_history=True,
+        granted_template_policy=None,
+        granted_sub_policy=None,
+        granted_report_design=None,
+        filter_tag=None,
+        comment=None,
     ):
         """
         Create a web portal admin user account.
@@ -432,11 +442,13 @@ class WebPortalAdminUser(UserMixin, Element):
         :rtype: WebPortalAdminUser
         """
         engines = [] if granted_engine is None else element_resolver(granted_engine)
-        policy = [] if granted_template_policy is None else element_resolver(
-            granted_template_policy)
+        policy = (
+            [] if granted_template_policy is None else element_resolver(granted_template_policy)
+        )
         sub_policy = [] if granted_sub_policy is None else element_resolver(granted_sub_policy)
-        report_design = [] if granted_report_design is None else element_resolver(
-            granted_report_design)
+        report_design = (
+            [] if granted_report_design is None else element_resolver(granted_report_design)
+        )
         tag = [] if filter_tag is None else element_resolver(filter_tag)
         json = {
             "name": name,

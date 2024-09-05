@@ -517,6 +517,14 @@ class Action(ActionMixin):
             self.update(scan_detection=value)
 
     @property
+    def snort(self):
+        return self.get("snort")
+
+    @snort.setter
+    def snort(self, value):
+        self.update(snort=value)
+
+    @property
     def sub_policy(self):
         """
         Sub policy is used when ``action=jump``.

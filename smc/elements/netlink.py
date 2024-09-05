@@ -615,6 +615,19 @@ class LinkType(Element):
     """
     typeof = "link_type"
 
+    @classmethod
+    def create(cls, name, comment=None):
+        """
+        Create a new Link Type.
+
+        :param str name: name of link type
+        :param str comment: comment for link type
+        :raises CreateElementFailed: failed to create link type
+        :rtype: LinkType
+        """
+        json = {"name": name, "comment": comment}
+        return ElementCreator(cls, json)
+
 
 class IpNetLinkWeight(NestedDict):
     """

@@ -23,9 +23,12 @@ from smc.compat import PYTHON_v3_9
 from smc_monitoring.models.formatters import TableFormat, ElementFormat
 
 import websocket
-from websocket import WebSocketApp
+from websocket import WebSocketApp, ABNF, WebSocketProtocolException
 
 logger = logging.getLogger(__name__)
+
+BUFFER_ERROR = b"The decoded text message was too big for the output buffer and " \
+               b"the endpoint does not support partial messages"
 
 
 def websocket_debug():
@@ -178,12 +181,16 @@ class SMCSocketAsyncProtocol:
         """
         if background:
             logger.debug("WS run in new thread...")
+            # we disable Origin header because it conflicts with Tomcat Cors Filter
+            # and in this context, we do not need to have cors filtering
             self.thread = threading.Thread(target=self.ws.run_forever,
-                                           kwargs={"sslopt": self.sslopt})
+                                           kwargs={"sslopt": self.sslopt, "suppress_origin": True})
             self.thread.start()
         else:
             logger.debug("WS run in main thread...")
-            self.ws.run_forever(sslopt=self.sslopt)
+            # we disable Origin header because it conflicts with Tomcat Cors Filter
+            # and in this context, we do not need to have cors filtering
+            self.ws.run_forever(sslopt=self.sslopt, suppress_origin=True)
 
     def _on_open_ws(self, ws):
         logger.debug("WS:{} open".format(ws))
@@ -297,13 +304,19 @@ class SMCSocketProtocol(websocket.WebSocket):
                 # Need to obtain new socket
                 logger.debug("Refresh the login session..")
                 session.refresh()
+            # we disable Origin header because it conflicts with Tomcat Cors Filter
+            # and in this context, we do not need to have cors filtering
             self.connect(
                 url=session.web_socket_url + self.query.location,
-                socket=session.sock)
+                socket=session.sock,
+                suppress_origin=True)
         else:
+            # we disable Origin header because it conflicts with Tomcat Cors Filter
+            # and in this context, we do not need to have cors filtering
             self.connect(
                 url=session.web_socket_url + self.query.location,
-                cookie=session.session_id)
+                cookie=session.session_id,
+                suppress_origin=True)
 
         if self.connected:
             self.settimeout(self.sock_timeout)
@@ -313,7 +326,7 @@ class SMCSocketProtocol(websocket.WebSocket):
     def __exit__(self, exctype, value, traceback):
         if exctype in (SystemExit, GeneratorExit):
             return False
-        elif exctype in (InvalidFetch,):
+        elif exctype in (InvalidFetch, WebSocketProtocolException):
             raise FetchAborted(value)
         return True
 
@@ -352,6 +365,22 @@ class SMCSocketProtocol(websocket.WebSocket):
         """
         logger.info("Abort called, cleaning up.")
         raise FetchAborted
+
+    def recv(self):
+        """
+        Receive string data(byte array) from the server.
+        :rtype: string (byte array) value.
+        """
+        with self.readlock:
+            opcode, data = self.recv_data()
+        if opcode == ABNF.OPCODE_TEXT:
+            return data.decode("utf-8")
+        elif opcode == ABNF.OPCODE_BINARY:
+            return data
+        elif opcode == ABNF.OPCODE_CLOSE and BUFFER_ERROR in data:
+            raise WebSocketProtocolException("Invalid close frame, {}".format(data))
+        else:
+            return ''
 
     def receive(self):
         """
@@ -417,7 +446,7 @@ class SMCSocketProtocol(websocket.WebSocket):
                 "Caught exception in receive: %s -> %s",
                 type(e),
                 str(e))
-            if isinstance(e, (SystemExit, InvalidFetch)):
+            if isinstance(e, (SystemExit, InvalidFetch, WebSocketProtocolException)):
                 # propagate SystemExit, InvalidFetch
                 raise
         finally:

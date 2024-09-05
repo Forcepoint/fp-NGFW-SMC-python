@@ -1294,6 +1294,30 @@ class FirewallCluster(Engine):
                               }]
                 }]
 
+        You can add additional CVI's+NDI in primary interface being created with parameter passed
+        in create method.
+
+        The primary CVI of the primary interface will be created from (cluster_virtual,
+        network_value,nodes) parameter passed to constructor.
+        For example, if interface_id '0' is the primary interface, then additional CVI's can be added by
+        providing the keyword argument interfaces using the same keyword values from the
+        constructor::
+
+            interfaces=[
+               {'interface_id': 0,
+                'macaddress': '02:02:02:02:02:01',
+                'interfaces': [{'cluster_virtual': '2.2.2.1',
+                                'network_value': '2.2.2.0/24',
+                                'nodes':[{'address': '2.2.2.2', 'network_value': '2.2.2.0/24',
+                                          'nodeid': 1},
+                                         {'address': '2.2.2.3', 'network_value': '2.2.2.0/24',
+                                          'nodeid': 2}]
+                              }]
+                },]
+
+        Then additional CVI(2.2.2.1)+NDI's(2.2.2.2, 2.2.2.3) will be added to primary
+            interface 0.
+
         It is also possible to define VLAN interfaces by providing the `vlan_id` keyword.
         Example VLAN with NDI only interfaces. If nesting the zone_ref within the interfaces
         list, the zone will be applied to the VLAN versus the top level interface::
@@ -1353,14 +1377,27 @@ class FirewallCluster(Engine):
         if vlan_id:
             interface.update(vlan_id=vlan_id)
 
-        interfaces.append(
-            dict(
-                interface_id=interface_id,
-                macaddress=macaddress,
-                zone_ref=zone_ref,
-                interfaces=[interface],
+        # merging node of same interface
+        is_ifc_append = False
+        for intfc in interfaces:
+            if "interface_id" in intfc and intfc['interface_id'] == interface_id:
+                intfc.update({'macaddress': macaddress, 'zone_ref': zone_ref})
+                for ifc in intfc['interfaces']:
+                    # By default, primary CVI will be used for identity for authentication requests.
+                    ifc['auth_request'] = False
+                intfc['interfaces'].append(interface)
+                is_ifc_append = True
+                break
+
+        if not is_ifc_append:
+            interfaces.append(
+                dict(
+                    interface_id=interface_id,
+                    macaddress=macaddress,
+                    zone_ref=zone_ref,
+                    interfaces=[interface],
+                )
             )
-        )
 
         primary_mgt = interface_id if not vlan_id else "{}.{}".format(interface_id, vlan_id)
 

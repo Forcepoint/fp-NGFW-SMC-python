@@ -147,8 +147,7 @@ class System(SubElement):
         """
         return self.make_request(resource="temporary_banned_ip_statuses").get("statuses")
 
-    @property
-    def unlock_temporary_banned_source_ip(self, override_source_ip: str, unlock_reason: str):
+    def unlock_temporary_banned_source_ip(self, override_source_ip=None, unlock_reason=None):
         """
         Unlocks the possible temporary banned source ip.
         By default, the considered source_ip is the request remote address. The default unlock
@@ -156,10 +155,17 @@ class System(SubElement):
         will be used for audit is: "Unlock source IP from SMC API"
         :raises ResourceNotFound is the operation is not supported by your SMC version.
         """
+        params = None
+        if override_source_ip:
+            params = {"override_source_ip": override_source_ip}
+        if unlock_reason:
+            if not params:
+                params = {}
+            params["unlock_reason"] = unlock_reason
+
         return self.make_request(method="update",
                                  resource="unlock_source_ip_account",
-                                 params={"override_source_ip": override_source_ip,
-                                         "unlock_reason": unlock_reason})
+                                 params=params)
 
     def empty_trash_bin(self):
         """
@@ -324,8 +330,17 @@ class System(SubElement):
         """
         return self.system_property(system_key=system_key).update(value=new_value)
 
+    @property
     def uncommitted(self):
-        pass
+        """
+        Returns a list of uncommitted system elements
+
+            system = System()
+            uncommitted_elements = system.uncommitted
+
+        :rtype: list(dict)
+        """
+        return self.make_request(resource="uncommitted")
 
     def clean_invalid_filters(self):
         """

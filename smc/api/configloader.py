@@ -154,7 +154,7 @@ def load_from_file(alt_filepath=None):
         "domain",
     ]
 
-    parser = configparser.SafeConfigParser(
+    parser = configparser.ConfigParser(
         defaults={
             "smc_port": "8082",
             "api_version": None,
@@ -179,7 +179,7 @@ def load_from_file(alt_filepath=None):
     config_dict = {}
     try:
         with io.open(full_path, "rt", encoding="UTF-8") as f:
-            parser.readfp(f)
+            parser.read_file(f)
 
         # Get required settings, if not found it will raise err
         for name in required:

@@ -1374,13 +1374,13 @@ class DHCPServer(Element):
     location = ElementRef("location_ref")
 
     @classmethod
-    def create(cls, name, address, ipv6_address=None, location=None, comment=None):
+    def create(cls, name, address=None, ipv6_address=None, location=None, comment=None):
         """
         Create a DHCP Server element.
 
         :param str name: Name of DHCP Server
-        :param str address: IP address for DHCP Server element
-        :param str ipv6_address: IPv6 addres fir DHCP Server
+        :param str address: IPv4 address for DHCP Server element
+        :param str ipv6_address: IPv6 address for DHCP Server element
         :param str location: Specifies the location for the server if there is a NAT
             device between the server and other SMC components.
         :param str comment: Comment for DHCP Server element
