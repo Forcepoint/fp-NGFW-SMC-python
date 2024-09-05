@@ -31,12 +31,18 @@ sys.path.append('../../../')  # smc-python
 sys.path.append('../../../smc-monitoring')  # smc-python-monitoring
 from smc import session  # noqa
 from smc_monitoring.monitors.logs import LogQuery  # noqa
+from smc.administration.filter import Filter  # noqa
 from smc_monitoring.models.values import (FieldValue,
-                                          NumberValue, TranslatedValue, ServiceValue)  # noqa
+                                          NumberValue, TranslatedValue, ServiceValue,
+                                          IPValue)  # noqa
 from smc_monitoring.models.filters import InFilter, QueryFilter  # noqa
 from smc_monitoring.models.constants import LogField  # noqa
+from smc_monitoring.wsocket import (FetchAborted, BUFFER_ERROR)  # noqa
 
 FILTER_FAILED = "filter failed!"
+LIST_OF_FILTER_TYPES = ['Inspection', 'Packet Filtering']
+EXISTING_FILTER_FAILED = "Fail to get log with existing filter."
+INVALID_FILTER = "Fail to get logs, invalid filter."
 
 logging.getLogger()
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
@@ -167,6 +173,28 @@ def main():
                 dst_port = entry.get("Dst Port")
                 assert (dst_port == '22' or dst_port == '25'), FILTER_FAILED
 
+        # test existing filter
+        query = LogQuery(fetch_size=10)
+        query.add_existing_filter(Filter("Inspection and Packet Filter Facility"))
+        logs = list(query.fetch_raw())
+        if logs:
+            for log in logs[0]:
+                assert log['Facility'] in LIST_OF_FILTER_TYPES, EXISTING_FILTER_FAILED
+            logging.info("Get filtered logs using LogQuery with existing filter.")
+
+        # check query filter limit
+        is_fetch_aborted = False
+        try:
+            list_all_ip = tuple([f'10.1.1.{i}' for i in range(1, 204)])
+            query = LogQuery(fetch_size=10)
+            query.add_and_filter([
+                InFilter(FieldValue(LogField.DST), [IPValue(*list_all_ip)]),
+                InFilter(FieldValue(LogField.SERVICE), [ServiceValue('TCP/80')])])
+            list(query.fetch_raw())
+        except FetchAborted as ex:
+            if BUFFER_ERROR.decode("utf-8") in str(ex):
+                is_fetch_aborted = True
+        assert is_fetch_aborted, INVALID_FILTER
     except BaseException as e:
         logging.error(f"Exception:{e}")
         return_code = 1

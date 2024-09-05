@@ -57,17 +57,22 @@ from smc.core.route import Routing  # noqa
 from smc.core.sub_interfaces import ClusterVirtualInterface, NodeInterface  # noqa
 from smc.elements.helpers import zone_helper  # noqa
 import ipaddress  # noqa
+from smc.routing.bgp import AutonomousSystem, BGPPeering, ExternalBGPPeer  # noqa
 from smc.core.engines import MasterEngineCluster  # noqa
 
 from smc.elements.servers import NTPServer  # noqa
 from smc.elements.user import AdminUser  # noqa
 
 CREATE_TUNNEL_INTERFACE_ERROR = "Failed to created tunnel interface."
+TWO_CVI_CREATE_ERROR = "Failed to create engine with two CVIs in same interface."
 FAILED_TO_ADD_IP = "Failed to add ip address to tunnel interface"
 TUNNEL_IP_ADDRESS = "9.9.9.9"
 TUNNEL_NETWORK_VALUE = "9.9.9.0/32"
 TUNNEL_INTERFACE_ID = "1010"
-IPV6_NETWORK_VALUE = "2001:db8:3333:4444:5555:6666:7777:0000/128"
+IPV6_NETWORK_VALUE1 = "2001:db8:3333:4444:5555:6666:7777:0000/128"
+IPV6_NETWORK_VALUE2 = "2001:db8:3333:4444::/64"
+IPV6_ADDRESS = '2001:db8:3333:4444:5555:6666:8888:8888'
+ADD_BGP_PEERING_ERROR = "Fail to add bgp peering with ipv6 address."
 IPV6_NETWORK_ADDRESS = "2001:db8:3333:4444:5555:6666:7777:0"
 
 logging.getLogger()
@@ -113,6 +118,25 @@ def main():
         ntp = NTPSettings.create(ntp_enable=True,
                                  ntp_servers=[new_ntp_server])
 
+        # Add multiple cvi in single interface in cluster engine creation.
+        interfaces = [
+            {'interface_id': 0,
+             'macaddress': '02:02:02:02:02:02',
+             'interfaces': [{'cluster_virtual': '2.2.2.1',
+                             'network_value': '2.2.2.0/24',
+                             'nodes': [{'address': '2.2.2.2', 'network_value': '2.2.2.0/24',
+                                        'nodeid': 1, 'primary_mgt': False,
+                                        'primary_heartbeat': False, 'outgoing': False, },
+                                       {'address': '2.2.2.3', 'network_value': '2.2.2.0/24',
+                                        'nodeid': 2, 'primary_mgt': False,
+                                        'primary_heartbeat': False, 'outgoing': False, },
+                                       {'address': '2.2.2.4', 'network_value': '2.2.2.0/24',
+                                        'nodeid': 3, 'primary_mgt': False,
+                                        'primary_heartbeat': False, 'outgoing': False, }
+                                       ]
+                             }]
+             }]
+
         # Create the Firewall Cluster
         engine = FirewallCluster.create(
             name="mycluster",
@@ -135,8 +159,9 @@ def main():
             enable_gti=True,
             default_nat=True,
             extra_opts={"is_cert_auto_renewal": True},
+            interfaces=interfaces
         )
-
+        assert len(engine.interface.get(0).cluster_virtual_interface) == 2, TWO_CVI_CREATE_ERROR
         engine.lbfilter_useports = True
         lbfilter = LBFilter.create(nodeid=0, action="replace", ip_descriptor="1.1.1.1/32",
                                    replace_ip="2.2.2.2", use_ports=True)
@@ -164,6 +189,50 @@ def main():
         # verify ignore_other is True
         for lbfilter in engine.lbfilters:
             assert lbfilter.ignore_other is True, "Failed to update lbfilter"
+
+        # Add BGP Peering with ipv6 address.
+        list_of_nodes_ipv6 = [{'address': '2001:db8:3333:4444:5555:6666:8888:8881',
+                               'network_value': IPV6_NETWORK_VALUE2,
+                               'nodeid': 1},
+                              {'address': '2001:db8:3333:4444:5555:6666:8888:8882',
+                               'network_value': IPV6_NETWORK_VALUE2,
+                               'nodeid': 2},
+                              {'address': '2001:db8:3333:4444:5555:6666:8888:8883',
+                               'network_value': IPV6_NETWORK_VALUE2,
+                               'nodeid': 3}
+                              ]
+        list_of_node_interfaces_ipv6 = []
+        interface = engine.interface.get(0)
+        for _node in list_of_nodes_ipv6:
+            ndi = NodeInterface.create(interface_id=interface.interface_id, **_node)
+            list_of_node_interfaces_ipv6.append(ndi)
+        ipv6_cvi = ClusterVirtualInterface.create(
+            interface.interface_id,
+            IPV6_ADDRESS,
+            IPV6_NETWORK_VALUE2,
+        )
+        interface.add_ip_address(cvi=ipv6_cvi, nodes=list_of_node_interfaces_ipv6)
+        ExternalBGPPeer.create(
+            name="test_external_bgp_peering",
+            neighbor_as=AutonomousSystem('Plano AS'),
+            neighbor_ip="2001:db8:3333:4444:5555:6666:8888:8884",
+        )
+        logging.info("Successfully created bgp peering with ipv6 address.")
+
+        interface = engine.routing.get(0)
+        interface.add_bgp_peering(
+            BGPPeering('BGP Peering'),
+            ExternalBGPPeer('test_external_bgp_peering'), IPV6_NETWORK_VALUE2)
+
+        is_true = False
+        for routing in engine.routing.get(0):
+            if routing.ip == IPV6_NETWORK_VALUE2:
+                routing = routing.data['routing_node'][0]
+                if routing['ip'] == IPV6_ADDRESS and \
+                        routing['related_element_type'] == 'bgp_peering':
+                    is_true = True
+        assert is_true, ADD_BGP_PEERING_ERROR
+        logging.info("Successfully added BGP Peering with ipv6 address.")
 
         engine.physical_interface.add_layer3_cluster_interface(
             interface_id=1,
@@ -206,7 +275,7 @@ def main():
                   'nodeid': 3}
                  ]
         engine.tunnel_interface.add_cluster_virtual_interface(interface_id=TUNNEL_INTERFACE_ID,
-                                                              cluster_virtual='7.7.7.255',
+                                                              cluster_virtual='7.7.7.4',
                                                               nodes=nodes,
                                                               network_value='7.7.7.0/24',
                                                               zone_ref=None,
@@ -242,17 +311,17 @@ def main():
                 ipv6_cvi = ClusterVirtualInterface.create(
                     interface.interface_id,
                     IPV6_NETWORK_ADDRESS,
-                    IPV6_NETWORK_VALUE,
+                    IPV6_NETWORK_VALUE1
                 )
 
                 list_of_nodes_ipv6 = [{'address': '2001:db8:3333:4444:5555:6666:7777:8886',
-                                       'network_value': IPV6_NETWORK_VALUE,
+                                       'network_value': IPV6_NETWORK_VALUE1,
                                        'nodeid': 1},
                                       {'address': '2001:db8:3333:4444:5555:6666:7777:8887',
-                                       'network_value': IPV6_NETWORK_VALUE,
+                                       'network_value': IPV6_NETWORK_VALUE1,
                                        'nodeid': 2},
                                       {'address': '2001:db8:3333:4444:5555:6666:7777:8888',
-                                       'network_value': IPV6_NETWORK_VALUE,
+                                       'network_value': IPV6_NETWORK_VALUE1,
                                        'nodeid': 3}
                                       ]
                 list_of_node_interfaces_ipv6 = []
@@ -338,6 +407,7 @@ def main():
         return_code = 1
     finally:
         FirewallCluster("mycluster").delete()
+        ExternalBGPPeer('test_external_bgp_peering').delete()
         MasterEngineCluster("myMaster").delete()
         NTPServer("myNTPServer").delete()
         session.logout()

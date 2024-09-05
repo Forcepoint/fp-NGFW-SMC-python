@@ -142,6 +142,18 @@ class CertificateExportError(CertificateError):
     """
 
 
+class SnortConfigurationExportError(SMCException):
+    """
+    Failure to export a Snort Configuration
+    """
+
+
+class SnortConfigurationImportError(SMCException):
+    """
+    Failure to import a Snort Configuration
+    """
+
+
 class CreateEngineFailed(SMCException):
     """
     Thrown when a POST operation returns with a failed response.

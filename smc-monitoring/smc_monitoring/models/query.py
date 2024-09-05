@@ -36,7 +36,7 @@ from smc_monitoring.models.filters import (
     AndFilter,
     OrFilter,
     NotFilter,
-    DefinedFilter,
+    DefinedFilter, ExistingFilter,
 )
 from smc_monitoring.models.formats import TextFormat, DetailedFormat
 from smc_monitoring.models.formatters import TableFormat
@@ -130,6 +130,18 @@ class Query(object):
         :rtype: TranslatedFilter
         """
         filt = TranslatedFilter()
+        self.update_filter(filt)
+        return filt
+
+    def add_existing_filter(self, *values):
+        """
+        Add existing reference to an existing filter expression in monitoring filter.
+        >>> query = LogQuery(fetch_size=10)
+        >>> query.add_expression_filter(Filter("Inspection and Packet Filter Facility"))
+        >>> list(query.fetch_raw())
+        """
+
+        filt = ExistingFilter(*values)
         self.update_filter(filt)
         return filt
 

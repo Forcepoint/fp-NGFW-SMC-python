@@ -751,6 +751,13 @@ UserResponse
 		:members:
 		:show-inheritance:
 
+CustomPropertiesProfile
+***********************
+
+	.. autoclass:: CustomPropertiesProfile
+		:members:
+		:show-inheritance:
+
 LLDPProfile
 ***********
 .. autoclass:: smc.core.lldp.LLDPProfile

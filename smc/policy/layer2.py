@@ -67,7 +67,7 @@ from smc.api.exceptions import (
     CreateElementFailed,
 )
 from smc.policy.policy import Policy
-from smc.policy.rule import IPv4Layer2Rule, EthernetRule
+from smc.policy.rule import IPv4Layer2Rule, IPv6Layer2Rule, EthernetRule
 from smc.base.collection import rule_collection
 
 
@@ -94,7 +94,7 @@ class Layer2Rule(object):
 
         """
         # return create_collection(self.layer2_ipv6_access_rules)
-        pass
+        return rule_collection(self.get_relation("layer2_ipv6_access_rules"), IPv6Layer2Rule)
 
     @property
     def layer2_ethernet_rules(self):

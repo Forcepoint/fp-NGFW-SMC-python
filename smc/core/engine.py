@@ -11,6 +11,7 @@
 #  under the License.
 
 from collections import namedtuple
+from typing import List
 import pytz
 
 from smc.base.util import save_to_file
@@ -26,7 +27,8 @@ from smc.api.exceptions import (
     UnsupportedInterfaceType,
     EngineCommandFailed,
     SMCConnectionError, CreateElementFailed, UpdateElementFailed, CertificateExportError,
-    CertificateImportError, UnsupportedSidewinderType
+    CertificateImportError, UnsupportedSidewinderType, SnortConfigurationImportError,
+    SnortConfigurationExportError
 )
 from smc.core.node import Node, HardwareStatus
 from smc.core.resource import Snapshot, PendingChanges
@@ -2294,7 +2296,57 @@ class Engine(Element):
             },
         )
 
-    def get_hardware_status(self, subsystems: list[str] = None):
+    @property
+    def is_snort_enabled(self):
+        """
+        Return true if snort is enable else false.
+        :rtype: bool
+        """
+        return self.data.get("is_snort_enabled", False)
+
+    def snort_configuration_file_import(self, file_name):
+        """
+        Allows importing a specified Snort Configuration file for the specified Engine.
+        :param str file_name: Name of the snort configuration file(Full Path).
+
+        Example: snort import and export
+            >>> engine=Engine("Algiers")
+            >>> print(engine.is_snort_enabled)
+                False
+            >>> engine.snort_enable_disable()
+            >>> print(engine.is_snort_enabled)
+                True
+            >>> engine.snort_configuration_file_import(file_name=./test_snort_config.zip)
+            >>> engine.snort_configuration_file_export(file_name=./test_snort_config.zip)
+            >>> engine.snort_configuration_file_delete()
+        """
+        self.make_request(SnortConfigurationImportError,
+                          method="create",
+                          resource="snort_configuration_file_import",
+                          files={"file": open(file_name, 'rb')},
+                          raw_result=True,
+                          )
+
+    def snort_configuration_file_export(self, file_name):
+
+        self.make_request(SnortConfigurationExportError,
+                          raw_result=True, resource="snort_configuration_file_export",
+                          filename=file_name)
+
+    def snort_configuration_file_delete(self):
+        """
+        It will delete the Snort Configuration from a particular engine.
+        """
+        self.make_request(EngineCommandFailed, method="delete",
+                          resource="snort_configuration_file_delete")
+
+    def snort_enable_disable(self):
+        """
+        Toggle enable disable state of snort.
+        """
+        self.update(is_snort_enabled=not self.data.get("is_snort_enabled", False))
+
+    def get_hardware_status(self, subsystems: List[str] = None):
         """
         Returns dict representation hardware status.
         :param str engine_name: The name of engine to get hardware status

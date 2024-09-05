@@ -13,16 +13,23 @@
 #  License for the specific language governing permissions and limitations
 #  under the License.
 """
-Example script to show how to use User Response.
+Example script to show how to use User Response and CustomPropertiesProfile.
 """
 import argparse
 import logging
+import os
 import sys
 from enum import Enum
 
 sys.path.append('../../')  # smc-python
 from smc import session  # noqa
-from smc.elements.profiles import UserResponseEntry, UserResponse  # noqa
+from smc.elements.profiles import UserResponseEntry, UserResponse, CustomPropertiesProfile  # noqa
+
+# CustomPropertiesProfile
+CUSTOM_PROPERTY_NAME = "test_custom_property"
+CUSTOM_SCRIPT_FILE = "custom_script.zip"
+CUSTOM_PROPERTIES_CREATE_ERROR = "Fail to create CustomPropertiesProfile"
+CUSTOM_PROPERTIES_UPDATE_ERROR = "Fail to update CustomPropertiesProfile"
 
 # UserResponse
 USER_RESPONSE_NAME = "test_user_response"
@@ -117,12 +124,53 @@ def main():
                 break
         assert is_response_tcp_close, UPDATE_USER_RESPONSE_ERROR
         logging.info("Updated UserResponse Successfully.")
+
+        # CustomPropertiesProfile
+
+        CUSTOM_PROPERTY = [
+            {
+                "data_type": "string",
+                "name": "attribute1",
+                "value": "value1"
+            }
+        ]
+        # create CustomPropertiesProfile
+        custom_properties_profile = CustomPropertiesProfile.create(name=CUSTOM_PROPERTY_NAME,
+                                                                   custom_property=CUSTOM_PROPERTY)
+        custom_script = custom_properties_profile.custom_script
+        custom_script._import(
+            custom_script_file_name="profiles.py")
+        # export custom script
+        custom_script.export(CUSTOM_SCRIPT_FILE)
+        # delete custom script
+        custom_script.delete()
+        assert 'attribute1' in [property['name'] for property in
+                                custom_properties_profile.custom_property] and os.path.exists(
+            CUSTOM_SCRIPT_FILE) and os.stat(
+            CUSTOM_SCRIPT_FILE).st_size > 0, CUSTOM_PROPERTIES_CREATE_ERROR
+        logging.info("CustomPropertiesProfile created Successfully.")
+        CUSTOM_PROPERTY.append({
+            "data_type": "string",
+            "name": "attribute2",
+            "value": "value"
+        })
+        custom_properties_profile = CustomPropertiesProfile(CUSTOM_PROPERTY_NAME)
+
+        custom_properties_profile.update(custom_property=CUSTOM_PROPERTY)
+        custom_properties_profile = CustomPropertiesProfile(CUSTOM_PROPERTY_NAME)
+        assert 'attribute2' in [custom_property['name'] for custom_property in
+                                custom_properties_profile.custom_property], \
+            CUSTOM_PROPERTIES_UPDATE_ERROR
+        logging.info("CustomPropertiesProfile updated Successfully.")
+
     except BaseException as e:
         logging.error(f"Exception:{e}")
         return_code = 1
     finally:
         UserResponse(USER_RESPONSE_NAME).delete()
         logging.info("Deleted UserResponse Successfully.")
+        CustomPropertiesProfile(CUSTOM_PROPERTY_NAME).delete()
+        logging.info("CustomPropertiesProfile deleted Successfully.")
         session.logout()
     return return_code
 

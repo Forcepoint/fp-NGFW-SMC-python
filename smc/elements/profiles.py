@@ -629,3 +629,99 @@ class WebAuthHtmlPage(Element):
     Represents the Browser-Based User Authentication HTML Page in case of not authorized page.
     """
     typeof = "web_authentication_page"
+
+
+class CustomPropertiesProfile(Element):
+    """
+    This represents a Custom Properties Profile Element
+    """
+    typeof = "custom_properties_profile"
+
+    @classmethod
+    def create(
+            cls,
+            name,
+            custom_property=None,
+            property_type="custom",
+            comment=None
+    ):
+        """
+        :param str name: Name of custom property profile.
+        :param list(custom_property) custom_property: List of properties.
+        :param str property_type: Template used by the profile
+            possible values are:
+                1. azure: Dedicated profile for Azure. Contains a specific script to resolve FQDN.
+                    No other properties are needed.
+                2. custom: Customizable profile. (used for AWS) User may provide a custom script and
+                    sets custom properties.
+        :param str comment: Optional comment.
+        :return CustomPropertiesProfile
+        """
+
+        json = {
+            "name": name,
+            "custom_property": custom_property,
+            "type": property_type,
+            "comment": comment
+        }
+        return ElementCreator(cls, json)
+
+    @property
+    def custom_script(self):
+        """
+        Instance of custom script.
+        """
+        return CustomScript(self)
+
+    @property
+    def custom_property(self):
+        """
+        Return list custom properties.
+        :rtype: dict
+        """
+        return self.data.get("custom_property", [])
+
+
+class CustomScript(object):
+
+    def __init__(self, custom_script_profile):
+        """
+        This defines custom script operation.
+        :param CustomPropertiesProfile custom_script_profile: Instance of CustomPropertiesProfile.
+        """
+        self.custom_script_profile = custom_script_profile
+
+    def _import(self, custom_script_file_name):
+        """
+        Import a specified custom script for the specified custom properties profile element.
+        :param str script_name: The script name to be used to upload the script to the engine file
+            system.
+        :param str custom_script_file_name: Custom script file path to be imported.
+        """
+        with open(custom_script_file_name, "rb") as file:
+            self.custom_script_profile.make_request(
+                method="update",
+                resource="custom_script",
+                files={"custom_script": file},
+                raw_result=True,
+            )
+
+    def delete(self):
+        """
+        Deletes custom script from custom properties profile.
+        """
+        self.custom_script_profile.make_request(
+            method="delete",
+            resource="custom_script"
+        )
+
+    def export(self, file_name):
+        """
+        Export compressed file of custom script.
+        :param str file_name: Custom script with file name in custom properties profile.
+        """
+        self.custom_script_profile.make_request(
+            resource="custom_script",
+            filename=file_name,
+            raw_result=True,
+        )

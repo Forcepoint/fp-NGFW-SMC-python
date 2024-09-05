@@ -46,7 +46,7 @@ Example rule deletion::
             rule.delete()
 """
 from smc.policy.policy import Policy
-from smc.policy.rule import IPv4Layer2Rule, EthernetRule, IPSRule
+from smc.policy.rule import IPv4Layer2Rule, IPv6Layer2Rule, EthernetRule, IPSRule
 from smc.base.model import ElementCreator
 from smc.api.exceptions import (
     ElementNotFound,
@@ -76,7 +76,7 @@ class IPSPolicyRule(object):
     @property
     def ips_ipv6_access_rules(self):
         """"""
-        pass
+        return rule_collection(self.get_relation("ips_ipv6_access_rules"), IPv6Layer2Rule)
 
     @property
     def ips_ethernet_rules(self):
