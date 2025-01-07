@@ -37,6 +37,7 @@ from smc.administration.scheduled_tasks import RefreshPolicyTask, DeleteLogTask,
 
 RETRY_ONLINE = 30
 ENGINE_NAME = 'test_engine'
+ATLANTA_ENGINE = 'Atlanta'
 NOT_CREATED_MSG = "Fail to create server backup task"
 TASK_NAME = 'backup_task_test'
 TRAFFIC_CAPTURE_TASK = 'traffic_capture_test'
@@ -149,8 +150,10 @@ def main():
                 online = status == "READY"
                 time.sleep(5)
                 retry += 1
+            # We can add list(Engine) or list(Nodes) or list(Engine/Node)
             engine = Engine(ENGINE_NAME)
-            upgrade_task = RemoteUpgradeTask.create('remote_upgrade_test', [engine],
+            atlanta_node1 = Engine(ATLANTA_ENGINE).nodes[0]
+            upgrade_task = RemoteUpgradeTask.create('remote_upgrade_test', [engine, atlanta_node1],
                                                     arguments.remote_upgrade_file)
             upgrade_task.task_schedule
         else:

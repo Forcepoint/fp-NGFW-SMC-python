@@ -504,7 +504,7 @@ EthernetServiceGroup
 .. autoclass:: EthernetServiceGroup
    :members:
    :show-inheritance:
-
+  
 Servers
 +++++++
 

@@ -244,15 +244,16 @@ class Node(SubElement):
                     )
         return result.content
 
-    def dynamic_element_update(self, name_cache_object):
+    def dynamic_element_update(self, update_file_path):
         """"""
-        return self.make_request(
-            NodeCommandFailed,
-            method="create",
-            resource="dynamic_element_update",
-            headers={"content-type": "multipart/form-data"},
-            files={"update_file": name_cache_object.serialize()},
-        )
+        with open(update_file_path, "rb") as update_file:
+            return self.make_request(
+                NodeCommandFailed,
+                method="create",
+                resource="dynamic_element_update",
+                headers={"content-type": "multipart/form-data"},
+                files={"update_file": update_file},
+            )
 
     @property
     def interface_status(self):
@@ -530,7 +531,7 @@ class Node(SubElement):
             params={"enable": enable, "comment": comment},
         )
 
-    def change_ssh_pwd(self, pwd=None, comment=None):
+    def change_ssh_pwd(self, pwd, comment=None):
         """
         Executes a change SSH password operation on the specified node
 

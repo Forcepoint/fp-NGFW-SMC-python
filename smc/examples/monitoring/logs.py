@@ -55,16 +55,17 @@ def main():
         arguments = parse_command_line_arguments()
         session.login(url=arguments.api_url, api_key=arguments.api_key,
                       login=arguments.smc_user,
-                      pwd=arguments.smc_pwd, api_version=arguments.api_version)
+                      pwd=arguments.smc_pwd, api_version=arguments.api_version,
+                      verify=False)
         logging.info("session OK")
         logging.info("Retrieve logs using websocket library")
 
         ws = create_connection(
             f"{arguments.ws_url}/{str(arguments.api_version)}/monitoring/log/socket",
             cookie=session.session_id,
-            socket=session.sock,
-            sslopt={"cert_reqs": ssl.CERT_NONE}
-        )
+            sslopt={"cert_reqs": ssl.CERT_NONE},
+            subprotocols={"access_token", session._token} if session._token else None,
+            verify=False)
 
         # show how to use operator "or" with  source port = 22, 25
         #                                 or type translated source port = 7000
@@ -105,6 +106,7 @@ def main():
         logging.info("Get filtered dst port or service logs using LogQuery add_or_filter "
                      "and InFilter..")
         query = LogQuery(fetch_size=10)
+#        query = LogQuery(max_recv=0)
         query.add_or_filter([
             InFilter(FieldValue(LogField.DPORT), [NumberValue(80)]),
             InFilter(FieldValue(LogField.SERVICE), [ServiceValue('TCP/80')])])

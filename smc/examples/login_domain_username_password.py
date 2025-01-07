@@ -32,6 +32,7 @@ from smc.administration.role import Role  # noqa
 from smc.elements.tags import FilterExpressionTag  # noqa
 from smc.elements.user import AdminUser, ApiClient, WebPortalAdminUser  # noqa
 from smc.policy.layer3 import FirewallSubPolicy, FirewallTemplatePolicy  # noqa
+from smc.elements.other import LogoFile  # noqa
 
 error_update = "Element reference breaks domain boundary restriction"
 domain_name = "domain_test"
@@ -46,6 +47,10 @@ failed_update_web_user = "Failed to update web portal admin user"
 receive_error_value = "Receive incorrect values"
 access_attribute_error = "Failed to access AdminDomain's attribute."
 pwd_meta_data_error = "Failed to get password meta data error."
+LOGO_CREATE_ERROR = "Fail to create admin domain with logo."
+LOGO_NAME = "test_admin_logo"
+LOGO_FILE_CREATE_ERROR = "Fail to create logo file."
+IMAGE_FILE_NAME = "images/256.png"
 RETRY = 3
 
 logging.getLogger()
@@ -60,17 +65,23 @@ def main():
         session.login(url=arguments.api_url, api_key=arguments.api_key,
                       login=arguments.smc_user,
                       pwd=arguments.smc_pwd, api_version=arguments.api_version)
+        # create Logo
+        LogoFile.create(LOGO_NAME, IMAGE_FILE_NAME)
+        logo_file = LogoFile(LOGO_NAME)
+        assert logo_file.name == LOGO_NAME, LOGO_FILE_CREATE_ERROR
+        logging.info(f"LogoFile [{LOGO_NAME}] has been created.")
 
         # Create SMC Domain
         if AdminDomain.objects.filter(domain_name, exact_match=True):
             AdminDomain(domain_name).delete()
             logging.info(f"Domain [{domain_name}] has been deleted")
-
+        logo_file = LogoFile(LOGO_NAME)
         domain_obj = AdminDomain.create(name=domain_name, announcement_enabled=False,
                                         announcement_message=announcement_message,
                                         contact_email='test@forcepoint.com',
                                         category_filter_system=True,
                                         show_not_categorized=True,
+                                        logo_ref=logo_file,
                                         comment='test creation')
         assert domain_obj.announcement_message == announcement_message, "{} {}".format(
             access_attribute_error, 'announcement_message')
@@ -78,6 +89,7 @@ def main():
                                                  f"{'show_not_categorized'}")
         assert domain_obj.category_filter_system, (f"{access_attribute_error} "
                                                    f"{'category_filter_system'}")
+        assert domain_obj.logo_ref == logo_file.href, LOGO_CREATE_ERROR
         domain_obj.update(announcement_enabled=True)
         assert domain_obj.announcement_enabled, "Failed to update AdminDomain"
 
@@ -194,6 +206,10 @@ def main():
         # Delete SMC Domain
         AdminDomain(domain_name).delete()
         logging.info(f"Domain [{domain_name}] has been deleted")
+
+        # Delete LogoFile
+        LogoFile(LOGO_NAME).delete()
+        logging.info(f"LogoFile [{LOGO_NAME}] has been deleted.")
 
         # Delete new SMC Admin
         AdminUser(admin_name).enable_disable()

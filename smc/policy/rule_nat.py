@@ -683,6 +683,7 @@ class IPv4NATRule(RuleCommon, NATRule, SubElement):
         is_disabled=False,
         used_on="ANY",
         add_pos=None,
+        insert_point=None,
         after=None,
         before=None,
         comment=None,
@@ -721,6 +722,7 @@ class IPv4NATRule(RuleCommon, NATRule, SubElement):
             the position value is greater than the number of rules, the rule is inserted at
             the bottom. If add_pos is not provided, rule is inserted in position 1. Mutually
             exclusive with ``after`` and ``before`` params.
+        :param str insert_point: specific insert point where to add the rule.
         :param str after: Rule tag to add this rule after. Mutually exclusive with ``add_pos``
             and ``before`` params.
         :param str before: Rule tag to add this rule before. Mutually exclusive with ``add_pos``
@@ -758,6 +760,9 @@ class IPv4NATRule(RuleCommon, NATRule, SubElement):
             href = self.add_at_position(add_pos)
         elif before or after:
             params.update(**self.add_before_after(before, after))
+
+        if insert_point:
+            params.update(insert_point=insert_point)
 
         return ElementCreator(
             self.__class__, exception=CreateRuleFailed, href=href, params=params, json=rule_values

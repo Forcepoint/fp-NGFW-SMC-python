@@ -26,6 +26,19 @@ class QoSPolicy(Element):
 
     typeof = "qos_policy"
 
+    @classmethod
+    def create(cls, name, comment=None):
+        """
+        Create QoS Policy
+        :param str name: name of QoS Policy
+        :param str comment: optional comment
+        :raises CreateElementFailed: failed creating element with reason
+        :return: instance with meta of QoS Policy.
+        :rtype: QoSPolicy
+        """
+        json = {"name": name, "comment": comment}
+        return ElementCreator(cls, json)
+
 
 class LinkSelection(object):
     def __init__(self, bandwidth=0, jitter=0, latency=0, packet_loss=0, stability=0):

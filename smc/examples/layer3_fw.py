@@ -51,6 +51,9 @@ BURST = 1000
 LOG_EVENT1 = '1'
 LOG_EVENT2 = '2'
 
+# default nat
+DEFAULT_NAT_CONFIG_ERROR = 'Fail to create engine with default value.'
+
 # scan detection
 SCAN_DETECTION_CREATE_ERROR = "Fail to create engine with scan detection setting"
 SCAN_DETECTION_UPDATE_ERROR = "Fail to update engine with scan detection setting."
@@ -175,8 +178,15 @@ def main():
                               static_multicast_route=[static_multicast_route],
                               web_authentication=web_authentication
                               )
-        # SidewinderProxyAdvancedSettings
         engine = Layer3Firewall(engine_name)
+        # check default_nat
+        assert engine.default_nat.status == 'automatic', DEFAULT_NAT_CONFIG_ERROR
+        engine.default_nat.status = 'true'
+        engine.update()
+        engine = Layer3Firewall(engine_name)
+        assert engine.default_nat.status == 'true', DEFAULT_NAT_CONFIG_ERROR
+        logging.info("Successfully create and update engine with default_nat parameter.")
+        # SidewinderProxyAdvancedSettings
         setting = engine.ssm_advanced_setting[0]
         assert setting.attribute == "httpkey" and setting.type == "HTTP" and \
                setting.value == "value1", SIDEWINDER_SETTING_CREATE_ERROR

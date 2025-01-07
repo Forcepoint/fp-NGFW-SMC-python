@@ -137,7 +137,7 @@ class Query(object):
         """
         Add existing reference to an existing filter expression in monitoring filter.
         >>> query = LogQuery(fetch_size=10)
-        >>> query.add_expression_filter(Filter("Inspection and Packet Filter Facility"))
+        >>> query.add_existing_filter(Filter("Inspection and Packet Filter Facility"))
         >>> list(query.fetch_raw())
         """
 

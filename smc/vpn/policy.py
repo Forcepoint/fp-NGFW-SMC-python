@@ -17,11 +17,12 @@ from smc.api.exceptions import (
     PolicyCommandFailed,
     ElementNotFound,
 )
-from smc.base.collection import sub_collection
-from smc.vpn.elements import VPNProfile, VPNSite, LinkUsageProfile
+from smc.base.collection import sub_collection, create_collection
+from smc.vpn.elements import VPNProfile, VPNSite, LinkUsageProfile, PPK
 from smc.base.decorators import cached_property
 from smc.base.util import element_resolver
 from smc.core.engine import InternalEndpoint
+from smc.compat import is_smc_version_less_than, supported_feature_check
 
 
 class PolicyVPN(Element):
@@ -33,7 +34,7 @@ class PolicyVPN(Element):
         PolicyVPN(name=myvpn)
         >>> v = PolicyVPN('myvpn')
         >>> print(v.vpn_profile)
-        VPNProfile(name=VPN-A Suite)
+        VPNProfile(name='Suite-B-GCM-128')
 
     When making VPN Policy modifications, you must first call :func:`open`,
     make your modifications and then call :func:`save` followed by
@@ -48,8 +49,14 @@ class PolicyVPN(Element):
     link_usage_profile = ElementRef("link_usage_profile")
 
     @classmethod
-    def create(cls, name, nat=False, mobile_vpn_topology_mode=None, vpn_profile=None,
-               link_usage_profile=None):
+    def create(
+        cls,
+        name,
+        nat=False,
+        mobile_vpn_topology_mode=None,
+        vpn_profile=None,
+        link_usage_profile=None,
+    ):
         """
         Create a new policy based VPN
 
@@ -60,7 +67,7 @@ class PolicyVPN(Element):
         :param LinkUsageProfile link_usage_profile: reference to link usage profile of set
         :rtype: PolicyVPN
         """
-        vpn_profile = element_resolver(vpn_profile) or VPNProfile("VPN-A Suite").href
+        vpn_profile = element_resolver(vpn_profile) or VPNProfile("Suite-B-GCM-128").href
 
         json = {
             "mobile_vpn_topology_mode": mobile_vpn_topology_mode,
@@ -474,6 +481,25 @@ class GatewayTunnel(SubElement):
         """
         self.update(preshared_key=key)
 
+    def set_ppk(self, ppk):
+        """
+        Set a new Post Quantum pre-shared key for the Tunnels.
+        :param object ppk: Post Quantum pre-shared key to use
+        :raises UpdateElementFailed: failed with reason
+        :return: None
+        """
+        supported_feature_check("7.3.0", "Setting Post Quantum pre-shared key (PPK) for tunnels is"
+                                         " only supported in SMC/engine version >= 7.3.0")
+        self.update(ppk_ref=element_resolver(ppk))
+
+    def remove_ppk(self):
+        """
+        Remove Post Quantum pre-shared key for the Tunnels.
+        :raises UpdateElementFailed: failed with reason
+        :return: None
+        """
+        self.update(ppk_ref=None)
+
     @property
     def tunnel_side_a(self):
         """
@@ -528,6 +554,26 @@ class GatewayTunnel(SubElement):
 
 class ClientGateway(Element):
     typeof = "client_gateway"
+
+    @property
+    def internal_endpoint(self):
+        """
+        Internal endpoints to enable VPN for the engine.
+
+        :rtype: SubElementCollection(InternalEndpoint)
+        """
+        return sub_collection(self.get_relation("internal_endpoint"), InternalEndpoint)
+
+    @property
+    def vpn_site(self):
+        """
+        A VPN site defines a collection of IP's or networks that
+        identify address space that is defined on the other end of
+        the VPN tunnel.
+
+        :rtype: CreateCollection(VPNSite)
+        """
+        return create_collection(self.get_relation("vpn_site"), VPNSite)
 
 
 class EndpointTunnel(SubElement):

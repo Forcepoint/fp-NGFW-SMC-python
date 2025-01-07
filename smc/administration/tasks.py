@@ -105,6 +105,23 @@ class Task(SubElement):
         return self.data.get("progress", 0)
 
     @property
+    def waiting_inputs(self):
+        """
+        the task is waiting for inputs
+
+        :rtype: boolean
+        """
+        return self.data.get("waiting_inputs", 0)
+
+    def get_waiting_input_link(self):
+        links = self.data.get("link", [])
+        waiting_input_link = None
+        for link in links:
+            if link["rel"] == "waiting_input":
+                waiting_input_link = link["href"]
+        return waiting_input_link
+
+    @property
     def success(self):
         """
         the task has succeed

@@ -136,6 +136,12 @@ class CertificateImportError(CertificateError):
     """
 
 
+class ImportKeyError(SMCException):
+    """
+    Failure to import a key
+    """
+
+
 class CertificateExportError(CertificateError):
     """
     Failure to export a certificate
@@ -432,4 +438,10 @@ class EcaClientConfigExportError(SMCException):
 class UnsupportedSMCVersion(SMCException):
     """
     Failure in case SMC version is not supported
+    """
+
+
+class InvalidEngineNode(SMCException):
+    """
+    Failure in case engine node is invalid.
     """

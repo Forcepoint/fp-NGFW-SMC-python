@@ -482,13 +482,13 @@ Sub-Interface and VLAN
 Top level interface types hold basic settings about the interface, and sub-interfaces define the actual
 configuration itself, such as IP Addresses, Netmask, which node the interface is assigned to, etc.
 To obtain more information about a given interface such as sub-interfaces or vlans, use the interface
-vlan_interfaces() and sub_interfaces() resources. 
+vlan_interface and sub_interfaces() resources.
 
 To show all vlan interfaces::
 
 	>>> for interface in engine.interface.all():
 	...   if interface.has_vlan:
-	...     print(interface.vlan_interfaces())
+	...     print(list(interface.vlan_interface))
 	[PhysicalVlanInterface(address=None,vlan_id=14), PhysicalVlanInterface(address=45.45.45.50,vlan_id=13)]
 
 Interfaces that have IP addresses assigned are considered 'sub interfaces'. There may be multiple
@@ -552,7 +552,7 @@ Change the zone on the top level Physical Interface::
 Change a VLAN on a single NGFW engine node under Interface 2:
 
 	>>> intf = engine.interface.get(2)
-	>>> for vlan in intf.vlan_interfaces():
+	>>> for vlan in intf.vlan_interface:
 	...   if vlan.vlan_id == '14':
 	...     vlan.vlan_id = '15'
 	...     intf.save()

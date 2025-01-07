@@ -46,7 +46,7 @@ from smc.api.exceptions import ResourceNotFound, ActionCommandFailed, Certificat
     DeleteElementFailed
 from smc.base.collection import sub_collection
 from smc.base.model import SubElement, Element, ElementCreator
-from smc.base.util import millis_to_utc, extract_self
+from smc.base.util import millis_to_utc, extract_self, element_resolver
 from smc.compat import is_api_version_less_than, \
     is_smc_version_less_than
 from smc.elements.other import prepare_blacklist
@@ -54,6 +54,7 @@ from smc.elements.other import prepare_block_list
 from smc.core.session_monitoring import SessionMonitoringResult
 from smc.compat import is_smc_version_less_than_or_equal, is_api_version_less_than_or_equal, \
     min_smc_version, is_api_version_less_than
+from smc.api.common import SMCRequest
 
 logger = logging.getLogger(__name__)
 
@@ -549,10 +550,12 @@ class System(SubElement):
     def export_elements(
             self,
             filename="export_elements.zip",
+            recursive=True,
             typeof="all",
             timeout=5,
             max_tries=36,
-            exclude_trashed=None
+            exclude_trashed=None,
+            file_password=None
     ):
         """
         Export elements from SMC.
@@ -564,12 +567,20 @@ class System(SubElement):
 
         :param type: type of element
         :param filename: Name of file for export
+        :param file_password: the optional password to encrypt the exported zip file
         :raises TaskRunFailed: failure during export with reason
         :rtype: DownloadTask
         """
         valid_types = ["all", "nw", "ips", "sv", "rb", "al", "vpn"]
         if typeof not in valid_types:
             typeof = "all"
+        params = {
+            "recursive": recursive,
+            "type": typeof,
+            "exclude_trashed": exclude_trashed
+        }
+        if file_password:
+            params.update(file_password=file_password)
 
         return Task.download(
             self,
@@ -577,7 +588,7 @@ class System(SubElement):
             filename,
             timeout=timeout,
             max_tries=max_tries,
-            params={"recursive": True, "type": typeof, "exclude_trashed": exclude_trashed},
+            params=params,
         )
 
     def export_ldif_elements(
@@ -668,6 +679,96 @@ class System(SubElement):
             progress = import_follower.update_status().progress
             succeed = import_follower.update_status().success
             last_message = import_follower.update_status().last_message
+
+        if not succeed:
+            logger.error("XML Import task failed: {}".format(last_message))
+            raise ActionCommandFailed(last_message)
+
+        logger.info("XML import task succeeded")
+
+    def import_elements_interactive_mode(self, import_file, default_method="import", timeout=300):
+        """
+        Import elements into SMC in interactive mode by handling all conflicts.
+        Specify the fully qualified path o the import file.
+
+        :param str import_file: system level path to file
+        :raises: ActionCommandFailed
+        :return: None
+        """
+        params = {}
+        params["interactive"] = True
+        import_follower = Task(
+            self.make_request(
+                method="create",
+                resource="import_elements",
+                params=params,
+                files={"import_file": open(import_file, "rb")},
+            )
+        )
+        in_progress = import_follower.data.in_progress
+        progress = import_follower.progress
+        conflict_found = False
+        counter = 0
+        while counter <= timeout:
+            if counter == timeout:
+                raise ActionCommandFailed("Import elements is taking too long, is there any problem?")
+            logger.info(f"XML import task progress: {progress}")
+            in_progress = import_follower.update_status().data.in_progress
+            progress = import_follower.update_status().progress
+            succeed = import_follower.update_status().success
+            last_message = import_follower.update_status().last_message
+            waiting_inputs = import_follower.update_status().waiting_inputs
+            logging.debug(f"Waiting for inputs: {waiting_inputs}")
+            if waiting_inputs:
+                waiting_input_link = import_follower.update_status().get_waiting_input_link()
+                logging.debug(f"Waiting input link: {waiting_input_link}")
+                conflict_found = True
+                data = SMCRequest(waiting_input_link).read().json
+                logging.debug(f"Conflicts found: {data}")
+                break
+
+            time.sleep(1)
+            counter += 1
+
+        if conflict_found:
+            # resolve all conflicts with import
+            for conflict in data["inputs"]:
+                conflict["import_conflict"]["default_method"] = default_method
+            logging.info("Conflict resolved!")
+
+        logging.debug(f"Conflict links: {data['link']}")
+        continue_import = next(child for child in data["link"] if child["rel"] == "continue")
+        logging.debug(f"Continue import link: {continue_import}")
+
+        counter = 0
+        while counter <= timeout:
+            if counter == timeout:
+                raise ActionCommandFailed("Import elements is taking too long, is there any problem?")
+            r = SMCRequest(continue_import["href"], data=data).create()
+            data = r.json
+            logging.debug(f"Data: {data}")
+            if data["in_progress"]:
+                logging.info("Import elements in progress...")
+                logging.debug(data["follower"])
+            else:
+                break
+            time.sleep(1)
+            counter += 1
+
+        # Proceed tracking the rest of the import task
+        in_progress = import_follower.update_status().data.in_progress
+        progress = import_follower.update_status().progress
+        counter = 0
+        while in_progress is True and counter <= timeout:
+            if counter == timeout:
+                raise ActionCommandFailed("Import elements is taking too long, is there any problem?")
+            logger.info("XML import task progress: {}%".format(progress))
+            in_progress = import_follower.update_status().data.in_progress
+            progress = import_follower.update_status().progress
+            succeed = import_follower.update_status().success
+            last_message = import_follower.update_status().last_message
+            time.sleep(1)
+            counter += 1
 
         if not succeed:
             logger.error("XML Import task failed: {}".format(last_message))
@@ -808,6 +909,14 @@ class System(SubElement):
                           resource="massive_delete",
                           json={"resource": [element.href for element in elements_list]})
 
+    def delete_crl_cache(self):
+        """
+        Delete CRL cache
+        """
+        self.make_request(DeleteElementFailed,
+                          method="delete",
+                          resource="clean_crl_cache")
+
 
 class AdminDomain(Element):
     """
@@ -844,6 +953,7 @@ class AdminDomain(Element):
                category_filter_system=True,
                show_not_categorized=True,
                user_alert_check=[],
+               logo_ref=None,
                comment=None
                ):
         """
@@ -866,13 +976,15 @@ class AdminDomain(Element):
         :param bool show_not_categorized: Flag to know if we need to show not categorized.
             By default, true.
         :param list user_alert_check: The list of User alert checks.
+        :param LogoFile logo_ref: The LogoFile Element.
         :param str comment: optional comment
         :raises CreateElementFailed: failed creating element with reason
         :return: instance with meta
         :rtype: AdminDomain
         """
+        logo_ref = element_resolver(logo_ref) if logo_ref else None
         json = {"name": name, "announcement_enabled": announcement_enabled,
-                "category_filter_system": category_filter_system,
+                "category_filter_system": category_filter_system, "logo_ref": logo_ref,
                 "show_not_categorized": show_not_categorized, "comment": comment}
         if announcement_message:
             json.update(announcement_message=announcement_message)

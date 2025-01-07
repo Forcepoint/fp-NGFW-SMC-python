@@ -59,6 +59,7 @@ from smc.api.exceptions import CreateElementFailed
 from smc.base.structs import NestedDict
 from smc.base.util import element_resolver
 from smc.elements.servers import ContactAddressMixin, MultiContactServer
+from smc.compat import is_api_version_less_than
 
 
 class AuthenticationMethod(Element):
@@ -300,10 +301,18 @@ class AuthenticationMethod(Element):
         authentication_server = authentication_server if authentication_server else []
         json = {
             "name": name,
-            "authentication_server": [element_resolver(server) for server in authentication_server],
             "type": type,
             "comment": comment
         }
+        if is_api_version_less_than("7.3"):
+            json.update(authentication_server=[element_resolver(server) for server in authentication_server])
+        else:
+            authentication_servers = []
+            rank = 1
+            for server in authentication_server:
+                authentication_servers.append({"auth_server_ref": element_resolver(server), "rank": rank})
+                rank += 1
+            json.update(authentication_server=authentication_servers)
         json.update(kwargs)
         return ElementCreator(cls, json)
 

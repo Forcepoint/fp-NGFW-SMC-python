@@ -121,6 +121,9 @@ class SMCRequest(object):
             # Obtain the session
             session = _get_session(getattr(self, "_session_manager", None))
 
+            if session._token:
+                self.headers['Authorization'] = session._token
+
             if method == "GET":
                 if not self.href:
                     self.href = session.entry_points.get("elements")

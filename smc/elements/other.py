@@ -17,6 +17,7 @@ used by API functions or methods.
 For example, blocklist can be applied to an engine directly or system wide. This class
 will define the format when calling blocklist functions.
 """
+import base64
 from smc.base.decorators import cached_property
 from smc.base.model import Element, ElementCreator, ElementList
 from smc.base.structs import NestedDict
@@ -256,6 +257,23 @@ class Location(Element):
             Element.from_meta(**element)
             for element in self.make_request(resource="search_nated_elements_from_location")
         ]
+
+
+class LogoFile(Element):
+    """
+    This is a Logo File element.
+    """
+    typeof = "logo_file"
+
+    @classmethod
+    def create(cls, name, logo_file):
+        with open(logo_file, 'rb') as image_object:
+            binary_content = base64.b64encode(image_object.read()).decode()
+            json = {
+                "name": name,
+                "binary_content": binary_content,
+            }
+            return ElementCreator(cls, json)
 
 
 class Geolocation(Element):

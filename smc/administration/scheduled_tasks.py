@@ -100,12 +100,13 @@ date::
 """
 
 from smc.base.model import Element, SubElement, ElementCreator, ElementRef
-from smc.api.exceptions import ActionCommandFailed, UnsupportedEngineFeature
+from smc.api.exceptions import ActionCommandFailed, UnsupportedEngineFeature, InvalidEngineNode
 from smc.administration.tasks import Task
 from smc.base.structs import NestedDict
 from smc.compat import min_smc_version, is_api_version_less_than
 from smc.elements.servers import ManagementServer, LogServer
-from smc.core.engines import MasterEngine, MasterEngineCluster
+from smc.core.engines import MasterEngine, MasterEngineCluster, Engine
+from smc.core.node import Node
 from smc.elements.other import FilterExpression
 from smc.base.util import datetime_from_ms, element_resolver
 
@@ -536,15 +537,14 @@ class RemoteUpgradeTask(ScheduledTaskMixin, Element):
     typeof = 'remote_upgrade_task'
 
     @classmethod
-    def create(cls, name, engines, package, comment=None, **kwargs):
+    def create(cls, name, list_of_engine_or_node, package, comment=None, **kwargs):
         """
         Create an upload policy task associated with specific
-        engines. A policy reassigns any policies that might be
+        engines or nodes. A policy reassigns any policies that might be
         assigned to a specified engine.
-
         :param str name: name of this task
-        :param engines: list of Engines for the task
-        :type engines: list(Engine)
+        :param list(Engine/Node) list_of_engine_or_node: Elements representing resources of the
+            task. it can be list(Engine) or list(Nodes) or list(Engine/Node)
         :param str package: Package to assign to the engine/s
         :param str comment: optional comment
         :raises ElementNotFound: engine specified does not exist
@@ -552,14 +552,19 @@ class RemoteUpgradeTask(ScheduledTaskMixin, Element):
         :return: a task object
         :rtype: RemoteUpgradeTask
         """
-        nodeList = []
-        for engine in engines:
-            for node in engine.nodes:
-                nodeList.append(node.href)
+        list_of_node = []
+        for element in list_of_engine_or_node:
+            if isinstance(element, Engine):
+                for node in element.nodes:
+                    list_of_node.append(node.href)
+            elif isinstance(element, Node):
+                list_of_node.append(element.href)
+            else:
+                raise InvalidEngineNode(f" Element {str(element)} is not recognized")
         json = {
             'name': name,
             'engine_upgrade_filename': package,
-            'resources': nodeList,
+            'resources': list_of_node,
             'comment': comment}
 
         return ElementCreator(cls, json)

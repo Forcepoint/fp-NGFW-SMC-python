@@ -150,7 +150,7 @@ from smc.vpn.elements import VPNProfile
 from smc.api.exceptions import CreateElementFailed, CreateVPNFailed
 from smc.core.engine import InternalEndpoint
 from smc.core.interfaces import TunnelInterface
-from smc.compat import get_best_version
+from smc.compat import get_best_version, is_smc_version_less_than, supported_parameter_check
 
 
 class RouteVPN(Element):
@@ -181,7 +181,7 @@ class RouteVPN(Element):
         :param TunnelMonitoringGroup monitoring_group: the group to place
             this VPN in for monitoring. Default: 'Uncategorized'.
         :param VPNProfile vpn_profile: VPN profile for this VPN.
-            (default: VPN-A Suite)
+            (default: Suite-B-GCM-128)
         :param int mtu: Set MTU for this VPN tunnel (default: 0)
         :param boolean pmtu_discovery: enable pmtu discovery (default: True)
         :param int ttl: ttl for connections on the VPN (default: 0)
@@ -211,7 +211,7 @@ class RouteVPN(Element):
             comment=None,
     ):
         group = monitoring_group or RouteVPNTunnelMonitoringGroup("Uncategorized")
-        profile = vpn_profile or VPNProfile("VPN-A Suite")
+        profile = vpn_profile or VPNProfile("Suite-B-GCM-128")
 
         json = {
             "name": name,
@@ -247,9 +247,10 @@ class RouteVPN(Element):
             ttl=0,
             enabled=True,
             comment=None,
+            **kwargs
     ):
         group = monitoring_group or TunnelMonitoringGroup("Uncategorized")
-        profile = vpn_profile or VPNProfile("VPN-A Suite")
+        profile = vpn_profile or VPNProfile("Suite-B-GCM-128")
 
         json = {
             "name": name,
@@ -265,7 +266,10 @@ class RouteVPN(Element):
             "comment": comment,
             "vpn_profile_ref": profile.href,
         }
-
+        if "ppk" in kwargs:
+            supported_parameter_check("ppk", kwargs, "7.3.0")
+            ppk_ref = element_resolver(kwargs.pop("ppk"))
+            json.update(ppk_ref=ppk_ref)
         try:
             return ElementCreator(cls, json)
         except CreateElementFailed as err:
@@ -283,6 +287,7 @@ class RouteVPN(Element):
             ttl=0,
             enabled=True,
             comment=None,
+            **kwargs
     ):
         """
         Create a GRE based tunnel mode route VPN. Tunnel mode GRE wraps the
@@ -322,7 +327,7 @@ class RouteVPN(Element):
             json["tunnel_encryption"] = "no_encryption"
         else:
             json["tunnel_mode_vpn_ref"] = policy_vpn.href
-
+        json.update(kwargs)
         try:
             return ElementCreator(cls, json)
         except CreateElementFailed as err:
@@ -379,6 +384,10 @@ class RouteVPN(Element):
                 gre_keepalive_period=gre_keepalive_period if not None else 10,
                 gre_keepalive_retry=gre_keepalive_retry if not None else 3
             )
+        else:
+            json.update(
+                gre_keepalive=False
+            )
         try:
             return ElementCreator(cls, json)
         except CreateElementFailed as err:
@@ -399,7 +408,7 @@ class RouteVPN(Element):
         :param TunnelMonitoringGroup monitoring_group: the group to place
             this VPN in for monitoring. (default: 'Uncategorized')
         :param VPNProfile vpn_profile: VPN profile for this VPN.
-            (default: VPN-A Suite)
+            (default: Suite-B-GCM-128)
         :param int mtu: Set MTU for this VPN tunnel (default: 0)
         :param boolean pmtu_discovery: enable pmtu discovery (default: True)
         :param int ttl: ttl for connections on the VPN (default: 0)
@@ -426,9 +435,10 @@ class RouteVPN(Element):
             pmtu_discovery=True,
             enabled=True,
             comment=None,
+            **kwargs
     ):
         group = monitoring_group or RouteVPNTunnelMonitoringGroup("Uncategorized")
-        profile = vpn_profile or VPNProfile("VPN-A Suite")
+        profile = vpn_profile or VPNProfile("Suite-B-GCM-128")
 
         json = {
             "name": name,
@@ -465,9 +475,10 @@ class RouteVPN(Element):
             pmtu_discovery=True,
             enabled=True,
             comment=None,
+            **kwargs
     ):
         group = monitoring_group or TunnelMonitoringGroup("Uncategorized")
-        profile = vpn_profile or VPNProfile("VPN-A Suite")
+        profile = vpn_profile or VPNProfile("Suite-B-GCM-128")
 
         json = {
             "name": name,
@@ -484,7 +495,10 @@ class RouteVPN(Element):
             "enabled": enabled,
             "comment": comment,
         }
-
+        if "ppk" in kwargs:
+            supported_parameter_check("ppk", kwargs, "7.3.0")
+            ppk_ref = element_resolver(kwargs.pop("ppk"))
+            json.update(ppk_ref=ppk_ref)
         try:
             return ElementCreator(cls, json)
         except CreateElementFailed as err:

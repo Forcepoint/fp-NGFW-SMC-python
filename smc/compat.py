@@ -15,7 +15,15 @@ Compatibility for py2 / py3
 import sys
 import smc
 import re
-from distutils.version import LooseVersion
+
+try:
+    from packaging.version import Version as LooseVersion
+except ImportError:
+    try:
+        from distutils.version import LooseVersion
+    except ImportError as e:
+        raise ImportError("Neither 'packaging' nor 'distutils' modules are available. "
+                          "Please install 'packaging'.") from e
 
 PY3 = sys.version_info > (3,)
 
@@ -100,3 +108,32 @@ def is_api_version_less_than_or_equal(check_version):
 
 def is_api_version_less_than(check_version):
     return LooseVersion(smc.session.api_version) < LooseVersion(check_version)
+
+
+def supported_parameter_check(check_parameter, json, version, message=None):
+    """
+    Check if a parameter is supported based on the SMC version
+    :param str/list check_parameter: parameter to check
+    :param dict json: json to check
+    :param str version: version to check against
+    :param str message: message to raise if not supported
+    """
+    if is_smc_version_less_than(version):
+        if not isinstance(check_parameter, list):
+            check_parameter = list(check_parameter)
+        for param in check_parameter:
+            if param in json:
+                from smc.api.exceptions import UnsupportedEngineFeature
+                raise UnsupportedEngineFeature(message or f"{check_parameter} is not supported in"
+                                                          f" SMC version < {version}")
+
+
+def supported_feature_check(version, message):
+    """
+    Check if a feature is supported based on the SMC version
+    :param str version: version to check against
+    :param str message: message to raise if not supported
+    """
+    if is_smc_version_less_than(version):
+        from smc.api.exceptions import UnsupportedEngineFeature
+        raise UnsupportedEngineFeature(message)

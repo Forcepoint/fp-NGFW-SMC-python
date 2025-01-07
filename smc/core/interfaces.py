@@ -621,7 +621,7 @@ class Interface(SubElement):
         """
         Flatten out all top level interfaces and only return sub interfaces.
         It is recommended to use :meth:`~all_interfaces`, :meth:`~interfaces`
-        or :meth:`~vlan_interfaces` which return collections with helper
+        or :meth:`~vlan_interface` which return collections with helper
         methods to get sub interfaces based on index or attribute value pairs.
 
         :rtype: list(SubInterface)
@@ -1563,19 +1563,19 @@ class PhysicalInterface(Interface):
 
             >>> engine = Engine('singlefw')
             >>> itf = engine.interface.get(1)
-            >>> itf.vlan_interfaces()
+            >>> list(itf.vlan_interface)
             [PhysicalVlanInterface(vlan_id=11), PhysicalVlanInterface(vlan_id=10)]
             >>> itf.change_vlan_id(11, 100)
-            >>> itf.vlan_interfaces()
+            >>> list(itf.vlan_interface)
             [PhysicalVlanInterface(vlan_id=100), PhysicalVlanInterface(vlan_id=10)]
 
         Inline interface with unique VLAN on each interface pair::
 
             >>> itf = engine.interface.get(2)
-            >>> itf.vlan_interfaces()
+            >>> list(itf.vlan_interface)
             [PhysicalVlanInterface(vlan_id=2-3)]
             >>> itf.change_vlan_id('2-3', '20-30')
-            >>> itf.vlan_interfaces()
+            >>> itf.vlan_interface
             [PhysicalVlanInterface(vlan_id=20-30)]
 
         :param str,int original: original VLAN to change.

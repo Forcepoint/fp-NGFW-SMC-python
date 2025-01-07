@@ -31,6 +31,7 @@ import datetime
 from websocket import create_connection, WebSocketTimeoutException
 
 sys.path.append('../../')  # smc-python
+sys.path.append('../../../smc-monitoring')  # smc-python-monitoring
 from smc import session  # noqa
 from smc_monitoring.monitors.block_list import BlockListQuery  # noqa
 from smc.administration.system import System  # noqa
@@ -83,7 +84,8 @@ def main():
         arguments = parse_command_line_arguments()
         session.login(url=arguments.api_url, api_key=arguments.api_key,
                       login=arguments.smc_user,
-                      pwd=arguments.smc_pwd, api_version=arguments.api_version)
+                      pwd=arguments.smc_pwd, api_version=arguments.api_version,
+                      verify=False)
         logging.info("session OK")
 
         smc_system = System()
@@ -97,7 +99,8 @@ def main():
             node.initial_contact()
             node.bind_license()
 
-        # wait time for engine to be online
+#        time.sleep(5)
+        # wait time for engine to be online  !! seems still NO_STATUS
         online = False
         retry = 0
         while not online and retry < RETRY_ONLINE:
@@ -156,8 +159,9 @@ def main():
             f"{arguments.ws_url}/{str(arguments.api_version)}/monitoring/session/socket",
             cookie=session.session_id,
             timeout=10,
-            socket=session.sock,
-            sslopt={"cert_reqs": ssl.CERT_NONE}
+            sslopt={"cert_reqs": ssl.CERT_NONE},
+            subprotocols={"access_token", session._token} if session._token else None,
+            verify=False
         )
 
         query = {
@@ -300,13 +304,14 @@ def main():
         # remove blacklist entries
         logging.info("Remove block list entries..")
         query = BlockListQuery(ENGINENAME)
-        for element in query.fetch_as_element(max_recv=0, query_timeout=5):
+        for element in query.fetch_as_element(max_recv=10, query_timeout=60):
             try:
                 logging.info(f"Remove {element.block_list_entry_key}")
                 element.delete()
             except (BaseException, ):
                 logging.info(f"Remove {element.block_list_entry_key} failed but let's continue...")
                 pass
+        logging.info("BlockList flush..")
         engine = Layer3Firewall(ENGINENAME)
         engine.block_list_flush()
         engine.delete()

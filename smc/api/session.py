@@ -275,7 +275,10 @@ class Session(object):
 
         self._connpool = None  # default is 10 connections
 
+        self._connection = None  # the connection retrieved from the pool
+
         self._current_user = None
+        self._token = None  # Used un https to retrieve session on server
 
         # Transactions are supported in version 0.6.2 and beyond. When
         # run with atomic, this session parameter indicates whether the
@@ -358,7 +361,9 @@ class Session(object):
         """
         logger.debug("Get secure socket, from pool available sock:{}".
                      format(self._connpool.pool.queue))
-        return self._connpool._get_conn().sock
+        # keep HTTPConnection/HTTPSConnection from the pool
+        self._connection = self._connpool._get_conn()
+        return self._connection.sock
 
     @property
     def session_id(self):
@@ -609,7 +614,10 @@ class Session(object):
 
         # Load current user info
         try:
-            response = self._session.get(url=self.entry_points.get("current_user"))
+            headers = {"Content-Type": "application/json"}
+            if self._token:
+                headers['Authorization'] = self._token
+            response = self._session.get(url=self.entry_points.get("current_user"), headers=headers)
             if response.status_code in (200, 201):
                 admin_href = response.json().get("value")
                 request = SMCRequest(href=admin_href)
@@ -701,6 +709,7 @@ class Session(object):
                 "Login failed, HTTP status code: %s and reason: %s"
                 % (response.status_code, response.reason)
             )
+        self._token = response.headers.get("Authorization")
         return _session
 
     def logout(self):

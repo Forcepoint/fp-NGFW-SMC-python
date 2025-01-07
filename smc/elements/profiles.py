@@ -51,7 +51,8 @@ Specify a DNS server to handle specific domains::
 
 """
 from smc.base.model import Element, ElementCreator
-from smc.api.exceptions import ElementNotFound, UnsupportedAttribute, UnsupportedSMCVersion
+from smc.api.exceptions import ElementNotFound, UnsupportedAttribute, UnsupportedSMCVersion, \
+    UnsupportedEngineFeature
 from smc.base.structs import NestedDict
 from smc.base.util import element_resolver
 from smc.compat import is_smc_version_less_than
@@ -261,13 +262,14 @@ class SNMPAgent(Element):
             snmp_version="v3",
             monitoring_user_names=[],
             trap_user_name=None,
+            hardware_alerts=False,
             comment=None,
     ):
         json = {
             "boot": False,
             "go_offline": False,
             "go_online": False,
-            "hardware_alerts": False,
+            "hardware_alerts": hardware_alerts,
             "name": name,
             "policy_applied": False,
             "shutdown": False,
@@ -281,8 +283,23 @@ class SNMPAgent(Element):
             "snmp_trap_user_name": trap_user_name,
             "comment": comment
         }
-
+        _snmp_authentication_protocol_compatible_check(snmp_users)
         return ElementCreator(cls, json)
+
+
+def _snmp_authentication_protocol_compatible_check(snmp_users):
+    """
+    Check if the capabilities are compatible with the current SMC version.
+    will raise UnsupportedEngineFeature if not compatible.
+    :param snmp_users: list of snmp users
+    :return:
+    """
+    if snmp_users and is_smc_version_less_than("7.3.0"):
+        for user in snmp_users:
+            if user.get("snmp_authentication_protocol") in {"sha_256", "sha_384", "sha_512"}:
+                raise UnsupportedEngineFeature("Unsupported SNMP Authentication Protocol,sha_256/"
+                                               "sha_384/sha_512 are only supported in SMC/engine"
+                                               " version >= 7.3.0")
 
 
 class SandboxService(Element):

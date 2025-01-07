@@ -94,6 +94,7 @@ from smc_monitoring.models.calendar import TimeFormat
 from smc_monitoring.models.query import Query
 from smc_monitoring.models.constants import LogField
 from smc_monitoring.models.formatters import TableFormat
+import logging
 
 
 class LogQuery(Query):
@@ -192,6 +193,19 @@ class LogQuery(Query):
         for results in super(LogQuery, self).execute():
             if "records" in results and results["records"]:
                 yield results["records"]
+
+    def fetch_statistics(self):
+        """
+        Execute the query and return entries based on statistics.
+        Optional keyword arguments are passed to Query.execute(). Whether
+        this is real-time or stored logs is dependent on the value of
+        ``fetch_type``.
+
+        :return: generator of dict results
+        """
+        for results in super(LogQuery, self).execute():
+            if "statistics" in results and results["statistics"]:
+                yield results["statistics"]
 
     def fetch_batch(self, formatter=TableFormat):
         """

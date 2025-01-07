@@ -49,6 +49,7 @@ from smc.elements.other import prepare_block_list, prepare_blacklist
 from smc.elements.network import Alias
 from smc.vpn.elements import VPNSite, LinkUsageProfile
 from smc.routing.bgp import DynamicRouting
+from smc.routing.pim import PIMSettings
 from smc.routing.ospf import OSPFProfile
 from smc.core.route import Antispoofing, Routing, Route, PolicyRoute
 from smc.core.session_monitoring import SessionMonitoringResult
@@ -247,7 +248,7 @@ class Engine(Element):
         enable_gti=False,
         sidewinder_proxy_enabled=False,
         known_host_lists=[],
-        default_nat=False,
+        default_nat=None,
         location_ref=None,
         enable_ospf=None,
         ospf_profile=None,
@@ -261,7 +262,9 @@ class Engine(Element):
         ssm_advanced_setting=None,
         scan_detection=None,
         static_multicast_route=None,
+        pim_settings=None,
         web_authentication=None,
+        nat64_settings=None,
         **kw
     ):
         """
@@ -288,8 +291,10 @@ class Engine(Element):
             on a NGFW.
         :param list(dict),list(StaticMulticastRoute) static_multicast_route: Represents Firewall
             multicast routing entry for Static/IGMP Proxy multicast routing modes.
+        :param PIM/dict pim_settings: This represents the PIM Multicast routing settings.
         :param WebAuthentication/dict web_authentication: This represents the Browser-Based User
             Authentication settings for a NGFW.
+        :param Nat64Settings/dict nat64_settings: This represents the NAT64 settings for a NGFW.
         """
         node_list = []
         for nodeid in range(1, nodes + 1):  # start at nodeid=1
@@ -361,7 +366,7 @@ class Engine(Element):
                     base_cfg.update(known_host_lists_ref=split_known_host_lists)
 
         if default_nat:
-            base_cfg.update(default_nat=True)
+            base_cfg.update(default_nat=str(default_nat).lower())
 
         if location_ref:
             base_cfg.update(location_ref=location_helper(location_ref) if location_ref else None)
@@ -428,10 +433,20 @@ class Engine(Element):
                                       static_multicast_route]
             base_cfg.update(static_multicast_route=static_multicast_route)
 
+        if pim_settings:
+            pim_settings = pim_settings.data \
+                if isinstance(pim_settings, PIMSettings) else pim_settings
+            base_cfg.update(pim_settings=pim_settings)
+
         if web_authentication:
             web_authentication = web_authentication.data \
                 if isinstance(web_authentication, WebAuthentication) else web_authentication
             base_cfg.update(web_authentication=web_authentication)
+
+        if nat64_settings:
+            nat64_settings = nat64_settings.data \
+                if isinstance(nat64_settings, Nat64Settings) else nat64_settings
+            base_cfg.update(ipv6_transition_mechanism=nat64_settings)
 
         base_cfg.update(kw, comment=comment)  # Add rest of kwargs
         return base_cfg
@@ -905,6 +920,18 @@ class Engine(Element):
         if "dynamic_routing" in self.data:
             return DynamicRouting(self)
         raise UnsupportedEngineFeature("Dynamic routing is only supported on layer 3 engine types")
+
+    @property
+    def pim_settings(self):
+        """
+        PIM Multicast Routing entry point.
+
+        :rtype: PIM, None if not defined
+        """
+        if "pim_settings" in self.data:
+            return PIMSettings(self)
+        else:
+            return None
 
     @property
     def l2fw_settings(self):
@@ -1878,6 +1905,10 @@ class Engine(Element):
         )
 
     @property
+    def upload_result(self):
+        return self.make_request(UnsupportedEngineFeature, resource="upload_result")
+
+    @property
     def modem_interface(self):
         """
         Get only modem interfaces for this engine node.
@@ -2441,6 +2472,14 @@ class Engine(Element):
         """
         return WebAuthentication(self.data.get("web_authentication", {}))
 
+    @property
+    def nat64_settings(self):
+        """
+        The NAT64 settings
+        :rtype: Nat64Settings
+        """
+        return Nat64Settings(self.data.get("ipv6_transition_mechanism", {}))
+
 
 class VPNMappingCollection(BaseIterable):
     def __init__(self, vpns):
@@ -2612,7 +2651,7 @@ class VPN(object):
         """
         return create_collection(self.internal_gateway.get_relation("vpn_site"), VPNSite)
 
-    def add_site(self, name, site_elements=None, vpn_references=None):
+    def add_site(self, name, site_elements=None, vpn_references=None, is_automatic=False):
         """
         Add a VPN site with site elements to this engine.
         VPN sites identify the sites with protected networks
@@ -2636,7 +2675,7 @@ class VPN(object):
         .. note:: Update is immediate for this operation.
         """
         site_elements = site_elements if site_elements else []
-        return self.sites.create(name, site_elements, vpn_references)
+        return self.sites.create(name, site_elements, vpn_references, is_automatic=is_automatic)
 
     @property
     def internal_endpoint(self):
@@ -3556,3 +3595,357 @@ class WebAuthentication(NestedDict):
                 json.update(http_port=http_port)
 
         return cls(json)
+
+
+class Nat64Settings(NestedDict):
+    """
+    The NAT 64 settings:
+    IPv6 transition mechanisms enable communication between devices that have only IPv4 addresses
+    and devices that have only IPv6 address. They can also enable limited IPv4 top
+    IPv4 communication over IPv6 only network connections.
+    These translation mechanisms do the translation between IPv4 and IPv6 addresses.
+    * The IPv6 transition mechanism feature is not supported on Virtual Engines.
+    * Only one translation mode can be activated at a time.
+    * In order to use these translation mechanisms Secure SD-WAN engine must have at least
+    one IPv4 address and at least one IPv6 address.
+    * Protocols with separate control and data or media connections and connections that use
+    IPv4 or IPv6 addresses in the payload will not work through these translation mechanisms.
+    * IPv6 prefixes used in the translations must not overlap with the engines own IPv6 addresses.
+    * Translation in the transition mechanisms support only unicast communication.
+    * Translated connections traverse through Secure SD-WAN as two separate connections.
+    However, depending on the translation mode, either IPv4 or IPv6 packets to and
+    from translation are handled without creating rules manually.
+    * Use of translation can lead to Path MTU discovery related problems if there are
+    any faults in the way the networks in the path work.
+    """
+
+    def __init__(self, data):
+        super(Nat64Settings, self).__init__(data=data)
+
+    @classmethod
+    def create(cls, clat_local_ipv6_prefix_ip, clat_local_ipv6_prefix_ref,
+               clat_remote_ipv6_prefix_ip, clat_remote_ipv6_prefix_ref, nat64_local_pools_ref,
+               nat64_ipv6_prefix_ip, nat64_ipv6_prefix_ref, nat64_mapping,
+               siit_eam_ipv6_pool_ip, siit_eam_ipv6_pool_ref, siit_eam_mapping, mode="none"):
+        """
+        :param str clat_local_ipv6_prefix_ip: For 464XLAT CLAT mode, the local
+        IPv6 prefix address.
+        :param Network clat_local_ipv6_prefix_ref: For 464XLAT CLAT mode, the local
+        IPv6 prefix element.
+        :param str clat_remote_ipv6_prefix_ip: For 464XLAT CLAT mode, the remote
+        IPv6 prefix address.
+        :param Network clat_remote_ipv6_prefix_ref: For 464XLAT CLAT mode, the remote
+        IPv6 prefix element.
+        :param list of Network nat64_local_pools_ref: For NAT64 mode, the Networks for
+        local IPv4 pools.
+        :param str nat64_ipv6_prefix_ip: For NAT64 mode, the IPv6 prefix address.
+        :param Network nat64_ipv6_prefix_ref: For NAT64 mode, the IPv6 prefix element.
+        :param list of Nat64Mapping nat64_mapping: For NAT64 mode, the list of static mappings.
+        :param str siit_eam_ipv6_pool_ip: For SIIT EAM mode, the default IPv6 pool address.
+        :param Network siit_eam_ipv6_pool_ref: For SIIT EAM mode, the default IPv6 pool element.
+        :param list of SiitMapping siit_eam_mapping: For SIIT EAM mode, the list of mappings.
+        :param str mode:
+         * nat64: NAT64 is a stateful IPv6 to IPv4 translation mechanism defined in RFC 6146.
+         When NAT64 mechanism is activated, access rules that control traffic are made in the
+         IPv6 side. IPv6 traffic with destination address matching the configured prefix will go
+         to NAT64 translation.
+         There is no need to create any rules for this traffic in the IPv4 access rules.
+         All traffic configured to the IPv4 pool will go to translation.
+           - NAT64 supports only unicast UDP, TCP, and ICMP traffic.
+           - NAT64 can not be used with active-active clustering.
+           - In the RFC 6877, NAT64 is referred as 464XLAT PLAT.
+           - Due to RFC 6146 compliant NAT functionality, size of the IPv4 pool will set
+           strict limit to maximum number of connections.
+           - Due to RFC 6146 compliant NAT implementation, there will be additional
+           connection state for the NAT processing.
+           - Local IPv4 pool addresses must not overlap with the engines own addresses
+           or NAT addresses used in IPv4 rules.
+         * 464xlat_clat: Client side translation of RFC 6877. Used together with 464XLAT PLAT at
+         the other edge of IPv6 only network in order to allow IPv4 traffic through IPv6
+         only network. When used, local IPv4 addresses are detected based on the configured
+         routing. Access rules controlling the traffic must be made in the IPv4 access rules.
+         There is no need to create any rules for translated traffic in the IPv6 access rules.
+         In the IPv4 side, traffic which does not have any route will be sent to translation.
+         In the IPv6 side, the traffic from the remote IPv6 prefix to the local IPv6
+         prefix will be sent to translation.
+         * siit_eam: Stateless IPv4/IPv6 translation as defined in RFC 7757.
+         When used without defining any explicit address mapping entries, same as SIIT,
+         access rules controlling the traffic must be made in the IPv4 access rules.
+         There is no need to create any rules for translated traffic in the IPv6 access rules.
+         In the IPv4 side, traffic which does not have any route will be sent to translation.
+         In the IPv6 side, traffic which will have valid IPv4 route after translation are sent
+         to translation.
+        :rtype: Nat64Settings
+        """
+        json = {
+            "clat_local_ipv6_prefix_ip": clat_local_ipv6_prefix_ip,
+            "clat_local_ipv6_prefix_ref": element_resolver(clat_local_ipv6_prefix_ref),
+            "clat_remote_ipv6_prefix_ip": clat_remote_ipv6_prefix_ip,
+            "clat_remote_ipv6_prefix_ref": element_resolver(clat_remote_ipv6_prefix_ref),
+            "nat64_local_pools_ref": element_resolver(nat64_local_pools_ref),
+            "nat64_ipv6_prefix_ip": nat64_ipv6_prefix_ip,
+            "nat64_ipv6_prefix_ref": element_resolver(nat64_ipv6_prefix_ref),
+            "nat64_mapping": nat64_mapping,
+            "siit_eam_ipv6_pool_ip": siit_eam_ipv6_pool_ip,
+            "siit_eam_ipv6_pool_ref": element_resolver(siit_eam_ipv6_pool_ref),
+            "siit_eam_mapping": siit_eam_mapping,
+            "mode": mode
+        }
+
+        return cls(json)
+
+    @property
+    def clat_local_ipv6_prefix_ip(self):
+        """
+        For 464XLAT CLAT mode, the local
+        IPv6 prefix address.
+        :rtype: str
+        """
+        return self.data.get("clat_local_ipv6_prefix_ip")
+
+    @property
+    def clat_local_ipv6_prefix_ref(self):
+        """
+        For 464XLAT CLAT mode, the local
+        IPv6 prefix element.
+        :rtype: Network
+        """
+        return Element.from_href(self.data.get("clat_local_ipv6_prefix_ref"))
+
+    @property
+    def clat_remote_ipv6_prefix_ip(self):
+        """
+        For 464XLAT CLAT mode, the remote
+        IPv6 prefix address.
+        :rtype: str
+        """
+        return self.data.get("clat_remote_ipv6_prefix_ip")
+
+    @property
+    def clat_remote_ipv6_prefix_ref(self):
+        """
+        For 464XLAT CLAT mode, the remote
+        IPv6 prefix element.
+        :rtype: Network
+        """
+        return Element.from_href(self.data.get("clat_remote_ipv6_prefix_ref"))
+
+    @property
+    def nat64_local_pools_ref(self):
+        """
+        For NAT64 mode, the Networks for
+        local IPv4 pools.
+
+        :return: list of Network
+        """
+        return [Element.from_href(e) for e in self.data.get("nat64_local_pools_ref")]
+
+    @property
+    def nat64_ipv6_prefix_ip(self):
+        """
+        For NAT64 mode, the IPv6 prefix address.
+        :rtype: str
+        """
+        return self.data.get("nat64_ipv6_prefix_ip")
+
+    @property
+    def nat64_ipv6_prefix_ref(self):
+        """
+        For NAT64 mode, the IPv6 prefix element.
+        :rtype: Network
+        """
+        return Element.from_href(self.data.get("nat64_ipv6_prefix_ref"))
+
+    @property
+    def siit_eam_ipv6_pool_ip(self):
+        """
+        For SIIT EAM mode, the default IPv6 pool address.
+        :rtype: str
+        """
+        return self.data.get("siit_eam_ipv6_pool_ip")
+
+    @property
+    def siit_eam_ipv6_pool_ref(self):
+        """
+        For SIIT EAM mode, the default IPv6 pool element.
+        :rtype: Network
+        """
+        return Element.from_href(self.data.get("siit_eam_ipv6_pool_ref"))
+
+    @property
+    def mode(self):
+        """
+        the mode:
+          * nat64
+          * 464xlat_clat
+          * siit_eam
+        :rtype: str
+        """
+        return self.data.get("mode")
+
+    @property
+    def nat64_mapping(self):
+        """
+        For NAT64 mode, the list of static mappings.
+        :return: list of Nat64Mapping or empty if not defined.
+        """
+        return [Nat64Mapping(entry) for entry in
+                self.data.get("nat64_mapping", [])]
+
+    @property
+    def siit_eam_mapping(self):
+        """
+        For SIIT EAM mode, the list of mappings.
+        :return: list of SiitMapping or empty if not defined.
+        """
+        return [SiitMapping(entry) for entry in
+                self.data.get("siit_eam_mapping", [])]
+
+
+class Nat64Mapping(NestedDict):
+    """
+    The NAT 64 mapping
+    """
+    def __init__(self, data):
+        super(Nat64Mapping, self).__init__(data=data)
+
+    @classmethod
+    def create(cls, nat64_mapping_ipv6_address, nat64_mapping_ipv6_port, nat64_mapping_protocol_ref,
+               nat64_mapping_ipv4_address, nat64_mapping_ipv4_port, rank, comment):
+        """
+        :param str nat64_mapping_ipv6_address: the IPv6 address.
+        :param int nat64_mapping_ipv6_port: the port for IPv6 part.
+        :param ServiceIP nat64_mapping_protocol_ref: Protocol, as a referenced ServiceIP element.
+        :param str nat64_mapping_ipv4_address: the IPv4 address.
+        :param int nat64_mapping_ipv4_port: the port for IPv4 part.
+        :param int rank: the rank for ordering mappings
+        If not set, it means any.
+        :param str comment
+        :rtype: dict
+        """
+        data = {
+            "nat64_mapping_ipv6_address": nat64_mapping_ipv6_address,
+            "nat64_mapping_ipv6_port": nat64_mapping_ipv6_port,
+            "nat64_mapping_protocol_ref": element_resolver(nat64_mapping_protocol_ref),
+            "nat64_mapping_ipv4_address": nat64_mapping_ipv4_address,
+            "nat64_mapping_ipv4_port": nat64_mapping_ipv4_port,
+            "rank": rank,
+            "comment": comment
+        }
+        return cls(data)
+
+    @property
+    def nat64_mapping_ipv6_address(self):
+        """
+        the IPv6 address.
+        :rtype: str
+        """
+        return self.data.get("nat64_mapping_ipv6_address")
+
+    @property
+    def nat64_mapping_ipv6_port(self):
+        """
+        the port for IPv6 part.
+        :rtype: int
+        """
+        return int(self.data.get("nat64_mapping_ipv6_port"))
+
+    @property
+    def nat64_mapping_protocol_ref(self):
+        """
+        the Protocol, as a referenced ServiceIP element.
+        :rtype: int
+        """
+        return Element.from_href(self.data.get("nat64_mapping_protocol_ref"))
+
+    @property
+    def nat64_mapping_ipv4_address(self):
+        """
+        the IPv4 address.
+        :rtype: str
+        """
+        return self.data.get("nat64_mapping_ipv4_address")
+
+    @property
+    def nat64_mapping_ipv4_port(self):
+        """
+        the port for IPv4 part.
+        :rtype: int
+        """
+        return int(self.data.get("nat64_mapping_ipv4_port"))
+
+    @property
+    def rank(self):
+        """
+        the rank for ordering mappings.
+        :rtype: int
+        """
+        return int(self.data.get("rank"))
+
+    @property
+    def comment(self):
+        """
+        the comment.
+        :rtype: str
+        """
+        return self.data.get("comment")
+
+
+class SiitMapping(NestedDict):
+    """
+    The mapping for SIIT EAM mode.
+    """
+
+    def __init__(self, data):
+        super(SiitMapping, self).__init__(data=data)
+
+    @classmethod
+    def create(cls, siit_eam_mapping_ipv6_prefix, siit_eam_mapping_ipv4_network,
+               rank, comment):
+        """
+        :param str siit_eam_mapping_ipv6_prefix: the IPv6 prefix.
+        :param str siit_eam_mapping_ipv4_network: the IPv4 network.
+        :param int rank: the rank for ordering mappings
+        If not set, it means any.
+        :param str comment
+        :rtype: dict
+        """
+        data = {
+            "siit_eam_mapping_ipv6_prefix": siit_eam_mapping_ipv6_prefix,
+            "siit_eam_mapping_ipv4_network": siit_eam_mapping_ipv4_network,
+            "rank": rank,
+            "comment": comment
+        }
+        return cls(data)
+
+    @property
+    def siit_eam_mapping_ipv6_prefix(self):
+        """
+        the IPv6 prefix.
+        :rtype: str
+        """
+        return self.data.get("siit_eam_mapping_ipv6_prefix")
+
+    @property
+    def siit_eam_mapping_ipv4_network(self):
+        """
+        the IPv4 network.
+        :rtype: str
+        """
+        return self.data.get("siit_eam_mapping_ipv4_network")
+
+    @property
+    def rank(self):
+        """
+        the rank for ordering mappings.
+        :rtype: int
+        """
+        return int(self.data.get("rank"))
+
+    @property
+    def comment(self):
+        """
+        the comment.
+        :rtype: str
+        """
+        return self.data.get("comment")

@@ -64,6 +64,7 @@ def set_stream_logger(log_level=logging.DEBUG, format_string=None, logger_name="
     if format_string is None:
         format_string = LOG_FORMAT
 
+    logging.captureWarnings(True)
     logger = logging.getLogger(logger_name)
     logger.setLevel(log_level)
 

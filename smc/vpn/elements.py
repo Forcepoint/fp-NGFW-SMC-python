@@ -66,6 +66,7 @@ from smc.base.util import element_resolver, element_default
 from smc.elements.helpers import location_helper
 from smc.base.structs import SerializedIterable
 from smc.elements.other import ContactAddress, Location
+from smc.compat import is_smc_version_less_than, supported_feature_check, supported_parameter_check
 
 
 class GatewaySettings(Element):
@@ -83,16 +84,16 @@ class GatewaySettings(Element):
 
     @classmethod
     def create(
-        cls,
-        name,
-        negotiation_expiration=200000,
-        negotiation_retry_timer=500,
-        negotiation_retry_max_number=32,
-        negotiation_retry_timer_max=7000,
-        certificate_cache_crl_validity=90000,
-        mobike_after_sa_update=False,
-        mobike_before_sa_update=False,
-        mobike_no_rrc=True,
+            cls,
+            name,
+            negotiation_expiration=200000,
+            negotiation_retry_timer=500,
+            negotiation_retry_max_number=32,
+            negotiation_retry_timer_max=7000,
+            certificate_cache_crl_validity=90000,
+            mobike_after_sa_update=False,
+            mobike_before_sa_update=False,
+            mobike_no_rrc=True,
     ):
         """
         Create a new gateway setting profile.
@@ -153,6 +154,7 @@ class GatewayProfile(Element):
             aes256_for_ike
             aes256_for_ipsec
             aes_gcm_256_for_ipsec
+            aes_gcm_256_for_ike (SMC/NGFW >= 7.3.0)
             aes_gcm_for_ipsec
             aes_xcbc_for_ipsec
             aggressive_mode
@@ -215,9 +217,10 @@ class GatewayProfile(Element):
         :return GatewayProfile: instance with metadata
         :rtype: GatewayProfile
         """
-        json = {'name': name, 'comment': comment}
         if capabilities:
-            json.update(capabilities=capabilities)
+            supported_parameter_check("aes_gcm_256_for_ike", capabilities, "7.3.0")
+        json = {'name': name, 'comment': comment}
+        json.update(capabilities=capabilities)
         return ElementCreator(cls, json=json)
 
     @property
@@ -279,7 +282,7 @@ class ExternalGateway(Element):
 
     @classmethod
     def update_or_create(
-        cls, name, external_endpoint=None, vpn_site=None, trust_all_cas=True, with_status=False
+            cls, name, external_endpoint=None, vpn_site=None, trust_all_cas=True, with_status=False
     ):
         """
         Update or create an ExternalGateway. The ``external_endpoint`` and
@@ -487,18 +490,18 @@ class ExternalEndpoint(SubElement):
     typeof = "external_endpoint"
 
     def create(
-        self,
-        name,
-        address=None,
-        enabled=True,
-        ipsec_vpn=True,
-        nat_t=False,
-        force_nat_t=False,
-        dynamic=False,
-        ike_phase1_id_type=None,
-        ike_phase1_id_value=None,
-        connection_type_ref=None,
-        **kw
+            self,
+            name,
+            address=None,
+            enabled=True,
+            ipsec_vpn=True,
+            nat_t=False,
+            force_nat_t=False,
+            dynamic=False,
+            ike_phase1_id_type=None,
+            ike_phase1_id_value=None,
+            connection_type_ref=None,
+            **kw
     ):
         """
         Create an test_external endpoint. Define common settings for that
@@ -691,7 +694,7 @@ class VPNSite(SubElement):
     typeof = "vpn_site"
     gateway = ElementRef("gateway")
 
-    def create(self, name, site_element, vpn_references=None):
+    def create(self, name, site_element, vpn_references=None, is_automatic=False):
         """
         Create a VPN site for an internal or external gateway
 
@@ -699,12 +702,13 @@ class VPNSite(SubElement):
         :param list site_element: list of protected networks/hosts
         :type site_element: list[str,Element]
         :param list(dict) vpn_references: Set of associations Site-VPN.
+        :param bool is_automatic: is this an automatic Site. If so you cannot set VPN references.
         :raises CreateElementFailed: create element failed with reason
         :return: href of new element
         :rtype: str
         """
         site_element = element_resolver(site_element)
-        json = {"name": name, "site_element": site_element}
+        json = {"name": name, "site_element": site_element, "automatic": is_automatic}
         if vpn_references:
             json.update(vpn_references=vpn_references)
 
@@ -712,7 +716,7 @@ class VPNSite(SubElement):
 
     @classmethod
     def update_or_create(cls, external_gateway, name, site_element=None, with_status=False,
-                         vpn_references=None):
+                         vpn_references=None, is_automatic=False):
         """
         Update or create a VPN Site elements or modify an existing VPN
         site based on value of provided site_element list. The resultant
@@ -728,6 +732,7 @@ class VPNSite(SubElement):
             (VPNSite, modified, created), where modified and created
             is the boolean status for operations performed.
         :param lidt(dict) vpn_references: Set of associations Site-VPN.
+        :param bool is_automatic: is this an automatic Site. If so you cannot set VPN references.
         :raises ElementNotFound: ExternalGateway or unresolved site_element
         """
         site_element = [] if not site_element else site_element
@@ -739,12 +744,14 @@ class VPNSite(SubElement):
         if vpn_site:  # If difference, reset
             if set(site_elements) != set(vpn_site.data.get("site_element", [])) and site_element:
                 vpn_site.data["site_element"] = site_elements
+            if is_automatic != vpn_site.data.get("is_automatic"):
+                vpn_site.data["is_automatic"] = is_automatic
             vpn_site.update(vpn_references=vpn_references)
             updated = True
-
         else:
             vpn_site = external_gateway.vpn_site.create(name=name, site_element=site_elements,
-                                                        vpn_references=vpn_references)
+                                                        vpn_references=vpn_references,
+                                                        is_automatic=is_automatic)
             created = True
 
         if with_status:
@@ -775,6 +782,14 @@ class VPNSite(SubElement):
         :rtype: list
         """
         return self.data.get("vpn_references", [])
+
+    @property
+    def is_automatic(self):
+        """
+        Is this an automatic Site. If so you cannot set VPN references.
+        :rtype: bool
+        """
+        return self.data.get("automatic")
 
     def add_site_element(self, element):
         """
@@ -855,7 +870,10 @@ class VPNProfile(Element):
         :raises CreateElementFailed: failed creating element with reason
         :rtype: VPNProfile
         """
-        kw.update(name=name, capabilities=capabilities,
+        supported_parameter_check("ike_v2_ppk", kw, "7.3.0")
+        if capabilities:
+            supported_parameter_check("aes_gcm_256_for_ike", capabilities, "7.3.0")
+        kw.update(name=name,
                   cn_authentication_for_mobile_vpn=cn_authentication_for_mobile_vpn,
                   disable_anti_replay=disable_anti_replay,
                   disable_path_discovery=disable_path_discovery,
@@ -866,8 +884,9 @@ class VPNProfile(Element):
                   sa_to_any_network_allowed=sa_to_any_network_allowed,
                   trust_all_cas=trust_all_cas,
                   tunnel_life_time_kbytes=tunnel_life_time_kbytes,
-                  tunnel_life_time_seconds=tunnel_life_time_seconds, comment=comment)
-
+                  tunnel_life_time_seconds=tunnel_life_time_seconds,
+                  capabilities=capabilities,
+                  comment=comment)
         if trusted_certificate_authority:
             kw.update(trusted_certificate_authority=trusted_certificate_authority)
         return ElementCreator(cls, json=kw)
@@ -1109,9 +1128,9 @@ class LinkUsageException(object):
         link_usage_preferences_json = []
         for lup in link_usage_preference:
             link_usage_preferences_json.append({
-                    "preference": lup.preference,
-                    "qos_class": lup.qos_class
-                })
+                "preference": lup.preference,
+                "qos_class": lup.qos_class
+            })
         self.data["link_usage_preference"] = link_usage_preferences_json
 
     def link_type(self):
@@ -1188,3 +1207,47 @@ class LinkUsageProfile(Element):
         List of exceptions
         """
         return self.link_usage_exception.get("link_usage_exception")
+
+
+class PPK(Element):
+    typeof = "ppk"
+
+    @classmethod
+    def create(
+            cls,
+            name,
+            primary_ppk_id,
+            primary_ppk_secret,
+            secondary_ppk_id=None,
+            secondary_ppk_secret=None,
+            comment=None,
+            **kw
+    ):
+        """
+        Create a PPK element. A PPK is a Post Quantum pre-shared key used for VPN configurations
+        using IKEv2.
+        It will be used if the VPN profile specifies to use it and must be set in Route-Based VPN or
+        Policy-Based VPN accordingly.
+        :param str name: name of the Key, if not specified will be auto-generated
+        :param int primary_ppk_id: the primary PPK ID
+        :param str primary_ppk_secret: the primary PPK secret
+        :param int secondary_ppk_id: the secondary PPK ID (optional)
+        :param str secondary_ppk_secret: the secondary PPK secret (optional)
+        :param str comment: comment for the PPK
+        :param kw: additional parameters as kw
+        :raises CreateElementFailed: failed to create element with reason
+        :raises ElementNotFound: specified element reference was not found
+        :raises UnsupportedEngineFeature: PPK creation is only supported in SMC/engine version
+         >= 7.3.0
+        :rtype: PPK
+        """
+        supported_feature_check("7.3.0", "Post Quantum pre-shared key (PPK) creation is only"
+                                         " supported in SMC/engine version >= 7.3.0")
+        kw.update(name=name,
+                  comment=comment,
+                  primary_ppk_id=primary_ppk_id,
+                  primary_ppk_secret=primary_ppk_secret)
+        if secondary_ppk_id:
+            kw.update(secondary_ppk_id=secondary_ppk_id,
+                      secondary_ppk_secret=secondary_ppk_secret)
+        return ElementCreator(cls, json=kw)

@@ -58,6 +58,9 @@ def send_request(user_session, method, request):
         try:
             method = method.upper() if method else ""
 
+            if user_session._token:
+                request.headers['Authorization'] = user_session._token
+
             if method == GET:
                 if request.filename:  # File download request
                     return file_download(user_session, request)

@@ -61,7 +61,7 @@ class Layer3Firewall(Engine):
         nodes_definition=None,
         node_type="firewall_node",
         location_ref=None,
-        default_nat=False,
+        default_nat='automatic',
         enable_antivirus=False,
         enable_gti=False,
         sidewinder_proxy_enabled=False,
@@ -81,7 +81,9 @@ class Layer3Firewall(Engine):
         ssm_advanced_setting=None,
         scan_detection=None,
         static_multicast_route=None,
+        pim_settings=None,
         web_authentication=None,
+        nat64_settings=None,
         **kw
     ):
         """
@@ -244,7 +246,9 @@ class Layer3Firewall(Engine):
                 ssm_advanced_setting=ssm_advanced_setting,
                 scan_detection=scan_detection,
                 static_multicast_route=static_multicast_route,
+                pim_settings=pim_settings,
                 web_authentication=web_authentication,
+                nat64_settings=nat64_settings,
                 **extra_opts if extra_opts else {}
             )
 
@@ -268,7 +272,7 @@ class Layer3Firewall(Engine):
         mgmt_network,
         mgmt_interface=0,
         log_server_ref=None,
-        default_nat=False,
+        default_nat='automatic',
         reverse_connection=False,
         domain_server_address=None,
         zone_ref=None,
@@ -427,7 +431,7 @@ class Layer3Firewall(Engine):
         enable_antivirus=False,
         sidewinder_proxy_enabled=False,
         known_host_lists=[],
-        default_nat=False,
+        default_nat='automatic',
         comment=None,
         extra_opts=None,
         engine_type=None,
@@ -580,12 +584,12 @@ class CloudSGSingleFW(Layer3Firewall):
         enable_antivirus=False,
         sidewinder_proxy_enabled=False,
         known_host_lists=[],
-        default_nat=False,
+        default_nat='automatic',
         comment=None,
         extra_opts=None,
         **kw
     ):
-        Layer3Firewall.create_dynamic(
+        return Layer3Firewall.create_dynamic(
             name,
             interface_id,
             dynamic_index,
@@ -616,7 +620,7 @@ class CloudSGSingleFW(Layer3Firewall):
         mgmt_network,
         mgmt_interface=0,
         log_server_ref=None,
-        default_nat=False,
+        default_nat='automatic',
         reverse_connection=False,
         domain_server_address=None,
         zone_ref=None,
@@ -757,6 +761,10 @@ class Layer2Cluster(Layer2Firewall):
     typeof = "layer2_cluster"
 
 
+class VirtualLayer2(Layer2Firewall):
+    typeof = "virtual_firewall_layer2"
+
+
 class IPS(Engine):
     """
     Creates an IPS engine with a default inline interface pair
@@ -869,6 +877,109 @@ class IPS(Engine):
 class VirtualIPS(IPS):
     typeof = "virtual_ips"
 
+    @classmethod
+    def create(
+        cls,
+        name,
+        mgmt_ip,
+        mgmt_network,
+        mgmt_interface=0,
+        inline_interface="1-2",
+        logical_interface="default_eth",
+        log_server_ref=None,
+        domain_server_address=None,
+        zone_ref=None,
+        enable_antivirus=False,
+        enable_gti=False,
+        comment=None,
+        extra_opts=None,
+        lldp_profile=None,
+        discard_quic_if_cant_inspect=True,
+        node_definition=None,
+        scan_detection=None,
+        **kw
+    ):
+        """
+        Create a single IPS engine with management interface and inline pair
+
+        :param str name: name of ips engine
+        :param str mgmt_ip: ip address of management interface
+        :param str mgmt_network: management network in cidr format
+        :param int mgmt_interface: (optional) interface for management from SMC to engine
+        :param str inline_interface: interfaces to use for first inline pair
+        :param str logical_interface: name, str href or LogicalInterface (created if it
+            doesn't exist)
+        :param str log_server_ref: (optional) href to log_server instance
+        :param list domain_server_address: (optional) DNS server addresses
+        :param str zone_ref: zone name, str href or Zone for management interface
+            (created if not found)
+        :param bool enable_antivirus: (optional) Enable antivirus (required DNS)
+                :param bool enable_gti: (optional) Enable GTI
+        :param LLDPProfile lldp_profile: LLDP Profile represents a set of attributes used for
+        configuring LLDP
+        :param bool discard_quic_if_cant_inspect: (optional) discard or allow QUIC
+         if inspection is not possible
+        :param dict extra_opts: extra options as a dict to be passed to the top level engine
+        :param node_definition information for the node itself
+        :param dict,ScanDetection scan_detection: This represents the definition of Scan Detection
+            on a NGFW.
+        :raises CreateEngineFailed: Failure to create with reason
+        :return: :py:class:`smc.core.engine.Engine`
+        """
+        interfaces = []
+        interface_id, second_interface_id = inline_interface.split("-")
+        l2 = {
+            "interface_id": interface_id,
+            "interface": "inline_interface",
+            "second_interface_id": second_interface_id,
+            "logical_interface_ref": logical_interface,
+        }
+
+        interfaces.append({"physical_interface": Layer2PhysicalInterface(**l2)})
+
+        layer3 = {
+            "interface_id": mgmt_interface,
+            "zone_ref": zone_ref,
+            "interfaces": [
+                {"nodes": [{"address": mgmt_ip, "network_value": mgmt_network, "nodeid": 1}]}
+            ],
+        }
+
+        interfaces.append(
+            {
+                "virtual_physical_interface": Layer3PhysicalInterface(
+                    primary_mgt=mgmt_interface, **layer3
+                )
+            }
+        )
+
+        nodes_definition = []
+        if node_definition:
+            nodes_definition.append(node_definition)
+
+        engine = super(VirtualIPS, cls)._create(
+            name=name,
+            node_type="virtual_ips_node",
+            nodes_definition=nodes_definition,
+            physical_interfaces=interfaces,
+            domain_server_address=domain_server_address,
+            log_server_ref=log_server_ref,
+            enable_gti=enable_gti,
+            nodes=1,
+            enable_antivirus=enable_antivirus,
+            comment=comment,
+            lldp_profile=lldp_profile,
+            discard_quic_if_cant_inspect=discard_quic_if_cant_inspect,
+            scan_detection=scan_detection,
+            **extra_opts if extra_opts else {},
+        )
+
+        try:
+            return ElementCreator(cls, json=engine)
+
+        except CreateElementFailed as e:
+            raise CreateEngineFailed(e)
+
 
 class Layer3VirtualEngine(Engine):
     """
@@ -897,7 +1008,7 @@ class Layer3VirtualEngine(Engine):
         master_engine,
         virtual_resource,
         interfaces,
-        default_nat=False,
+        default_nat='automatic',
         outgoing_intf=0,
         domain_server_address=None,
         enable_ospf=False,
@@ -909,7 +1020,9 @@ class Layer3VirtualEngine(Engine):
         ssm_advanced_setting=None,
         scan_detection=None,
         static_multicast_route=None,
+        pim_settings=None,
         web_authentication=None,
+        nat64_settings=None,
         **kw
     ):
         """
@@ -938,8 +1051,10 @@ class Layer3VirtualEngine(Engine):
             on a NGFW.
         :param list(dict),list(StaticMulticastRoute) static_multicast_route: Represents Firewall
             multicast routing entry for Static/IGMP Proxy multicast routing modes.
+        :param PIM/dict pim_settings: This represents the PIM Multicast routing settings.
         :param WebAuthentication/dict web_authentication: This represents the Browser-Based User
             Authentication settings for a NGFW.
+        :param Nat64Settings/dict nat64_settings: This represents the NAT64 settings for a NGFW.
         :raises CreateEngineFailed: Failure to create with reason
         :raises LoadEngineFailed: master engine not found
         :return: :py:class:`smc.core.engine.Engine`
@@ -997,7 +1112,9 @@ class Layer3VirtualEngine(Engine):
                 ssm_advanced_setting=ssm_advanced_setting,
                 scan_detection=scan_detection,
                 static_multicast_route=static_multicast_route,
+                pim_settings=pim_settings,
                 web_authentication=web_authentication,
+                nat64_settings=nat64_settings,
                 **extra_opts if extra_opts else {}
             )
 
@@ -1059,7 +1176,7 @@ class FirewallCluster(Engine):
         log_server_ref=None,
         domain_server_address=None,
         location_ref=None,
-        default_nat=False,
+        default_nat='automatic',
         enable_antivirus=False,
         enable_gti=False,
         comment=None,
@@ -1074,7 +1191,9 @@ class FirewallCluster(Engine):
         ssm_advanced_setting=None,
         scan_detection=None,
         static_multicast_route=None,
+        pim_settings=None,
         web_authentication=None,
+        nat64_settings=None,
         **kw
     ):
         """
@@ -1087,6 +1206,7 @@ class FirewallCluster(Engine):
             is a string with the SNMP location name.
         :param list(dict),list(StaticMulticastRoute) static_multicast_route: Represents Firewall
             multicast routing entry for Static/IGMP Proxy multicast routing modes.
+        :param PIM/dict pim_settings: This represents the PIM Multicast routing settings.
         """
         primary_heartbeat = primary_mgt if not primary_heartbeat else primary_heartbeat
 
@@ -1160,7 +1280,9 @@ class FirewallCluster(Engine):
                 ssm_advanced_setting=ssm_advanced_setting,
                 scan_detection=scan_detection,
                 static_multicast_route=static_multicast_route,
+                pim_settings=pim_settings,
                 web_authentication=web_authentication,
+                nat64_settings=nat64_settings,
                 ** extra_opts if extra_opts else {},
             )
             engine.update(cluster_mode=cluster_mode)
@@ -1195,7 +1317,7 @@ class FirewallCluster(Engine):
         domain_server_address=None,
         location_ref=None,
         zone_ref=None,
-        default_nat=False,
+        default_nat='automatic',
         enable_antivirus=False,
         enable_gti=False,
         comment=None,
@@ -1209,6 +1331,7 @@ class FirewallCluster(Engine):
         discard_quic_if_cant_inspect=True,
         ssm_advanced_setting=None,
         static_multicast_route=None,
+        pim_settings=None,
         web_authentication=None,
         **kw
     ):
@@ -1259,6 +1382,7 @@ class FirewallCluster(Engine):
             settings.
         :param list(dict),list(StaticMulticastRoute) static_multicast_route: Represents Firewall
             multicast routing entry for Static/IGMP Proxy multicast routing modes.
+        :param PIM/dict pim_settings: This represents the PIM Multicast routing settings.
         :param WebAuthentication/dict web_authentication: This represents the Browser-Based User
             Authentication settings for a NGFW.
         :param dict extra_opts: extra options as a dict to be passed to the top level engine
@@ -1427,6 +1551,7 @@ class FirewallCluster(Engine):
             discard_quic_if_cant_inspect=discard_quic_if_cant_inspect,
             ssm_advanced_setting=ssm_advanced_setting,
             static_multicast_route=static_multicast_route,
+            pim_settings=pim_settings,
             web_authentication=web_authentication
         )
 

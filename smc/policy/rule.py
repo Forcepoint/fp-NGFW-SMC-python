@@ -395,7 +395,7 @@ class RuleCommon(object):
     Functionality common to all rules
     """
 
-    def create_rule_section(self, name, add_pos=None, after=None, before=None):
+    def create_rule_section(self, name, add_pos=None, insert_point=None, after=None, before=None):
         """
         Create a rule section in a Firewall Policy. To specify a specific numbering
         position for the rule section, use the `add_pos` field. If no position or
@@ -413,6 +413,7 @@ class RuleCommon(object):
             If the position value is greater than the number of rules, the rule is
             inserted at the bottom. If add_pos is not provided, rule is inserted in
             position 1. Mutually exclusive with ``after`` and ``before`` params.
+        :param str insert_point: specific insert point where to add the rule.
         :param str after: Rule tag to add this rule after. Mutually exclusive with
             ``add_pos`` and ``before`` params.
         :param str before: Rule tag to add this rule before. Mutually exclusive with
@@ -430,6 +431,9 @@ class RuleCommon(object):
         elif before or after:
             params = self.add_before_after(before, after)
 
+        if insert_point:
+            params.update(insert_point=insert_point)
+
         return ElementCreator(
             self.__class__,
             exception=CreateRuleFailed,
@@ -439,7 +443,7 @@ class RuleCommon(object):
         )
 
     def create_insert_point(self, name, insert_point_type="normal",
-                            add_pos=None, after=None, before=None):
+                            add_pos=None, insert_point=None, after=None, before=None):
         """
         Create an insert point in a Template Firewall Policy. If no position or
         before/after is specified, the insert point will be placed at the top
@@ -459,6 +463,7 @@ class RuleCommon(object):
             If the position value is greater than the number of rules, the rule is
             inserted at the bottom. If add_pos is not provided, rule is inserted in
             position 1. Mutually exclusive with ``after`` and ``before`` params.
+        :param str insert_point: specific insert point where to add the rule.
         :param str after: Rule tag to add this insert point after. Mutually exclusive with
             ``before`` and 'add_pos' params.
         :param str before: Rule tag to add this insert point before. Mutually exclusive with
@@ -473,6 +478,9 @@ class RuleCommon(object):
             href = self.add_at_position(add_pos)
         elif before or after:
             params = self.add_before_after(before, after)
+
+        if insert_point:
+            params.update(insert_point=insert_point)
 
         return ElementCreator(
             self.__class__,
@@ -497,11 +505,13 @@ class RuleCommon(object):
         return self.href
 
     def add_before_after(self, before=None, after=None):
-        params = None
-        if after is not None:
-            params = {"after": after}
-        elif before is not None:
-            params = {"before": before}
+        params = {}
+
+        if after:
+            params.update(after=after)
+        elif before:
+            params.update(before=before)
+
         return params
 
     def update_targets(self, sources=None, destinations=None, services=None, situations=None):
@@ -809,6 +819,7 @@ class IPv4Rule(RuleCommon, Rule, SubElement):
         vpn_policy=None,
         mobile_vpn=False,
         add_pos=None,
+        insert_point=None,
         after=None,
         before=None,
         sub_policy=None,
@@ -865,6 +876,7 @@ class IPv4Rule(RuleCommon, Rule, SubElement):
             the position value is greater than the number of rules, the rule is inserted at
             the bottom. If add_pos is not provided, rule is inserted in position 1. Mutually
             exclusive with ``after`` and ``before`` params.
+        :param str insert_point: specific insert point where to add the rule.
         :param str after: Rule tag to add this rule after. Mutually exclusive with ``add_pos``
             and ``before`` params.
         :param str before: Rule tag to add this rule before. Mutually exclusive with ``add_pos``
@@ -935,6 +947,9 @@ class IPv4Rule(RuleCommon, Rule, SubElement):
         elif before or after:
             params.update(**self.add_before_after(before, after))
 
+        if insert_point:
+            params.update(insert_point=insert_point)
+
         return ElementCreator(
             self.__class__, exception=CreateRuleFailed, href=href, params=params, json=rule_values
         )
@@ -966,6 +981,7 @@ class IPv4Layer2Rule(RuleCommon, Rule, SubElement):
         is_disabled=False,
         logical_interfaces=None,
         add_pos=None,
+        insert_point=None,
         after=None,
         before=None,
         comment=None,
@@ -994,6 +1010,7 @@ class IPv4Layer2Rule(RuleCommon, Rule, SubElement):
             the position value is greater than the number of rules, the rule is inserted at
             the bottom. If add_pos is not provided, rule is inserted in position 1. Mutually
             exclusive with ``after`` and ``before`` params.
+        :param str insert_point: specific insert point where to add the rule.
         :param str after: Rule tag to add this rule after. Mutually exclusive with ``add_pos``
             and ``before`` params.
         :param str before: Rule tag to add this rule before. Mutually exclusive with ``add_pos``
@@ -1036,6 +1053,9 @@ class IPv4Layer2Rule(RuleCommon, Rule, SubElement):
             href = self.add_at_position(add_pos)
         elif before or after:
             params.update(**self.add_before_after(before, after))
+
+        if insert_point:
+            params.update(insert_point=insert_point)
 
         return ElementCreator(
             self.__class__, exception=CreateRuleFailed, href=href, params=params, json=rule_values
@@ -1090,6 +1110,7 @@ class EthernetRule(RuleCommon, Rule, SubElement):
         is_disabled=False,
         logical_interfaces=None,
         add_pos=None,
+        insert_point=None,
         after=None,
         before=None,
         comment=None,
@@ -1117,6 +1138,7 @@ class EthernetRule(RuleCommon, Rule, SubElement):
             the position value is greater than the number of rules, the rule is inserted at
             the bottom. If add_pos is not provided, rule is inserted in position 1. Mutually
             exclusive with ``after`` and ``before`` params.
+        :param str insert_point: specific insert point where to add the rule.
         :param str after: Rule tag to add this rule after. Mutually exclusive with ``add_pos``
             and ``before`` params.
         :param str before: Rule tag to add this rule before. Mutually exclusive with ``add_pos``
@@ -1144,10 +1166,13 @@ class EthernetRule(RuleCommon, Rule, SubElement):
         params = {"validate": False} if not validate else {}
 
         href = self.href
-        if add_pos is not None:
+        if add_pos:
             href = self.add_at_position(add_pos)
         elif before or after:
             params.update(**self.add_before_after(before, after))
+
+        if insert_point:
+            params.update(insert_point=insert_point)
 
         return ElementCreator(
             self.__class__, exception=CreateRuleFailed, href=href, params=params, json=rule_values

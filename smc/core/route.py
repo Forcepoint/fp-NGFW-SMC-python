@@ -604,6 +604,25 @@ class Routing(RoutingTree):
         routing_node_gateway = RoutingNodeGateway(bgp_peering, destinations=destination)
         return self._add_gateway_node("bgp_peering", routing_node_gateway, network)
 
+    def add_pim_interface_settings(self, pim_interface_settings):
+        """
+        Add a PIM IPv4 Interface settings to this routing interface.
+
+        Example of adding PIM interface settings to an interface by ID::
+
+            interface = engine.routing.get(0)
+            interface.add_pim_interface_settings(
+                PIMIPv4InterfaceSettings('myPimInterfaceSettings'))
+
+        :param PIMIPv4InterfaceSettings pim_interface_settings: PIM IPv4 Interface settings element
+        :raises ModificationAborted: Change must be made at the interface level
+        :raises UpdateElementFailed: failed to add PIM settings
+        :return: Status of whether the route table was updated
+        :rtype: bool
+        """
+        routing_node_gateway = RoutingNodeGateway(pim_interface_settings)
+        return self._add_gateway_node("pim_ipv4_interface_settings", routing_node_gateway, network)
+
     def add_static_route(self, gateway, destination, network=None):
         """
         Add a static route to this route table. Destination can be any element

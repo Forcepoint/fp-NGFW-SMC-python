@@ -299,16 +299,11 @@ class SMCSocketProtocol(websocket.WebSocket):
 
     def __enter__(self):
         if session.session_id is None:
-            sock = session.sock
-            if sock is None:
-                # Need to obtain new socket
-                logger.debug("Refresh the login session..")
-                session.refresh()
             # we disable Origin header because it conflicts with Tomcat Cors Filter
             # and in this context, we do not need to have cors filtering
             self.connect(
                 url=session.web_socket_url + self.query.location,
-                socket=session.sock,
+                subprotocols={"access_token", session._token} if session._token else None,
                 suppress_origin=True)
         else:
             # we disable Origin header because it conflicts with Tomcat Cors Filter

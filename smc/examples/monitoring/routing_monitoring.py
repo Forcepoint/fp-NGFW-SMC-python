@@ -45,14 +45,15 @@ def main():
         arguments = parse_command_line_arguments()
         session.login(url=arguments.api_url, api_key=arguments.api_key,
                       login=arguments.smc_user,
-                      pwd=arguments.smc_pwd, api_version=arguments.api_version)
+                      pwd=arguments.smc_pwd, api_version=arguments.api_version,
+                      verify=False)
         logging.info("session OK")
         logging.info("Retrieve all entries in routing table using websocket library")
 
         ws = create_connection(
             f"{arguments.ws_url}/{str(arguments.api_version)}/monitoring/session/socket",
             cookie=session.session_id,
-            socket=session.sock,
+            subprotocols={"access_token", session._token} if session._token else None,
             sslopt={"cert_reqs": ssl.CERT_NONE}
         )
 

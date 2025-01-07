@@ -17,11 +17,12 @@ Example to show how to use create and delete SSM element objects in the SMC
 """
 import argparse
 import logging
+import os
 import sys
 
 sys.path.append('../../')  # smc-python
 from smc import session  # noqa
-from smc.core.engines import Layer3Firewall  # noqa
+from smc.core.engines import Layer3Firewall, Engine  # noqa
 from smc.elements.ssm import *  # noqa
 from smc.elements.situations import InspectionSituation  # noqa
 from smc.elements.tags import SidewinderTag  # noqa
@@ -34,6 +35,14 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
 SSM_NAME = "test_side_winder_logging_profile"
 SSM_CREATE_ERROR = "Fail to create SidewinderLoggingProfile."
 SSM_UPDATE_ERROR = "Fail to update SidewinderLoggingProfile."
+SSH_PUBLIC_KEY_FILE_NAME = "test_public_key.pub"
+IMPORT_KEY_ERROR = "Fail to import key."
+RETRIEVE_KEY_ERROR = "Fail to retrieve key."
+SSH_PUBLIC_KEY = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDAU7raL3DidbUekZcLJ4epwt9UQyerUqO8jF7WwF1" \
+                 "ep7NtKEkZfF3UbI6iLzSfS90ycHJ8WLAmlu6YWrsI/IF6lrHoUgAIgGcDg7ohxTPpfJ8v6Y1cn57t/I" \
+                 "eiSbT3wt9hS3lekA7qsXdZCImklNhISlwhEGkkSUuXVyErmmDRR6VSIHjmlP2losmiRV/aMlFU72uIs" \
+                 "bsKOtXDZPJhjNebyT/i0/xW+EuCKZvKQnEV466FvBD6D2EMER43JuDHDyKLhi6vTtlX9ne1pfIPD4Ut" \
+                 "TzaXDejQjT/1ht//SbdH1Mp7R0kLdmcS819Pm6K0hSELFuo2q2pxNT1YJFG7zECz"
 
 
 class Enable(Enum):
@@ -70,6 +79,20 @@ def main():
                                           port=22000,
                                           comment="This is an example of creating an SSH Known "
                                                   "Host.")
+        # save ssh public key to file
+        with open(SSH_PUBLIC_KEY_FILE_NAME, "w") as public_key_file:
+            public_key_file.write(SSH_PUBLIC_KEY)
+        known_host.import_key(SSH_PUBLIC_KEY_FILE_NAME)
+        known_host = SSHKnownHosts("testKnownHost")
+        assert known_host.known_host_public_key == SSH_PUBLIC_KEY, IMPORT_KEY_ERROR
+        logging.info("Import key successfully.")
+        engine = Engine("Algiers")
+        known_host.retrieve_key(engine.nodes[0].key)
+        known_host = SSHKnownHosts("testKnownHost")
+        assert known_host.known_host_public_key != SSH_PUBLIC_KEY, RETRIEVE_KEY_ERROR
+        if os.path.exists(SSH_PUBLIC_KEY_FILE_NAME):
+            os.remove(SSH_PUBLIC_KEY_FILE_NAME)
+        logging.info("Retrieve key successfully.")
 
         # Create SSH Known Host List and add SSH Known Host to it
         known_host_list = SSHKnownHostsLists.create(name="testKnownHostList",

@@ -279,21 +279,30 @@ class DefaultNAT(object):
         """
         Status of default nat on the engine.
 
-        :rtype: bool
+        :rtype: str
         """
         return self.engine.data["default_nat"]
+
+    @status.setter
+    def status(self, default_nat):
+        """
+        Status of default nat on the engine.
+
+        :rtype: str
+        """
+        self.engine.data["default_nat"] = default_nat
 
     def enable(self):
         """
         Enable default NAT on this engine
         """
-        self.engine.data["default_nat"] = True
+        self.engine.data["default_nat"] = 'true'
 
     def disable(self):
         """
         Disable default NAT on this engine
         """
-        self.engine.data["default_nat"] = False
+        self.engine.data["default_nat"] = 'false'
 
     def __repr__(self):
         return "{0}(enabled={1})".format(self.__class__.__name__, self.status)

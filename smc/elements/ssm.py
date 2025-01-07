@@ -16,6 +16,7 @@ The different sidewinder elements in this module that can be configured are SSM
 Logging Profiles, SSH Profiles, SSH Known Hosts, and SSH Known Hosts Lists.
 
 """
+from smc.api.exceptions import ImportKeyError
 from smc.base.model import Element, ElementCreator
 from smc.base.structs import NestedDict
 from smc.base.util import element_resolver
@@ -220,6 +221,36 @@ class SSHKnownHosts(Element):
         }
 
         return ElementCreator(cls, json)
+
+    def import_key(self, ssh_public_key_file):
+        """
+        Allows importing a specified public key for the specified Known Host.
+        :param str ssh_public_key_file: ssh public key file path.
+        """
+        with open(ssh_public_key_file, "rb") as ssh_key:
+            self.make_request(
+                ImportKeyError,
+                method="create",
+                resource="import_key",
+                headers={"content-type": "multipart/form-data"},
+                files={"public_key": ssh_key})
+
+    def retrieve_key(self, value):
+        """
+        Allows retrieving of the public key for the specified Known Host from a particular engine.
+        The values could be:
+            1. engine_id
+            2. "engine_id:virtual_id"
+            3. ":virtual_id"
+        Where engine_id is an engine node id.  And if necessary, virutal_id is the id of the virtual
+        firewall node to retrieve the key from (engine node id should be the master node id).
+        :param str value: Engine and virtual id or it's maping to retrive public key for known host.
+        """
+        self.make_request(
+            ImportKeyError,
+            method="create",
+            resource="retrieve_key",
+            json={"value": value})
 
 
 class SSHKnownHostsLists(Element):
