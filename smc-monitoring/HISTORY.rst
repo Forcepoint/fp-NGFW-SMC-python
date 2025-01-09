@@ -53,7 +53,6 @@ Release History
 1.5.1
 +++++
 
-TODO
-
-
-
+1.5.4
++++++
+-websocket user session improvement
