@@ -121,6 +121,10 @@ class SMCOperationFailure(SMCException):
     def __repr__(self):
         return "SMCOperationFailure(response=%s)" % (self.response)
 
+    def __str__(self):
+        return "SMCOperationFailure (response=%s)- %s" % (self.response.status_code,
+                                                          self.smcresult.msg)
+
 
 class CertificateError(SMCException):
     """

@@ -36,18 +36,19 @@ class VPNCertificateCA(ImportExportCertificate, Element):
     typeof = "vpn_certificate_authority"
 
     @classmethod
-    def create(cls, name, certificate):
+    def create(cls, name, certificate, **kw):
         """
         Create a new external VPN CA for signing internal gateway
         certificates.
 
         :param str name: Name of VPN CA
         :param str certificate: file name, path or certificate string.
+        :param kw: named arguments given to the creator method
         :raises CreateElementFailed: Failed creating cert with reason
         :rtype: VPNCertificateCA
         """
         json = {"name": name, "certificate": certificate}
-
+        json.update(**kw)
         return ElementCreator(cls, json)
 
 

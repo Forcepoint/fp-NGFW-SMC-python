@@ -673,6 +673,10 @@ class DeleteLogTask(ScheduledTaskMixin, Element):
         all_logs=False,
         filter_for_delete=None,
         comment=None,
+        start_time=None,
+        end_time=None,
+        relative_time_begin=None,
+        relative_time_end=None,
         **kwargs
     ):
         """
@@ -685,13 +689,26 @@ class DeleteLogTask(ScheduledTaskMixin, Element):
             management servers or log servers. If no value is provided, all
             servers are backed up.
         :type servers: list(ManagementServer or LogServer)
-        :param str time_range: specify a time range for the deletion. Valid
-            options are 'yesterday', 'last_full_week_sun_sat',
-            'last_full_week_mon_sun', 'last_full_month' (default 'yesterday')
+        :param str time_range: specify a time range for the deletion.
+        Valid options are:
+         - 'yesterday': yesterday.
+         - 'today': today.
+         - 'before': before 'relative_time_end' number of days
+         - 'after': after 'start_time' time in ms
+         - 'last_full_week_sun_sat': the last full week (sunday-saturday).
+         - 'last_full_week_mon_sun': the last full week (monday-sunday).
+         - 'last_full_month': the last full month.
+         - 'absolute_time_range': between 'start_time' time in ms and 'end_time' time in ms.
+         - 'relative_time_range': between 'relative_time_begin' number of days and 'relative_time_end' number of days.
+        The default value is 'yesterday'.
         :param FilterExpression filter_for_delete: optional filter for deleting.
             (default: FilterExpression('Match All')
         :param bool all_logs: if True, all log types will be deleted. If this
             is True, kwargs are ignored (default: False)
+        :param str start_time: the start time in ms used when the 'time_limit_type' is set to 'absolute_time_range' or 'after'.
+        :param str end_time: the end time in ms used when the 'time_limit_type' is set to 'absolute_time_range'.
+        :param str relative_time_begin: the begin number of days when the 'time_limit_type' is set to 'relative_time_range'.
+        :param str relative_time_end: the end number of days when the 'time_limit_type' is set to 'relative_time_range' or 'before'.
         :param kwargs: see :func:`~log_target_types` for keyword
             arguments and default values.
         :raises ElementNotFound: specified servers were not found
@@ -713,8 +730,10 @@ class DeleteLogTask(ScheduledTaskMixin, Element):
             "name": name,
             "resources": servers,
             "time_limit_type": time_range,
-            "start_time": 0,
-            "end_time": 0,
+            "start_time": start_time,
+            "end_time": end_time,
+            "relative_time_begin": relative_time_begin,
+            "relative_time_end": relative_time_end,
             "file_format": "unknown",
             "filter_for_delete": filter_for_delete,
             "comment": comment,
@@ -935,6 +954,10 @@ class ExportLogTask(ScheduledTaskMixin, Element):
             overwrite_file_flag="overwrite",
             server_directory_lst=None,
             comment=None,
+            start_time=None,
+            end_time=None,
+            relative_time_begin=None,
+            relative_time_end=None,
             **kwargs
     ):
         """
@@ -947,9 +970,18 @@ class ExportLogTask(ScheduledTaskMixin, Element):
             management servers or log servers. If no value is provided, all
             servers are backed up.
         :type servers: list(ManagementServer or LogServer)
-        :param str time_range: specify a time range for the export. Valid
-            options are 'yesterday', 'last_full_week_sun_sat',
-            'last_full_week_mon_sun', 'last_full_month' (default 'yesterday')
+        :param str time_range: specify a time range for the export.
+        Valid options are:
+         - 'yesterday': yesterday.
+         - 'today': today.
+         - 'before': before 'relative_time_end' number of days
+         - 'after': after 'start_time' time in ms
+         - 'last_full_week_sun_sat': the last full week (sunday-saturday).
+         - 'last_full_week_mon_sun': the last full week (monday-sunday).
+         - 'last_full_month': the last full month.
+         - 'absolute_time_range': between 'start_time' time in ms and 'end_time' time in ms.
+         - 'relative_time_range': between 'relative_time_begin' number of days and 'relative_time_end' number of days.
+        The default value is 'yesterday'.
         :param str file_name: name of the file to export
         :param str file_format: format of the file to export
             options are:
@@ -974,6 +1006,10 @@ class ExportLogTask(ScheduledTaskMixin, Element):
             ***overwrite***: overwrite option.
             ***use_number_in_file_name*** create an unique file with number as name.
             ***fail_task***: fail the task.
+        :param str start_time: the start time in ms used when the 'time_limit_type' is set to 'absolute_time_range' or 'after'.
+        :param str end_time: the end time in ms used when the 'time_limit_type' is set to 'absolute_time_range'.
+        :param str relative_time_begin: the begin number of days when the 'time_limit_type' is set to 'relative_time_range'.
+        :param str relative_time_end: the end number of days when the 'time_limit_type' is set to 'relative_time_range' or 'before'.
         :param kwargs: see :func:`~log_target_types` for keyword
             arguments and default values.
         :raises ElementNotFound: specified servers were not found
@@ -991,8 +1027,10 @@ class ExportLogTask(ScheduledTaskMixin, Element):
             "name": name,
             "resources": servers,
             "time_limit_type": time_range,
-            "start_time": 0,
-            "end_time": 0,
+            "start_time": start_time,
+            "end_time": end_time,
+            "relative_time_begin": relative_time_begin,
+            "relative_time_end": relative_time_end,
             "file_name": file_name,
             "file_format": file_format,
             "is_local_location": is_local_location,
@@ -1034,6 +1072,10 @@ class ArchiveLogTask(ScheduledTaskMixin, Element):
             server_directory_lst=None,
             is_local_location=False,
             comment=None,
+            start_time=None,
+            end_time=None,
+            relative_time_begin=None,
+            relative_time_end=None,
             **kwargs
     ):
         """
@@ -1046,9 +1088,18 @@ class ArchiveLogTask(ScheduledTaskMixin, Element):
             management servers or log servers. If no value is provided, all
             servers are backed up.
         :type servers: list(ManagementServer or LogServer)
-        :param str time_range: specify a time range for the archive. Valid
-            options are 'yesterday', 'last_full_week_sun_sat',
-            'last_full_week_mon_sun', 'last_full_month' (default 'yesterday')
+        :param str time_range: specify a time range for the archive.
+        Valid options are:
+         - 'yesterday': yesterday.
+         - 'today': today.
+         - 'before': before 'relative_time_end' number of days
+         - 'after': after 'start_time' time in ms
+         - 'last_full_week_sun_sat': the last full week (sunday-saturday).
+         - 'last_full_week_mon_sun': the last full week (monday-sunday).
+         - 'last_full_month': the last full month.
+         - 'absolute_time_range': between 'start_time' time in ms and 'end_time' time in ms.
+         - 'relative_time_range': between 'relative_time_begin' number of days and 'relative_time_end' number of days.
+        The default value is 'yesterday'.
         :param FilterExpression filter_for_export: The Filter expression for the archive/export task
             to be able to filter logs to consider. (default: FilterExpression('Match All')
         :param FilterExpression filter_for_delete: The Filter expression for the archive/delete task
@@ -1061,6 +1112,10 @@ class ArchiveLogTask(ScheduledTaskMixin, Element):
             see :func:`~server_directory`  for keyword arguments and default values.
         :param bool is_local_location: Flag to know if the archive/export file will be stored on
             the log server or locally.
+        :param str start_time: the start time in ms used when the 'time_limit_type' is set to 'absolute_time_range' or 'after'.
+        :param str end_time: the end time in ms used when the 'time_limit_type' is set to 'absolute_time_range'.
+        :param str relative_time_begin: the begin number of days when the 'time_limit_type' is set to 'relative_time_range'.
+        :param str relative_time_end: the end number of days when the 'time_limit_type' is set to 'relative_time_range' or 'before'.
         :param kwargs: see :func:`~log_target_types` for keyword
             arguments and default values.
         :raises ElementNotFound: specified servers were not found
@@ -1079,8 +1134,10 @@ class ArchiveLogTask(ScheduledTaskMixin, Element):
             "resources": servers,
             "time_limit_type": time_range,
             "file_format": "unknown",
-            "start_time": 0,
-            "end_time": 0,
+            "start_time": start_time,
+            "end_time": end_time,
+            "relative_time_begin": relative_time_begin,
+            "relative_time_end": relative_time_end,
             "is_local_location": is_local_location,
             "filter_for_export": filter_for_export.href if filter_for_export is not None else None,
             "filter_for_delete": filter_for_delete.href if filter_for_delete is not None else None,
@@ -1222,6 +1279,10 @@ class DeleteCounterDataTask(ScheduledTaskMixin, Element):
             servers=None,
             time_range="yesterday",
             comment=None,
+            start_time=None,
+            end_time=None,
+            relative_time_begin=None,
+            relative_time_end=None,
             **kwargs
     ):
         """
@@ -1234,9 +1295,22 @@ class DeleteCounterDataTask(ScheduledTaskMixin, Element):
             management servers or log servers. If no value is provided, all
             servers are backed up.
         :type servers: list(ManagementServer or LogServer)
-        :param str time_range: specify a time range for the archive. Valid
-            options are 'yesterday', 'last_full_week_sun_sat',
-            'last_full_week_mon_sun', 'last_full_month' (default 'yesterday')
+        :param str time_range: specify a time range for the archive.
+        Valid options are:
+         - 'yesterday': yesterday.
+         - 'today': today.
+         - 'before': before 'relative_time_end' number of days
+         - 'after': after 'start_time' time in ms
+         - 'last_full_week_sun_sat': the last full week (sunday-saturday).
+         - 'last_full_week_mon_sun': the last full week (monday-sunday).
+         - 'last_full_month': the last full month.
+         - 'absolute_time_range': between 'start_time' time in ms and 'end_time' time in ms.
+         - 'relative_time_range': between 'relative_time_begin' number of days and 'relative_time_end' number of days.
+        The default value is 'yesterday'.
+        :param str start_time: the start time in ms used when the 'time_limit_type' is set to 'absolute_time_range' or 'after'.
+        :param str end_time: the end time in ms used when the 'time_limit_type' is set to 'absolute_time_range'.
+        :param str relative_time_begin: the begin number of days when the 'time_limit_type' is set to 'relative_time_range'.
+        :param str relative_time_end: the end number of days when the 'time_limit_type' is set to 'relative_time_range' or 'before'.
         :param kwargs: see :func:`~counter_target_types` for keyword
             arguments and default values.
         :raises ElementNotFound: specified servers were not found
@@ -1254,8 +1328,10 @@ class DeleteCounterDataTask(ScheduledTaskMixin, Element):
             "name": name,
             "resources": servers,
             "time_limit_type": time_range,
-            "start_time": 0,
-            "end_time": 0,
+            "start_time": start_time,
+            "end_time": end_time,
+            "relative_time_begin": relative_time_begin,
+            "relative_time_end": relative_time_end,
             "comment": comment
         }
 

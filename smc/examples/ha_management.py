@@ -26,6 +26,7 @@ import argparse
 import logging
 import sys
 import time
+
 sys.path.append('../../')  # smc-python
 from smc import session  # noqa
 from smc.api.exceptions import HaCommandException  # noqa
@@ -36,8 +37,8 @@ DIAGNOSTIC_ERRORS = ["(Isolated)", "Login status: KO"]
 DIAGNOSTIC_TITLE_OK = "No issues were detected while running the diagnostic."
 
 logging.getLogger()
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
-                                                '%(name)s - [%(levelname)s] : %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - '
+                                               '%(name)s - [%(levelname)s] : %(message)s')
 
 
 def check_diag_issue(check_for=None):

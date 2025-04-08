@@ -30,12 +30,13 @@ sys.path.append('../../')  # smc-python
 from smc import session  # noqa
 from smc.policy.layer3 import FirewallTemplatePolicy  # noqa
 from smc.elements.service import TCPService  # noqa
+from smc.compat import is_api_version_more_than_or_equal  # noqa
 
 WRONG_RULE = "Wrong rule in assert!"
 
 logging.getLogger()
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
-                                                '%(name)s - [%(levelname)s] : %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - '
+                                               '%(name)s - [%(levelname)s] : %(message)s')
 
 
 def search_rule_by_name(policy, name):
@@ -71,7 +72,8 @@ def main():
 
         # add section after
         section = myPolicy.fw_ipv4_access_rules.create_rule_section(name="my section",
-                                                                    after=rule1.tag)
+                                                                    after=rule1.tag,
+                                                                    background_color="#FF8013")
 
         # add insert point after
         myPolicy.fw_ipv4_access_rules.create_insert_point(name="my insert point",
@@ -94,6 +96,10 @@ def main():
         # check section is rule 3
         section = myPolicy.fw_ipv4_access_rules.get(2)
         assert section.is_rule_section is True, WRONG_RULE
+        if is_api_version_more_than_or_equal("7.1"):
+            assert section.background_color == '#FF8013', \
+                (f"The rule section should have a correct background color: '#FF8013'. "
+                 f"We got: {section.background_color}.")
 
         # check insert point is rule 4
         insert_point = myPolicy.fw_ipv4_access_rules.get(3)

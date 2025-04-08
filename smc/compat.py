@@ -84,6 +84,11 @@ def is_smc_version_less_than_or_equal(check_version):
     return LooseVersion(smc_version) <= LooseVersion(check_version)
 
 
+def is_smc_version_more_than_or_equal(check_version):
+    smc_version = get_smc_version(check_version)
+    return LooseVersion(smc_version) >= LooseVersion(check_version)
+
+
 def is_smc_version_less_than(check_version):
     """
     check smc version url is less or not
@@ -104,6 +109,10 @@ def is_smc_version_equal(check_version):
 
 def is_api_version_less_than_or_equal(check_version):
     return LooseVersion(smc.session.api_version) <= LooseVersion(check_version)
+
+
+def is_api_version_more_than_or_equal(check_version):
+    return LooseVersion(smc.session.api_version) >= LooseVersion(check_version)
 
 
 def is_api_version_less_than(check_version):

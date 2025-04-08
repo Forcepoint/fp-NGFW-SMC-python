@@ -26,7 +26,6 @@ from smc import session  # noqa
 from smc.api.exceptions import UnsupportedAlertChannel  # noqa
 from smc.elements.alerts import AlertChain  # noqa
 
-
 period = 60
 update_period = 120
 notify_first_block = 1
@@ -43,8 +42,8 @@ FAILED_TO_GET_ATTRIBUTE = "Failed to get period attribute of alert chain rule"
 FAILED_TO_UPDATE = "Failed to update attribute of alert chain rule"
 
 logging.getLogger()
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
-                                                '%(name)s - [%(levelname)s] : %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - '
+                                               '%(name)s - [%(levelname)s] : %(message)s')
 
 
 def main():

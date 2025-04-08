@@ -32,7 +32,7 @@ from smc.api.exceptions import (
 )
 from smc.core.node import Node, HardwareStatus
 from smc.core.resource import Snapshot, PendingChanges
-from smc.core.interfaces import InterfaceOptions, PhysicalInterface
+from smc.core.interfaces import InterfaceOptions, PhysicalInterface, DHCPRelay
 from smc.core.collection import (
     InterfaceCollection,
     LoopbackCollection,
@@ -43,7 +43,7 @@ from smc.core.collection import (
     SwitchInterfaceCollection,
 )
 from smc.administration.tasks import Task
-from smc.administration.certificates.tls_common import pem_as_string
+from smc.administration.certificates.tls_common import certificate_content
 from smc.elements.group import ConnectionSynchronizationGroup
 from smc.elements.other import prepare_block_list, prepare_blacklist
 from smc.elements.network import Alias
@@ -67,7 +67,7 @@ from smc.core.addon import (
     ZTNAConnector,
     EndpointIntegration
 )
-from smc.elements.servers import LogServer
+from smc.elements.servers import LogServer, DHCPServer
 from smc.base.collection import create_collection, sub_collection
 from smc.base.util import element_resolver
 from smc.administration.access_rights import AccessControlList, Permission, \
@@ -203,6 +203,156 @@ class LinkUsageExceptionRules(NestedDict):
         self.update(services=value)
 
 
+class CloudGroup(Element):
+    """
+    Represents the Cloud Auto-Scaled Group.
+    A list of Cloud Firewalls.
+    """
+    typeof = 'scale_set'
+
+    @classmethod
+    def create(
+        cls,
+        name,
+        elements=[],
+        is_monitored=False,
+        comment=None
+    ):
+        """
+        Create will return the Cloud Auto-Scaled Group configuration as a dict that is a
+        representation of the Cloud Auto-Scaled Group.
+
+        :param name: name of the Cloud Auto-Scaled Group
+        :param elements: the list of Cloud Firewalls beloging to the Cloud Auto-Scaled Group
+        :param is_monitored: Flag to specify if the Cloud Auto-Scaled Group needs to be monitored
+        :param comment: comment of the Cloud Auto-Scaled Group
+        """
+        json = {
+            "name": name,
+        }
+        cloud_fw_uris = []
+        if elements:
+            for element in elements:
+                cloud_fw_uris.append(element.href if isinstance(Engine, element)
+                                     else element)
+
+        json.update(is_monitored=is_monitored,
+                    element=cloud_fw_uris, comment=comment)  # Add rest of kwargs
+
+        return ElementCreator(cls, json)
+
+    @property
+    def is_monitored(self):
+        return getattr(self, "is_monitored", False)
+
+    @property
+    def elements(self):
+        return [Element.from_href(element) for element in getattr(self, "element", [])]
+
+    def clean(self):
+        """
+        Removes all inactive Cloud FW from scale set.
+        If no active Cloud Firewalls are there, the Cloud Auto-Scaled Group is removed.
+        """
+        self.make_request(
+            EngineCommandFailed,
+            method="delete",
+            resource="clean",
+            headers={"Etag": self.etag}
+        )
+
+    def refresh(
+            self,
+            timeout=3,
+            wait_for_finish=False,
+            preserve_connections=True,
+            generate_snapshot=True,
+            **kw
+    ):
+        """
+        Refresh existing policy on specified Cloud Auto-Scaled Group. This is an asynchronous
+        call that will return a 'follower' link that can be queried to
+        determine the status of the task.
+        ::
+
+            poller = engine.refresh(wait_for_finish=True)
+            while not poller.done():
+                poller.wait(5)
+                print('Percentage complete {}%'.format(poller.task.progress))
+
+        :param int timeout: timeout between queries
+        :param bool wait_for_finish: poll the task waiting for status
+        :param bool preserve_connections: flag to preserve connections (True by default)
+        :param bool generate_snapshot: flag to generate snapshot (True by default)
+        :raises TaskRunFailed: refresh failed, possibly locked policy
+        :rtype: TaskOperationPoller
+        """
+        kw.update({"params": {"generate_snapshot": generate_snapshot,
+                              "preserve_connections": preserve_connections}})
+        return Task.execute(self, "refresh", timeout=timeout, wait_for_finish=wait_for_finish, **kw)
+
+    def upload(
+            self,
+            policy=None,
+            timeout=5,
+            wait_for_finish=False,
+            preserve_connections=True,
+            generate_snapshot=True,
+            **kw
+    ):
+        """
+        Upload policy to Cloud Auto-Scaled Group. This is used when a new policy is required
+        for a Cloud Auto-Scaled Group, or this is the first time a policy is pushed to a
+        Cloud Auto-Scaled Group.
+        If an engine already has a policy and the intent is to re-push, then
+        use :py:func:`refresh` instead.
+        The policy argument can use a wildcard * to specify in the event a full
+        name is not known::
+
+            engine = Engine('myfw')
+            task = engine.upload('Amazon*', wait_for_finish=True)
+            for message in task.wait():
+                print(message)
+
+        :param str policy: name of policy to upload to Cloud Auto-Scaled Group; if None, current
+            policy
+        :param bool wait_for_finish: poll the task waiting for status
+        :param int timeout: timeout between queries
+        :param bool preserve_connections: flag to preserve connections (True by default)
+        :param bool generate_snapshot: flag to generate snapshot (True by default)
+        :raises TaskRunFailed: upload failed with reason
+        :rtype: TaskOperationPoller
+        """
+        return Task.execute(
+            self,
+            "upload",
+            params={
+                "filter": policy,
+                "preserve_connections": preserve_connections,
+                "generate_snapshot": generate_snapshot,
+            },
+            timeout=timeout,
+            wait_for_finish=wait_for_finish,
+            **kw
+        )
+
+    @property
+    def pending_changes(self):
+        """
+        Pending changes provides insight into changes on an engine that are
+        pending approval or disapproval. Feature requires SMC >= v6.2.
+
+        :raises UnsupportedEngineFeature: SMC version >= 6.2 is required to
+            support pending changes
+        :rtype: PendingChanges
+        """
+        if "pending_changes" in self.data.links:
+            return PendingChanges(self)
+        raise UnsupportedEngineFeature(
+            f"Pending changes is an unsupported feature on this engine: {self.type}"
+        )
+
+
 class Engine(Element):
     """
     An engine is the top level representation of a firewall, IPS
@@ -279,6 +429,11 @@ class Engine(Element):
         :param int nodes: number of nodes for engine
         :param list nodes_definition: list of definition for each node
         :param str log_server_ref: href of log server
+        :param default_nat: (optional) Whether to enable default NAT for outbound.
+          Accepted values are:
+           'true': use Default NAT Address for Traffic from Internal Networks |
+           'false': don't use Default NAT Address for Traffic from Internal Networks |
+           'automatic': use Default NAT Address for Traffic from Internal Networks if the firewall has a default route
         :param list domain_server_address: dns addresses
         :param NTPSettings ntp_settings: ntp settings
         :param LLDPProfile lldp_profile: LLDP Profile represents a set of attributes used for
@@ -932,6 +1087,16 @@ class Engine(Element):
             return PIMSettings(self)
         else:
             return None
+
+    @pim_settings.setter
+    def pim_settings(self, value):
+        mode = None if value is None else "pim_ipv4"
+        if isinstance(value, PIMSettings):
+            self.data.update(multicast_routing_mode=mode,
+                             pim_settings=value.data)
+        else:
+            self.data.update(multicast_routing_mode=mode,
+                             pim_settings=value)
 
     @property
     def l2fw_settings(self):
@@ -1636,12 +1801,12 @@ class Engine(Element):
         :param str auto_site_content: Indicates whether the site content is
             automatically generated from the routing view.
         :param str dhcp_relay: DHCP Relay.
-        :param str end_point: List of end-points.
+        :param List end_point: List of end-points.
         :param str firewall: Firewall
         :param str gateway_profile: Gateway Profile
-        :param str ssl_vpn_portal_setting: SSL VPN Settings for the Portal.
-        :param str ssl_vpn_proxy: vpn proxy
-        :param str ssl_vpn_tunneling: SSL VPN Settings for the VPN Client.
+        :param List ssl_vpn_portal_setting: SSL VPN Settings for the Portal.
+        :param Dict ssl_vpn_proxy: vpn proxy
+        :param Dict ssl_vpn_tunneling: SSL VPN Settings for the VPN Client.
         :param str trust_all_cas: Indicates if the EndPoint trust all VPN Certificate Authorities.
         :param str trusted_certificate_authorities: List of trusted VPN Certificate Authorities.
             Valid only if the EndPoint does not trust all VPN CAs.
@@ -1665,7 +1830,9 @@ class Engine(Element):
         if auto_site_content:
             json.update(auto_site_content=auto_site_content)
 
-        if dhcp_relay:
+        if isinstance(dhcp_relay, DHCPClientConfiguration):
+            json.update(dhcp_relay=dhcp_relay.data)
+        elif dhcp_relay:
             json.update(dhcp_relay=dhcp_relay)
 
         if end_point:
@@ -2033,6 +2200,35 @@ class Engine(Element):
         raise UnsupportedEngineFeature(
             "This engine type does not support administrator_authentication_method.")
 
+    @property
+    def allow_root_login(self):
+        """
+        Administrator Authentication: root password login
+        - allow: Allow Root Password Login.
+        - disable_pwd_ssh: Disable Root Password Login through SSH.
+        - disable: Disable all root password logins, including console (to be used carefully).
+
+        :rtype: str
+        """
+        if not self.type.startswith("virtual"):
+            return self.data.get("allow_root_login")
+        raise UnsupportedEngineFeature(
+            "This engine type does not support allow_root_login.")
+
+    @property
+    def ssh_passwordless_login(self):
+        """
+        Administrator Authentication: SSH Passwordless Logins
+        - allow: Allow.
+        - deny: Deny.
+
+        :rtype: str
+        """
+        if not self.type.startswith("virtual"):
+            return self.data.get("ssh_passwordless_login")
+        raise UnsupportedEngineFeature(
+            "This engine type does not support ssh_passwordless_login.")
+
     @staticmethod
     def supports_radius_authentication_settings() -> bool:
         return (not is_api_version_less_than_or_equal("7.0")
@@ -2044,6 +2240,29 @@ class Engine(Element):
         if not self.type.startswith("virtual"):
             if Engine.supports_radius_authentication_settings():
                 self.data["admin_auth_method"] = value
+
+    @allow_root_login.setter
+    def allow_root_login(self, value):
+        """
+        Administrator Authentication: root password login
+        - allow: Allow Root Password Login.
+        - disable_pwd_ssh: Disable Root Password Login through SSH.
+        - disable: Disable all root password logins, including console (to be used carefully).
+        """
+        if not self.type.startswith("virtual"):
+            if Engine.supports_radius_authentication_settings():
+                self.data["allow_root_login"] = value
+
+    @ssh_passwordless_login.setter
+    def ssh_passwordless_login(self, value):
+        """
+        Administrator Authentication: SSH Passwordless Logins
+        - allow: Allow.
+        - deny: Deny.
+        """
+        if not self.type.startswith("virtual"):
+            if Engine.supports_radius_authentication_settings():
+                self.data["ssh_passwordless_login"] = value
 
     def add_interface(self, interface, **kw):
         """
@@ -2062,6 +2281,13 @@ class Engine(Element):
         params = None
         if "params" in kw:
             params = kw.pop("params")
+        if "dhcp_relay" in interface.data:
+            if isinstance(interface.data["dhcp_relay"], DHCPRelay):
+                interface.data["dhcp_relay"] = interface.data["dhcp_relay"].data
+        if "dhcpv6_relay" in interface.data:
+            if isinstance(interface.data["dhcpv6_relay"], DHCPRelay):
+                interface.data["dhcpv6_relay"] = interface.data["dhcpv6_relay"].data
+
         self.make_request(
             EngineCommandFailed,
             method="create",
@@ -2321,9 +2547,7 @@ class Engine(Element):
             headers={"content-type": "multipart/form-data"},
             files={
                 # decode certificate or use it as it is
-                "signed_certificate": open(certificate, "rb")
-                if not pem_as_string(certificate)
-                else certificate
+                "signed_certificate": certificate_content(certificate)
             },
         )
 
@@ -2638,6 +2862,17 @@ class VPN(object):
         return self.internal_gateway
 
     @property
+    def ssl_vpn_portal(self):
+        """
+        SSL VPN Portal settings for this engine.
+
+        Alias for internal_gateway.
+
+        :rtype: InternalGateway
+        """
+        return self.internal_gateway
+
+    @property
     def sites(self):
         """
         VPN sites configured for this engine. Using sub element
@@ -2793,6 +3028,33 @@ class VPN(object):
                 key_length, signing_ca
             )
 
+    @property
+    def ssl_vpn_portal_setting(self):
+        """
+        SSL VPN Portal settings for this Engine Internal Gateway.
+
+        :rtype: List
+        """
+        return self.internal_gateway.ssl_vpn_portal_setting
+
+    @property
+    def ssl_vpn_proxy(self):
+        """
+        SSL VPN Proxy for SSL VPN PORTAL in Engine Internal Gateway
+
+        :rtype: Dict
+        """
+        return self.internal_gateway.ssl_vpn_proxy
+
+    @property
+    def ssl_vpn_tunneling(self):
+        """
+        SSL VPN VPN client tunneling setting in Engine Internal Gateway.
+
+        :rtype: Dict
+        """
+        return self.internal_gateway.ssl_vpn_tunneling
+
     def __repr__(self):
         return "VPN(name={})".format(self.name)
 
@@ -2869,6 +3131,41 @@ class InternalGateway(SubElement):
         :rtype: CreateCollection(VPNSite)
         """
         return create_collection(self.get_relation("vpn_site"), VPNSite)
+
+    @property
+    def dhcp_client_config(self):
+        """
+        The DHCP relay settings
+        :rtype: DHCPClientConfiguration
+        """
+        return DHCPClientConfiguration(self.data.get("dhcp_relay", {}))
+
+    @property
+    def ssl_vpn_portal_setting(self):
+        """
+        SSL VPN Portal settings for this engine.
+
+        :rtype: List
+        """
+        return self.data.get("ssl_vpn_portal_setting")
+
+    @property
+    def ssl_vpn_proxy(self):
+        """
+        SSL VPN proxy settings for this engine.
+
+        :rtype: Dict
+        """
+        return self.data.get("ssl_vpn_proxy")
+
+    @property
+    def ssl_vpn_tunneling(self):
+        """
+        SSL VPN tunneling settings for this engine.
+
+        :rtype: SSLVPNPortal
+        """
+        return self.data.get("ssl_vpn_tunneling")
 
 
 class InternalEndpoint(SubElement):
@@ -3949,3 +4246,130 @@ class SiitMapping(NestedDict):
         :rtype: str
         """
         return self.data.get("comment")
+
+
+class DHCPClientConfiguration(NestedDict):
+    """
+    Represents the DHCP Configuration element, for VPN CLients only.<br>
+    There is to separate DHCP Servers and Interfaces, so switching is needed if the configuration
+    goes from Direct to Relay mode.
+    """
+
+    def __init__(self, data):
+        super(DHCPClientConfiguration, self).__init__(data=data)
+
+    @classmethod
+    def create(cls, dhcp_client_mode: int = None, restricted_address_enabled: bool = False,
+               restricted_address_ranges: str = None, dhcp_client_interfaces: list[str] = None,
+               dhcp_servers: list[DHCPServer] = None, proxy_arg_enabled: bool = False,
+               proxy_arp_address_ranges: str = False, dhcp_add_info: int = None):
+        """
+        :param int dhcp_client_mode: the DHCP Mode. Accepted values:
+         - 0: Disabled
+         - 1: Direct
+         - 2: Relay
+        :param bool restricted_address_enabled: flag to tell if restricted addresses can be used.
+        :param str restricted_address_list: Only usefull if the restricted_address_enabled flag is set to true.
+        the value can come from a value entred in the SMC (or API) or an automatically generated IP Address range.
+        The format is: x.x.x.x-x.x.x.x; x.x.x.x-x.x.x.x
+        :param list(str) dhcp_client_interfaces: the relay interface IP Addresses used when DHCP Relay is selected.
+        :param list(DHPCServer) dhcp_servers: the DHCP Servers for Direct mode.
+        :param bool proxy_arg_enabled: flag to tell if arp entry addresses can be used.
+        :param str proxy_arp_address_list: Only usefull if the proxy_arg_enabled flag is set to true.
+        the value can come from a value entred in the SMC (or API) or an automatically generated IP Address range.
+        The format is: x.x.x.x-x.x.x.x; x.x.x.x-x.x.x.x
+        :param int dhcp_add_info: Tell if the user want to add information to DHCP. Accepted values:
+          - 0: None
+          - 1: Add User information
+          - 2: Add Group information
+
+        :rtype: DHCPClientConfiguration
+        """
+
+        json = {
+            "dhcp_client_mode": dhcp_client_mode,
+            "dhcp_server_ref": element_resolver(dhcp_servers),
+            "dhcp_client_interface": dhcp_client_interfaces,
+            "restricted_address_enabled": restricted_address_enabled,
+            "restricted_address_list": restricted_address_ranges,
+            "use_arp_proxy_enabled": proxy_arg_enabled,
+            "proxy_arp_address_list": proxy_arp_address_ranges,
+            "dhcp_add_info": dhcp_add_info,
+        }
+        return cls(json)
+
+    @property
+    def dhcp_client_mode(self) -> int:
+        """
+        the DHCP Mode. Accepted values:
+         - 0: Disabled
+         - 1: Direct
+         - 2: Relay
+        :rtype: int
+        """
+        return self.data.get("dhcp_client_mode")
+
+    @property
+    def dhcp_servers(self) -> list[DHCPServer]:
+        """
+        the DHCP Servers for Direct mode.
+        :rtype: list of DHCPServer
+        """
+        return [Element.from_href(href) for href in self.data.get("dhcp_server_ref", [])]
+
+    @property
+    def dhcp_client_interfaces(self) -> list[str]:
+        """
+        The relay interface IP Addresses used when DHCP Relay is selected.
+        :rtype: list of string representing interface IP addresses
+        """
+        return self.data.get("dhcp_client_interface", [])
+
+    @property
+    def restricted_address_enabled(self) -> bool:
+        """
+        flag to tell if restricted addresses can be used.
+        :rtype: bool
+        """
+        return bool(self.data.get("restricted_address_enabled", False))
+
+    @property
+    def restricted_address_ranges(self) -> list[str]:
+        """
+        Only usefull if the restricted_address_enabled flag is set to true.
+        the value can come from a value entred in the SMC (or API) or
+        an automatically generated IP Address range.
+        The format is: x.x.x.x-x.x.x.x; x.x.x.x-x.x.x.x
+        :rtype: list of string representing address ranges
+        """
+        return bool(self.data.get("restricted_address_list", []))
+
+    @property
+    def proxy_arp_enabled(self) -> bool:
+        """
+        flag to tell if arp entry addresses can be used.
+        :rtype: bool
+        """
+        return bool(self.data.get("use_arp_proxy_enabled", False))
+
+    @property
+    def proxy_arp_address_ranges(self) -> list[str]:
+        """
+        Only usefull if the proxy_arg_enabled flag is set to true.
+        the value can come from a value entred in the SMC (or API) or
+        an automatically generated IP Address range.
+        The format is: x.x.x.x-x.x.x.x; x.x.x.x-x.x.x.x
+        :rtype: list of string representing address ranges
+        """
+        return bool(self.data.get("proxy_arp_address_list", []))
+
+    @property
+    def dhcp_add_info(self) -> int:
+        """
+        Tell if the user want to add information to DHCP. Accepted values:
+          - 0: None
+          - 1: Add User information
+          - 2: Add Group information
+        :rtype: int
+        """
+        return self.data.get("dhcp_add_info")

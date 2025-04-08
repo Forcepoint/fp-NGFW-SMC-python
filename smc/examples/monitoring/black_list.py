@@ -18,19 +18,19 @@ or smc_monitoring extension
 Since SMC>=7.0 BLACKLIST is renamed BLOCK_LIST
 """
 
-
+import argparse
+import datetime
 # Python Base Import
 import json
+import logging
 import math
 import ssl
+import sys
 import threading
 import time
-import datetime
-import argparse
-import logging
-import sys
 
-sys.path.append('../../')  # smc-python
+sys.path.append('../../../')  # smc-python
+sys.path.append('../../../smc-monitoring')  # smc-python-monitoring
 from smc import session  # noqa
 from websocket import create_connection, WebSocketTimeoutException  # noqa
 from smc_monitoring.monitors.blacklist import BlacklistQuery  # noqa
@@ -59,8 +59,8 @@ logger.addHandler(console_handler)
 logger.propagate = False
 
 logging.getLogger()
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
-                                                '%(name)s - [%(levelname)s] : %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - '
+                                               '%(name)s - [%(levelname)s] : %(message)s')
 
 
 # create a blacklist entry each 5 second
@@ -70,7 +70,7 @@ def add_blacklist_entry(idx, engine, nb_to_add=1):
     for i in range(nb_to_add):
         # Add blacklist entry
         time.sleep(5)
-        ip_src = "{}.{}.0.1/32".format(idx, i+1)
+        ip_src = "{}.{}.0.1/32".format(idx, i + 1)
         logging.info(f"Thread: add new entry:src={ip_src}")
         engine.blacklist(src=ip_src, dst="10.0.0.2/32")
     logging.info("Thread terminated")
@@ -127,7 +127,7 @@ def main():
 
         assert online, NOT_ONLINE
 
-        # Add blacklist to all defined engines.
+        # git cito.
         logging.info(f"{datetime.datetime.now().strftime('%H:%M:%S')} => Add blacklist to all "
                      f"defined engines..")
         System().blacklist("11.11.0.1/32", "11.11.0.2/32")
@@ -241,13 +241,13 @@ def main():
             logging.info(f"{datetime.datetime.now().strftime('%H:%M:%S')} => "
                          f"add 250 entries block {k}...")
             for i in range(250):
-                ip_src = "{}.0.0.{}/32".format(30+k, i)
+                ip_src = "{}.0.0.{}/32".format(30 + k, i)
                 bl.add_entry(src=ip_src, dst="10.0.0.2/32")
         nb_entries = NUMBER_BLACKLIST_ENTRIES - nb_block * 250
         logging.info(f"{datetime.datetime.now().strftime('%H:%M:%S')} => "
                      f"add {nb_entries} entries block {k + 1}...")
         for i in range(nb_entries):
-            ip_src = "{}.0.0.{}/32".format(30+k+1, i)
+            ip_src = "{}.0.0.{}/32".format(30 + k + 1, i)
             bl.add_entry(src=ip_src, dst="10.0.0.2/32")
         engine.blacklist_bulk(bl)
 

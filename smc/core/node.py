@@ -26,6 +26,9 @@ For example, to load an engine and run node level commands::
         ...
 """
 import collections
+import logging
+import time
+
 from smc.base.util import save_to_file, b64encode
 from smc.base.model import SubElement, Element
 from smc.compat import get_best_version, is_smc_version_less_than
@@ -33,7 +36,7 @@ from smc.core.sub_interfaces import LoopbackInterface
 from smc.api.exceptions import LicenseError, NodeCommandFailed, UnsupportedEngineFeature, \
     CertificateImportError, CertificateExportError, CertificateError
 from smc.base.structs import SerializedIterable, NestedDict
-from smc.administration.certificates.tls_common import pem_as_string
+from smc.administration.certificates.tls_common import certificate_content
 from smc.core.external_pki import PkiCertificateSettings, PkiCertificateInfo
 
 
@@ -175,6 +178,9 @@ class Node(SubElement):
         """
         params = {"license_item_id": license_item_id, **kwargs}
         self.make_request(LicenseError, method="create", resource="bind", params=params)
+        if kwargs.get("node2", None):
+            logging.debug("Add a delay to avoid issue with upload if done just after bind for passive node")
+            time.sleep(5)
 
     def unbind_license(self, **kwargs):
         """
@@ -197,13 +203,13 @@ class Node(SubElement):
         self.make_request(LicenseError, method="create", resource="cancel_unbind", params=params)
 
     def initial_contact(
-        self,
-        enable_ssh=True,
-        time_zone=None,
-        keyboard=None,
-        install_on_server=None,
-        filename=None,
-        as_base64=False,
+            self,
+            enable_ssh=True,
+            time_zone=None,
+            keyboard=None,
+            install_on_server=None,
+            filename=None,
+            as_base64=False,
     ):
         """
         Allows to save the initial contact for for the specified node
@@ -615,9 +621,7 @@ class Node(SubElement):
             headers={"content-type": "multipart/form-data"},
             files={
                 # decode certificate or use it as it is
-                "signed_certificate": open(certificate, "rb")
-                if not pem_as_string(certificate)
-                else certificate
+                "signed_certificate": certificate_content(certificate)
             },
         )
 
@@ -793,7 +797,6 @@ has made initial contact and when initial policy upload was made.
 :ivar str software_version: initial software version on base image
 """
 ApplianceInfo.__new__.__defaults__ = (None,) * len(ApplianceInfo._fields)
-
 
 InternalInterfaceStatus = collections.namedtuple(
     "InterfaceStatus",

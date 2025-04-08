@@ -31,8 +31,8 @@ from smc import session  # noqa
 from smc.core.engines import Layer3Firewall  # noqa
 
 logging.getLogger()
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
-                                                '%(name)s - [%(levelname)s] : %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - '
+                                               '%(name)s - [%(levelname)s] : %(message)s')
 
 
 def main():
@@ -52,12 +52,12 @@ def main():
         switch_interface_id = single_fw.switch_physical_interface.all()[0].interface_id
 
         single_fw.switch_physical_interface \
-                 .add_port_group_interface(switch_interface_id, 1, [1],
-                                           interfaces=[{'nodes': [{'address': '12.12.12.12',
-                                                                   'network_value': '12.12.12.0/24',
-                                                                   'nodeid': 1}]}])
+            .add_port_group_interface(switch_interface_id, 1, [1],
+                                      interfaces=[{'nodes': [{'address': '12.12.12.12',
+                                                              'network_value': '12.12.12.0/24',
+                                                              'nodeid': 1}]}])
         single_fw.switch_physical_interface \
-                 .add_port_group_interface(switch_interface_id, 2, [2, 3, 4, 5])
+            .add_port_group_interface(switch_interface_id, 2, [2, 3, 4, 5])
 
         logging.info(f"{switch_interface_id}:"
                      f"{single_fw.switch_physical_interface.get(switch_interface_id)}")

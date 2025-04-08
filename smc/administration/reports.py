@@ -299,3 +299,42 @@ class ReportOperation(Element):
     def status(self):
         status = self.make_request(resource="status")
         return status
+
+
+class MiniReport(Element):
+    """
+    A MiniReport is a report that is generated for a specific task.
+    """
+
+    typeof = "mini_report"
+
+    def generate(
+            self, launch_time=None, overriding_duration=None,
+            use_elasticsearch=False, senders=None, wait_for_finish=False, timeout=5, **kw
+    ):  # @ReservedAssignment
+        """
+        Generate the mini report and optionally wait for results.
+        You can optionally add filters to the mini report by providing the senders
+        argument as a list of type Element::
+
+            mini_report = MiniReport('Top Network Latencies by Application')
+            launch_time = datetime_to_ms(datetime.strptime("2025-02-03T00:00:00",
+             "%Y-%m-%dT%H:%M:%S"))
+            overriding_duration = "3600"
+            mini_report.generate(launch_time=launch_time, overriding_duration=overriding_duration,
+             senders=[Engine('SingleFW1')])
+
+        :param long launch_time : End of timerange in milliseconds
+        :param int overriding_duration: period duration in seconds
+        :param bool use_elasticsearch: if true will use elasticsearch storage
+        :param senders: filter targets to use when generating the mini report
+        :type senders: list(Element)
+        :rtype: Follower Dict
+        """
+        if launch_time and overriding_duration:
+            kw.setdefault("params", {}).update({"launch_time": launch_time,
+                                                "overriding_duration": overriding_duration,
+                                                "use_elasticsearch": use_elasticsearch})
+        if senders:
+            kw.setdefault("json", {}).update({"senders": element_resolver(senders)})
+        return self.make_request(method='create', resource="generate", **kw)

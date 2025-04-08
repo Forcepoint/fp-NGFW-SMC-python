@@ -950,7 +950,7 @@ def available_api_versions(base_url, timeout=10, verify=True):
 
 def get_api_version(base_url, api_version=None, timeout=10, verify=True):
     """
-    Get the API version specified or resolve the latest version
+    Get the API version specified or resolve the lowest version
 
     :return api version
     :rtype: float

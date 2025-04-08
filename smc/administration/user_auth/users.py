@@ -54,7 +54,7 @@ Find all users in specific LDAP user group::
      ExternalLdapUserGroup(name=Cert Publishers), ExternalLdapUserGroup(name=Cisco ISE Wireless),
      ExternalLdapUserGroup(name=Cloneable Domain Controllers),
      ExternalLdapUserGroup(name=DHCP Administrators),
-     ExternalLdapUserGroup(name=DHCP Users)
+     ExternalLdapUserGroup(name=DHCP Users)]
      ...
 
 .. note:: Depending on your LDAP directory structure,
@@ -62,11 +62,11 @@ Find all users in specific LDAP user group::
 
 
 Internal domains, groups and users are configured statically within the SMC. By default, the SMC
-comes with an single `InternalDomain` domain configured.
+comes with a single `InternalDomain` domain configured.
 
 .. note:: The SMC only supports a single Internal User Domain
 
-Example of fetching an internal domain, browsing it's contents and iterating over the
+Example of fetching an internal domain, browsing its contents and iterating over the
 users and groups to delete a user named 'testuser'::
 
     >>> from smc.administration.user_auth.users import InternalUserDomain
@@ -85,6 +85,7 @@ users and groups to delete a user named 'testuser'::
 from smc.base.model import Element, ElementCreator, UserElement, ElementList, ElementRef
 from smc.base.structs import BaseIterable
 from smc.base.util import element_resolver, datetime_to_ms
+from smc.compat import is_smc_version_more_than_or_equal
 
 
 class ExternalLdapUserEntriesCollection(BaseIterable):
@@ -184,7 +185,7 @@ class ExternalLdapUserDomain(Browseable, Element):
     auth_method = ElementRef("auth_method")
 
     @classmethod
-    def create(cls, name, ldap_server, isdefault=False, auth_method=None, comment=None):
+    def create(cls, name, ldap_server, isdefault=False, auth_method=None, comment=None, browse_ldap_automatically=True):
         """
         Create an External LDAP user domain. These are used as containers for
         retrieving user and groups from the configured LDAP server/s. If you
@@ -200,18 +201,25 @@ class ExternalLdapUserDomain(Browseable, Element):
             use. Usually set when multiple are defined in LDAP service or
             none are defined.
         :param str comment: optional comment
+        :param bool browse_ldap_automatically: set to False if this domain is not browsed automatically by SMC
+        to retrieve users.
         :raises CreateElementFailed: failed to create
         :rtype: ExternalLdapUserDomain
         """
+        json = {
+            "name": name,
+            "ldap_server": element_resolver(ldap_server),
+            "auth_method": element_resolver(auth_method),
+            "isdefault": isdefault,
+            "comment": comment,
+        }
+        # browse_ldap_automatically default value is True. Set it only if different.
+        if not browse_ldap_automatically and is_smc_version_more_than_or_equal("7.3"):
+            json.update(browse_ldap_automatically=browse_ldap_automatically)
+
         return ElementCreator(
             cls,
-            json={
-                "name": name,
-                "ldap_server": element_resolver(ldap_server),
-                "auth_method": element_resolver(auth_method),
-                "isdefault": isdefault,
-                "comment": comment,
-            },
+            json=json,
         )
 
     @property
@@ -221,6 +229,12 @@ class ExternalLdapUserDomain(Browseable, Element):
         :rtype: ExternalLdapUserEntriesCollection.
         """
         return ExternalLdapUserEntriesCollection(self)
+
+    def invalidate_cache(self):
+        """
+        Invalidates the cache of the External LDAP user domain.
+        """
+        return self.make_request(method="create", href=self.get_relation("invalidate_cache"))
 
 
 class ExternalLdapUserGroup(Browseable, UserElement):
@@ -247,6 +261,80 @@ class ExternalLdapUser(UserElement):
     """
 
     typeof = "external_ldap_user"
+
+
+class LdapUser(UserElement):
+    """
+    This represents an LDAP User defined on an external LDAP server that
+    SMC doesn't browse. So the user is defined inside SMC, to match element in LDAP.
+
+    :ivar str name: name of ldap user
+    :ivar str unique_id: the fully qualified DN for the user
+    """
+
+    typeof = "ldap_user"
+
+    @classmethod
+    def create(
+            cls, ldap_domain: Browseable, name, comment=None,
+    ):
+        """
+        Create an LDAP user for an LDAP server that is not browsed.
+        Add a user example::
+
+            LdapUser.create(name='foo', comment='my comment')
+
+        :param str name: name of user that is displayed in SMC
+        :param ExternalLdapUserDomain ldap_domain: the user_domain where this user is created.
+        :param str comment: optional comment
+        :rtype: LdapUser
+        """
+        ldap_server = ldap_domain.ldap_server[0]
+        json = {
+            "name": name,
+            "comment": comment,
+            "user_domain": ldap_domain.href,
+            "unique_id": "cn={},{},domain={}".format(name, ldap_server.base_dn, ldap_domain.name),
+        }
+
+        return ElementCreator(cls, json)
+
+
+class LdapUserGroup(UserElement):
+    """
+    This represents an LDAP User Group defined on an external LDAP server that
+    SMC doesn't browse. So the user group is defined inside SMC, to match element in LDAP.
+
+    :ivar str name: name of ldap user group
+    :ivar str unique_id: the fully qualified DN for the user group
+    """
+
+    typeof = "ldap_user_group"
+
+    @classmethod
+    def create(
+            cls, ldap_domain: Browseable, name, comment=None,
+    ):
+        """
+        Create an LDAP user group for an LDAP server that is not browsed.
+        Example::
+
+            LdapUserGroup.create(name='foo', comment='my comment')
+
+        :param str name: name of user group that is displayed in SMC
+        :param ExternalLdapUserDomain ldap_domain: the user_domain where this group is created.
+        :param str comment: optional comment
+        :rtype: LdapUserGroup
+        """
+        ldap_server = ldap_domain.ldap_server[0]
+        json = {
+            "name": name,
+            "comment": comment,
+            "user_domain": ldap_domain.href,
+            "unique_id": "cn={},{},domain={}".format(name, ldap_server.base_dn, ldap_domain.name),
+        }
+
+        return ElementCreator(cls, json)
 
 
 class InternalUser(UserElement):

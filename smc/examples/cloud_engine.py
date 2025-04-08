@@ -18,14 +18,15 @@ Example script to show how to use Cloud L3 Firewall.
 import argparse
 import logging
 import sys
+
 sys.path.append('../../')  # smc-python
 from smc.core.engine import Engine  # noqa
 from smc.core.engines import CloudSGSingleFW  # noqa
 from smc import session  # noqa
 
 logging.getLogger()
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
-                                                '%(name)s - [%(levelname)s] : %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - '
+                                               '%(name)s - [%(levelname)s] : %(message)s')
 
 
 def main():

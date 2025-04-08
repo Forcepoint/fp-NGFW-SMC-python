@@ -25,14 +25,15 @@ import argparse
 import logging
 import sys
 import time
+
 sys.path.append('../../')  # smc-python
 from smc import session  # noqa
 from smc.core.engines import FirewallCluster  # noqa
 from smc.elements.helpers import zone_helper  # noqa
 
 logging.getLogger()
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
-                                                '%(name)s - [%(levelname)s] : %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - '
+                                               '%(name)s - [%(levelname)s] : %(message)s')
 
 
 def main():

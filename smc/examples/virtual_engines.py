@@ -34,8 +34,8 @@ VLAN_CREATE_ERROR = "Failed to create vlan interface in virtual engine."
 ADD_IP_ADDRESS_ERROR = "Failed to add new ip address to vlan interface."
 
 logging.getLogger()
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
-                                                '%(name)s - [%(levelname)s] : %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - '
+                                               '%(name)s - [%(levelname)s] : %(message)s')
 
 
 def main():

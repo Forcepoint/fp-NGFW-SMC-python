@@ -19,6 +19,7 @@ import argparse
 import logging
 import sys
 import time
+from addict import Dict
 
 sys.path.append('../../')  # smc-python
 from smc import session  # noqa
@@ -31,6 +32,8 @@ from smc.elements.servers import NTPServer, DNSServer  # noqa
 from smc.core.engine import SidewinderProxyAdvancedSettings, ScanDetectionSetting, \
     StaticMulticastRoute, WebAuthentication  # noqa
 from smc.elements.alerts import IdsAlert  # noqa
+from smc.compat import is_api_version_less_than  # noqa
+from smc.administration.system import System  # noqa
 
 engine_name = "myFw"
 PROTOCOL1 = 'tcp_syn_seen'
@@ -48,8 +51,11 @@ LOG_SETTING1 = 50
 LOG_SETTING2 = 60
 RATE = 100
 BURST = 1000
-LOG_EVENT1 = '1'
-LOG_EVENT2 = '2'
+OLD_LOG_EVENT_ANTISPOOFING = '1'
+OLD_LOG_EVENT_DISCARD = '2'
+LOG_EVENT_ANTISPOOFING = 'antispoofing'
+LOG_EVENT_DISCARD = 'discard'
+LOG_EVENT_ALLOW = 'allow'
 
 # default nat
 DEFAULT_NAT_CONFIG_ERROR = 'Fail to create engine with default value.'
@@ -73,8 +79,88 @@ TIMEOUT1 = 3600
 TIMEOUT2 = 3000
 
 logging.getLogger()
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
-                                                '%(name)s - [%(levelname)s] : %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - '
+                                               '%(name)s - [%(levelname)s] : %(message)s')
+
+
+def get_licenses_based_key_and_value_and_type(key, value, license_type=None):
+    list_found = []
+    system = System()
+    for licence in system.licenses:
+        lic_key = getattr(licence, key)
+        if license_type:
+            license_type_retrieved = getattr(licence, "type")
+        if lic_key == value:
+            if license_type:
+                if license_type_retrieved == license_type:
+                    list_found.append(licence)
+            else:
+                list_found.append(licence)
+
+    return list_found
+
+
+def get_engine_health(engine_name):
+    engine_health = Dict()
+    for node in Layer3Firewall(engine_name).nodes:
+        logging.debug(f"Engine node [{node.name}] stat {node.health}")
+        for entry in node.health:
+            engine_health[node.nodeid][entry] = node.health[entry]
+
+    return engine_health
+
+
+def initial_contact_engine(engine_name: str, out_path: str = "/tmp/", demo_mode=False):
+    engine = Layer3Firewall(engine_name)
+    for node in engine.nodes:
+        node.initial_contact(
+            filename=f"{out_path}/{node.name.replace(" ", "_")}_engine.cfg"
+        )
+
+    if demo_mode:
+        # Wait for engine to be ready: ["Configured", "Installed"]
+        # when doing initial contact in demo mode
+        engine_ready = False
+        for x in range(50):
+            engine_status = get_engine_health(engine_name)
+            for node, values in engine_status.items():
+                if values.configuration_status in ["Configured", "Installed"]:
+                    engine_ready = True
+                    logging.info("Engine initial contact succeeds")
+                    break
+            if engine_ready:
+                break
+            time.sleep(3)
+        assert engine_ready, logging.error(f"Engine is not in expected state [{values.configuration_status}]")
+
+
+def automatically_bind_engine_license(engine_name):
+    system = System()
+    unlicensed_elements = system.unlicensed_components()
+    license_not_bound = False
+    ngfw = Layer3Firewall(engine_name)
+    if len(unlicensed_elements) > 0:
+        for unlicensed_element in unlicensed_elements:
+            for node in ngfw.nodes:
+                if node.name in unlicensed_element['name']:
+                    license_not_bound = True
+                    break
+    if license_not_bound:
+        # Get all Unassigned license
+        unassigned_licences_list = get_licenses_based_key_and_value_and_type("binding_state",
+                                                                             "Unassigned",
+                                                                             "SECNODE")
+        # Make sure there are enough free licenses
+        assert len(unassigned_licences_list) >= len(ngfw.nodes), logging.error(
+            "There are not enough unassigned licenses"
+        )
+
+        counter = 0
+        for node in ngfw.nodes:
+            node.bind_license(unassigned_licences_list[counter].license_id)
+            counter += 1
+    else:
+        logging.info("Engine license already bound")
 
 
 def main():
@@ -85,6 +171,7 @@ def main():
                       login=arguments.smc_user,
                       pwd=arguments.smc_pwd, api_version=arguments.api_version)
         logging.info("session OK")
+        system = System()
 
         # Create NTP server
         new_ntp_server = NTPServer().create(name="myNTPServer",
@@ -99,20 +186,20 @@ def main():
         interfaces_json = [{'interfaces': [{'nodes': [{'address': '11.11.11.1',
                                                        'network_value': '11.11.11.1/32',
                                                        'nodeid': 1}]}],
-                           'interface_id': '1000', 'type': 'tunnel_interface'},
+                            'interface_id': '1000', 'type': 'tunnel_interface'},
                            {'interfaces': [], 'interface_id': 'SWP_0',
                             'appliance_switch_module': '110 appliance (8 fixed ports)',
                             'type': 'switch_interface',
                             'port_group_interface': [{'interface_id': 'SWP_0.4',
-                                                     'switch_interface_port': [{
-                                                         'switch_interface_port_comment': 'port 2',
-                                                         'physical_switch_port_number': 2},
-                                                         {'switch_interface_port_comment': '',
-                                                          'physical_switch_port_number': 4},
-                                                         {'switch_interface_port_comment': '',
-                                                          'physical_switch_port_number': 5},
-                                                         {'switch_interface_port_comment': '',
-                                                          'physical_switch_port_number': 6}]}]
+                                                      'switch_interface_port': [{
+                                                          'switch_interface_port_comment': 'port 2',
+                                                          'physical_switch_port_number': 2},
+                                                          {'switch_interface_port_comment': '',
+                                                           'physical_switch_port_number': 4},
+                                                          {'switch_interface_port_comment': '',
+                                                           'physical_switch_port_number': 5},
+                                                          {'switch_interface_port_comment': '',
+                                                           'physical_switch_port_number': 6}]}]
                             }]
         sidewinder_setting = [
             SidewinderProxyAdvancedSettings.create(attribute="httpkey", sidewinder_type="HTTP",
@@ -151,6 +238,19 @@ def main():
                                                       keep_alive_rate=30,
                                                       page_ref=web_authentication_page,
                                                       use_cert_bba=False)
+        log_moderation_entries = [  # adding  log moderation setting
+            {
+                "burst": BURST,
+                "log_event": LOG_EVENT_ANTISPOOFING,
+                "rate": RATE
+            }]
+        if is_api_version_less_than("7.3"):
+            log_moderation_entries = [  # adding  log moderation setting
+                {
+                    "burst": BURST,
+                    "log_event": OLD_LOG_EVENT_ANTISPOOFING,
+                    "rate": RATE
+                }]
 
         Layer3Firewall.create(name=engine_name,
                               mgmt_ip="192.168.10.1",
@@ -165,12 +265,7 @@ def main():
                               },
                                           "log_spooling_policy": "discard",  # enable log_moderation
 
-                                          "log_moderation": [  # adding  log moderation setting
-                                              {
-                                                  "burst": BURST,
-                                                  "log_event": LOG_EVENT1,
-                                                  "rate": RATE
-                                              }]
+                                          "log_moderation": log_moderation_entries
                                           },
                               ssm_advanced_setting=sidewinder_setting,
                               sidewinder_proxy_enabled=True,
@@ -258,18 +353,27 @@ def main():
                web_config.authentication_timeout == TIMEOUT1 and not web_config.enforce_https and \
                web_config.page_ref == web_authentication_page.href and \
                not web_config.session_handling, ERROR_CREATE_WEB_AUTH_CONFIG
+        logging.info("Save initial contact and bind license on created engine...")
+        initial_contact_engine(engine.name, demo_mode=True)
+        automatically_bind_engine_license(engine.name)
+        logging.info("User authentication settings update...")
         web_authentication.update(tls_profile=tls_profile.href,
-                                  http_port=80,
+                                  https_port=443,
                                   authentication_idle_timeout=TIMEOUT2,
                                   authentication_timeout=TIMEOUT2,
                                   session_handling=False,
                                   )
-        engine.generate_and_sign_user_authentication_certificate()
+        generate_user_auth_certificate_task_poller = (
+            engine.generate_and_sign_user_authentication_certificate())
+        generate_user_auth_certificate_task = generate_user_auth_certificate_task_poller.result()
+        assert generate_user_auth_certificate_task.success, \
+            (logging.error(f"Generation of the User Authentication certificate failed: "
+                           f"{generate_user_auth_certificate_task.last_message}"))
         engine.update(web_authentication=web_authentication.data)
         engine = Layer3Firewall(engine_name)
         web_config = engine.web_authentication
         assert web_config.authentication_idle_timeout == TIMEOUT2 and \
-               web_config.authentication_timeout == TIMEOUT2 and web_config.http_port == 80 and \
+               web_config.authentication_timeout == TIMEOUT2 and web_config.https_port == 443 and \
                not web_config.session_handling and \
                web_config.tls_profile == tls_profile.href, ERROR_UPDATE_WEB_AUTH_CONFIG
 
@@ -365,34 +469,36 @@ def main():
 
         # checking log moderation
         engine = Layer3Firewall(engine_name)
-        log_moderation_obj = engine.log_moderation
-        assert log_moderation_obj.contains(log_event=LOG_EVENT1) and \
-               log_moderation_obj.get(LOG_EVENT1)["rate"] == RATE and \
-               log_moderation_obj.get(LOG_EVENT1)["burst"] == BURST, ERROR_CREATE_LOG_MODERATION
+        log_moderation_list = engine.log_moderation
+        log_event_type_for_antispoofing = OLD_LOG_EVENT_ANTISPOOFING if is_api_version_less_than("7.3") else LOG_EVENT_ANTISPOOFING
+        assert log_moderation_list.log_moderation[0]["log_event"] == log_event_type_for_antispoofing and \
+               log_moderation_list.log_moderation[0]["rate"] == RATE and \
+               log_moderation_list.log_moderation[0]["burst"] == BURST, ERROR_CREATE_LOG_MODERATION
         logging.info("Successfully created the engine with the log moderation settings.")
-        log_moderation_obj.add(rate=RATE, log_event=LOG_EVENT2, burst=BURST)
+        log_event_type_for_discard = OLD_LOG_EVENT_DISCARD if is_api_version_less_than("7.3") else LOG_EVENT_DISCARD
+        log_moderation_list.add(rate=RATE, log_event=log_event_type_for_discard, burst=BURST)
         engine.update()
         engine = Layer3Firewall(engine_name)
-        log_moderation_obj = engine.log_moderation
-        assert log_moderation_obj.contains(log_event=LOG_EVENT2) and \
-               log_moderation_obj.get(LOG_EVENT2)["rate"] == RATE and \
-               log_moderation_obj.get(LOG_EVENT2)["burst"] == BURST, ERROR_UPDATE_LOG_MODERATION
+        log_moderation_list = engine.log_moderation
+        assert log_moderation_list.contains(log_event=log_event_type_for_discard) and \
+               log_moderation_list.log_moderation[0]["rate"] == RATE and \
+               log_moderation_list.log_moderation[0]["burst"] == BURST, ERROR_UPDATE_LOG_MODERATION
         logging.info("Successfully updated the engine with log moderation settings.")
         logging.info("Checking the log moderation setting in the interface: ")
         interface = engine.interface.get(1)
-        log_moderation_obj = interface.log_moderation
-        log_moderation_obj.add(rate=RATE, log_event=LOG_EVENT2, burst=BURST)
+        log_moderation_list = interface.log_moderation
+        log_moderation_list.add(rate=RATE, log_event=log_event_type_for_discard, burst=BURST)
         interface.update(override_engine_settings=True, override_log_moderation_settings=True)
         # Reload engine setting from DB
         engine = Layer3Firewall(engine_name)
         interface = engine.interface.get(1)
-        log_moderation_obj = interface.log_moderation
-        assert log_moderation_obj.contains(log_event=LOG_EVENT1) and \
-               log_moderation_obj.get(LOG_EVENT1)["rate"] == RATE and \
-               log_moderation_obj.get(LOG_EVENT1)["burst"] == BURST, ERROR_UPDATE_LOG_MODERATION
+        log_moderation_list = interface.log_moderation
+        assert log_moderation_list.contains(log_event=log_event_type_for_antispoofing) and \
+               log_moderation_list.log_moderation[0]["rate"] == RATE and \
+               log_moderation_list.log_moderation[0]["burst"] == BURST, ERROR_UPDATE_LOG_MODERATION
         logging.info("Successfully updated the interface with log moderation settings.")
-    except BaseException as e:
-        logging.error(f"Exception:{e}")
+    except Exception as e:
+        logging.exception(f"Exception:{e}")
         return_code = 1
     finally:
         # Delete NTP server and Firewall

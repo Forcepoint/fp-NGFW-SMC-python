@@ -34,8 +34,8 @@ CREATE_RULE_ERROR = "Failed to create alert rule."
 DELETE_ERROR = "Failed to delete alert rule."
 
 logging.getLogger()
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
-                                                '%(name)s - [%(levelname)s] : %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - '
+                                               '%(name)s - [%(levelname)s] : %(message)s')
 
 
 def main():

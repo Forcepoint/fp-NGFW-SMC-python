@@ -602,6 +602,53 @@ class SwitchInterfaceCollection(InterfaceCollection):
         interface = {"interface_id": switch.interface_id, "port_group_interface": [switch_port]}
         switch.update_interface(SwitchPhysicalInterface(**interface))
 
+    def add_port_group_interface_n120(
+        self, interface_id, port_interfaces, interfaces=None, zone_ref=None
+    ):
+        """
+        Add a port group to an existing switch physical interface for N120 appliance type having
+        soft switch pint interface as port interfaces. (SSID Soft-Switch Interfaces must be either
+        a Layer 3 Physical Interface or a SSID Interface (without IP Address, not Aggregated
+        and without VLAN defined)
+        It is possible to add IPv4 and IPv6 addresses to the port group interface
+        port should have an address assigned, use the following format::
+
+            engine.switch_physical_interface.add_port_group_interface('SWI_0', [wlan_interface_ref,
+             physical_interface_ref],
+                    interfaces=[{'nodes': [{'address': '12.12.12.12',
+                                            'network_value': '12.12.12.0/24',
+                                            'nodeid': 1}]}])
+
+        To create a generic switch port group without IP addresses assigned
+
+            engine.switch_physical_interface.add_port_group_interface('SWI_0',[wlan_interface_ref,
+             physical_interface_ref])
+
+        .. note:: If the port group ID exists, this method will modify the existing port
+            group with the specified settings
+
+        :param str interface_id: The top level switch, naming convention should be
+            SWP_0, SWP_1, etc. ( Since API 6.8: SWI_0, SWI_1..)
+        :param list port_interfaces : Layer 3 Physical Interface or a SSID Interface ref
+        :param list interfaces: list of interface node definitions if the switch port
+            should have IP address/es assigned (IPv4/IPv6)
+        :param str zone_ref: zone reference, can be name, href or Zone, will be
+            created if it doesn't exist
+        :raises InterfaceNotFound: invalid switch interface_id specified
+        :return: None
+        """
+        switch = self._engine.interface.get(interface_id)
+        switch_port = {
+                "interface_id": f"{interface_id}.4096",
+                "switch_interface_port": [
+                    {"soft_switch_pint_ref": port} for port in port_interfaces
+                ],
+                "zone_ref": zone_ref,
+        }
+        switch_port.update(interfaces=interfaces if interfaces else [])
+        interface = {"interface_id": switch.interface_id, "port_group_interface": [switch_port]}
+        switch.update_interface(SwitchPhysicalInterface(**interface))
+
 
 class TunnelInterfaceCollection(InterfaceCollection):
     """
@@ -941,7 +988,7 @@ class PhysicalInterfaceCollection(InterfaceCollection):
 
     def add_layer3_interface(
             self, interface_id, address, network_value, zone_ref=None, comment=None, lldp_mode=None,
-            **kw
+            relayed_by_dhcp=None, **kw
     ):
         """
         Add a layer 3 interface on a non-clustered engine.
@@ -969,7 +1016,8 @@ class PhysicalInterfaceCollection(InterfaceCollection):
         """
         interfaces = {
             "interface_id": interface_id,
-            "interfaces": [{"nodes": [{"address": address, "network_value": network_value}]}],
+            "interfaces": [{"nodes": [{"address": address, "network_value": network_value,
+                                       "relayed_by_dhcp": relayed_by_dhcp}]}],
             "zone_ref": zone_ref,
             "comment": comment,
         }

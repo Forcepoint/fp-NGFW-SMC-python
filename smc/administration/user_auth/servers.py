@@ -80,6 +80,14 @@ class AuthenticationMethod(Element):
         """
         return self.data.get('type')
 
+    @property
+    def authentication_servers(self):
+        """
+        Return Authentication Servers
+        :rtype: array of dict of auth_server_ref/rank
+        """
+        return self.data.get('authentication_server', [])
+
     @classmethod
     def create_saml(
             cls,
@@ -306,13 +314,15 @@ class AuthenticationMethod(Element):
         }
         if is_api_version_less_than("7.3"):
             json.update(authentication_server=[element_resolver(server) for server in authentication_server])
-        else:
+        elif authentication_server and not isinstance(authentication_server[0], dict):
             authentication_servers = []
             rank = 1
             for server in authentication_server:
                 authentication_servers.append({"auth_server_ref": element_resolver(server), "rank": rank})
                 rank += 1
             json.update(authentication_server=authentication_servers)
+        else:
+            json.update(authentication_server=authentication_server)
         json.update(kwargs)
         return ElementCreator(cls, json)
 
@@ -540,6 +550,12 @@ class ActiveLdapServerMixin(Element, MultiContactServer):
         :rtype: bool
         """
         return self.make_request(href=self.get_relation("check_connectivity")) is None
+
+    def invalidate_cache(self):
+        """
+        Invalidates the cache of the LDAP server.
+        """
+        return self.make_request(method="create", href=self.get_relation("invalidate_cache"))
 
     @property
     def port(self):

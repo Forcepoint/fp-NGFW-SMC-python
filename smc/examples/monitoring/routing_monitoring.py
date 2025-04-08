@@ -17,14 +17,12 @@ Example script to show how to subscribe to routing monitoring notifications usin
 or smc_monitoring extension
 """
 
-
+import argparse
 # Python Base Import
 import json
-import ssl
-import argparse
 import logging
+import ssl
 import sys
-
 
 from websocket import create_connection
 
@@ -32,11 +30,12 @@ sys.path.append('../../../')  # smc-python
 sys.path.append('../../../smc-monitoring')  # smc-python-monitoring
 from smc import session  # noqa
 from smc_monitoring.monitors.routes import RoutingQuery  # noqa
+
 ENGINE_NAME = "Plano"
 
 logging.getLogger()
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
-                                                '%(name)s - [%(levelname)s] : %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - '
+                                               '%(name)s - [%(levelname)s] : %(message)s')
 
 
 def main():

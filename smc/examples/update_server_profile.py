@@ -33,8 +33,8 @@ TIMEOUT = 30
 URL = "https://autoupdate.ngfw.forcepoint.com/dynup.rss"
 
 logging.getLogger()
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
-                                                '%(name)s - [%(levelname)s] : %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - '
+                                               '%(name)s - [%(levelname)s] : %(message)s')
 
 
 def main():

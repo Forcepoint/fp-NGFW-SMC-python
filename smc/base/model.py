@@ -984,6 +984,12 @@ class UserElement(Element):
     def __ne__(self, other):
         return not self.__eq__(other)
 
+    def invalidate_cache(self):
+        """
+        Invalidates the cache of the LDAP server.
+        """
+        return self.make_request(method="create", href=self.get_relation("invalidate_cache"))
+
 
 def lookup_class(typeof, default=Element):
     cls = ElementMeta._map.get(typeof, None)

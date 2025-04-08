@@ -40,6 +40,7 @@ Enable and configure ECA (Endpoint Context Agent) on a Firewall
 import argparse
 import logging
 import sys
+
 sys.path.append('../../')  # smc-python
 from smc import session  # noqa
 from smc.administration.certificates.tls import TLSCertificateAuthority  # noqa
@@ -47,7 +48,7 @@ from smc.core.engines import Engine  # noqa
 from smc.core.addon import EndpointIntegration  # noqa
 from smc.elements.network import Network, Zone  # noqa
 from smc.administration.eca_client_config import EcaEndpointSettings, EcaClientConfig, \
-    EcaOperatingSystemSituation, create_eca_os_situation_dict, EndpointApplication, \
+    create_eca_os_situation_dict, EndpointApplication, \
     ECAExecutable  # noqa
 
 ECA_SETTING_NAME = "test_eca_endpoint_settings"
@@ -63,7 +64,6 @@ ECA_PRODUCT_NAME = "fp-NGFW-smc-python"
 ECA_FILE_NAME = "test_file"
 CREATE_ERROR_EP = "Fail to create Endpoint Application."
 UPDATE_ERROR_EP = "Fail to update Endpoint Application."
-
 
 logging.getLogger()
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - '

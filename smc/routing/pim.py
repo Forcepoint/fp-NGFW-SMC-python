@@ -30,7 +30,6 @@ SSM mapping allows IGMPv2 requests to be converted into IGMPv3 requests.
 from smc.base.model import Element, ElementCreator, ElementCache, ElementRef, SubElement
 from smc.base.structs import NestedDict
 from smc.base.util import element_resolver
-from smc.routing.ospf import OSPF
 
 
 class PIMSettings(object):
@@ -41,11 +40,12 @@ class PIMSettings(object):
     pim_profile = ElementRef("pim_profile_ref")
 
     def __init__(self, engine):
-        self.data = engine.data.get("pim_settings", {})
+        self.data = engine.get("data", {}).get("pim_settings", {})
 
     @classmethod
-    def create(cls, pim_profile_ref, mroute_preference, rp_priority=64, bsr_priority=64,
-               rp_candidate_interface=None, bsr_candidate_interface=None, sm_rp_candidate_entry=[]):
+    def create(cls, pim_profile_ref, mroute_preference="best_match_preferred", rp_priority=64,
+               bsr_priority=64, rp_candidate_interface=None, bsr_candidate_interface=None,
+               sm_rp_candidate_entry=[]):
         """
         :param PIMIPv4Profile pim_profile_ref: The PIM IPv4 profile.
         :param str mroute_preference: the MRoute preference:
@@ -60,15 +60,17 @@ class PIMSettings(object):
         :rtype: dict
         """
         data = {
-            "pim_profile_ref": element_resolver(pim_profile_ref),
-            "rp_candidate_interface": rp_candidate_interface,
-            "bsr_candidate_interface": bsr_candidate_interface,
-            "sm_rp_candidate_entry": sm_rp_candidate_entry,
-            "mroute_preference": mroute_preference,
-            "rp_priority": rp_priority,
-            "bsr_priority": bsr_priority
+            "pim_settings": {
+                "pim_profile_ref": element_resolver(pim_profile_ref),
+                "rp_candidate_interface": rp_candidate_interface,
+                "bsr_candidate_interface": bsr_candidate_interface,
+                "sm_rp_candidate_entry": sm_rp_candidate_entry,
+                "mroute_preference": mroute_preference,
+                "rp_priority": rp_priority,
+                "bsr_priority": bsr_priority
+            }
         }
-        return cls(data)
+        return cls({"data": data})
 
     @property
     def mroute_preference(self):
@@ -148,7 +150,7 @@ class IGMPQuerierSettings(Element):
     typeof = "igmp_querier_settings"
 
     @classmethod
-    def create(cls, name, igmp_version, query_interval, robustness, comment=None):
+    def create(cls, name, igmp_version, query_interval=125, robustness=2, comment=None):
         """
         Create an IGMP Querier Settings element to be applied on the engine.
         You can configure IGMP-based multicast forwarding for a specified Engine element.
@@ -463,15 +465,15 @@ class RpCandidateInterfaceEntry(NestedDict):
         super(RpCandidateInterfaceEntry, self).__init__(data)
 
     @classmethod
-    def create(cls, nicid, adress):
+    def create(cls, nicid, address):
         """
         :param str nicid: the interface nic id in string format.
-        :param str adress: the IPv4 address.
+        :param str address: the IPv4 address.
         :rtype: dict
         """
         data = {
             "nicid": nicid,
-            "adress": adress
+            "address": address
         }
         return cls(data)
 
@@ -485,15 +487,15 @@ class BsrCandidateInterfaceEntry(NestedDict):
         super(BsrCandidateInterfaceEntry, self).__init__(data)
 
     @classmethod
-    def create(cls, nicid, adress):
+    def create(cls, nicid, address):
         """
         :param str nicid: the interface nic id in string format.
-        :param str adress: the IPv4 address.
+        :param str address: the IPv4 address.
         :rtype: dict
         """
         data = {
             "nicid": nicid,
-            "adress": adress
+            "address": address
         }
         return cls(data)
 

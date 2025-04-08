@@ -26,8 +26,8 @@ RULE1 = "ffp_rule_1"
 RULE2 = "ffp_rule_2"
 
 logging.getLogger()
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
-                                                '%(name)s - [%(levelname)s] : %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - '
+                                               '%(name)s - [%(levelname)s] : %(message)s')
 
 
 def action_settings(action, sandbox=True, icap_dlp_file_size_exceeded_action="ALLOW",
@@ -54,7 +54,6 @@ def action_settings(action, sandbox=True, icap_dlp_file_size_exceeded_action="AL
 
 
 def main():
-
     return_code = 0
     try:
         arguments = parse_command_line_arguments()

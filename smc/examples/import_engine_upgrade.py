@@ -25,16 +25,15 @@ Example script to show how to use EngineUpgrade object.
 # Python Base Import
 import argparse
 import logging
-import sys
 import re
-
+import sys
 # Python SMC Import
 from os.path import exists
+
 sys.path.append('../../')  # smc-python
 from smc import session  # noqa
 from smc.administration.system import System  # noqa
 from smc.api.exceptions import ActionCommandFailed  # noqa
-
 
 FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
 NOT_IMPORTED_ERR = "The upgrade package is not imported!."
@@ -43,8 +42,8 @@ ALREADY_IMPORTED_ERR = "The upgrade package has already been imported and downlo
 FORCE_IMPORT_FLAG = True
 
 logging.getLogger()
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
-                                                '%(name)s - [%(levelname)s] : %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - '
+                                               '%(name)s - [%(levelname)s] : %(message)s')
 
 
 def main():

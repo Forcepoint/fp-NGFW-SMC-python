@@ -56,3 +56,9 @@ Release History
 1.5.4
 +++++
 -websocket user session improvement
+
+1.5.5
++++++
+-Fixed blacklist reference issue
+
+

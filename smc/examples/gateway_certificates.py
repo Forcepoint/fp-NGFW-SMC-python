@@ -19,6 +19,7 @@ import argparse
 import logging
 import sys
 import time
+
 sys.path.append('../../')  # smc-python
 from smc.core.engines import Layer3Firewall  # noqa
 from smc import session  # noqa
@@ -28,8 +29,8 @@ FW_NAME = 'myFW'
 NOT_EXPIRE_DATE_ERR = "Expire date is not available"
 
 logging.getLogger()
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
-                                                '%(name)s - [%(levelname)s] : %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - '
+                                               '%(name)s - [%(levelname)s] : %(message)s')
 
 
 def main():

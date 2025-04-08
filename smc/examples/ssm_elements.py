@@ -29,8 +29,8 @@ from smc.elements.tags import SidewinderTag  # noqa
 from enum import Enum  # noqa
 
 logging.getLogger()
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
-                                                '%(name)s - [%(levelname)s] : %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - '
+                                               '%(name)s - [%(levelname)s] : %(message)s')
 
 SSM_NAME = "test_side_winder_logging_profile"
 SSM_CREATE_ERROR = "Fail to create SidewinderLoggingProfile."
@@ -72,7 +72,7 @@ def main():
         known_host = SSHKnownHosts.create(name="testKnownHost",
                                           host_key="ssh-ed25519 "
                                                    "AAAAC3NzaC1lZDI1NTE5AAAAIIhOmoNeLtMHh"
-                                          "r2DlE2uXAqfiJi66TM9DTjvgGEy3ojv",
+                                                   "r2DlE2uXAqfiJi66TM9DTjvgGEy3ojv",
                                           sshkey_type="ssh-ed25519",
                                           ipaddress="1.2.3.4",
                                           ipv6_address="2607:a600:124:0203::4",

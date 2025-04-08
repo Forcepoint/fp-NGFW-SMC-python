@@ -110,7 +110,8 @@ from smc.policy.rule_elements import (
 from smc.base.util import element_resolver
 from smc.base.decorators import cacheable_resource
 from smc.core.resource import History
-from smc.compat import get_best_version, is_api_version_less_than_or_equal
+from smc.compat import (get_best_version, is_api_version_less_than_or_equal,
+                        is_api_version_more_than_or_equal, is_smc_version_more_than_or_equal)
 
 
 class Rule(object):
@@ -395,7 +396,8 @@ class RuleCommon(object):
     Functionality common to all rules
     """
 
-    def create_rule_section(self, name, add_pos=None, insert_point=None, after=None, before=None):
+    def create_rule_section(self, name, add_pos=None, insert_point=None,
+                            after=None, before=None, background_color=None):
         """
         Create a rule section in a Firewall Policy. To specify a specific numbering
         position for the rule section, use the `add_pos` field. If no position or
@@ -418,6 +420,8 @@ class RuleCommon(object):
             ``add_pos`` and ``before`` params.
         :param str before: Rule tag to add this rule before. Mutually exclusive with
             ``add_pos`` and ``after`` params.
+        :param str background_color: the background color of the rule section.
+            in hexadecimal format (#RRGGBB)
         :raises MissingRequiredInput: when options are specified the need additional
             setting, i.e. use_vpn action requires a vpn policy be specified.
         :raises CreateRuleFailed: rule creation failure
@@ -434,16 +438,22 @@ class RuleCommon(object):
         if insert_point:
             params.update(insert_point=insert_point)
 
+        json = {"comment": name}
+        if (is_api_version_more_than_or_equal("7.1") and
+                is_smc_version_more_than_or_equal("7.1.7") and
+                background_color):
+            json.update(background_color=background_color)
+
         return ElementCreator(
             self.__class__,
             exception=CreateRuleFailed,
             href=href,
             params=params,
-            json={"comment": name},
+            json=json,
         )
 
-    def create_insert_point(self, name, insert_point_type="normal",
-                            add_pos=None, insert_point=None, after=None, before=None):
+    def create_insert_point(self, name, insert_point_type="normal", add_pos=None,
+                            insert_point=None, after=None, before=None, background_color=None):
         """
         Create an insert point in a Template Firewall Policy. If no position or
         before/after is specified, the insert point will be placed at the top
@@ -468,6 +478,8 @@ class RuleCommon(object):
             ``before`` and 'add_pos' params.
         :param str before: Rule tag to add this insert point before. Mutually exclusive with
             ``after`` and 'add_pos' params.
+        :param str background_color: the background color of the rule section.
+            in hexadecimal format (#RRGGBB)
         :raises CreateRuleFailed: rule creation failure
         :return: the created ipv4 rule
         :rtype: IPv4Rule, IPv6Rule..
@@ -482,12 +494,16 @@ class RuleCommon(object):
         if insert_point:
             params.update(insert_point=insert_point)
 
+        json = {"name": name, "type": insert_point_type}
+        if background_color:
+            json.update(background_color=background_color)
+
         return ElementCreator(
             self.__class__,
             exception=CreateRuleFailed,
             href=href,
             params=params,
-            json={"name": name, "type": insert_point_type}
+            json=json
         )
 
     def add_at_position(self, pos):
@@ -700,6 +716,14 @@ class RuleCommon(object):
             )
 
         return rule_action
+
+    @property
+    def background_color(self):
+        """
+        Background color in hexadecimal format (#RRGGBB).
+        Applicable for rule section and insert point.
+        """
+        return self.data.get("background_color", None)
 
     def is_locked(self):
         """

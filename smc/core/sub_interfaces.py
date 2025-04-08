@@ -18,6 +18,7 @@ basic settings such as ip address, network, administrative settings etc. These a
 not called directly but used as a reference to the top level interface.
 All sub interfaces are type dict.
 """
+import ipaddress
 
 from smc.base.structs import NestedDict, BaseIterable
 from smc.api.exceptions import EngineCommandFailed
@@ -72,6 +73,14 @@ class SubInterface(NestedDict):
     @property
     def address(self):
         return self.data.get("address")
+
+    @property
+    def is_ipv6(self):
+        try:
+            ipaddress.IPv6Address(self.address)
+            return True
+        except ipaddress.AddressValueError:
+            return False
 
 
 class ClusterVirtualInterface(SubInterface):

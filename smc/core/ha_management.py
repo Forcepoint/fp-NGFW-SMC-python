@@ -39,16 +39,27 @@ To get the HA Diagnostics, do::
 from smc.api.common import fetch_entry_point, SMCRequest, _get_session
 from smc.api.exceptions import HaCommandException
 from smc.base.model import Element
+from smc.base.structs import NestedDict
 
 
-class HAInfo(object):
+class HAInfo(NestedDict):
     """
     Represents HA Management information.
     """
+    def __init__(self, data):
+        super(HAInfo, self).__init__(data=data)
 
-    def __init__(self, **data):
-        for d, v in data.items():
-            setattr(self, d, v)
+    @property
+    def connected_server(self):
+        """
+        :return: Connected server
+        :rtype: Server
+        """
+        return Element.from_href(self.data.get("connected_server"))
+
+    @connected_server.setter
+    def connected_server(self, value):
+        self.data.set("connected_server", value)
 
     @property
     def active_server(self):
@@ -56,12 +67,11 @@ class HAInfo(object):
         :return: Active server
         :rtype: Server
         """
-        return Element.from_href(self._active_server)\
-            if hasattr(self, "_active_server") else None
+        return Element.from_href(self.data.get("active_server"))
 
     @active_server.setter
     def active_server(self, value):
-        self._active_server = value
+        self.data.set("active_server", value)
 
     @property
     def standby_servers(self):
@@ -69,12 +79,13 @@ class HAInfo(object):
         :return: list of Standby servers
         :rtype: list(Server)
         """
-        return [Element.from_href(server) for server in self._standby_servers]\
-            if hasattr(self, "_standby_servers") else None
+        if self.data.get("standby_servers"):
+            return [Element.from_href(server) for server in self.data.get("standby_servers")]
+        return []
 
     @standby_servers.setter
     def standby_servers(self, values):
-        self._standby_servers = values
+        self.data.set("standby_servers", values)
 
     def __str__(self):
         lst_stdby = ""
@@ -85,14 +96,12 @@ class HAInfo(object):
         return "Active: {} Standby: {}".format(self.active_server, lst_stdby)
 
 
-class InfoBlock(object):
+class InfoBlock(NestedDict):
     """
     Represents diagnostic messages.
     """
-
-    def __init__(self, **data):
-        for d, v in data.items():
-            setattr(self, d, v)
+    def __init__(self, data):
+        super(InfoBlock, self).__init__(data=data)
 
     @property
     def title(self):
@@ -100,11 +109,11 @@ class InfoBlock(object):
         :return: title for the block
         :rtype: str
         """
-        return self._title
+        return self.data.get("title")
 
     @title.setter
     def title(self, value):
-        self._title = value
+        self.data.set("title", value)
 
     @property
     def message(self):
@@ -112,21 +121,19 @@ class InfoBlock(object):
         :return: messages for the block
         :rtype: list(str)
         """
-        return self._message
+        return self.data.get("message")
 
     @message.setter
     def message(self, value):
-        self._message = value
+        self.data.set("message", value)
 
 
-class HADiagnostic(object):
+class HADiagnostic(NestedDict):
     """
     HA Availability diagnostic result.
     """
-
-    def __init__(self, **data):
-        for d, v in data.items():
-            setattr(self, d, v)
+    def __init__(self, data):
+        super(HADiagnostic, self).__init__(data=data)
 
     @property
     def status(self):
@@ -134,11 +141,11 @@ class HADiagnostic(object):
         :return: status
         :rtype: str
         """
-        return self._status
+        return self.data.get("status")
 
     @status.setter
     def status(self, value):
-        self._status = value
+        self.data.set("status", value)
 
     @property
     def execution_message(self):
@@ -146,11 +153,11 @@ class HADiagnostic(object):
         :return: execution messages
         :rtype: list(str)
         """
-        return self._execution_message
+        return self.data.get("execution_message")
 
     @execution_message.setter
     def execution_message(self, value):
-        self._execution_message = value
+        self.data.set("execution_message", value)
 
     @property
     def errors_warnings(self):
@@ -158,11 +165,11 @@ class HADiagnostic(object):
         :return: error and warning messages
         :rtype: list(str)
         """
-        return self._errors_warnings
+        return InfoBlock(self.data.get("errors_warnings"))
 
     @errors_warnings.setter
     def errors_warnings(self, value):
-        self._errors_warnings = InfoBlock(**value)
+        self.data.set("errors_warnings", InfoBlock(value))
 
     @property
     def durations(self):
@@ -170,11 +177,11 @@ class HADiagnostic(object):
         :return: diagnostic messages
         :rtype: InfoBlock
         """
-        return self._durations
+        return InfoBlock(self.data.get("durations"))
 
     @durations.setter
     def durations(self, value):
-        self._durations = InfoBlock(**value)
+        self.data.set("durations", InfoBlock(value))
 
     @property
     def message(self):
@@ -182,11 +189,11 @@ class HADiagnostic(object):
         :return: messages
         :rtype: list(InfoBlock)
         """
-        return self._message
+        return [InfoBlock(message) for message in self.data.get("message")]
 
     @message.setter
     def message(self, value):
-        self._message = [InfoBlock(**message) for message in value]
+        self.data.set("message", [InfoBlock(message) for message in value])
 
 
 class HAManagement(object):
@@ -212,11 +219,14 @@ class HAManagement(object):
         :return: HA Information
         :rtype: HAInfo
         """
-        return HAInfo(**SMCRequest(href=self.entry).read().json)
+        return HAInfo(SMCRequest(href=self.entry).read().json)
 
-    def set_active(self, server, force=False):
+    def set_active(self, server=None, force=False):
         """
-        Launch activation of the specified management server.
+        Launch activation of the specified management server or the connected management server
+        if not specified. ( Since SMC 7.3, activation should be requested on target server to
+        activate, before SMC 7.3, activation was managed by the current active server unless
+        PostgreSQL native replication has been enabled ).
 
         If system state is suspicious, activation will be rejected **unless force mode** is used.
         **For example:**
@@ -231,13 +241,17 @@ class HAManagement(object):
            (and also, if specified server is not accessible).
 
         WARNING: if force mode is used, system integrity is not guarantee.
-        :param Server server: the specified management server
+        :param Server server: the specified management server ( optional since SMC 7.3 or if
+        PostgreSQL native replication has been enabled ).
         :param bool force: force mode, default False
         :return: the return data.
         :rtype: requests.Response
         """
         session = _get_session(SMCRequest._session_manager)
-        params = {"force": force, "server_name": ""+server.name}
+        params = {"force": force}
+        if server:
+            params.update(server_name=server.name)
+
         response = session.session.post(
             url=self.entry+"/set_active",
             headers={"Content-Type": "application/json"},
@@ -246,9 +260,10 @@ class HAManagement(object):
         self.check_status(response)
         return response
 
-    def set_standby(self, server, force=False):
+    def set_standby(self, server=None, force=False):
         """
-        Launch deactivation of the specified active management server.
+        Launch deactivation of the specified management server or the connected management server
+        if not specified
         (Note: the system may have no Active management server once applied.
          If SMC API is not enabled on standby server, SMC API may be not more available at all).
 
@@ -263,7 +278,10 @@ class HAManagement(object):
         :rtype: requests.Response
         """
         session = _get_session(SMCRequest._session_manager)
-        params = {"force": force, "server_name": ""+server.name}
+        params = {"force": force}
+        if server:
+            params.update(server_name=server.name)
+
         response = session.session.post(
             url=self.entry+"/set_standby",
             headers={"Content-Type": "application/json"},
@@ -284,7 +302,7 @@ class HAManagement(object):
         :rtype: requests.Response
         """
         session = _get_session(SMCRequest._session_manager)
-        params = {"force": force, "server_name": ""+server.name}
+        params = {"force": force, "server_name": server.name}
         response = session.session.post(
             url=self.entry+"/full_replication",
             headers={"Content-Type": "application/json"},
@@ -305,7 +323,7 @@ class HAManagement(object):
         :rtype: requests.Response
         """
         session = _get_session(SMCRequest._session_manager)
-        params = {"force": force, "server_name": ""+server.name}
+        params = {"force": force, "server_name": server.name}
         response = session.session.post(
             url=self.entry+"/exclude",
             headers={"Content-Type": "application/json"},
@@ -348,4 +366,4 @@ class HAManagement(object):
         """
         params = {"deep": deep, "exclude_info": exclude_info, "global_timeout": global_timeout,
                   "server_timeout": server_timeout}
-        return HADiagnostic(**SMCRequest(href=self.entry+"/diagnostic", params=params).read().json)
+        return HADiagnostic(SMCRequest(href=self.entry+"/diagnostic", params=params).read().json)

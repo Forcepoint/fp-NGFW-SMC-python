@@ -326,7 +326,11 @@ class Layer3Firewall(Engine):
         :param str zone_ref: zone name, str href or zone name for management interface
             (created if not found)
         :param bool reverse_connection: should the NGFW be the mgmt initiator (used when behind NAT)
-        :param bool default_nat: (optional) Whether to enable default NAT for outbound
+        :param default_nat: (optional) Whether to enable default NAT for outbound.
+          Accepted values are:
+           'true': use Default NAT Address for Traffic from Internal Networks |
+           'false': don't use Default NAT Address for Traffic from Internal Networks |
+           'automatic': use Default NAT Address for Traffic from Internal Networks if the firewall has a default route
         :param bool enable_antivirus: (optional) Enable antivirus (required DNS)
         :param bool enable_gti: (optional) Enable GTI
         :param bool sidewinder_proxy_enabled: Enable Sidewinder proxy functionality
@@ -1036,7 +1040,11 @@ class Layer3VirtualEngine(Engine):
         :param str master_engine: Name of existing master engine
         :param str virtual_resource: name of pre-created virtual resource
         :param list interfaces: dict of interface details
-        :param bool default_nat: Whether to enable default NAT for outbound
+        :param default_nat: (optional) Whether to enable default NAT for outbound.
+          Accepted values are:
+           'true': use Default NAT Address for Traffic from Internal Networks |
+           'false': don't use Default NAT Address for Traffic from Internal Networks |
+           'automatic': use Default NAT Address for Traffic from Internal Networks if the firewall has a default route
         :param int outgoing_intf: outgoing interface for VE. Specifies interface number
         :param list interfaces: interfaces mappings passed in
         :param bool enable_ospf: whether to turn OSPF on within engine

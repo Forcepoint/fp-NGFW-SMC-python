@@ -31,12 +31,13 @@ from smc.administration.user_auth.servers import AuthenticationMethod, DomainCon
     ActiveDirectoryServer, LDAPServer  # noqa
 from smc.elements.common import ThirdPartyMonitoring  # noqa
 from smc.elements.network import Host  # noqa
-from smc.compat import is_smc_version_less_than_or_equal  # noqa
+from smc.compat import is_smc_version_less_than_or_equal, is_api_version_less_than  # noqa
 from smc.elements.other import Location  # noqa
 from smc.elements.servers import TacacsServer, LogServer, RadiusServer, IcapServer, SmtpServer, \
     ProxyServer, ManagementServer, WebApp, NetflowCollector, DataContext, \
     EpoServer, NTPServer, HttpProxy  # noqa
 from smc.elements.ssm import LoggingProfile, ProbingProfile  # noqa
+from smc.api.exceptions import DeleteElementFailed  # noqa
 
 EMAIL_ADDRESS = "test@forcepoint.com"
 PRIMARY_ADDRESS1 = "192.168.1.10"
@@ -122,8 +123,32 @@ LOG_SERVER_CREATE_ERROR = "Failed to create LogServer."
 LOG_SERVER_UPDATE_ERROR = "Failed to update LogServer."
 
 logging.getLogger()
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
-                                                '%(name)s - [%(levelname)s] : %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - '
+                                               '%(name)s - [%(levelname)s] : %(message)s')
+
+
+def search(element_type, element_name, exact_match=True):
+    """ Search for an element """
+    return list(element_type.objects.filter(
+        name=element_name,
+        exact_match=exact_match))
+
+
+def delete(element_type, element_name):
+    """ Delete element """
+    retry = 3
+    if search(element_type, element_name=element_name):
+        while retry > 0:
+            try:
+                element_type(element_name).delete()
+                break
+            except DeleteElementFailed as e:
+                logging.info("Error while deleting element: {} will retry".format(e))
+                time.sleep(2)
+                retry -= 1
+    else:
+        logging.info(f"Element [{element_name} || {element_type.__name__}] "
+                     f"does not exist, nothing to delete!")
 
 
 def main():
@@ -206,7 +231,7 @@ def main():
                                              shared_secret=SHARE_SECRET,
                                              provided_method=[auth_method2],
                                              third_party_monitoring=third_party_monitoring)
-        assert radius_server2.address == PRIMARY_ADDRESS2 and SECONDARY_ADDRESS2 in radius_server2.\
+        assert radius_server2.address == PRIMARY_ADDRESS2 and SECONDARY_ADDRESS2 in radius_server2. \
             secondary and radius_server2.third_party_monitoring.monitoring_log_server_ref.href == \
                log_server.href, CREATE_RADIUS_ERROR
         logging.info("Radius created successfully.")
@@ -480,55 +505,55 @@ def main():
         logging.info("LDAPServer updated successfully.")
 
         sms_http_channel = [
-                               {
-                                   "attr_name_message": "Message Text",
-                                   "attr_name_phone": "Destination",
-                                   "conn_timeout": 10000,
-                                   "debug": False,
-                                   "default_success": True,
-                                   "follow_redirects": False,
-                                   "http_parameters": "JnRlc3QgZmllbGQ9MTA=",
-                                   "name": "test http sms",
-                                   "post": False,
-                                   "proxy_host": "127.0.0.1",
-                                   "proxy_port": 0,
-                                   "rank": 3.0,
-                                   "timeout": 10000,
-                                   "url": "http://127.0.0.1",
-                                   "use_http_11": True
-                               }
-                           ]
+            {
+                "attr_name_message": "Message Text",
+                "attr_name_phone": "Destination",
+                "conn_timeout": 10000,
+                "debug": False,
+                "default_success": True,
+                "follow_redirects": False,
+                "http_parameters": "JnRlc3QgZmllbGQ9MTA=",
+                "name": "test http sms",
+                "post": False,
+                "proxy_host": "127.0.0.1",
+                "proxy_port": 0,
+                "rank": 3.0,
+                "timeout": 10000,
+                "url": "http://127.0.0.1",
+                "use_http_11": True
+            }
+        ]
         sms_script_channel = [
-                                 {
-                                     "conn_timeout": 10000,
-                                     "debug": False,
-                                     "name": "test script",
-                                     "proxy_port": 10000,
-                                     "rank": 1.0,
-                                     "script_execution_path": ".",
-                                     "script_path": ".",
-                                     "timeout": 10000
-                                 }
-                             ]
+            {
+                "conn_timeout": 10000,
+                "debug": False,
+                "name": "test script",
+                "proxy_port": 10000,
+                "rank": 1.0,
+                "script_execution_path": ".",
+                "script_path": ".",
+                "timeout": 10000
+            }
+        ]
         sms_smtp_channel = [
-                               {
-                                   "account": "test",
-                                   "body": "[$message]",
-                                   "close_socket": False,
-                                   "conn_timeout": 10000,
-                                   "debug": False,
-                                   "from": "test@forcepoint.com",
-                                   "local_hostname": "127.0.01",
-                                   "name": "test smtp",
-                                   "password": SHARE_SECRET,
-                                   "rank": 2.0,
-                                   "sms_gateway": "8888888888",
-                                   "smtp_server_ref": smtp_server.href,
-                                   "start_tls": False,
-                                   "subject": "test subject",
-                                   "timeout": 10000
-                               }
-                           ]
+            {
+                "account": "test",
+                "body": "[$message]",
+                "close_socket": False,
+                "conn_timeout": 10000,
+                "debug": False,
+                "from": "test@forcepoint.com",
+                "local_hostname": "127.0.01",
+                "name": "test smtp",
+                "password": SHARE_SECRET,
+                "rank": 2.0,
+                "sms_gateway": "8888888888",
+                "smtp_server_ref": smtp_server.href,
+                "start_tls": False,
+                "subject": "test subject",
+                "timeout": 10000
+            }
+        ]
         tls_server_creds = list(TLSServerCredential.objects.all())[0]
         tls_cryptography_suite = list(TLSCryptographySuite.objects.all())[0]
         web_app = [WebApp.create(host_name="test_server",
@@ -675,13 +700,16 @@ def main():
         logging.info("HttpProxy update successfully.")
 
         # LogServer
+        backup_log_server = [{'value': log_server.href, 'rank': 1}]
+        if is_api_version_less_than("7.3"):
+            backup_log_server = [log_server]
         test_log_server = LogServer.create(LOG_SERVER_NAME, address=PRIMARY_ADDRESS1,
                                            ipv6_address=IPV6_ADDRESS,
                                            secondary=[SECONDARY_ADDRESS1, SECONDARY_ADDRESS2],
                                            location_ref=location,
                                            netflow_collector=netflow_collector,
                                            log_disk_space_handling_mode="overwrite_oldest",
-                                           backup_log_server=[log_server],
+                                           backup_log_server=backup_log_server,
                                            comment=LOG_SERVER_COMMENT)
         assert test_log_server.address == PRIMARY_ADDRESS1 and \
                test_log_server.ipv6_address == IPV6_ADDRESS and \
@@ -699,36 +727,38 @@ def main():
         logging.error(f"Exception:{ex}")
         return_code = 1
     finally:
-        AuthenticationMethod(AUTH_METHOD_NAME1).delete()
+        delete(AuthenticationMethod, AUTH_METHOD_NAME1)
         logging.info("AuthenticationMethod deleted successfully.")
-        TacacsServer(TACACS_SERVER_NAME1).delete()
-        TacacsServer(TACACS_SERVER_NAME2).delete()
+        delete(TacacsServer, TACACS_SERVER_NAME1)
+        delete(TacacsServer, TACACS_SERVER_NAME2)
         logging.info("TacacsServer deleted successfully.")
-        AuthenticationMethod(AUTH_METHOD_NAME2).delete()
+        delete(AuthenticationMethod, AUTH_METHOD_NAME2)
         logging.info("AuthenticationMethod deleted successfully.")
-        RadiusServer(RADIUS_SERVER_NAME1).delete()
-        RadiusServer(RADIUS_SERVER_NAME2).delete()
+        delete(RadiusServer, RADIUS_SERVER_NAME1)
+        delete(RadiusServer, RADIUS_SERVER_NAME2)
         logging.info("RadiusServer deleted successfully.")
-        IcapServer(ICAP_SERVER_NAME).delete()
+        delete(IcapServer, ICAP_SERVER_NAME)
         logging.info("IcapServer deleted successfully.")
-        ProxyServer(PROXY_SERVER_NAME).delete()
+        delete(ProxyServer, PROXY_SERVER_NAME)
         logging.info("ProxyServer deleted successfully.")
-        ActiveDirectoryServer(ACTIVE_DIRECTORY_SERVER).delete()
+        delete(ActiveDirectoryServer, ACTIVE_DIRECTORY_SERVER)
         logging.info("ActiveDirectoryServer deleted successfully.")
-        LDAPServer(LDAP_SERVER).delete()
+        delete(LDAPServer, LDAP_SERVER)
         logging.info("LDAPServer deleted successfully.")
-        ManagementServer(MGT_SERVER_NAME).delete()
+        delete(ManagementServer, MGT_SERVER_NAME)
         logging.info("ManagementServer deleted successfully.")
-        SmtpServer(SMTP_SERVER_NAME).delete()
+        delete(SmtpServer, SMTP_SERVER_NAME)
         logging.info("SmtpServer deleted successfully.")
-        if is_epo_server:
-            EpoServer(EPO_SERVER_NAME).delete()
+        try:
+            delete(EpoServer, EPO_SERVER_NAME)
             logging.info("EpoServer deleted successfully.")
-        NTPServer(NTP_SERVER_NAME).delete()
+        except Exception:
+            pass
+        delete(NTPServer, NTP_SERVER_NAME)
         logging.info("NtpServer deleted successfully.")
-        HttpProxy(HTTP_PROXY_NAME).delete()
+        delete(HttpProxy, HTTP_PROXY_NAME)
         logging.info("HttpProxy deleted successfully.")
-        LogServer(LOG_SERVER_NAME).delete()
+        delete(LogServer, LOG_SERVER_NAME)
         logging.info("LogServer deleted successfully.")
         session.logout()
     return return_code

@@ -30,8 +30,8 @@ get_ebanner_error_msg = '{} system_key does not point to {} global system proper
 update_ebanner_error_msg = '{} system property has not been set correctly: {}. It should have {}.'
 
 logging.getLogger()
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
-                                                '%(name)s - [%(levelname)s] : %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - '
+                                               '%(name)s - [%(levelname)s] : %(message)s')
 
 
 def main():
@@ -51,7 +51,7 @@ def main():
         logging.info(f"Retrieve {ebanner_text_name} system property "
                      f"from its system_key ({ebanner_text_system_key})...")
         ebanner_text_property = system.system_property(system_key=ebanner_text_system_key)
-        assert ebanner_text_property.name == ebanner_text_name,\
+        assert ebanner_text_property.name == ebanner_text_name, \
             get_ebanner_error_msg.format(ebanner_text_system_key,
                                          ebanner_text_name, ebanner_text_property.name)
 

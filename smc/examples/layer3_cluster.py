@@ -76,8 +76,8 @@ ADD_BGP_PEERING_ERROR = "Fail to add bgp peering with ipv6 address."
 IPV6_NETWORK_ADDRESS = "2001:db8:3333:4444:5555:6666:7777:0"
 
 logging.getLogger()
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
-                                                '%(name)s - [%(levelname)s] : %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - '
+                                               '%(name)s - [%(levelname)s] : %(message)s')
 
 
 def main():

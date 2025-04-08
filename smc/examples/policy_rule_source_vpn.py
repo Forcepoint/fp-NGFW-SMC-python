@@ -35,13 +35,12 @@ from smc.policy.rule_elements import SourceVpn, Action  # noqa
 from smc.vpn.policy import PolicyVPN  # noqa
 from smc.elements.profiles import UserResponse  # noqa
 
-
 custom_fw_policy = "myPolicy1"
 custom_alert_name = "My Alert"
 
 logging.getLogger()
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
-                                                '%(name)s - [%(levelname)s] : %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - '
+                                               '%(name)s - [%(levelname)s] : %(message)s')
 
 
 def main():
@@ -111,7 +110,7 @@ def main():
             if rule.name == 'newrule1':
                 assert rule.options.log_accounting_info_mode and \
                        rule.options.url_category_logging == 'enforced' and \
-                       rule.options.endpoint_executable_logging == 'enforced',\
+                       rule.options.endpoint_executable_logging == 'enforced', \
                        "Log accounting info mode is not True as it should be."
             else:
                 assert rule.options.log_level == 'alert' and \

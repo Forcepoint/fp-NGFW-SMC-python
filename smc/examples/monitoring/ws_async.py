@@ -41,8 +41,8 @@ nb_routing_table = 0
 nb_neighbor_element = 0
 
 logging.getLogger()
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
-                                                '%(name)s - [%(levelname)s] : %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - '
+                                               '%(name)s - [%(levelname)s] : %(message)s')
 
 
 # CALLBACK function definition
@@ -101,8 +101,8 @@ def main():
 
         logQuery = LogQuery()
         logQuery.add_or_filter([
-                InFilter(FieldValue(LogField.DPORT), [NumberValue(80)]),
-                InFilter(FieldValue(LogField.SERVICE), [ServiceValue('TCP/80')])])
+            InFilter(FieldValue(LogField.DPORT), [NumberValue(80)]),
+            InFilter(FieldValue(LogField.SERVICE), [ServiceValue('TCP/80')])])
         logQuery.request["fetch"].update(quantity=400)
         ws1 = SMCSocketAsyncProtocol(query=logQuery,
                                      on_message_fct=callback_log_table_fct_serial,
@@ -202,9 +202,9 @@ def main():
 
         assert nb_log_table_serial > 0 \
                and nb_alert_element > 0 \
-               and nb_log_table > 0\
-               and nb_routing_element > 0\
-               and nb_routing_table > 0\
+               and nb_log_table > 0 \
+               and nb_routing_element > 0 \
+               and nb_routing_table > 0 \
                and nb_neighbor_element > 0, "Some WS data not received"
 
         session.logout()

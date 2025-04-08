@@ -442,6 +442,18 @@ class EngineNodeStatus(MonitoringStatus):
     def master_node(self, master_node):
         self._master_node = master_node
 
+    @property
+    def connectivity_status(self):
+        """
+        :return: The Node connectivity status.
+        :rtype: str
+        """
+        return self._connectivity_status
+
+    @connectivity_status.setter
+    def connectivity_status(self, value):
+        self._connectivity_status = value
+
 
 class SDWANBranchStatus(MonitoringStatus):
     """

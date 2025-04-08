@@ -34,8 +34,8 @@ VPN_REFERENCE = "vpn_references"
 SITE_MODE = "site_mode"
 VPN_SITE_NAME = "test_vpn_site"
 logging.getLogger()
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
-                                                '%(name)s - [%(levelname)s] : %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - '
+                                               '%(name)s - [%(levelname)s] : %(message)s')
 
 
 def main():

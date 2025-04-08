@@ -31,8 +31,8 @@ from smc.elements.servers import ManagementServer  # noqa
 from smc.vpn.policy import PolicyVPN  # noqa
 
 logging.getLogger()
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
-                                                '%(name)s - [%(levelname)s] : %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - '
+                                               '%(name)s - [%(levelname)s] : %(message)s')
 
 
 def main():

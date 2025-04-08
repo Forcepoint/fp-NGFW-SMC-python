@@ -60,7 +60,7 @@ import argparse
 import logging
 import re
 import sys
-import smc.examples
+
 sys.path.append('../../')  # smc-python
 from smc import session  # noqa
 from smc.core.engine import Engine  # noqa
@@ -69,8 +69,8 @@ filename = "/Users/username/statis routes.txt"
 firewall = "mcafee2"
 
 logging.getLogger()
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
-                                                '%(name)s - [%(levelname)s] : %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - '
+                                               '%(name)s - [%(levelname)s] : %(message)s')
 
 
 def mask_convertor(network_and_netmask):

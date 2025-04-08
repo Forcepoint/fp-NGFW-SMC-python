@@ -238,6 +238,7 @@ class RouteMapRule(RuleCommon, SubElement):
         add_pos=None,
         after=None,
         before=None,
+        route_entry_settings=None,
         **match_condition
     ):
         """
@@ -262,6 +263,7 @@ class RouteMapRule(RuleCommon, SubElement):
             and ``before`` params.
         :param str before: Rule tag to add this rule before. Mutually exclusive with ``add_pos``
             and ``after`` params.
+        :param route_entry_settings: optional dictionary for configuring various settings.
         :param match_condition: keyword values identifying initial
             values for the match condition. Valid keyword arguments
             are 'access_list', 'next_hop', 'metric' and 'peer_address'.
@@ -281,6 +283,7 @@ class RouteMapRule(RuleCommon, SubElement):
             "goto": goto.href if goto else None,
             "call_route_map_ref": None if not call else call.href,
             "comment": comment,
+            "route_entry_settings": route_entry_settings
         }
 
         if not match_condition:

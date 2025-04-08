@@ -364,6 +364,18 @@ class PasswordMetaData(NestedDict):
         super(PasswordMetaData, self).__init__(data=value)
 
 
+def update_granted_element_json_field(json, key, value):
+    """
+    Update field from dict in json format with conditions:
+    - value is not defined: add empty list as value
+    - value is not 'ANY': add key/value pair with element_resolver() method as value
+    """
+    if value is None:
+        json.update({key: []})
+    elif value != 'ANY':
+        json.update({key: element_resolver(value)})
+
+
 class WebPortalAdminUser(UserMixin, Element):
     """
     This represents a Web Portal User.It is an element that defines the details of a single person
@@ -389,7 +401,7 @@ class WebPortalAdminUser(UserMixin, Element):
         cls,
         name,
         enabled=True,
-        granted_engine=None,
+        granted_engine='ANY',
         console_superuser=False,
         log_service_enabled=True,
         policy_service_enabled=True,
@@ -401,10 +413,10 @@ class WebPortalAdminUser(UserMixin, Element):
         show_template_policy=False,
         show_upload_comment=True,
         show_upload_history=True,
-        granted_template_policy=None,
-        granted_sub_policy=None,
-        granted_report_design=None,
-        filter_tag=None,
+        granted_template_policy='ANY',
+        granted_sub_policy='ANY',
+        granted_report_design='ANY',
+        filter_tag='ANY',
         comment=None,
     ):
         """
@@ -417,39 +429,36 @@ class WebPortalAdminUser(UserMixin, Element):
         :param str name: name of account
         :param bool enabled: is account enabled
         :param list granted_engine: The list of Granted Engines
-        :param bool console_superuser: can this user sudo via SSH/console.
-        :param bool log_service_enabled: check if the log service enabled?
-        :param bool policy_service_enabled: check if the policy service enabled.
-        :param bool report_service_enabled: Is the report service enabled?
-        :param bool show_inspection_policy: Should we display the inspection policy?
-        :param bool show_main_policy: Should we display the main policy?
-        :param bool show_only_ip_addresses: Should we display only the IP Addresses of elements?
-        :param bool show_sub_policy: Should we display the sub policy?
-        :param bool show_template_policy: Should we display the template policy?
-        :param bool show_upload_comment: Should we display the upload comment?
-        :param bool show_upload_history: Should we display the upload history?
-        :param list granted_template_policy: The list of Granted Template Policies.
-            null value means ANY.
-        :param list granted_sub_policy: The list of Granted Sub Policies.
-            null value means ANY
-        :param list granted_report_design: The list of Granted Report Designs.
-            null value means ANY.
-        :param list filter_tag: The list of Filter expression tags for the log browsing.
-            null value means ANY.
-        :param str comment: comment,
+            'ANY' means all Engines are granted(default value)
+            Empty list or None means no engine is granted
+        :param bool console_superuser: if True user can sudo via SSH/console
+        :param bool log_service_enabled: if True log service is enabled
+        :param bool policy_service_enabled: if True policy service is enabled
+        :param bool report_service_enabled: if True report service is enabled
+        :param bool show_inspection_policy: if True the inspection policies are displayed
+        :param bool show_main_policy: if True the main policies are displayed
+        :param bool show_only_ip_addresses: if True only the IP Addresses of elements are displayed
+        :param bool show_sub_policy: if True the sub policies are displayed
+        :param bool show_template_policy: if True the template policies are displayed
+        :param bool show_upload_comment: if True the upload comment is displayed
+        :param bool show_upload_history: if True the upload history is displayed
+        :param list granted_template_policy: The list of Granted Template Policies
+            'ANY' means all template policies are granted(default value)
+            Empty list or None means no template policy is granted
+        :param list granted_sub_policy: The list of Granted Sub Policies
+            'ANY' means all subpolicies are granted(default value)
+            None means no subpolicy is granted
+        :param list granted_report_design: The list of Granted Report Designs
+            'ANY' means all Report Designs are granted(default value)
+            Empty list or None means no report design is granted
+        :param list filter_tag: The list of Filter expression tags for the log browsing
+            'ANY' means all Filter tags are granted(default value)
+            Empty list or None means no filter tag is granted
+        :param str comment: comment associated with webportal user element
         :raises CreateElementFailed: failure creating element with reason
         :return: instance with meta
         :rtype: WebPortalAdminUser
         """
-        engines = [] if granted_engine is None else element_resolver(granted_engine)
-        policy = (
-            [] if granted_template_policy is None else element_resolver(granted_template_policy)
-        )
-        sub_policy = [] if granted_sub_policy is None else element_resolver(granted_sub_policy)
-        report_design = (
-            [] if granted_report_design is None else element_resolver(granted_report_design)
-        )
-        tag = [] if filter_tag is None else element_resolver(filter_tag)
         json = {
             "name": name,
             "enabled": enabled,
@@ -464,13 +473,13 @@ class WebPortalAdminUser(UserMixin, Element):
             "show_template_policy": show_template_policy,
             "show_upload_comment": show_upload_comment,
             "show_upload_history": show_upload_history,
-            "granted_engine": engines,
-            "granted_template_policy": policy,
-            "granted_sub_policy": sub_policy,
-            "granted_report_design": report_design,
-            "filter_tag": tag,
             "comment": comment,
         }
+
+        for field in ["granted_engine", "granted_template_policy", "granted_sub_policy", "granted_report_design",
+                      "filter_tag"]:
+            update_granted_element_json_field(json, field, locals()[field])
+
         return ElementCreator(cls, json)
 
     @property

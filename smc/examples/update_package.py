@@ -39,8 +39,8 @@ NOT_IMPORTED_ERR = "Update package is not correctly imported!"
 NOT_ACTIVATED_ERR = "Update package is not correctly activated!"
 
 logging.getLogger()
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
-                                                '%(name)s - [%(levelname)s] : %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - '
+                                               '%(name)s - [%(levelname)s] : %(message)s')
 
 
 def refresh_update_package(update_package_to_refresh, state):

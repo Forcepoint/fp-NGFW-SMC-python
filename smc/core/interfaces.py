@@ -41,7 +41,7 @@ first getting the top level interface, and calling
 to view or modify specific aspects of a VLAN, such as addresses, etc.
 """
 import copy
-from smc.base.model import SubElement, lookup_class, ElementCache
+from smc.base.model import Element, SubElement, lookup_class, ElementCache
 from smc.api.exceptions import InterfaceNotFound
 from smc.core.advanced_settings import LogModeration
 from smc.core.route import del_invalid_routes
@@ -57,10 +57,12 @@ from smc.core.sub_interfaces import (
 from smc.compat import string_types, is_api_version_less_than_or_equal, min_smc_version
 from smc.elements.helpers import zone_helper, logical_intf_helper
 from smc.elements.network import Zone
-from smc.base.structs import BaseIterable
+from smc.base.structs import BaseIterable, NestedDict
 from smc.policy.qos import QoSPolicy
 from smc.core.hardware import ApplianceSwitchModule
 from smc.base.util import element_default
+from smc.elements.servers import DHCPServer
+from smc.base.util import element_resolver
 
 
 class InterfaceOptions(object):
@@ -291,6 +293,69 @@ class InterfaceOptions(object):
         """
         self.interface.set_unset(interface_id, "outgoing")
         self._engine.update()
+
+
+class DHCPRelay(NestedDict):
+    """
+    This represents the definition of DHCP Relay on an interface.<br>
+    You must select which firewall interfaces perform DHCP relay. Activate the relay on the interface
+    towards the DHCP clients.<br>
+    When configuring VLAN interfaces, you must set the DHCP relay separately for each VLAN.
+    """
+
+    def __init__(self, data):
+        super(DHCPRelay, self).__init__(data=data)
+
+    @classmethod
+    def create(cls, enabled: bool = True, dhcp_servers: list[DHCPServer] = None,
+               max_packet_size: int = None, trusted_circuit: bool = False):
+        """
+        :param str siit_eam_mapping_ipv6_prefix: the IPv6 prefix.
+        :param str siit_eam_mapping_ipv4_network: the IPv4 network.
+        :param int rank: the rank for ordering mappings
+        If not set, it means any.
+        :param str comment
+        :rtype: dict
+        """
+        data = {
+            "enabled": enabled,
+            "element": element_resolver(dhcp_servers),
+            "max_packet_size": max_packet_size,
+            "trusted_circuit": trusted_circuit
+        }
+        return cls(data)
+
+    @property
+    def enabled(self) -> bool:
+        """
+        Is the DHCP Relay enabled on this interface?
+        :rtype: bool
+        """
+        return bool(self.data.get("enabled"))
+
+    @property
+    def dhcp_servers(self) -> list[DHCPServer]:
+        """
+        The DHCP servers relayed in DHCP Relay protocol.
+        :rtype: list of DHCPServer
+        """
+        return [Element.from_href(href) for href in self.data.get("element", [])]
+
+    @property
+    def max_packet_size(self) -> int:
+        """
+        The DHCP Maximum Packet Size.
+        :rtype: int
+        """
+        return self.data.get("max_packet_size")
+
+    @property
+    def trusted_circuit(self) -> bool:
+        """
+        The DHCP trusted circuit flag.
+        :rtype: bool
+        """
+        return bool(self.data.get("trusted_circuit", False))
 
 
 class QoS(object):
@@ -1455,6 +1520,12 @@ class PhysicalInterface(Interface):
             self.data.update(
                 interface_id=interface.get("interface_id"), interfaces=[], vlanInterfaces=[]
             )
+            dhcp_relay = interface.pop("dhcp_relay", None)
+            if dhcp_relay:
+                self.data["dhcp_replay"] = dhcp_relay
+            dhcpv6_relay = interface.pop("dhcpv6_relay", None)
+            if dhcpv6_relay:
+                self.data["dhcpv6_relay"] = dhcpv6_relay
             self._add_interface(mgt=mgt, **interface)
 
     @property
@@ -1510,6 +1581,16 @@ class PhysicalInterface(Interface):
         return self.get_boolean("auth_request")
 
     @property
+    def relayed_by_dhcp(self):
+        """
+        Is this physical interface tagged as the interface for
+        relayed by dhcp requests
+
+        :rtype: bool
+        """
+        return self.get_boolean("relayed_by_dhcp")
+
+    @property
     def is_backup_heartbeat(self):
         """
         Is this physical interface tagged as the backup heartbeat
@@ -1530,6 +1611,15 @@ class PhysicalInterface(Interface):
         :rtype: bool
         """
         return self.get_boolean("outgoing")
+
+    def update_dhcp_relay(self, ipv6: bool, dhcp_relay: DHCPRelay):
+        """
+        Updates the DHCP Relay settings to the current interface.
+        """
+        if ipv6:
+            self.data.data.update(dhcpv6_relay=dhcp_relay.data)
+        else:
+            self.data.data.update(dhcp_relay=dhcp_relay.data)
 
     @property
     def ndi_interfaces(self):
@@ -1758,6 +1848,20 @@ class PhysicalInterface(Interface):
         """
         return self.data.get("lldp_mode")
 
+    @property
+    def dhcp_relay(self) -> DHCPRelay:
+        """
+        The DHCPv4 Relay settings.
+        """
+        return DHCPRelay(self.data.get("dhcp_relay", {}))
+
+    @property
+    def dhcp_relay_ipv6(self) -> DHCPRelay:
+        """
+        The DHCPv6 Relay settings.
+        """
+        return DHCPRelay(self.data.get("dhcpv6_relay", {}))
+
 
 class Layer2PhysicalInterface(PhysicalInterface):
     """
@@ -1942,6 +2046,13 @@ class Layer3PhysicalInterface(PhysicalInterface):
     """
 
     def _add_interface(self, interface_id, interface="node_interface", **kw):
+        if "dhcp_relay" in kw:
+            if isinstance(kw["dhcp_relay"], DHCPRelay):
+                self.data["dhcp_relay"] = kw.pop("dhcp_relay").data
+        if "dhcpv6_relay" in kw:
+            if isinstance(kw["dhcpv6_relay"], DHCPRelay):
+                self.data["dhcpv6_relay"] = kw.pop("dhcpv6_relay").data
+
         _kw = copy.deepcopy(kw)  # Preserve original kw, especially lists
         mgt = _kw.pop("mgt", {})
 
@@ -1980,6 +2091,8 @@ class Layer3PhysicalInterface(PhysicalInterface):
                     outgoing=True if if_mgt.get("primary_mgt") else False,
                     auth_request=if_mgt.get("auth_request", False),
                 )
+                if "relayed_by_dhcp" in if_mgt:
+                    _node.update(relayed_by_dhcp=if_mgt.get("relayed_by_dhcp"))
                 # Add node specific key/value pairs set on the node. This can
                 # also be used to override management settings
                 _node.update(node)
@@ -2675,7 +2788,9 @@ class InterfaceEditor(object):
                     sub_interface, (VlanInterface, InlineInterface, PortGroupInterface)
                 ):
                     if getattr(sub_interface, attribute) is not None:
-                        if sub_interface.nicid == str(interface_id):
+                        # IPv6 ip address cannot be default outgoing
+                        if (sub_interface.nicid == str(interface_id) and
+                                (not sub_interface.is_ipv6 if attribute == "outgoing" else True)):
                             if address is not None:
                                 if sub_interface.network_value == target_network:
                                     sub_interface[attribute] = True

@@ -27,12 +27,12 @@ from smc.elements.netlink import StaticNetlink, MultilinkMember, Multilink, Serv
     IpNetLinkWeight, ServerPoolMember  # noqa
 from smc.elements.network import Network, Router  # noqa
 from smc.vpn.elements import ConnectionType  # noqa
-from smc.elements.servers import LogServer, WebPortalServer  # noqa
-
+from smc.compat import is_api_version_less_than  # noqa
+from smc.elements.servers import LogServer, WebPortalServer, WebAccessServer  # noqa
 
 logging.getLogger()
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
-                                                '%(name)s - [%(levelname)s] : %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - '
+                                               '%(name)s - [%(levelname)s] : %(message)s')
 SERVER_POOL_NAME = "test_server_pool"
 CREATE_SERVER_POOL_ERROR = "Fail to create Server Pool."
 UPDATE_SERVER_POOL_ERROR = "Fail to update Server Pool."
@@ -113,7 +113,8 @@ def main():
                len(server_pool.members_list) == 1 and \
                len(server_pool.ip_netlink_weight) == 2, CREATE_SERVER_POOL_ERROR
         logging.info("Successfully created Server Pool.")
-        web_portal_user = WebPortalServer("Web Portal Server")
+        web_portal_user = WebPortalServer("Web Portal Server") \
+            if is_api_version_less_than("7.3") else WebAccessServer("Web Portal Server")
         members_list = server_pool.members_list
         member2 = ServerPoolMember.create(member_rank=0, member=web_portal_user)
         members_list.append(member2.data)

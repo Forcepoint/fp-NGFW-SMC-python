@@ -38,12 +38,11 @@ from smc.policy.rule_elements import Action, Source  # noqa
 from smc.vpn.elements import ExternalGateway  # noqa
 from smc.vpn.policy import PolicyVPN  # noqa
 
-
 WRONG_RULE = "Wrong rule in assert!"
 
 logging.getLogger()
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
-                                                '%(name)s - [%(levelname)s] : %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - '
+                                               '%(name)s - [%(levelname)s] : %(message)s')
 
 
 def search_rule_by_name(policy, name):
@@ -88,12 +87,12 @@ def main():
             block_list_action.action = ["block_list"]
             block_list_action.valid_block_lister = [engine.href]
             rule_block_list = p.fw_ipv4_access_rules.create(
-                    name="block_list_rule",
-                    sources="any",
-                    destinations="any",
-                    services=[TCPService("SSH")],
-                    action=block_list_action,
-                )
+                name="block_list_rule",
+                sources="any",
+                destinations="any",
+                services=[TCPService("SSH")],
+                action=block_list_action,
+            )
 
         # check backward compatibility for blacklist renaming
         logging.info("Create blacklist rule:")

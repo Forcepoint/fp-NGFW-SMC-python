@@ -1,0 +1,20 @@
+{
+  "permissions_per_ad_group": {
+    "Helsinki": {
+      "elements": "ALL Elements",
+      "role": "Editor",
+      "domain": "Shared Domain"
+    },
+    "Saint-Paul": {
+      "elements": "ALL Elements",
+      "role": "Viewer",
+      "domain": "Shared Domain"
+    },
+    "SuperUser": null
+  },
+  "ldap_domain": "demo.example.com",
+  "_comment_for_disabled_if_obsolete": "Flag to know if we disable the obsolete local SMC Administrator (not anymore linked to an external user).",
+  "disabled_if_obsolete": true,
+  "_comment_for_fail_if_no_permission": "Flag to know if the script needs to stop or update to superuser permissions, external user with no associated permission (from her group).",
+  "fail_if_no_permission": false
+}

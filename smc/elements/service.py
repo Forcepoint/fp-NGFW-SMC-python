@@ -287,7 +287,7 @@ class RPCService(Element):
     typeof = "rpc_service"
 
     @classmethod
-    def create(cls, name, program_number=None, transport=None, rpc_version=None, comment=None):
+    def create(cls, name, program_number=None, transport="udp", rpc_version=None, comment=None):
         """
         This represents a SUN-RPC service.
         :param str name: name of rpc service.

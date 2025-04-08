@@ -1,4 +1,3 @@
-
 This directory contains examples of script using the smc python library.
 
 # requirements
@@ -56,7 +55,6 @@ curl -s http://localhost:8082/api|jq -r .version[].rel
 7.0
 ```
 
-
 ## cleaning up
 
 to remove the virtual env:
@@ -73,14 +71,13 @@ cd ${repo_base}
 rm smc_info.py
 ```
 
-
 ## running the script manually from git repo
 
 you need to install the smc-python dependencies listed in setup.py
 
 - pip3 install requests
 - pip3 install pytz
-- pip3 install websocket-client  # only needed for monitoring
+- pip3 install websocket-client # only needed for monitoring
 
 you need to create the config file 'smc_info.py' somewhere in your
 PYTHONPATH, typically at the base of the repository

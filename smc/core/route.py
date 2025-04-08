@@ -593,7 +593,7 @@ class Routing(RoutingTree):
 
         :param BGPPeering bgp_peering: BGP Peer element
         :param ExternalBGPPeer,Engine external_bgp_peer: peer element or href
-        :param str network: if network specified, only add OSPF to this network
+        :param str network: if network specified, only add BGP to this network
             on interface
         :raises ModificationAborted: Change must be made at the interface level
         :raises UpdateElementFailed: failed to add BGP
@@ -604,7 +604,7 @@ class Routing(RoutingTree):
         routing_node_gateway = RoutingNodeGateway(bgp_peering, destinations=destination)
         return self._add_gateway_node("bgp_peering", routing_node_gateway, network)
 
-    def add_pim_interface_settings(self, pim_interface_settings):
+    def add_pim_interface_settings(self, pim_interface_settings, network=None):
         """
         Add a PIM IPv4 Interface settings to this routing interface.
 
@@ -615,6 +615,8 @@ class Routing(RoutingTree):
                 PIMIPv4InterfaceSettings('myPimInterfaceSettings'))
 
         :param PIMIPv4InterfaceSettings pim_interface_settings: PIM IPv4 Interface settings element
+        :param str network: if network specified, only add PIM to this network
+            on interface
         :raises ModificationAborted: Change must be made at the interface level
         :raises UpdateElementFailed: failed to add PIM settings
         :return: Status of whether the route table was updated

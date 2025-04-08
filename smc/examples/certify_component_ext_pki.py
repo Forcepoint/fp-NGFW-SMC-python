@@ -19,6 +19,7 @@ Example script to show the use of Single and Cluster Firewalls
 import argparse
 import logging
 import sys
+
 sys.path.append('../../')  # smc-python
 from smc import session  # noqa
 from smc.administration.system import System  # noqa
@@ -29,8 +30,8 @@ from smc.elements.servers import LogServer  # noqa
 engine_name = "myFw"
 
 logging.getLogger()
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
-                                                '%(name)s - [%(levelname)s] : %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - '
+                                               '%(name)s - [%(levelname)s] : %(message)s')
 
 
 def test_smc_ca():

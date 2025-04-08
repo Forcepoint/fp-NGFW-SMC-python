@@ -57,14 +57,14 @@ Example of providing the connect information through method parameters:
    session.logout()
 
 If a specific API version is requested, you can add the following argument to the login
-constructor. Otherwise the latest API version available will be used.
+constructor. Otherwise the lowest API version available will be used.
 
 To find supported versions using unauthenticated call to SMC API:
 ::
 
 	>>> from smc.api.session import available_api_versions
 	>>> available_api_versions('http://1.1.1.1:8082')
-	[5.1, 6.1, 6.2]
+	[6.10, 7.0, 7.1]
 
 Set up connection to specific version:
 
@@ -72,7 +72,7 @@ Set up connection to specific version:
 
    from smc import session
    session.login(url='http://1.1.1.1:8082', api_key='xxxxxxxxxxxxxxxxx', 
-                 api_version='6.1')
+                 api_version='6.10')
 
 Logging in to a specific Admin Domain:
 
@@ -120,7 +120,7 @@ Syntax for ~/.smcrc:
    [smc]
    smc_address=1.1.1.1
    smc_apikey=xxxxxxxxxxxxxxxxxxx
-   api_version=6.1
+   api_version=6.10
    smc_port=8082
    smc_ssl=True
    verify_ssl=True
@@ -150,7 +150,7 @@ If setting environment variables, the following are supported::
 	SMC_API_KEY=123abc
 	SMC_CLIENT_CERT=path/to/cert
 	SMC_TIMEOUT = 30 (seconds)
-	SMC_API_VERSION = 6.1 (optional - uses latest by default)
+	SMC_API_VERSION = 6.10 (optional - uses lowest by default)
 	SMC_DOMAIN = name of domain, Shared is default 
 
 The minimum variables that need to be present are ``SMC_ADDRESS`` and ``SMC_API_KEY``::

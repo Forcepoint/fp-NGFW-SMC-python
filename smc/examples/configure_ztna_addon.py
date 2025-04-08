@@ -19,13 +19,14 @@ example to configure ztna addon
 import argparse
 import logging
 import sys
+
 sys.path.append('../../')  # smc-python
 from smc import session  # noqa
 from smc.core.engines import Layer3Firewall  # noqa
 
 logging.getLogger()
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
-                                                '%(name)s - [%(levelname)s] : %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - '
+                                               '%(name)s - [%(levelname)s] : %(message)s')
 
 
 def main():

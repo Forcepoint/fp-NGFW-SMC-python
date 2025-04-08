@@ -30,11 +30,14 @@ An example of using a task poller when uploading an engine policy
 import re
 import time
 import threading
+import zipfile
+import datetime
+import os
 from smc.base.model import ElementCache, Element, SubElement
 from smc.api.exceptions import TaskRunFailed, ActionCommandFailed, ResourceNotFound
 from smc.base.collection import Search
 from smc.base.util import millis_to_utc
-from smc.compat import PYTHON_v3_9
+from smc.compat import PYTHON_v3_9, is_smc_version_less_than
 
 clean_html = re.compile(r"<.*?>")
 
@@ -85,6 +88,32 @@ class Task(SubElement):
     def __init__(self, task):
         super(Task, self).__init__(href=task.get("follower", None), name=task.get("type", None))
         self.data = ElementCache(task)
+
+    @property
+    def parent(self):
+        """
+        The possible parent task
+
+        :rtype: Task or None
+        """
+        if not is_smc_version_less_than("7.1.6"):
+            if "parent" in self.data:
+                return Task(self.make_request(method="read", href=self.data.get("parent")))
+        # by default No parent task
+        return None
+
+    @property
+    def children(self):
+        """
+        The possible children tasks
+
+        :rtype: list(Task) or None
+        """
+        if not is_smc_version_less_than("7.1.6"):
+            if "children" in self.data:
+                return [Task(self.make_request(method="read", href=child)) for child in self.data.get("children", [])]
+        # by default No children task
+        return None
 
     @property
     def resource(self):
@@ -184,7 +213,7 @@ class Task(SubElement):
         :rtype: str
         """
         if self.in_progress:
-            raise IOError("Task is not finshed!")
+            raise IOError("Task is not finished!")
         return self.get_relation("result")
 
     def get_result(self):
@@ -193,6 +222,28 @@ class Task(SubElement):
         :rtype SMCResult.
         """
         return self.make_request(TaskRunFailed, href=self.result_url, raw_result=True).content
+
+    def get_progress_report(self):
+        """
+        Get progress report if applicable
+
+        :raises BaseException if not applicable
+        :str[] array of progress report lines
+        """
+        path = os.getcwd()
+        extract_path = f"{path}/progress_report_{datetime.datetime.now().timestamp()}_result"
+        saved_path = f"{extract_path}.zip"
+
+        self.make_request(TaskRunFailed, href=self.result_url, filename=saved_path)
+
+        with zipfile.ZipFile(saved_path, "r") as zip_ref:
+            zip_ref.extractall(extract_path)
+
+        if "display_conf_report.txt" in os.listdir(extract_path):
+            with open(os.path.join(extract_path, "display_conf_report.txt")) as progress_report_file:
+                return progress_report_file.readlines()
+        else:
+            raise BaseException("No progress report available!")
 
     def update_status(self):
         """

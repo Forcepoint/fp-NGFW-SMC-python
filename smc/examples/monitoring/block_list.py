@@ -19,6 +19,7 @@ or smc_monitoring extension
 
 # Python Base Import
 import argparse
+import datetime
 import json
 import logging
 import math
@@ -26,11 +27,10 @@ import ssl
 import sys
 import threading
 import time
-import datetime
 
 from websocket import create_connection, WebSocketTimeoutException
 
-sys.path.append('../../')  # smc-python
+sys.path.append('../../../')  # smc-python
 sys.path.append('../../../smc-monitoring')  # smc-python-monitoring
 from smc import session  # noqa
 from smc_monitoring.monitors.block_list import BlockListQuery  # noqa
@@ -61,8 +61,8 @@ logger.addHandler(console_handler)
 logger.propagate = False
 
 logging.getLogger()
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
-                                                '%(name)s - [%(levelname)s] : %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - '
+                                               '%(name)s - [%(levelname)s] : %(message)s')
 
 
 # create a block list entry each 5 second
@@ -72,7 +72,7 @@ def add_block_list_entry(idx, engine, nb_to_add=1):
     for i in range(nb_to_add):
         # Add block list entry
         time.sleep(5)
-        ip_src = f"{idx}.{i+1}.0.1/32"
+        ip_src = f"{idx}.{i + 1}.0.1/32"
         logging.info(f"Thread: add new entry:src={ip_src}")
         engine.block_list(src=ip_src, dst="10.0.0.2/32")
     logging.info("Thread terminated")
@@ -99,7 +99,7 @@ def main():
             node.initial_contact()
             node.bind_license()
 
-#        time.sleep(5)
+        #        time.sleep(5)
         # wait time for engine to be online  !! seems still NO_STATUS
         online = False
         retry = 0
@@ -268,13 +268,13 @@ def main():
             logging.info(f"{datetime.datetime.now().strftime('%H:%M:%S')} "
                          f"=> add 250 entries block {k}...")
             for i in range(250):
-                ip_src = f"{30+k}.0.0.{i}/32"
+                ip_src = f"{30 + k}.0.0.{i}/32"
                 bl.add_entry(src=ip_src, dst="10.0.0.2/32")
         nb_entries = NUMBER_BLOCK_LIST_ENTRIES - nb_block * 250
         logging.info(f"{datetime.datetime.now().strftime('%H:%M:%S')} "
-                     f"=> add {nb_entries} entries block {k+1}...")
+                     f"=> add {nb_entries} entries block {k + 1}...")
         for i in range(nb_entries):
-            ip_src = f"{30+k+1}.0.0.{i}/32"
+            ip_src = f"{30 + k + 1}.0.0.{i}/32"
             bl.add_entry(src=ip_src, dst="10.0.0.2/32")
         engine.blacklist_bulk(bl)
 
@@ -308,7 +308,7 @@ def main():
             try:
                 logging.info(f"Remove {element.block_list_entry_key}")
                 element.delete()
-            except (BaseException, ):
+            except (BaseException,):
                 logging.info(f"Remove {element.block_list_entry_key} failed but let's continue...")
                 pass
         logging.info("BlockList flush..")

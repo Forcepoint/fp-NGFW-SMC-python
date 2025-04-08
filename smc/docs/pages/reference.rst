@@ -558,6 +558,13 @@ WebPortalServer
 	:members:
 	:show-inheritance:
 
+WebAccessServer
+***********
+
+.. autoclass:: WebAccessServer
+	:members:
+	:show-inheritance:
+
 EpoServer
 ***********
 

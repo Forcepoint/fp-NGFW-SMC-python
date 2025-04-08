@@ -25,6 +25,7 @@ network.
 import argparse
 import logging
 import sys
+
 sys.path.append('../../')  # smc-python
 from smc import session  # noqa
 from smc.elements.network import Network  # noqa
@@ -33,8 +34,8 @@ from smc.vpn.elements import ExternalGateway  # noqa
 from smc.vpn.policy import PolicyVPN  # noqa
 
 logging.getLogger()
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
-                                                '%(name)s - [%(levelname)s] : %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - '
+                                               '%(name)s - [%(levelname)s] : %(message)s')
 
 
 def create_single_fw():

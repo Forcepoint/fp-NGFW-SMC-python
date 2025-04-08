@@ -21,8 +21,8 @@ Example script to export all elements.
 
 # Python Base Import
 import argparse
-import sys
 import logging
+import sys
 import zipfile
 
 # Python SMC Import
@@ -33,8 +33,8 @@ from smc.api.exceptions import ActionCommandFailed  # noqa
 from smc.core.engines import Layer2Firewall  # noqa
 
 logging.getLogger()
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
-                                                '%(name)s - [%(levelname)s] : %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - '
+                                               '%(name)s - [%(levelname)s] : %(message)s')
 
 
 def main():
@@ -56,7 +56,7 @@ def main():
         system.export_elements(export_zip, timeout=5, max_tries=50)
         the_zip_file = zipfile.ZipFile(export_zip)
         data_xml = the_zip_file.open('exported_data.xml').read()
-        assert data_xml.find('testHostTrashed'.encode()) > -1,\
+        assert data_xml.find('testHostTrashed'.encode()) > -1, \
             "Host testHostTrashed not found in export"
 
         # use exclude_trashed=true parameter and check trashed host NOT in export

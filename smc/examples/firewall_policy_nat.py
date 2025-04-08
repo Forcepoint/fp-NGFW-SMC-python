@@ -16,9 +16,9 @@
 Create a policy with nat rules
 """
 import argparse
+import json
 import logging
 import sys
-import json
 
 sys.path.append('../../')  # smc-python
 from smc import session  # noqa
@@ -27,8 +27,8 @@ from smc.policy.layer3 import FirewallPolicy  # noqa
 from smc.elements.network import Host, Alias  # noqa
 
 logging.getLogger()
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
-                                                '%(name)s - [%(levelname)s] : %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - '
+                                               '%(name)s - [%(levelname)s] : %(message)s')
 
 
 def main():

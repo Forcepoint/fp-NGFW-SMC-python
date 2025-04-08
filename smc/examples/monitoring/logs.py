@@ -17,12 +17,11 @@ Example script to show how to subscribe to LOGS notifications using websocket li
 or smc_monitoring extension and to use filters
 """
 
-
+import argparse
 # Python Base Import
 import json
-import ssl
-import argparse
 import logging
+import ssl
 import sys
 
 from websocket import create_connection
@@ -45,8 +44,8 @@ EXISTING_FILTER_FAILED = "Fail to get log with existing filter."
 INVALID_FILTER = "Fail to get logs, invalid filter."
 
 logging.getLogger()
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
-                                                '%(name)s - [%(levelname)s] : %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - '
+                                               '%(name)s - [%(levelname)s] : %(message)s')
 
 
 def main():
@@ -106,7 +105,7 @@ def main():
         logging.info("Get filtered dst port or service logs using LogQuery add_or_filter "
                      "and InFilter..")
         query = LogQuery(fetch_size=10)
-#        query = LogQuery(max_recv=0)
+        #        query = LogQuery(max_recv=0)
         query.add_or_filter([
             InFilter(FieldValue(LogField.DPORT), [NumberValue(80)]),
             InFilter(FieldValue(LogField.SERVICE), [ServiceValue('TCP/80')])])
@@ -152,8 +151,8 @@ def main():
         translated_filter = query.add_translated_filter()
         # use special filter functions
         translated_filter.within_ipv4_network('$Dst', ['192.168.4.0/24'])
-    #    translated_filter.within_ipv4_range('$Src', ['1.1.1.1-192.168.1.254'])
-    #    translated_filter.exact_ipv4_match('$Src', ['172.18.1.152', '192.168.4.84'])
+        #    translated_filter.within_ipv4_range('$Src', ['1.1.1.1-192.168.1.254'])
+        #    translated_filter.exact_ipv4_match('$Src', ['172.18.1.152', '192.168.4.84'])
 
         a = list(query.fetch_raw())
         for log in a:

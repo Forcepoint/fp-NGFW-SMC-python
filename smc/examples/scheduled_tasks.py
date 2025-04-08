@@ -25,6 +25,7 @@ import logging
 import os
 import sys
 import time
+
 sys.path.append('../../')  # smc-python
 from smc import session  # noqa
 from smc.compat import is_api_version_less_than  # noqa
@@ -47,8 +48,8 @@ ERROR_TO_START_TASK_AND_GET_RESULT = "Failed to executed traffic capture task."
 RETRY_FINISH = 4
 
 logging.getLogger()
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
-                                                '%(name)s - [%(levelname)s] : %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - '
+                                               '%(name)s - [%(levelname)s] : %(message)s')
 
 
 def main():

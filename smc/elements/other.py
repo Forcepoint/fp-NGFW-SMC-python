@@ -567,7 +567,8 @@ class RuleValidityTime(Element):
                rule_time_end=None, rule_time_repeat_start=None, rule_time_repeat_end=None,
                week_day=None, month_day=None,
                yearly_day_start=None, yearly_day_end=None,
-               yearly_month_start=None, yearly_month_end=None):
+               yearly_month_start=None, yearly_month_end=None,
+               comment=None):
         """
         Create a Validity Time element::
 
@@ -602,6 +603,7 @@ class RuleValidityTime(Element):
             Value is a number comprised between '1' and '12'
         :param str yearly_month_end: month of the year to end rule enabling
             Value is a number comprised between '1' and '12'
+        :param str comment: comment for the element
         """
 
         json = {
@@ -611,7 +613,7 @@ class RuleValidityTime(Element):
             "rule_time_repeat_end": rule_time_repeat_end, "week_day": week_day,
             "month_day": month_day, "yearly_day_start": yearly_day_start,
             "yearly_day_end": yearly_day_end, "yearly_month_start": yearly_month_start,
-            "yearly_month_end": yearly_month_end
+            "yearly_month_end": yearly_month_end, "comment": comment
         }
 
         return ElementCreator(cls, json)

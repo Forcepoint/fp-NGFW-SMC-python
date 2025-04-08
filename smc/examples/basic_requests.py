@@ -18,8 +18,9 @@ this is low level interface and can be used for elements not yet supported
 """
 
 import argparse
-import sys
 import logging
+import sys
+
 sys.path.append('../../')  # smc-python
 from smc import session  # noqa
 from smc.api.common import SMCRequest  # noqa
@@ -27,8 +28,8 @@ from smc.base.util import merge_dicts  # noqa
 from smc.core.engines import Layer3Firewall  # noqa
 
 logging.getLogger()
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
-                                                '%(name)s - [%(levelname)s] : %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - '
+                                               '%(name)s - [%(levelname)s] : %(message)s')
 
 
 def main():

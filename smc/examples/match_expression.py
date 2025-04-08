@@ -34,8 +34,8 @@ from smc.elements.service import ApplicationSituation, TCPService  # noqa
 from smc.policy.rule_elements import MatchExpression  # noqa
 
 logging.getLogger()
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
-                                                '%(name)s - [%(levelname)s] : %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - '
+                                               '%(name)s - [%(levelname)s] : %(message)s')
 
 
 def main():

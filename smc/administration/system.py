@@ -33,7 +33,7 @@ import logging
 import time
 
 from smc.administration.certificates.certificate_authority import CertificateAuthority
-from smc.administration.certificates.tls_common import pem_as_string
+from smc.administration.certificates.tls_common import certificate_content
 from smc.administration.license import Licenses
 from smc.administration.system_properties import SystemProperty
 from smc.administration.tasks import Task
@@ -43,7 +43,7 @@ from smc.administration.updates import EngineUpgrade, UpdatePackage
 from smc.api.common import fetch_entry_point
 from smc.api.exceptions import ResourceNotFound, ActionCommandFailed, CertificateImportError, \
     EngineCommandFailed, ElementNotFound, SMCConnectionError, UnsupportedEntryPoint, \
-    DeleteElementFailed
+    DeleteElementFailed, CreateElementFailed
 from smc.base.collection import sub_collection
 from smc.base.model import SubElement, Element, ElementCreator
 from smc.base.util import millis_to_utc, extract_self, element_resolver
@@ -55,6 +55,8 @@ from smc.core.session_monitoring import SessionMonitoringResult
 from smc.compat import is_smc_version_less_than_or_equal, is_api_version_less_than_or_equal, \
     min_smc_version, is_api_version_less_than
 from smc.api.common import SMCRequest
+from smc.core.resource import Snapshot
+from smc.base.structs import NestedDict
 
 logger = logging.getLogger(__name__)
 
@@ -884,10 +886,7 @@ class System(SubElement):
                           headers={"content-type": "multipart/form-data"},
                           resource="certificate_authority",
                           files={
-                              "ca_certificate": open(certificate, "rb")
-                              # decode certificate or use it as it is
-                              if not pem_as_string(certificate)
-                              else certificate
+                              "ca_certificate": certificate_content(certificate)
                           },
                           )
 
@@ -909,6 +908,31 @@ class System(SubElement):
                           resource="massive_delete",
                           json={"resource": [element.href for element in elements_list]})
 
+    def clean_scale_sets(self):
+        """
+        Removes all inactive Cloud Firewalls from all Cloud Auto-Scaled Groups.
+        If no active Cloud Firewalls are there in a Cloud Auto-Scaled Group, we remove the
+        Cloud Auto-Scaled Group.
+
+        """
+        self.make_request(DeleteElementFailed,
+                          method="delete",
+                          resource="clean_scale_sets")
+
+    def create_cloud_firewall(self, cloud_fw: dict, scale_set_name: str,
+                              validate=True, audit=True):
+        """
+        Creates a Cloud Firewall inside a Cloud Auto-Scaled Group by using a particular
+        argument container describing the Cloud Firewall and
+        the name of the Scale Set which will be created or updated.
+
+        """
+        self.make_request(CreateElementFailed,
+                          method="create",
+                          resource="create_cloud_firewall",
+                          params={"validate": validate, "audit": audit},
+                          json={"scale_set_name": scale_set_name, "cloud_firewall": cloud_fw})
+
     def delete_crl_cache(self):
         """
         Delete CRL cache
@@ -916,6 +940,50 @@ class System(SubElement):
         self.make_request(DeleteElementFailed,
                           method="delete",
                           resource="clean_crl_cache")
+
+    def system_snapshots(self):
+        """
+        Retrieve the list of system snapshots
+        """
+        return sub_collection(self.get_relation("system_snapshot"), SystemSnapshot)
+
+    def connectivity_monitoring(self, filter=None):
+        """
+        Retrieve the connectivity monitoring
+        """
+        json = {}
+        if filter:
+            if isinstance(filter, list):
+                json.update(values=element_resolver(filter))
+            else:
+                json.update(value=element_resolver(filter))
+        return [ConnectivityRow(cr) for cr in
+                self.make_request(CreateElementFailed, method="create",
+                                  resource="connectivity_monitoring", json=json)]
+
+
+class SystemSnapshot(Element):
+    """
+    System snapshots currently held on the SMC.
+    """
+    typeof = "system_snapshot"
+
+    def download(self, filename=None):
+        """
+        Download snapshot to filename
+
+        :param str filename: fully qualified path including filename .zip
+        :raises EngineCommandFailed: IOError occurred downloading snapshot
+        :return: None
+        """
+        if not filename:
+            filename = "{}{}".format(self.name, ".zip")
+
+        try:
+            self.make_request(EngineCommandFailed, resource="content", filename=filename)
+
+        except IOError as e:
+            raise EngineCommandFailed("System snapshot download failed: {}".format(e))
 
 
 class AdminDomain(Element):
@@ -1074,3 +1142,68 @@ class AdminDomain(Element):
             return SessionMonitoringResult("alert_monitoring", result)
         except SMCConnectionError:
             raise EngineCommandFailed("Timed out waiting for alerts")
+
+
+class ConnectivityRow(NestedDict):
+    """
+    Represents a Connectivity Row.
+    """
+
+    def __init__(self, data):
+        super(ConnectivityRow, self).__init__(data=data)
+
+    @property
+    def peerA(self):
+        """
+        The peer A.
+        :rtype: Element
+        """
+        return Element.from_href(self.data.get("peerA"))
+
+    @property
+    def peerB(self):
+        """
+        The peer B.
+        :rtype: Element
+        """
+        return Element.from_href(self.data.get("peerB"))
+
+    @property
+    def type(self):
+        """
+        The connectivity row type.
+        :rtype: str
+        """
+        return self.data.get("type")
+
+    @property
+    def direction(self):
+        """
+        The connectivity row direction: Client or Server.
+        :rtype: str
+        """
+        return self.data.get("direction")
+
+    @property
+    def port(self):
+        """
+        The connectivity row port. The port range.
+        :rtype: str
+        """
+        return self.data.get("port")
+
+    @property
+    def status(self):
+        """
+        The connectivity row status: Unknown, OK, Warning, Error, Idle, Closed, ...
+        :rtype: str
+        """
+        return self.data.get("status")
+
+    @property
+    def info(self):
+        """
+        The connectivity row info.
+        :rtype: str
+        """
+        return self.data.get("info")

@@ -25,6 +25,7 @@ import argparse
 import logging
 import sys
 import time
+
 import requests
 
 sys.path.append('../../')  # smc-python
@@ -36,8 +37,8 @@ from smc.elements.other import FilterExpression  # noqa
 from smc.elements.servers import LogServer, DataContext, NetflowCollector, ManagementServer  # noqa
 
 logging.getLogger()
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
-                                                '%(name)s - [%(levelname)s] : %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - '
+                                               '%(name)s - [%(levelname)s] : %(message)s')
 
 
 def check_if_smc_api_is_running(smc_url, cert=False):
@@ -73,9 +74,9 @@ def update_mgt_server(secure=False):
             if webapp["web_app_identifier"] == "smc_api":
                 logging.info(f"set SSL mode with SSl session ID enabled={secure} ..")
                 webapp["ssl_session_id"] = True if secure else False
-                webapp["server_credentials_ref"] = list(TLSServerCredential.objects.all())[0].href\
+                webapp["server_credentials_ref"] = list(TLSServerCredential.objects.all())[0].href \
                     if secure else None
-                webapp["tls_cipher_suites"] = list(TLSCryptographySuite.objects.all())[0].href\
+                webapp["tls_cipher_suites"] = list(TLSCryptographySuite.objects.all())[0].href \
                     if secure else None
                 # Save and restart mgt server
                 mgt_server.update(json=mgt_server.data)

@@ -30,8 +30,8 @@ from smc.core.engines import Layer3VirtualEngine, Layer3Firewall  # noqa
 from smc.core.waiters import NodeStatusWaiter  # noqa
 
 logging.getLogger()
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
-                                                '%(name)s - [%(levelname)s] : %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - '
+                                               '%(name)s - [%(levelname)s] : %(message)s')
 
 
 def main():

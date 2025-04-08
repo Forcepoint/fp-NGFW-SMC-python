@@ -23,8 +23,9 @@ Example script to show how to use smc python in multiprocessing environment
 import argparse
 import logging
 import sys
-import urllib3
 from multiprocessing import Process
+
+import urllib3
 
 sys.path.append('../../')  # smc-python
 from smc import session  # noqa
@@ -130,7 +131,7 @@ def main():
 
         logging.info("CREATE HOSTS")
         for one in range(2):
-            proc = Process(target=create_host, args=(f"HOST_TEST_EMN_{one}", f"1.1.1.{one%254}"))
+            proc = Process(target=create_host, args=(f"HOST_TEST_EMN_{one}", f"1.1.1.{one % 254}"))
             procs.append(proc)
             proc.start()
 

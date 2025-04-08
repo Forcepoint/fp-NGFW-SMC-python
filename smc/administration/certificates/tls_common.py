@@ -73,6 +73,14 @@ def load_cert_chain(chain_file):
     return cert_type_matches
 
 
+def certificate_content(certificate):
+    """ decode certificate or use it as it is """
+    cert_value = ''
+    with open(certificate, "rb") as file:
+        cert_value = file.read() if not pem_as_string(certificate) else certificate
+    return cert_value
+
+
 class ImportExportCertificate(object):
     """
     Mixin to provide certificate import and export methods to relevant
@@ -99,9 +107,7 @@ class ImportExportCertificate(object):
             resource="certificate_import",
             headers={"content-type": "multipart/form-data"},
             files={
-                multi_part: open(certificate, "rb")
-                if not pem_as_string(certificate)
-                else certificate
+                multi_part: certificate_content(certificate)
             },
         )
 
@@ -148,9 +154,7 @@ class ImportExportIntermediate(object):
             resource="intermediate_certificate_import",
             headers={"content-type": "multipart/form-data"},
             files={
-                "signed_certificate": open(certificate, "rb")
-                if not pem_as_string(certificate)
-                else certificate
+                "signed_certificate": certificate_content(certificate)
             },
         )
 

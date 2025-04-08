@@ -207,11 +207,10 @@ class BlacklistEntry(object):
 
         :rtype: str
         """
-        if is_api_version_less_than("7.0"):
-            ref = "blacklist_href"
+        if "blacklist_href" in self.blacklist:
+            return self.blacklist.get("blacklist_href")
         else:
-            ref = "block_list_href"
-        return self.blacklist.get(ref)
+            return self.blacklist.get("block_list_href")
 
     @property
     def source(self):

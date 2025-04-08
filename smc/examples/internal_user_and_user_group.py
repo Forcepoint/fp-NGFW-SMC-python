@@ -38,8 +38,8 @@ method1 = AuthenticationMethod(name="User password")
 method2 = AuthenticationMethod(name="Pre-Shared Key Method")
 
 logging.getLogger()
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
-                                                '%(name)s - [%(levelname)s] : %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - '
+                                               '%(name)s - [%(levelname)s] : %(message)s')
 
 
 def check_if_user_present(user_name):

@@ -34,8 +34,8 @@ WRONG_COMMENT = "Wrong comment in assert!"
 WRONG_MEMBERS = "Wrong members in assert!"
 
 logging.getLogger()
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
-                                                '%(name)s - [%(levelname)s] : %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - '
+                                               '%(name)s - [%(levelname)s] : %(message)s')
 
 
 def main():

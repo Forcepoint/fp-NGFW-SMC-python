@@ -44,8 +44,8 @@ ENABLED = True
 REDISTRIBUTION_TYPE = "kernel"
 
 logging.getLogger()
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
-                                                '%(name)s - [%(levelname)s] : %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - '
+                                               '%(name)s - [%(levelname)s] : %(message)s')
 
 
 def main():
@@ -77,7 +77,7 @@ def main():
             if entry.data["type"] == REDISTRIBUTION_TYPE:
                 assert entry.data["enabled"] == ENABLED, NOT_CREATED_MSG
                 break
-        assert bgp_profile.internal_distance == INTERNAL_DISTANCE and bgp_profile.external_distance\
+        assert bgp_profile.internal_distance == INTERNAL_DISTANCE and bgp_profile.external_distance \
                == EXTERNAL_DISTANCE and aggregation_entry.data.get("subnet") == \
                aggregation_entry.data["subnet"], NOT_CREATED_MSG
         logging.info("BGPProfile is successfully created.")
@@ -150,7 +150,7 @@ def main():
                bgp_peering.max_prefix_option == "warning_only" and bgp_peering.max_prefix_value == \
                12 and bgp_peering.inbound_rm_filter == route_map.href, CREATE_ERROR_BGP_PEERING
         # check inbound filter
-        assert bgp_peering.inbound_rm_filter == route_map.href and bgp_peering.inbound_ip_filter ==\
+        assert bgp_peering.inbound_rm_filter == route_map.href and bgp_peering.inbound_ip_filter == \
                ip_accesss_inbound.href and bgp_peering.inbound_ipv6_filter == acl6.href and \
                bgp_peering.inbound_ipprefix_filter == prefix.href and \
                bgp_peering.inbound_ipv6prefix_filter == prefix6.href and \

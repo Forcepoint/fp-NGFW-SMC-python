@@ -29,8 +29,8 @@ WRONG_PROFILE = "Wrong LLDP Profile in assert!"
 WRONG_MODE = "Wrong LLDP Mode in assert!"
 
 logging.getLogger()
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
-                                                '%(name)s - [%(levelname)s] : %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - '
+                                               '%(name)s - [%(levelname)s] : %(message)s')
 
 
 def main():
@@ -89,8 +89,8 @@ def main():
                                                    zone_ref=zone_helper("External"),
                                                    lldp_mode="send_and_receive"
                                                    )
-        assert Layer3Firewall("myFw").physical_interface.get(1)\
-                                                        .lldp_mode == "send_and_receive", WRONG_MODE
+        assert (Layer3Firewall("myFw").physical_interface.get(1).lldp_mode
+                == "send_and_receive"), WRONG_MODE
 
         # use add method create 2nd interface (only the interface layer)
         fw.physical_interface.add(interface_id=2,
@@ -98,12 +98,12 @@ def main():
                                   lldp_mode="send_and_receive"
                                   )
         assert Layer3Firewall("myFw").physical_interface.get(2) \
-                                                        .lldp_mode == "send_and_receive", WRONG_MODE
+            .lldp_mode == "send_and_receive", WRONG_MODE
 
         # update the lldp mode for the interface
         Layer3Firewall("myFw").physical_interface.get(2).update(lldp_mode="disabled")
         assert Layer3Firewall("myFw").physical_interface.get(2) \
-                                                        .lldp_mode == "disabled", WRONG_MODE
+            .lldp_mode == "disabled", WRONG_MODE
 
         # FW Cluster cases
         # Create the Firewall Cluster
@@ -144,7 +144,7 @@ def main():
             lldp_mode="send_only"
         )
         assert FirewallCluster("mycluster").physical_interface.get(1) \
-                                                              .lldp_mode == "send_only", WRONG_MODE
+            .lldp_mode == "send_only", WRONG_MODE
     except BaseException as e:
         logging.error(f"Exception:{e}")
         return_code = 1

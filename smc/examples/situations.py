@@ -36,10 +36,9 @@ SITUATION_NAME = "test_inspection_situation"
 CREATE_SITUATION_ERROR = "Fail to create inspection situation."
 UPDATE_SITUATION_ERROR = "Fail to update inspection situation."
 
-
 logging.getLogger()
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
-                                                '%(name)s - [%(levelname)s] : %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - '
+                                               '%(name)s - [%(levelname)s] : %(message)s')
 
 
 def main():

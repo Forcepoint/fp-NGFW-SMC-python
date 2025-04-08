@@ -19,13 +19,13 @@ from smc.base.decorators import deprecated
 from smc.base.model import SubElement, ElementCreator, Element, ElementRef
 from smc.base.structs import NestedDict
 from smc.compat import is_smc_version_less_than, is_smc_version_less_than_or_equal, \
-    is_api_version_less_than_or_equal, is_smc_version_equal
+    is_api_version_less_than_or_equal, is_smc_version_equal, is_api_version_less_than
 from smc.elements.common import MultiContactServer, NodeElement, IPv6Node
 from smc.elements.helpers import location_helper
 from smc.elements.other import ContactAddress, Location
 from smc.base.util import element_resolver, save_to_file
 from smc.administration.certificates import tls
-from smc.administration.certificates.tls_common import pem_as_string
+from smc.administration.certificates.tls_common import certificate_content
 from smc.core.external_pki import PkiCertificateSettings, PkiCertificateInfo
 
 
@@ -388,12 +388,9 @@ class ExternalPki:
             resource="pki_import_certificate",
             headers={"content-type": "multipart/form-data"},
             files={
-                # decode certificate or use it as it is
-                "signed_certificate": open(certificate, "rb")
-                if not pem_as_string(certificate)
-                else certificate
-            },
-        )
+                "signed_certificate": certificate_content(certificate)
+                },
+            )
 
     def pki_renew_certificate(self):
         """
@@ -1162,7 +1159,7 @@ class LogServer(ContactAddressMixin, Element, ManagementLogServerMixin):
             forwarded.
         :param str log_disk_space_handling_mode: Mode chosen to handle extra logs when disk runs out
             of space.
-        :param list(LogServer) backup_log_server: You can specify several backup Log Servers. The
+        :param list(LogServer with ranking) backup_log_server: You can specify several backup Log Servers. The
             same Log Server can simultaneously be the main Log Server for some components and a
             backup Log Server for components that primarily use another Log Server. You can also set
             Log Servers to be backup Log Servers for each other so that whenever one goes down, the
@@ -1178,7 +1175,8 @@ class LogServer(ContactAddressMixin, Element, ManagementLogServerMixin):
         """
 
         netflow_collector = netflow_collector if netflow_collector else []
-        backup_log_server = backup_log_server if backup_log_server else []
+        log_disk_space_handling_mode = log_disk_space_handling_mode if \
+            log_disk_space_handling_mode else "overwrite_oldest"
         json = {
             "name": name,
             "address": address,
@@ -1189,11 +1187,22 @@ class LogServer(ContactAddressMixin, Element, ManagementLogServerMixin):
             "tools_profile_ref": element_resolver(tools_profile_ref),
             "netflow_collector": [netflow.data for netflow in netflow_collector],
             "log_disk_space_handling_mode": log_disk_space_handling_mode,
-            "backup_log_server": element_resolver(backup_log_server),
             "channel_port": channel_port,
             "inactive": inactive,
             "comment": comment
         }
+        if is_api_version_less_than("7.3"):
+            json.update(backup_log_server=element_resolver(backup_log_server))
+        elif backup_log_server and not isinstance(backup_log_server[0], dict):
+            backup_log_servers = []
+            rank = 1
+            for server in backup_log_server:
+                backup_log_servers.append(
+                    {"value": element_resolver(server), "rank": rank})
+                rank += 1
+            json.update(backup_log_server=backup_log_servers)
+        else:
+            json.update(backup_log_server=backup_log_server)
         if forwarding_tls_settings:
             json.update(forwarding_tls_settings=forwarding_tls_settings)
         if external_pki_certificate_settings:
@@ -1216,7 +1225,8 @@ class LogServer(ContactAddressMixin, Element, ManagementLogServerMixin):
         Several backup Log Servers.
         :rtype list(LogServer)
         """
-        return [Element.from_href(server) for server in self.data.get("backup_log_server", [])]
+        return [Element.from_href(server if is_api_version_less_than("7.3") else server['value'])
+                for server in self.data.get("backup_log_server", [])]
 
     @property
     def channel_port(self):
@@ -2139,13 +2149,10 @@ class AuthenticationServerMixin(Element, MultiContactServer):
         return self.data.get("port")
 
 
-class WebPortalServer(Element, MultiContactServer, ExternalPki):
+class AbstractWebServer(Element, MultiContactServer, ExternalPki):
     """
-    This represents a Web Portal Server. A component of the Management Center responsible for
-    browsing logs, Policy Snapshots and reports from a Web Browser.
+    Shared abstract class to gather old Web Portal Server and Web Access Server.
     """
-    typeof = "web_portal_server"
-
     @classmethod
     def create(
             cls,
@@ -2164,23 +2171,23 @@ class WebPortalServer(Element, MultiContactServer, ExternalPki):
             comment=None
     ):
         """
-        This represents a Web Portal Server. A component of the Management Center responsible for
+        This represents a Web Access Server. A component of the Management Center responsible for
             browsing logs, Policy Snapshots and reports from a Web Browser.
-        :param str name: Name of the Web Portal Server.
+        :param str name: Name of the Web Access Server.
         :param str address: Single valid IPv4 address. Required.
         :param str ipv6_address: IPv6 address.
-        :param LogServer alert_server: Specify the Log Server to which you want the Web Portal
+        :param LogServer alert_server: Specify the Log Server to which you want the Web Access
             Server to send its logs. Required.
         :param Location location_ref: Location of the server.
-        :param list(WebApp) web_app: Web Portal Server can be configured to define several Web
+        :param list(WebApp) web_app: Web Access Server can be configured to define several Web
         Application like webclient, webswing.
-        :param bool announcement_enabled: Is announcement enabled for WebPortal Server:Announcements
-            in the Web Portal Server element are shown for all users that connect to that Web Portal
+        :param bool announcement_enabled: Is announcement enabled for WebAccess Server:Announcements
+            in the Web Access Server element are shown for all users that connect to that Web Access
             Server.Not Required.
         :param str announcement_message: The announcement message for WebPortal users.
         :param PkiCertificateSettings external_pki_certificate_settings: Certificate Settings for
             External PKI mode.
-        :param str uiid: Web Portal Server Installation ID (aka UUID).
+        :param str uiid: Web Access Server Installation ID (aka UUID).
         :param tools_profile tools_profile_ref: Allows you to add commands to the element’s
             right-click menu.
         :param list(str) secondary: If the device has additional IP addresses, you can enter them
@@ -2189,7 +2196,6 @@ class WebPortalServer(Element, MultiContactServer, ExternalPki):
             IPv4 and IPv6 addresses (one by one)
         :param str comment: optional comment.
         """
-
         web_app = web_app if web_app else []
         json = {
             "name": name,
@@ -2220,7 +2226,7 @@ class WebPortalServer(Element, MultiContactServer, ExternalPki):
     @property
     def alert_server(self):
         """
-        Specify the Log Server to which you want the Web Portal Server to send its logs
+        Specify the Log Server to which you want the Web Access Server to send its logs
         rtype LogServer
         """
         return Element.from_href(self.data.get("alert_server"))
@@ -2240,6 +2246,22 @@ class WebPortalServer(Element, MultiContactServer, ExternalPki):
     @property
     def announcement_message(self):
         return self.data.get("announcement_message")
+
+
+class WebPortalServer(AbstractWebServer):
+    """
+    This represents a Web Portal Server (old Web Access Server). A component of the Management Center responsible for
+    browsing logs, Policy Snapshots and reports from a Web Browser.
+    """
+    typeof = "web_portal_server"
+
+
+class WebAccessServer(AbstractWebServer):
+    """
+    This represents a Web Access Server. A component of the Management Center responsible for
+    browsing logs, Policy Snapshots and reports from a Web Browser.
+    """
+    typeof = "web_access_server"
 
 
 class TacacsServer(AuthenticationServerMixin, ContactAddressMixin):

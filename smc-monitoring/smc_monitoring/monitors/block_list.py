@@ -202,7 +202,10 @@ class BlockListEntry(object):
 
         :rtype: str
         """
-        return self.block_list.get("block_list_href")
+        if "blacklist_href" in self.block_list:
+            return self.block_list.get("blacklist_href")
+        else:
+            return self.block_list.get("block_list_href")
 
     @property
     def source(self):

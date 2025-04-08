@@ -12,7 +12,8 @@
 """
 Tag elements like 'ip_country_group' or 'ip_list_group'.
 """
-from smc.base.model import Element
+from smc.base.model import Element, ElementCreator
+from smc.api.exceptions import CreateElementFailed, DeleteElementFailed
 
 
 class IPListGroupTag(Element):
@@ -129,10 +130,59 @@ class FileFilteringCompatibilityTag(Element):
 
 class FilterExpressionTag(Element):
     """
-    Filter Expression Tag elements cannot be created, only viewed.
+    Filter Expression Tag elements
     """
 
     typeof = "filter_expression_tag"
+
+    @classmethod
+    def create(
+        cls,
+        name
+    ):
+        """
+        Create a new Filter tag. Once cerated you can add elements:
+
+            >>> filter_tag = FilterExpressionTag.create('myFilerTagName')
+            >>> filter_tag.add_elements()
+
+        :param str name: name of filter tag
+        :param permissions object in case SMC admin is not superuser
+        :raises CreateElementFailed: failure creating element with reason
+        :return: instance with meta
+        :rtype: FilterExpressionTag
+        """
+        return ElementCreator(cls, {"name": name})
+
+    def add_element(self, element):
+        """
+        Add a filter expression element to this filter tag.
+
+        :param element: href from FilterExpression element
+        :raises CreateElementFailed: failed creating element
+        :return: None
+        """
+        self.make_request(
+            CreateElementFailed,
+            method="create",
+            resource="category_add_element",
+            json={"value": element},
+        )
+
+    def delete_element(self, element):
+        """
+        Delete a filter expression element from this filter tag.
+
+        :param element: href from FilterExpression element
+        :raises DeleteElementFailed: failed setting password on engine
+        :return: None
+        """
+        self.make_request(
+            DeleteElementFailed,
+            method="update",
+            resource="category_remove_element",
+            params={"value": element},
+        )
 
 
 class SidewinderTag(Element):

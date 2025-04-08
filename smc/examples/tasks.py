@@ -35,8 +35,8 @@ from smc.elements.service import TCPService  # noqa
 from smc.policy.layer3 import FirewallPolicy  # noqa
 
 logging.getLogger()
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - '
-                                                '%(name)s - [%(levelname)s] : %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - '
+                                               '%(name)s - [%(levelname)s] : %(message)s')
 
 
 def main():
@@ -68,12 +68,12 @@ def main():
         logging.info("Update policy..")
         policy = FirewallPolicy(plano.installed_policy)
         new_rule = policy.fw_ipv4_access_rules.create(
-                    name="newrule",
-                    sources="any",
-                    destinations="any",
-                    services=[TCPService("SSH")],
-                    action="discard",
-                    )
+            name="newrule",
+            sources="any",
+            destinations="any",
+            services=[TCPService("SSH")],
+            action="discard",
+        )
 
         # check again for pending changes
         # wait for pending changes update

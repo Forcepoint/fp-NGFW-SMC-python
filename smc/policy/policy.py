@@ -104,6 +104,18 @@ class Policy(Element):
         """
         self.make_request(PolicyCommandFailed, method="create", resource="force_unlock")
 
+    def save_as(self, new_name: str):
+        """
+        Save as the current policy
+
+        :return: the duplicated policy
+        """
+        return Element.from_href(self.make_request(PolicyCommandFailed,
+                                                   method="create",
+                                                   resource="save_as",
+                                                   params={"name": new_name},
+                                                   raw_result=True).href)
+
     def search_rule(self, search):
         """
         Search a rule for a rule tag or name value

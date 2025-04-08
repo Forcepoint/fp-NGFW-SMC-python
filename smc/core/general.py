@@ -279,7 +279,11 @@ class DefaultNAT(object):
         """
         Status of default nat on the engine.
 
-        :rtype: str
+        :rtype: str - Possible values are:
+        'true': use Default NAT Address for Traffic from Internal Networks |
+        'false': don't use Default NAT Address for Traffic from Internal Networks |
+        'automatic': use Default NAT Address for Traffic from Internal Networks
+        if the firewall has a default route
         """
         return self.engine.data["default_nat"]
 
@@ -288,7 +292,11 @@ class DefaultNAT(object):
         """
         Status of default nat on the engine.
 
-        :rtype: str
+        :rtype: str - Accepted values are:
+        'true': use Default NAT Address for Traffic from Internal Networks |
+        'false': don't use Default NAT Address for Traffic from Internal Networks |
+        'automatic': use Default NAT Address for Traffic from Internal Networks
+        if the firewall has a default route
         """
         self.engine.data["default_nat"] = default_nat
 
