@@ -1867,8 +1867,8 @@ received by the SMC.
 	
 Example of using SMCRequest to fetch an element by href, returning an SMCResult:
 
-	>>> vars(SMCRequest(href='http://1.1.1.1:8082/6.2/elements/host/978').read())
-	{'code': 200, 'content': None, 'json': {u'comment': u'this is a searchable comment', u'read_only': False, u'ipv6_address': u'2001:db8:85a3::8a2e:370:7334', u'name': u'kali', u'third_party_monitoring': {u'netflow': False, u'snmp_trap': False}, u'system': False, u'link': [{u'href': u'http://1.1.1.1:8082/6.2/elements/host/978', u'type': u'host', u'rel': u'self'}, {u'href': u'http://1.1.1.1:8082/6.2/elements/host/978/export', u'rel': u'export'}, {u'href': u'http://1.1.1.1:8082/6.2/elements/host/978/search_category_tags_from_element', u'rel': u'search_category_tags_from_element'}], u'key': 978, u'address': u'1.1.11.1', u'secondary': [u'7.7.7.7']}, 'href': None, 'etag': '"OTc4MzExMzkxNDk2MzI1MTMyMDI4"', 'msg': None}
+	>>> vars(SMCRequest(href='http://1.1.1.1:8082/7.1/elements/host/978').read())
+	{'code': 200, 'content': None, 'json': {u'comment': u'this is a searchable comment', u'read_only': False, u'ipv6_address': u'2001:db8:85a3::8a2e:370:7334', u'name': u'kali', u'third_party_monitoring': {u'netflow': False, u'snmp_trap': False}, u'system': False, u'link': [{u'href': u'http://1.1.1.1:8082/7.1/elements/host/978', u'type': u'host', u'rel': u'self'}, {u'href': u'http://1.1.1.1:8082/7.1/elements/host/978/export', u'rel': u'export'}, {u'href': u'http://1.1.1.1:8082/7.1/elements/host/978/search_category_tags_from_element', u'rel': u'search_category_tags_from_element'}], u'key': 978, u'address': u'1.1.11.1', u'secondary': [u'7.7.7.7']}, 'href': None, 'etag': '"OTc4MzExMzkxNDk2MzI1MTMyMDI4"', 'msg': None}
 
 
 Waiters

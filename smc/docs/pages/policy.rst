@@ -31,7 +31,7 @@ Once a policy instance has been obtained, Access or NAT rules can be added, view
 Example of creating a rule for a firewall policy::
 
 	>>> policy.fw_ipv4_access_rules.create(name='newrule', sources='any', destinations='any', services='any', action='permit')
-	'http://1.1.1.1:8082/6.1/elements/fw_policy/265/fw_ipv4_access_rule/2099472'
+	'http://1.1.1.1:8082/7.1/elements/fw_policy/265/fw_ipv4_access_rule/2099472'
 	
 	#View all rules
 	>>> for rule in policy.fw_ipv4_access_rules.all():
@@ -53,7 +53,7 @@ Example of creating a dynamic source NAT rule::
 	...                                 services='any',
 	...                                 dynamic_src_nat='1.1.1.1',
 	...                                 dynamic_src_nat_ports=(1024,65535))
-	'http://1.1.1.1:8082/6.1/elements/fw_policy/265/fw_ipv4_nat_rule/2099475'
+	'http://1.1.1.1:8082/7.1/elements/fw_policy/265/fw_ipv4_nat_rule/2099475'
 
 Example of creating a destination NAT rule where the destination is to Host('3.3.3.3') and
 will be translated to '1.1.1.1'::
@@ -63,13 +63,13 @@ will be translated to '1.1.1.1'::
 	...                                 destinations=[Host('3.3.3.3')],
 	...                                 services='any',
 	...                                 static_dst_nat='1.1.1.1')
-	'http://1.1.1.1:8082/6.1/elements/fw_policy/265/fw_ipv4_nat_rule/2099476'
+	'http://1.1.1.1:8082/7.1/elements/fw_policy/265/fw_ipv4_nat_rule/2099476'
 
                                                                                                                     
 Create an any/any no NAT rule (no value for NAT field)::
    
 	>>> policy.fw_ipv4_nat_rules.create(name='nonat',sources='any',destinations='any',services='any')
-	'http://1.1.1.1:8082/6.1/elements/fw_policy/265/fw_ipv4_nat_rule/2099477'
+	'http://1.1.1.1:8082/7.1/elements/fw_policy/265/fw_ipv4_nat_rule/2099477'
 
                                                                            
 For additional NAT related options, see: :py:class:`smc.policy.rule_nat.IPv4NATRule`

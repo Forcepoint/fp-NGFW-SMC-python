@@ -29,16 +29,18 @@ Some of the functionality you get with the SMC Python API:
 -  Tasks
 -  Search operations for any object type by name, href and by filter
 -  Collections interface to view all objects by type
+-  Monitoring by polling
+-  High-Availability management
 
 Requirements
 ------------
 
-Python >= 2.7 or >= 3.5
+Python >= 3.5
 
-Requests >= 2.31.0
-websocket-client >= 1.5.0
+Requests >= 2.32.0
+websocket-client >= 1.8.0
 
-Security Management Center version >= 6.0
+Security Management Center version >= 6.10
 
 Getting Started
 ---------------
@@ -53,7 +55,7 @@ Or after cloning:
 
 ``python setup.py install``
 
-Testing
+Examples
 -------
 
 Included are a variety of test example scripts that leverage the API to
@@ -105,35 +107,10 @@ Extensions are found in the base smc-python repository as namespace packages and
 Pull Requests
 *************
 
-Pull requests are accepted and welcome but they could not be merged as are.
-Indeed, we are using internal repository in order to validate and integrate these changes.
-But they could be released later on following our road map.
-
-Commit Message Guidelines
-*************************
-
-We follow a consistent commit message format to maintain a clear and organized version history. This helps in understanding the purpose of each commit and tracking changes effectively.
-
-Each and every commit message to the repository must follow this format.
-
-.. code:: text
-
-    <jira_key>: <title>
-    <body>
-
-- Jira Key: Jira Ticket ID or Key that begins with "SMC-".
-
-- Title: Usually the title of the Jira ticket, or a concise version of the same.
-
-- Body: Additional details about the commit. Use this section to provide more context and information if necessary.
-
-Example:
-
-.. code:: text
-
-    SMC-51100: CI Validation
-    - Check that commit starts with "SMC-"
-    - Update Jira tickets automatically
+Pull requests are welcome and appreciated, but they cannot be merged as-is.
+We use an internal repository to validate and integrate these changes.
+However, they may be released later according to our roadmap.
+You can use 'Issues' to suggest changes to us.
 
 Documentation
 -------------

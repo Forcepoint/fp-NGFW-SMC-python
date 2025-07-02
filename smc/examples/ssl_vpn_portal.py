@@ -151,9 +151,9 @@ def main():
             ssl_vpn_sso_domain=ssl_vpn_sso_domain)
         logging.info(f"SSLVPN Service {SSLVPN_WEB_SERVICE_URL_REWRITE} created successfully")
         logging.info("Updating SSLVPN Web Service URL Rewrite type")
-        ssl_vpn_url_rewrite.update(start_page="/new_start_page",
+        ssl_vpn_url_rewrite.update(start_page="/new_start_page/",
                                    ssl_vpn_service_profile=ssl_vpn_profile2.href)
-        assert ssl_vpn_url_rewrite.start_page == "/new_start_page" and \
+        assert ssl_vpn_url_rewrite.start_page == "/new_start_page/" and \
                ssl_vpn_url_rewrite.ssl_vpn_service_profile == ssl_vpn_profile2.href, \
                "Fail to update SSLVPNWebService."
         logging.info(f"SSLVPN Service {SSLVPN_WEB_SERVICE_URL_REWRITE} updated successfully")

@@ -132,7 +132,7 @@ First create the virtual resource on the already created Master NGFW Engine::
 	>>> from smc.core.engines import MasterEngine
 	>>> engine = MasterEngine('api-master')
 	>>> engine.virtual_resource.create('ve-1', vfw_id=1)
-	'http://1.1.1.1:8082/6.1/elements/master_engine/62629/virtual_resource/756'
+	'http://1.1.1.1:8082/7.1/elements/master_engine/62629/virtual_resource/756'
            
 See :py:func:`smc.core.engine.VirtualResource.create` for more information.
 
@@ -206,7 +206,7 @@ Adding an interface after creation::
 	>>> engine.physical_interface.add_cluster_interface_on_master_engine(
 	...                                         interface_id=1,
 	...                                         macaddress='22:22:22:22:22:33',
-	...                                         nodes=[{'address':'6.6.6.2','network_value':'6.6.6.0/24','nodeid':1},
+	...                                         nodes=[{'address':'6.6.7.1','network_value':'6.6.6.0/24','nodeid':1},
 	...                                                {'address':'6.6.6.3','network_value':'6.6.6.0/24','nodeid':2}])
                                              
 See :py:class:`smc.core.engines.MasterEngineCluster` for more info

@@ -81,6 +81,519 @@ from smc.compat import is_smc_version_less_than_or_equal, is_api_version_less_th
     min_smc_version, is_api_version_less_than, is_smc_version_equal, is_smc_version_less_than
 
 
+class TestEntry(NestedDict):
+    """
+    Represents the parent TestEntry element.
+    """
+    def __init__(self, data):
+        super(TestEntry, self).__init__(data=data)
+
+    @property
+    def test_active(self) -> bool:
+        """
+        Flag to know if the test is active?
+        :rtype: bool
+        """
+        return self.data.get("test_active") == "True"
+
+    @property
+    def test_interval(self) -> int:
+        """
+        Represents the time in seconds to specify how often the test is run. The minimum interval is 4
+        seconds and the maximum is 86,400 seconds (one day).
+        Note: Running a test too frequently can increase overhead.
+        By default: 60s.
+        :rtype: int
+        """
+        return int(self.data.get("test_interval"))
+
+    @property
+    def online_state(self) -> bool:
+        """
+        Is the test executed when the engine is Online?
+        :rtype: bool
+        """
+        return self.data.get("online_state") == "True"
+
+    @property
+    def offline_state(self) -> bool:
+        """
+        Is the test executed when the engine is Offline?
+        :rtype: bool
+        """
+        return self.data.get("offline_state") == "True"
+
+    @property
+    def standby_state(self) -> bool:
+        """
+        Is the test executed when the engine is Standby?
+        :rtype: bool
+        """
+        return self.data.get("standby_state") == "True"
+
+    @property
+    def test_action(self) -> str:
+        """
+        Represents the action the tester takes if a test fails:
+         - none: no state transition is performed.
+         - offline: the test switches the node offline. However, the tester does not
+           turn offline the last active node in a cluster or nodes in the Locked Online state.
+         - forceoffline: the node is forced to an offline state, even if it is the last
+           node online in a cluster or if it is in the Locked Online state. Use in cases in which a
+           complete cut in traffic is a better option than a partially working Firewall.
+         - forcespeed: (Inline Pair Link Speed test only) if the test finds that the
+           pair of inline ports have different speed/duplex settings, the speed/duplex on the higher
+           speed/full duplex link is set to match the lower speed/half duplex setting on the other
+           port. Correct and reliable operation requires identical settings.
+        :rtype: str
+        """
+        return self.data.get("test_action")
+
+    @property
+    def alert_notification(self) -> bool:
+        """
+        Alert notification if test fails?
+        :rtype: bool
+        """
+        return self.data.get("alert_notification") == "True"
+
+    @property
+    def snmp_notification(self) -> bool:
+        """
+        SNMP notification if test fails?
+        :rtype: bool
+        """
+        return self.data.get("snmp_notification") == "True"
+
+
+class FileSystemTest(TestEntry):
+    """
+    This represents the definition of the File system space available on a NGFW.
+    It tests the free disk space on a hard disk partition.
+    Note! Do not use this test on appliances that use a flash card instead of a hard disk.
+    """
+    typeof = "filesystemspace_test"
+
+    def __init__(self, data):
+        super(FileSystemTest, self).__init__(data=data)
+
+    @classmethod
+    def create(cls, test_active: bool, test_interval: int, online_state: bool, test_action: str,
+               on_partition: str, free_space: int, **kw):
+        """
+        :param bool test_active: Flag to know if the test is active?
+        :param int test_interval: Represents the time in seconds to specify how often the test is run.
+        :param bool online_state: Is the test executed when the engine is Online?
+        :param str test_action: Represents the action the tester takes if a test fails.
+        :param str on_partition: The partition name to be monitored. A directory name may also be used instead of a partition name.
+        :param int free_space: Represents the minimum amount of Free Space in kilobytes.
+        """
+        json = {
+            "name": cls.typeof,
+            "test_active": test_active,
+            "test_interval": test_interval,
+            "online_state": online_state,
+            "test_action": test_action,
+            "on_partition": on_partition,
+            "free_space": free_space
+        }
+        json.update(kw)
+
+        return cls(json)
+
+    @property
+    def on_partition(self) -> str:
+        """
+        The partition name to be monitored. A directory name may also be used instead of a partition name.
+        :rtype: str
+        """
+        return self.data.get("on_partition")
+
+    @property
+    def free_space(self) -> int:
+        """
+        Represents the minimum amount of Free Space in kilobytes. When the amount of free space drops below
+        this amount, the engine executes the chosen action.
+        :rtype: int
+        """
+        return int(self.data.get("free_space"))
+
+
+class ExternalTest(TestEntry):
+    """
+    This represents the definition of an external test to be executed on a NGFW. It runs a custom
+    script stored on the engine. If the script returns the code zero (0), the test is considered
+    successful, otherwise the test is considered failed. <b>Caution!</b> This test allows
+    administrators who have permissions to edit the properties of Engines to run arbitrary commands
+    in the Engine operating system.
+    """
+    typeof = "external_test"
+
+    def __init__(self, data):
+        super(ExternalTest, self).__init__(data=data)
+
+    @classmethod
+    def create(cls, test_active: bool, test_interval: int, online_state: bool, test_action: str,
+               retry_count: int, test_timeout: int, command_line: str, **kw):
+        """
+        :param bool test_active: Flag to know if the test is active?
+        :param int test_interval: Represents the time in seconds to specify how often the test is run.
+        :param bool online_state: Is the test executed when the engine is Online?
+        :param str test_action: Represents the action the tester takes if a test fails.
+        :param int retry_count: Represents the Retry Count to configure the number of times the Tester tries to execute the test.
+        :param int test_timeout: Represents the Test Timeout in milliseconds.
+        :param str command_line: Represents the script path in the Command Line field.
+        """
+        json = {
+            "name": cls.typeof,
+            "test_active": test_active,
+            "test_interval": test_interval,
+            "online_state": online_state,
+            "test_action": test_action,
+            "retry_count": retry_count,
+            "test_timeout": test_timeout,
+            "command_line": command_line
+        }
+        json.update(kw)
+
+        return cls(json)
+
+    @property
+    def retry_count(self) -> int:
+        """
+        Represents the Retry Count to configure the number of times the Tester tries to execute the test.
+        Note! We recommend always setting the retry count to more than 1 to avoid creating
+         overly sensitive tests that burden the system unnecessarily.
+        :rtype: int
+        """
+        return int(self.data.get("retry_count"))
+
+    @property
+    def test_timeout(self) -> int:
+        """
+        Represents the Test Timeout in milliseconds.
+         - If the test being run does not return a response in the specified time, the test is considered to have failed.
+         - Avoid overly short timeout values. We recommend a timeout of 500 - 1000 ms depending on the external test script.
+        :rtype: int
+        """
+        return int(self.data.get("test_timeout"))
+
+    @property
+    def command_line(self) -> str:
+        """
+        Represents the script path in the Command Line field.
+         - Example /usr/local/bin/connectivity.sh
+        Note! The external script must return an exit code of 0 (zero) if it succeeds.
+        Any non-zero return value is considered a failure.
+        Caution! This test allows administrators who have permissions to edit the properties of
+         Engines to run arbitrary commands in the Engine operating system.
+        :rtype: str
+        """
+        return self.data.get("command_line")
+
+
+class InlinePairlinkSpeedTest(TestEntry):
+    """
+    This represents the Inline Pair Link Speed test.
+    It checks whether the network settings (speed/duplex) match on the two ports that form the inline
+    pair and can force both ports to use the same settings.
+
+    :param bool test_active: Flag to know if the test is active?
+    :param int test_interval: Represents the time in seconds to specify how often the test is run.
+    :param bool online_state: Is the test executed when the engine is Online?
+    :param str test_action: Represents the action the tester takes if a test fails.
+    :param int test_timeout: Represents Test Timeout in milliseconds. Default value is 30 seconds.
+    """
+    typeof = "inline_test"
+
+    def __init__(self, data):
+        super(InlinePairlinkSpeedTest, self).__init__(data=data)
+
+    @classmethod
+    def create(cls, test_active: bool, test_interval: int, online_state: bool, test_action: str,
+               test_timeout: int, **kw):
+        """
+        :param bool test_active: Flag to know if the test is active?
+        :param int test_interval: Represents the time in seconds to specify how often the test is run.
+        :param bool online_state: Is the test executed when the engine is Online?
+        :param str test_action: Represents the action the tester takes if a test fails.
+        :param int test_timeout: Represents Test Timeout in milliseconds. Default value is 30 seconds.
+        """
+        json = {
+            "name": cls.typeof,
+            "test_active": test_active,
+            "test_interval": test_interval,
+            "online_state": online_state,
+            "test_action": test_action,
+            "test_timeout": test_timeout
+        }
+        json.update(kw)
+
+        return cls(json)
+
+    @property
+    def test_timeout(self) -> int:
+        """
+        Represents Test Timeout in milliseconds. Default value is 30 seconds.
+        :rtype: int
+        """
+        return int(self.data.get("test_timeout"))
+
+
+class SwapFreeTest(TestEntry):
+    """
+    This is the definition of the Free Swap Space test. It checks the available swap space on the hard disk.
+    Note! Do not use this test on appliances that use a flash card instead of a hard disk.
+    """
+    typeof = "freeswapspace_test"
+
+    def __init__(self, data):
+        super(SwapFreeTest, self).__init__(data=data)
+
+    @classmethod
+    def create(cls, test_active: bool, test_interval: int, online_state: bool, test_action: str,
+               free_space: int, **kw):
+        """
+        :param bool test_active: Flag to know if the test is active?
+        :param int test_interval: Represents the time in seconds to specify how often the test is run.
+        :param bool online_state: Is the test executed when the engine is Online?
+        :param str test_action: Represents the action the tester takes if a test fails.
+        :param int free_space: Represents the minimum amount of Free Space in kilobytes.
+        """
+        json = {
+            "name": cls.typeof,
+            "test_active": test_active,
+            "test_interval": test_interval,
+            "online_state": online_state,
+            "test_action": test_action,
+            "free_space": free_space
+        }
+        json.update(kw)
+
+        return cls(json)
+
+    @property
+    def free_space(self) -> int:
+        """
+        Represents the minimum amount of Free Space in kilobytes. When the amount of free space drops below
+        this amount, the engine executes the chosen action.
+        :rtype: int
+        """
+        return int(self.data.get("free_space"))
+
+
+class InterfaceTest(TestEntry):
+    """
+    Parent class for Interface Link and Multiping Test.
+
+    :param bool test_active: Flag to know if the test is active?
+    :param int test_interval: Represents the time in seconds to specify how often the test is run.
+    :param bool online_state: Is the test executed when the engine is Online?
+    :param str test_action: Represents the action the tester takes if a test fails.
+    :param int nicid: Represents the Interface ID on which the test is run representing.
+    """
+
+    def __init__(self, data):
+        super(InterfaceTest, self).__init__(data=data)
+
+    @property
+    def nicid(self) -> str:
+        """
+        Represents the Interface ID on which the test is run representing:
+         - all: All Physical Interfaces, Modem Interfaces (Single Firewalls only), ADSL
+                Interfaces (Single Firewalls only), and Wireless Interfaces (Single Firewalls only).
+         - all_with_cvi: (Clusters only) ALL with CVI.
+         - A single Physical Interface, a Modem Interface (Single Firewalls only), an ADSL Interface
+           (single firewalls only), or a Wireless Interface (Single Firewalls only) interface ID.
+         Note! (Firewalls only) Only the first interface that belongs to an Aggregated Link is
+         shown in the list of interfaces. However, the Link Status test checks the status of both
+         interfaces in the Aggregated Link.
+        :rtype: int
+        """
+        return self.data.get("nicid")
+
+
+class EnabledInterfaceEntry(NestedDict):
+    """
+    Represents the enabled interface.
+    """
+
+    def __init__(self, data):
+        super(EnabledInterfaceEntry, self).__init__(data=data)
+
+    @classmethod
+    def create(cls, address: str, nicid: str):
+        """
+        :param str address: the IPv4 address.
+        :param str nicid: the interface nic id in string format.
+        """
+        return cls({
+            "address": address,
+            "nicid": nicid
+        })
+
+
+class LinkStatusTest(InterfaceTest):
+    """
+    This represents the definition of Interface Link test.
+    It checks whether a network port reports the link as up or down.
+     - The link of a Modem Interface (Single Firewalls only) is up if a modem reports that a call
+       is in progress.
+     - The link of an ADSL interface (Single Firewalls only) is up when the ADSL modem is
+       connected to a Digital Subscriber Line Access Multiplexer (DSLM), and the ADSL modem
+       reports that the connection is working.
+     - The link of a Wireless Interface (Single Firewalls only) is up when the related firewall
+       engine has been configured and is working.
+     - The status of Aggregated Links (Firewalls only) depends on the link mode. An Aggregated
+       Link in High-Availability Mode is up if one of the interfaces that belong to the Aggregated
+       Link is up. An Aggregated Link in Load-Balancing Mode is up if both the interfaces that
+       belong to the Aggregated Link are up.
+    """
+    typeof = "linkstatus_test"
+
+    def __init__(self, data):
+        super(LinkStatusTest, self).__init__(data=data)
+
+    @classmethod
+    def create(cls, test_active: bool, test_interval: int, online_state: bool, test_action: str,
+               nicid: str, down_ratio: int, **kw):
+        """
+        :param bool test_active: Flag to know if the test is active?
+        :param int test_interval: Represents the time in seconds to specify how often the test is run.
+        :param bool online_state: Is the test executed when the engine is Online?
+        :param str test_action: Represents the action the tester takes if a test fails.
+        :param int nicid: Represents the Interface ID on which the test is run representing.
+        :param int down_ratio: Represents the ratio used to determine if an aggregated link used in Load Balancing mode is down.
+        """
+        json = {
+            "name": cls.typeof,
+            "test_active": test_active,
+            "test_interval": test_interval,
+            "online_state": online_state,
+            "test_action": test_action,
+            "nicid": nicid,
+            "down_ratio": down_ratio
+        }
+        json.update(kw)
+
+        return cls(json)
+
+    @property
+    def down_ratio(self) -> int:
+        """
+        Represents the ratio used to determine if an aggregated link used in Load Balancing mode is down.
+        Will be ignored for not aggregated links or links not configured in Load balancing mode.
+        - 0: Not set
+        - x (Values in 15, 20, 25, 30, 35, 40, 45, 50): Aggregated link in load
+          balancing mode is considered as down when x % of its interfaces are down
+        :rtype: int
+        """
+        return int(self.data.get("down_ratio"))
+
+
+class MultipingTest(InterfaceTest):
+    """
+    This represents the definition of a Multiping test.
+    It sends out a series of ping requests to determine whether there is connectivity through a
+    network link. Only IPv4 addresses are supported as target addresses for the Multiping test.
+    """
+    typeof = "multiping_test"
+
+    def __init__(self, data):
+        super(MultipingTest, self).__init__(data=data)
+
+    @classmethod
+    def create(cls, test_active: bool, test_interval: int, online_state: bool, test_action: str,
+               nicid: str, retry_count: int, test_timeout: int, target_addresses: list[str],
+               enabled_interfaces: list[EnabledInterfaceEntry], **kw):
+        """
+        :param bool test_active: Flag to know if the test is active?
+        :param int test_interval: Represents the time in seconds to specify how often the test is run.
+        :param bool online_state: Is the test executed when the engine is Online?
+        :param str test_action: Represents the action the tester takes if a test fails.
+        :param int nicid: Represents the Interface ID on which the test is run representing.
+        :param int retry_count: Represents the Retry Count to configure the number of times the Tester tries to execute the test.
+        :param int test_timeout: Represents the Test Timeout in milliseconds.
+        :param list[str] target_addresses: Represents the Target Addresses of ICMP echo requests.
+        :param list[EnabledInterfaceEntry] enabled_interfaces: Represents the Source Addresses
+          from their interface IDs/IP Addresses for the test.
+        """
+        json = {
+            "name": cls.typeof,
+            "test_active": test_active,
+            "test_interval": test_interval,
+            "online_state": online_state,
+            "test_action": test_action,
+            "nicid": nicid,
+            "retry_count": retry_count,
+            "test_timeout": test_timeout,
+            "value": target_addresses,
+            "enabled_interface": [entry.data for entry in enabled_interfaces] if enabled_interfaces else None
+        }
+        json.update(kw)
+
+        return cls(json)
+
+    @property
+    def retry_count(self) -> int:
+        """
+        Represents the Retry Count to configure the number of times the Tester tries to execute the test.
+        We recommend always setting the retry count to more than 1 to avoid creating overly sensitive
+        tests that burden the system unnecessarily.
+        :rtype: int
+        """
+        return int(self.data.get("retry_count"))
+
+    @property
+    def test_timeout(self) -> int:
+        """
+        Represents the Test Timeout in milliseconds. If the test being run does not return a response in the
+        specified time, the test is considered to have failed. Avoid overly short timeout values. By default 500ms.
+        :rtype: int
+        """
+        return int(self.data.get("test_timeout"))
+
+    @property
+    def target_addresses(self) -> list[str]:
+        """
+        Represents the Target Addresses of ICMP echo requests. Only IPv4 addresses are supported. The test
+        is considered failed if none of the target addresses responds.
+        :rtype: list[str]
+        """
+        return self.data.get("value")
+
+    @target_addresses.setter
+    def target_addresses(self, value: list[str]):
+        self.data.set("value", value)
+
+    @property
+    def enabled_interfaces(self) -> list[EnabledInterfaceEntry]:
+        """
+        Represents the Source Addresses from their interface IDs/IP Addresses for the test:
+         - DEFAULT: no source address is forced on the test. The source IP address is selected
+          automatically based on the standard routing rules.<br>
+          On a cluster, if the Physical Interface that routes the ping packet out has an NDI (Node
+          Dedicated IP Address), this address is used as the source address. Otherwise, the NDI
+          selected as Default IP for Outgoing Traffic is used.
+         - A single Physical Interface, a VLAN Interface, a Modem Interface (Single Firewalls only),
+          an ADSL Interface (single firewalls only), or an SSID Interface (Single Firewalls only).
+          If the Node ID selection is ALL, each node uses the IP address of the selected interface
+          as the source IP address for the test. If a single node is selected in Node ID on a
+          cluster, the source address and the multiping test itself apply to that node only.
+        :rtype: list[EnabledInterfaceEntry]
+        """
+        return [EnabledInterfaceEntry(entry) for entry in self.data.get("enabled_interface", [])]
+
+    @enabled_interfaces.setter
+    def enabled_interfaces(self, value: list[EnabledInterfaceEntry]):
+        self.data.set("enabled_interface", None)
+        if value:
+            enabled_interfaces = []
+            for enabled_interface in value:
+                enabled_interfaces.append(enabled_interface.data)
+            self.data.set("enabled_interface", enabled_interfaces)
+
+
 class LinkUsageExceptionRules(NestedDict):
     def __init__(self, destinations=None, services=None, sources=None, isp_link_ref=None,
                  comment=None):
@@ -1003,6 +1516,45 @@ class Engine(Element):
         raise UnsupportedEngineFeature(
             "Endpoint Integration cannot be configured on master engine"
         )
+
+    @property
+    def test_entries(self) -> list[TestEntry]:
+        """
+        Represents the list of TestEntry.
+        """
+        tests = self.data.get("tests", [])
+        result = []
+        for test in tests:
+            if "multiping_test" in test:
+                result.append(MultipingTest(test["multiping_test"]))
+            elif "external_test" in test:
+                result.append(ExternalTest(test["external_test"]))
+            elif "inline_test" in test:
+                result.append(InlinePairlinkSpeedTest(test["inline_test"]))
+            elif "filesystemspace_test" in test:
+                result.append(FileSystemTest(test["filesystemspace_test"]))
+            elif "freeswapspace_test" in test:
+                result.append(SwapFreeTest(test["freeswapspace_test"]))
+            elif "linkstatus_test" in test:
+                result.append(LinkStatusTest(test["linkstatus_test"]))
+        return result
+
+    def add_test_entry(self, test_entry: TestEntry):
+        """
+        Adds a new test entry.
+        """
+        self.data.get("tests", []).append({test_entry.typeof: test_entry.data})
+
+    def set_test_entries(self, test_entries: list[TestEntry]):
+        """
+        Sets test entries
+        """
+        self.data.data["tests"] = None
+        if test_entries:
+            new_tests = []
+            for test in test_entries:
+                new_tests.append({test.typeof: test.data})
+            self.data.data["tests"] = new_tests
 
     @property
     def dns_relay(self):
@@ -2315,6 +2867,7 @@ class Engine(Element):
             while not poller.done():
                 poller.wait(5)
                 print('Percentage complete {}%'.format(poller.task.progress))
+            assert poller.is_success(), logging.error("Timeout error during policy refresh")
 
         :param int timeout: timeout between queries
         :param bool wait_for_finish: poll the task waiting for status
@@ -2460,6 +3013,36 @@ class Engine(Element):
             method="update",
             resource="ldap_replication",
             params={"enable": enable},
+        )
+
+    def join_domain(self, user_name, password, engine_name, ad_server_ref):
+        """
+        Executes a join to an Active Directory domain command for the current cluster.
+
+        :raises EngineCommandFailed: the join command has failed.
+        """
+
+        return self.make_request(
+            EngineCommandFailed,
+            method="update",
+            resource="join_domain",
+            json={"username": user_name, "password": password, "engine_name": engine_name, "ad_server_ref": ad_server_ref},
+            raw_result=True
+        )
+
+    def unjoin_domain(self, user_name, password):
+        """
+        Executes an unjoin from an Active Directory domain command for the current cluster.
+
+        :raises EngineCommandFailed: the unjoin command has failed.
+        """
+
+        return self.make_request(
+            EngineCommandFailed,
+            method="update",
+            resource="unjoin_domain",
+            json={"username": user_name, "password": password},
+            raw_result=True
         )
 
     def generate_and_sign_user_authentication_certificate(self):

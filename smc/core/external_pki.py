@@ -47,7 +47,6 @@ class PkiCertificateSettings(NestedDict):
         :param subject_alt_name:
         """
         cls.data = {"external_pki_certificate_settings": {
-            "certificate_type": "ecdsa_sha_512",
             "subject_name": subject_name,
             "subject_alt_name": subject_alt_name}
                     }

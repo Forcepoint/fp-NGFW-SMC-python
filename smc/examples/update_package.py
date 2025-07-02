@@ -37,6 +37,8 @@ FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
 UPDATE_PACKAGE_FILE = "/tmp/sgpkg-ips-2711t-5242.jar"
 NOT_IMPORTED_ERR = "Update package is not correctly imported!"
 NOT_ACTIVATED_ERR = "Update package is not correctly activated!"
+ACTIVATION_TIMEOUT_ERR = "Activation of update package has timed out!"
+IMPORT_TIMEOUT_ERR = "Import of update package has timed out!"
 
 logging.getLogger()
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - '
@@ -79,16 +81,19 @@ def main():
                 poller.wait(5)
                 logging.info(f'Percentage complete {poller.task.progress}')
 
+            assert poller.is_success(), IMPORT_TIMEOUT_ERR
+
             # refresh next_update after download ( needed to refresh "state" attribute)
             refresh_update_package(next_update, "imported")
             assert next_update.state.lower() == "imported", NOT_IMPORTED_ERR
 
             logging.info(f"activate update package:{next_update}")
-            poller = next_update.activate(wait_for_finish=True)
+            poller = next_update.activate(wait_for_finish=True, timeout=5)
             while not poller.done():
                 poller.wait(10)
                 logging.info(f'Percentage complete {poller.task.progress}')
-
+            # poller task should be successful in addition of being done
+            assert poller.is_success(), ACTIVATION_TIMEOUT_ERR
             # refresh next_update after activation ( needed to refresh "state" attribute)
             refresh_update_package(next_update, "active")
             assert next_update.state.lower() == "active", NOT_ACTIVATED_ERR
@@ -97,11 +102,11 @@ def main():
             logging.info("The latest update package is already installed")
 
         # this part is not run in robot tests
-        logging.info("Import update package from file")
         if exists(UPDATE_PACKAGE_FILE):
+            logging.info("Import update package from file")
             imported_packages = system.update_package_import(UPDATE_PACKAGE_FILE)
             for update_package in imported_packages:
-                logging.info(f"imported update package update package:{update_package}")
+                logging.info(f"Imported update package :{update_package}")
 
     except ActionCommandFailed as exception:
         logging.error("Task failed: " + str(exception))

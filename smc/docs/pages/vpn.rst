@@ -22,7 +22,7 @@ for the external gateway.
 Create the external endpoint from the gateway resource::
 
 	>>> gateway.external_endpoint.create(name='remoteendpoint', address='2.2.2.2')
-	'http://1.1.1.1:8082/6.1/elements/external_gateway/22961/external_endpoint/26740'
+	'http://1.1.1.1:8082/7.1/elements/external_gateway/22961/external_endpoint/26740'
     
 Lastly, 'sites' need to be configured that identify the network/s for the external gateway
 side of the VPN. You can use pre-existing network elements, or create new ones as in the 
@@ -30,10 +30,10 @@ example below.
 
 	>>> network = Network('internal-network')
 	>>> print(network.href)
-	http://1.1.1.1:8082/6.1/elements/network/17911
+	http://1.1.1.1:8082/7.1/elements/network/17911
 	...
 	>>> gateway.vpn_site.create('remote-site', [network.href])
-	'http://1.1.1.1:8082/6.1/elements/external_gateway/22961/vpn_site/22994'
+	'http://1.1.1.1:8082/7.1/elements/external_gateway/22961/vpn_site/22994'
 
 
 Retrieve the engine internal gateway resource for the managed engine by obtaining the engine
@@ -43,14 +43,14 @@ context.
 
 	>>> engine = Engine('testfw')
 	>>> print(engine.internal_gateway.href)	#Internal gateway resource
-	http://1.1.1.1:8082/6.1/elements/single_fw/39550/internal_gateway/11476
+	http://1.1.1.1:8082/7.1/elements/single_fw/39550/internal_gateway/11476
 	
 Create the VPN Policy and apply the internal gateway as the 'Central Gateway' and the
 ExternalGateway as the 'Satellite Gateway'::
     
 	>>> vpn = PolicyVPN.create(name='myVPN', nat=True)
 	>>> print(vpn.name, vpn.vpn_profile)
-	(u'myVPN', u'http://172.18.1.150:8082/6.1/elements/vpn_profile/2')
+	(u'myVPN', u'http://172.18.1.150:8082/7.1/elements/vpn_profile/2')
    	...
 	>>> vpn.open()
 	>>> vpn.add_central_gateway(engine.internal_gateway.href)

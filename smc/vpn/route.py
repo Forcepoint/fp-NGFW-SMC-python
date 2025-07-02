@@ -686,7 +686,7 @@ class RouteVPN(Element):
         """
         Get the ppk for this RBVPN
 
-        :rtype: ExternalGateway
+        :rtype: ppk_ref
         """
         if self.data.get("ppk_ref"):
             return self.data.get("ppk_ref")

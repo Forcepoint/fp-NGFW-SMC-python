@@ -5,7 +5,7 @@ In order to allow inbound API connections to the SMC, you must first enable the 
 To do this, open the SMC and edit the properties of the Management Server/s.
 
 Under API Client, enable the API.
-If SSL connections are required, import or self sign (SMC >= 6.4) a certificate for use with the API service.
+If SSL connections are required, import or self sign a certificate for use with the API service.
 
 .. warning:: Do not check the "Use SSL for session ID" parameter when using this library. This setting is incompatible
 	as the sessions are tracked using client sessions (for both HTTP and HTTPS)
@@ -64,7 +64,7 @@ To find supported versions using unauthenticated call to SMC API:
 
 	>>> from smc.api.session import available_api_versions
 	>>> available_api_versions('http://1.1.1.1:8082')
-	[6.10, 7.0, 7.1]
+	[6.10, 7.1, 7.3]
 
 Set up connection to specific version:
 
@@ -72,7 +72,7 @@ Set up connection to specific version:
 
    from smc import session
    session.login(url='http://1.1.1.1:8082', api_key='xxxxxxxxxxxxxxxxx', 
-                 api_version='6.10')
+                 api_version='7.1')
 
 Logging in to a specific Admin Domain:
 
@@ -120,7 +120,7 @@ Syntax for ~/.smcrc:
    [smc]
    smc_address=1.1.1.1
    smc_apikey=xxxxxxxxxxxxxxxxxxx
-   api_version=6.10
+   api_version=7.1
    smc_port=8082
    smc_ssl=True
    verify_ssl=True
@@ -150,7 +150,7 @@ If setting environment variables, the following are supported::
 	SMC_API_KEY=123abc
 	SMC_CLIENT_CERT=path/to/cert
 	SMC_TIMEOUT = 30 (seconds)
-	SMC_API_VERSION = 6.10 (optional - uses lowest by default)
+	SMC_API_VERSION = 7.1 (optional - uses lowest by default)
 	SMC_DOMAIN = name of domain, Shared is default 
 
 The minimum variables that need to be present are ``SMC_ADDRESS`` and ``SMC_API_KEY``::

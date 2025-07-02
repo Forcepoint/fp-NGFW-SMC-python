@@ -1251,3 +1251,101 @@ class PPK(Element):
             kw.update(secondary_ppk_id=secondary_ppk_id,
                       secondary_ppk_secret=secondary_ppk_secret)
         return ElementCreator(cls, json=kw)
+
+    @property
+    def primary_ppk_id(self):
+        return self._primary_ppk_id
+
+    @primary_ppk_id.setter
+    def primary_ppk_id(self, value):
+        self._primary_ppk_id = value
+
+    @property
+    def primary_ppk_secret(self):
+        return self._primary_ppk_secret
+
+    @primary_ppk_secret.setter
+    def primary_ppk_secret(self, value):
+        self._primary_ppk_secret = value
+
+    @property
+    def secondary_ppk_id(self):
+        return self._secondary_ppk_id
+
+    @secondary_ppk_id.setter
+    def secondary_ppk_id(self, value):
+        self._secondary_ppk_id = value
+
+    @property
+    def secondary_ppk_secret(self):
+        return self._secondary_ppk_secret
+
+    @secondary_ppk_secret.setter
+    def secondary_ppk_secret(self, value):
+        self._secondary_ppk_secret = value
+
+
+class InternalPPK(Element):
+    """
+    Internal_PPK class represents an internal Post Quantum pre-shared key (PPK) element.
+    This class is similar to the PPK class but does not include the create method,
+    making it non-creatable.
+
+    Attributes:
+        :name (str): The name of the PPK element.
+        :primary_ppk_id (int): The primary PPK ID.
+        :primary_ppk_secret (str): The primary PPK secret.
+        :secondary_ppk_id (int, optional): The secondary PPK ID.
+        :secondary_ppk_secret (str, optional): The secondary PPK secret.
+        :comment (str, optional): A comment for the PPK element.
+    """
+    typeof = "internal_ppk"
+
+    def __init__(self, **kwargs):
+        super(InternalPPK, self).__init__(**kwargs)
+
+    @property
+    def name(self):
+        """
+        The name of the Internal PPK element. This is a read-only property.
+        :rtype: str
+        """
+        return self.data.data['name']
+
+    @property
+    def primary_ppk_id(self):
+        """
+        The primary PPK ID. This is a read-only property.
+        :rtype: int
+        """
+        return self.data.data['primary_ppk_id']
+
+    @property
+    def secondary_ppk_id(self):
+        """
+        The secondary PPK ID. This is a read-only property.
+        :rtype: int
+        """
+        return self.data.data.get('secondary_ppk_id')
+
+    def generate_secondary(self):
+        """
+        Generates a secondary PPK ID and secret for the internal PPK element.
+        This method is used to create a secondary PPK for redundancy or backup purposes.
+        """
+        return self.make_request(
+            resource="generate",
+            raw_result=True,
+            method="update"
+        )
+
+    def swap(self):
+        """:
+        Swap the primary and secondary PPK IDs and secrets for the internal PPK element.
+        This method is used to change the active PPK for redundancy or backup purposes.
+        """
+        return self.make_request(
+            resource="swap",
+            raw_result=True,
+            method="update"
+        )

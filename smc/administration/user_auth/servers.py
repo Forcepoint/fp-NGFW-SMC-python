@@ -395,7 +395,7 @@ class ActiveLdapServerMixin(Element, MultiContactServer):
             protocol="ldap",
             tls_profile=None,
             tls_identity=None,
-            domain_controller=None,
+            domain_controller=[],
             supported_method=None,
             timeout=10,
             max_search_result=0,
@@ -513,9 +513,6 @@ class ActiveLdapServerMixin(Element, MultiContactServer):
         }
         if third_party_monitoring:
             json.update(third_party_monitoring=third_party_monitoring.data)
-
-        for obj_class in ("group_object_class", "user_object_class"):
-            json[obj_class] = kwargs.pop(obj_class, [])
 
         if protocol in ("ldaps", "ldap_tls"):
             if not tls_profile:

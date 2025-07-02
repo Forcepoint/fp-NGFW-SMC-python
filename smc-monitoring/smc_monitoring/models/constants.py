@@ -25,9 +25,7 @@ class LogField:
 
     TIMESTAMP = 1  #: Time of creating the event record.
     LOGID = 2  #: Data Identifier
-    COMPID = 3  #: The identifier of the creator of the log entry.
-    NODEID = 4  #: Firewall or server node that passes this information
-    SENDER = 5  #: None
+    NODEID = 4  #: IPv4 value of the sender. In filter expressions it handles also Firewall or server node that passes this information.
     EVENT = 6  #: Logged event
     SRC = 7  #: Connection source IP address
     DST = 8  #: Connection destination IP address

@@ -75,7 +75,6 @@ class TCPService(ProtocolAgentMixin, Element):
         :return: instance with meta
         :rtype: TCPService
         """
-        max_dst_port = max_dst_port if max_dst_port is not None else ""
         json = {
             "name": name,
             "min_dst_port": min_dst_port,
@@ -136,7 +135,6 @@ class UDPService(ProtocolAgentMixin, Element):
         :return: instance with meta
         :rtype: UDPService
         """
-        max_dst_port = max_dst_port if max_dst_port is not None else ""
         json = {
             "name": name,
             "min_dst_port": min_dst_port,

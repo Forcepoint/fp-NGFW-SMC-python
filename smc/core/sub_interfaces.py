@@ -21,7 +21,7 @@ All sub interfaces are type dict.
 import ipaddress
 
 from smc.base.structs import NestedDict, BaseIterable
-from smc.api.exceptions import EngineCommandFailed
+from smc.api.exceptions import EngineCommandFailed, UpdateElementFailed
 
 
 def get_sub_interface(typeof):
@@ -533,9 +533,10 @@ class LoopbackClusterInterface(ClusterVirtualInterface):
 
         :rtype: LoopbackClusterInterface
         """
+        mask = 32 if ipaddress.ip_address(address).version == 4 else 128
         return super(LoopbackClusterInterface, cls).create(
             address=address,
-            network_value="{}/32".format(address),
+            network_value="{}/{}".format(address, mask),
             interface_id="Loopback Interface",
             ospfv2_area_ref=ospf_area,
             **kwargs
@@ -619,11 +620,12 @@ class LoopbackInterface(NodeInterface):
 
     @classmethod
     def create(cls, address, rank=1, nodeid=1, ospf_area=None, **kwargs):
+        mask = 32 if ipaddress.ip_address(address).version == 4 else 128
         return super(LoopbackInterface, cls).create(
             interface_id="Loopback Interface",
             rank=rank,
             address=address,
-            network_value="{}/32".format(address),
+            network_value="{}/{}".format(address, mask),
             nodeid=nodeid,
             ospfv2_area_ref=ospf_area,
             **kwargs
@@ -722,7 +724,8 @@ class LoopbackInterface(NodeInterface):
         self._engine.update()
 
     def change_ipaddress(self, address):
-        self.update(address=address, network_value="{}/32".format(address))
+        mask = 32 if ipaddress.ip_address(address).version == 4 else 128
+        self.update(address=address, network_value="{}/{}".format(address, mask))
 
     def __repr__(self):
         return "LoopbackInterface(address={}, nodeid={}, rank={})".format(

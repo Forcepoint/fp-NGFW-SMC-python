@@ -26,11 +26,10 @@ main packages into a python script:
 
 .. code-block:: python
 
-   import smc.elements
-   import smc.core.engine
-   import smc.core.engines
-   import smc.policy
-   import smc.elements.system
+   from smc import session
+   from smc.administration.system import System
+   from smc.core.engines import Layer3Firewall
+   from smc.policy.layer3 import FirewallPolicy
    
 To remove the package, simply run:
 

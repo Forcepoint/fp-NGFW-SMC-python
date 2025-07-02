@@ -825,7 +825,8 @@ class IPv4Rule(RuleCommon, Rule, SubElement):
         "forward_vpn",
         "blacklist",
         "block_list",
-        "forced_next_hop"
+        "forced_next_hop",
+        "explicit_proxy_jump"
     )
 
     def create(

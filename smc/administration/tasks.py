@@ -25,6 +25,7 @@ An example of using a task poller when uploading an engine policy
         poller.wait(5)
         print("Task Progress {}%".format(poller.task.progress))
     print(poller.last_message())
+    assert poller.is_success(), logging.error("Timeout error during policy upload")
 
 """
 import re
@@ -420,6 +421,15 @@ class TaskOperationPoller(object):
         """
         if self._thread is not None and self._thread.isAlive():
             self._done.set()
+
+    def is_success(self):
+        """
+        Check if the task was successful and not in progress.
+        complete done method since we can be in timeout
+
+        :rtype: bool
+        """""
+        return not self._task.data.data['in_progress'] and self._task.success
 
 
 class DownloadTask(TaskOperationPoller):

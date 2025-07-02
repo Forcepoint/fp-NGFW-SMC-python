@@ -539,6 +539,20 @@ class Action(ActionMixin):
         self.update(sub_policy=element_resolver(value))
 
     @property
+    def explicit_proxy_sub_policy(self):
+        """
+        Explicit Proxy Sub policy is used when ``action=explicit_proxy_jump``.
+
+        :rtype: FirewallSubPolicy
+        """
+        if "sub_policy" in self:
+            return Element.from_href(self.get("explicit_proxy_sub_policy"))
+
+    @explicit_proxy_sub_policy.setter
+    def explicit_proxy_sub_policy(self, value):
+        self.update(explicit_proxy_sub_policy=element_resolver(value))
+
+    @property
     def valid_block_lister(self):
         """
         Used when ``action=block_list``.

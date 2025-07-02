@@ -64,6 +64,7 @@ To view any available update packages:
 .. code-block:: python
    
 	from smc.administration.system import System
+
 	system = System()
     available_packages = system.update_package() 
     print(list(available_packages))

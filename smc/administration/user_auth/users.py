@@ -276,31 +276,29 @@ class LdapUser(UserElement):
 
     @classmethod
     def create(
-            cls, ldap_domain: Browseable, name, comment=None,
+            cls, ldap_domain: Browseable, dn: str, **kwargs
     ):
         """
         Create an LDAP user for an LDAP server that is not browsed.
-        Add a user example::
+        You can also provide additional kwargs documented in the example below.
+        Example::
 
-            LdapUser.create(name='foo', comment='my comment')
+            LdapUserGroup.create(dn='ou=group1,dc=test,dc=forcepoint,dc=com',name='group1', comment='my comment')
 
-        :param str name: name of user that is displayed in SMC
-        :param ExternalLdapUserDomain ldap_domain: the user_domain where this user is created.
-        :param str comment: optional comment
+        :param str dn: full DN of user group. Parent group must exist.
+        :param ExternalLdapUserDomain ldap_domain: the user_domain where this group is created.
         :rtype: LdapUser
         """
-        ldap_server = ldap_domain.ldap_server[0]
         json = {
-            "name": name,
-            "comment": comment,
             "user_domain": ldap_domain.href,
-            "unique_id": "cn={},{},domain={}".format(name, ldap_server.base_dn, ldap_domain.name),
+            "unique_id": "{},domain={}".format(dn, ldap_domain.name),
         }
+        json.update(kwargs)
 
         return ElementCreator(cls, json)
 
 
-class LdapUserGroup(UserElement):
+class LdapUserGroup(Browseable, UserElement):
     """
     This represents an LDAP User Group defined on an external LDAP server that
     SMC doesn't browse. So the user group is defined inside SMC, to match element in LDAP.
@@ -313,26 +311,25 @@ class LdapUserGroup(UserElement):
 
     @classmethod
     def create(
-            cls, ldap_domain: Browseable, name, comment=None,
+            cls, ldap_domain: Browseable, dn: str, **kwargs
     ):
         """
         Create an LDAP user group for an LDAP server that is not browsed.
+        You can also provide additional kwargs documented in the example below.
         Example::
 
-            LdapUserGroup.create(name='foo', comment='my comment')
+            LdapUserGroup.create(dn='ou=group1,dc=test,dc=forcepoint,dc=com',name='group1', comment='my comment')
 
-        :param str name: name of user group that is displayed in SMC
+        :param str dn: full DN of user group. Parent group must exist.
+        :param str name: optional name of user group that is displayed in SMC. Computed from DN if not specified.
         :param ExternalLdapUserDomain ldap_domain: the user_domain where this group is created.
-        :param str comment: optional comment
         :rtype: LdapUserGroup
         """
-        ldap_server = ldap_domain.ldap_server[0]
         json = {
-            "name": name,
-            "comment": comment,
             "user_domain": ldap_domain.href,
-            "unique_id": "cn={},{},domain={}".format(name, ldap_server.base_dn, ldap_domain.name),
+            "unique_id": "{},domain={}".format(dn, ldap_domain.name),
         }
+        json.update(kwargs)
 
         return ElementCreator(cls, json)
 

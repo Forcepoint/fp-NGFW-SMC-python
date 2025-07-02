@@ -25,9 +25,9 @@ documentation: :ref:`element-reference-label`
 
 * *DomainName*
 
-* *IPList* (SMC API >= 6.1)
+* *IPList* (SMC API >= 7.1)
 
-* *URLListApplication* (SMC API >= 6.1)
+* *URLListApplication* (SMC API >= 7.1)
 
 * *Zone*
 
@@ -119,12 +119,12 @@ Modifying a service element after reviewing the element cache::
 	...
 	>>> pprint(vars(service.data))
 	{u'key': 3551,
-	 u'link': [{u'href': u'http://172.18.1.150:8082/6.2/elements/tcp_service/3551',
+	 u'link': [{u'href': u'http://172.18.1.150:8082/7.1/elements/tcp_service/3551',
 	            u'rel': u'self',
 	            u'type': u'tcp_service'},
-	           {u'href': u'http://172.18.1.150:8082/6.2/elements/tcp_service/3551/export',
+	           {u'href': u'http://172.18.1.150:8082/7.1/elements/tcp_service/3551/export',
 	            u'rel': u'export'},
-	           {u'href': u'http://172.18.1.150:8082/6.2/elements/tcp_service/3551/search_category_tags_from_element',
+	           {u'href': u'http://172.18.1.150:8082/7.1/elements/tcp_service/3551/search_category_tags_from_element',
 	            u'rel': u'search_category_tags_from_element'}],
 	 u'min_dst_port': 9090,
 	 u'name': u'aservice',
@@ -133,16 +133,16 @@ Modifying a service element after reviewing the element cache::
 	 ...
 	>>> service.data['min_dst_port'] = 9091
 	>>> service.update()	# Submit to SMC, cache is refreshed
-	'http://172.18.1.150:8082/6.2/elements/tcp_service/3551'
+	'http://172.18.1.150:8082/7.1/elements/tcp_service/3551'
 	...
 	>>> pprint(vars(service.data))
 	{u'key': 3551,
-	 u'link': [{u'href': u'http://172.18.1.150:8082/6.2/elements/tcp_service/3551',
+	 u'link': [{u'href': u'http://172.18.1.150:8082/7.1/elements/tcp_service/3551',
 	            u'rel': u'self',
 	            u'type': u'tcp_service'},
-	           {u'href': u'http://172.18.1.150:8082/6.2/elements/tcp_service/3551/export',
+	           {u'href': u'http://172.18.1.150:8082/7.1/elements/tcp_service/3551/export',
 	            u'rel': u'export'},
-	           {u'href': u'http://172.18.1.150:8082/6.2/elements/tcp_service/3551/search_category_tags_from_element',
+	           {u'href': u'http://172.18.1.150:8082/7.1/elements/tcp_service/3551/search_category_tags_from_element',
 	            u'rel': u'search_category_tags_from_element'}],
 	 u'min_dst_port': 9091,
 	 u'name': u'aservice',

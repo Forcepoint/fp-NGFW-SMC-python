@@ -48,7 +48,7 @@ from smc.base.collection import sub_collection
 from smc.base.model import SubElement, Element, ElementCreator
 from smc.base.util import millis_to_utc, extract_self, element_resolver
 from smc.compat import is_api_version_less_than, \
-    is_smc_version_less_than
+    is_smc_version_less_than, is_smc_version_more_than_or_equal
 from smc.elements.other import prepare_blacklist
 from smc.elements.other import prepare_block_list
 from smc.core.session_monitoring import SessionMonitoringResult
@@ -597,36 +597,53 @@ class System(SubElement):
             self,
             filename="export_ldif_elements.zip",
             timeout=5,
-            max_tries=36
+            max_tries=36,
+            ldap_domain: str | None = None
     ):
         """
         Export internal LDAP elements in LDIF format from SMC.
 
         :param filename: Name of file for export
+        :param str | None ldap_domain: optional name of domain where LDAP entries will be imported. Default is InternalDomain.
+        It can be used to specify an External LDAP Domain where browse_ldap_automatically is false.
         :raises TaskRunFailed: failure during export with reason
         :rtype: DownloadTask
         """
+        params = {}
+
+        if ldap_domain is not None and is_smc_version_more_than_or_equal("7.3"):
+            params["ldap_domain"] = ldap_domain
+
         return Task.download(
             self,
             "export_ldif_elements",
             filename,
             timeout=timeout,
+            params=params,
             max_tries=max_tries
         )
 
-    def import_ldif_elements(self, filename):
+    def import_ldif_elements(self, filename, ldap_domain: str | None = None):
         """
         Import LDIF elements into SMC. Specify the fully qualified path
         to the import ldif file.
 
         :param str filename: LDIF file containing internal LDAP entries
+        :param str | None ldap_domain: optional name of domain where LDAP entries will be imported. Default is InternalDomain.
+        It can be used to specify an External LDAP Domain where browse_ldap_automatically is false.
         :raises: ActionCommandFailed
         :return: None
         """
+        params = {}
+
+        if ldap_domain is not None and is_smc_version_more_than_or_equal("7.3"):
+            params["ldap_domain"] = ldap_domain
+
         import_ldif_follower = Task(
             self.make_request(
                 method="create",
                 resource="import_ldif_elements",
+                params=params,
                 files={"import_file": open(filename, "rb")}
             )
         )
@@ -635,10 +652,11 @@ class System(SubElement):
         while in_progress is True:
             time.sleep(1)
             logger.info("LDIF import task progress: {}%".format(progress))
-            in_progress = import_ldif_follower.update_status().data.in_progress
-            progress = import_ldif_follower.update_status().progress
-            succeed = import_ldif_follower.update_status().success
-            last_message = import_ldif_follower.update_status().last_message
+            status = import_ldif_follower.update_status()
+            in_progress = status.data.in_progress
+            progress = status.progress
+            succeed = status.success
+            last_message = status.last_message
 
         if not succeed:
             logger.error("LDIF Import task failed: {}".format(last_message))

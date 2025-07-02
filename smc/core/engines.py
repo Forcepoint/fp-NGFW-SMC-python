@@ -885,9 +885,6 @@ class VirtualIPS(IPS):
     def create(
         cls,
         name,
-        mgmt_ip,
-        mgmt_network,
-        mgmt_interface=0,
         inline_interface="1-2",
         logical_interface="default_eth",
         log_server_ref=None,
@@ -907,9 +904,6 @@ class VirtualIPS(IPS):
         Create a single IPS engine with management interface and inline pair
 
         :param str name: name of ips engine
-        :param str mgmt_ip: ip address of management interface
-        :param str mgmt_network: management network in cidr format
-        :param int mgmt_interface: (optional) interface for management from SMC to engine
         :param str inline_interface: interfaces to use for first inline pair
         :param str logical_interface: name, str href or LogicalInterface (created if it
             doesn't exist)
@@ -940,22 +934,6 @@ class VirtualIPS(IPS):
         }
 
         interfaces.append({"physical_interface": Layer2PhysicalInterface(**l2)})
-
-        layer3 = {
-            "interface_id": mgmt_interface,
-            "zone_ref": zone_ref,
-            "interfaces": [
-                {"nodes": [{"address": mgmt_ip, "network_value": mgmt_network, "nodeid": 1}]}
-            ],
-        }
-
-        interfaces.append(
-            {
-                "virtual_physical_interface": Layer3PhysicalInterface(
-                    primary_mgt=mgmt_interface, **layer3
-                )
-            }
-        )
 
         nodes_definition = []
         if node_definition:

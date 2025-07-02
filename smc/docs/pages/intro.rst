@@ -13,7 +13,7 @@ to the individual devices.
 
 Current versions are validated using:
 
-* Forcepoint NGFW Management Center >=6.0
+* Forcepoint NGFW Management Center >= 6.10
 * Python >= 3.5
 * Requests >= 2.31.0
 * Websocket-client >= 1.5.0

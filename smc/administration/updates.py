@@ -33,7 +33,7 @@ class PackageMixin(object):
         """
         return Task.execute(self, "download", timeout=timeout, wait_for_finish=wait_for_finish)
 
-    def activate(self, resource=None, force_upgrade=False, timeout=3, wait_for_finish=False):
+    def activate(self, resource=None, force_upgrade=False, timeout=5, wait_for_finish=False):
         """
         Activate this package on the SMC
 

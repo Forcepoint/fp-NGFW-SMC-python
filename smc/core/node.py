@@ -218,6 +218,37 @@ class Node(SubElement):
                specified node
         :param str time_zone: optional time zone to set on the specified node
         :param str keyboard: optional keyboard to set on the specified node
+          Following values are supported:
+            "Belgium"->"i386/azerty/be-latin1"
+            "French"->"i386/azerty/fr-latin1"
+            "Dvorak"->"i386/dvorak/dvorak"
+            "Bulgarian Cyrillic"->"i386/qwerty/bg"
+            "Brazilian (ABNT2 layout)"->"i386/qwerty/br-abnt2"
+            "Brazilian (EUA layout)"->"i386/qwerty/br-latin1"
+            "French Canadian"->"i386/qwerty/cf"
+            "Czech"->"i386/qwerty/cz-lat2"
+            "Danish"->"i386/qwerty/dk-latin1"
+            "Spanish"->"i386/qwerty/es"
+            "Finnish"->"i386/qwerty/fi-latin1"
+            "Greek"->"i386/qwerty/gr"
+            "Hebrew"->"i386/qwerty/hebrew"
+            "Iceland"->"i386/qwerty/is-latin1"
+            "Italian"->"i386/qwerty/it"
+            "Japanese"->"i386/qwerty/jp106"
+            "Norway"->"i386/qwerty/no-latin1"
+            "Polish"->"i386/qwerty/pl"
+            "Portuguese"->"i386/qwerty/pt-latin1"
+            "Russian"->"i386/qwerty/ru"
+            "Swedish"->"i386/qwerty/se-latin1"
+            "Slovak"->"i386/qwerty/sk-qwerty"
+            "Turkish Q"->"i386/qwerty/trq"
+            "United Kingdom"->"i386/qwerty/uk"
+            "English"->"i386/qwerty/uk"
+            "US English"->"i386/qwerty/us"
+            "Croatian"->"i386/qwertz/croat"
+            "German"->"i386/qwertz/de-latin1-nodeadkeys"
+            "Hungarian"->"i386/qwertz/hu"
+            "Slovene"->"i386/qwertz/slovene"
         :param bool install_on_server: optional flag to know if the generated
             configuration needs to be installed on SMC Install server
             (POS is needed)
@@ -233,13 +264,11 @@ class Node(SubElement):
             method="create",
             raw_result=True,
             resource="initial_contact",
-            params={"enable_ssh": enable_ssh},
+            params={"enable_ssh": enable_ssh, "time_zone": time_zone, "keyboard": keyboard,
+                    "install_on_server": install_on_server, "export_to_base64": as_base64},
         )
 
         if result.content:
-            if as_base64:
-                result.content = b64encode(result.content)
-
             if filename:
                 try:
                     save_to_file(filename, result.content)
@@ -334,6 +363,12 @@ class Node(SubElement):
             return ApplianceInfo(**result.data["appliance_info"])
         else:
             raise NodeCommandFailed("Appliance information is not available on this engine")
+
+    def update_proof_of_serial(self, proof_of_serial):
+        """
+        Update the proof_of_serial if the node is not CONFIGURED or INSTALLED.
+        """
+        self.data["appliance_info"]["proof_of_serial"] = proof_of_serial
 
     def status(self):
         """

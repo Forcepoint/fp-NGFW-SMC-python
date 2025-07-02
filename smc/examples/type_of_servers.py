@@ -143,7 +143,7 @@ def delete(element_type, element_name):
                 element_type(element_name).delete()
                 break
             except DeleteElementFailed as e:
-                logging.info("Error while deleting element: {} will retry".format(e))
+                logging.info(f"Error while deleting element: [{e}]; will retry")
                 time.sleep(2)
                 retry -= 1
     else:
