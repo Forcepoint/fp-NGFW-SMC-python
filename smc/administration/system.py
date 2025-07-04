@@ -598,7 +598,7 @@ class System(SubElement):
             filename="export_ldif_elements.zip",
             timeout=5,
             max_tries=36,
-            ldap_domain: str | None = None
+            ldap_domain=None
     ):
         """
         Export internal LDAP elements in LDIF format from SMC.
@@ -623,7 +623,7 @@ class System(SubElement):
             max_tries=max_tries
         )
 
-    def import_ldif_elements(self, filename, ldap_domain: str | None = None):
+    def import_ldif_elements(self, filename, ldap_domain=None):
         """
         Import LDIF elements into SMC. Specify the fully qualified path
         to the import ldif file.
@@ -674,19 +674,35 @@ class System(SubElement):
         """
         self.make_request(method="delete", resource="active_alerts_ack_all")
 
-    def import_elements(self, import_file):
+    def import_elements(self, import_file, import_only_new=False, restoration=True, timeout= None, file_password=None):
         """
         Import elements into SMC. Specify the fully qualified path
         to the import file.
 
         :param str import_file: system level path to file
+        :param bool import_only_new: if true the import will create only new elements
+        and ignore all others
+        :param bool restoration: if true the import will be in restoration mode
+        (E.g. default resolution method for policies is IMPORT instead of RENAME)
+        :param int timeout: to specify timeout in minutes we can wait before resolving conflict
+        and ignore all others
+        :param str file_password: password to decrypt the given xml file (if encrypted)
         :raises: ActionCommandFailed
         :return: None
         """
+        params = {
+            "import_only_new": import_only_new,
+            "restoration": restoration
+        }
+        if timeout:
+            params.update(timeout=timeout)
+        if file_password:
+            params.update(file_password=file_password)
         import_follower = Task(
             self.make_request(
                 method="create",
                 resource="import_elements",
+                params=params,
                 files={"import_file": open(import_file, "rb")}
             )
         )

@@ -56,7 +56,7 @@ Or after cloning:
 ``python setup.py install``
 
 Examples
--------
+--------
 
 Included are a variety of test example scripts that leverage the API to
 do various tasks in `smc/examples <https://github.com/Forcepoint/fp-NGFW-SMC-python/tree/master/smc/examples>`__ directory
