@@ -185,7 +185,16 @@ class ExternalLdapUserDomain(Browseable, Element):
     auth_method = ElementRef("auth_method")
 
     @classmethod
-    def create(cls, name, ldap_server, isdefault=False, auth_method=None, comment=None, browse_ldap_automatically=True):
+    def create(
+            cls,
+            name,
+            ldap_server,
+            isdefault=False,
+            auth_method=None,
+            comment=None,
+            browse_ldap_automatically=True,
+            additional_username_suffix=None
+    ):
         """
         Create an External LDAP user domain. These are used as containers for
         retrieving user and groups from the configured LDAP server/s. If you
@@ -203,6 +212,8 @@ class ExternalLdapUserDomain(Browseable, Element):
         :param str comment: optional comment
         :param bool browse_ldap_automatically: set to False if this domain is not browsed automatically by SMC
         to retrieve users.
+        :param list(dict) additional_username_suffix: list of dicts of suffixes
+         eg. [{name: example.com},...]
         :raises CreateElementFailed: failed to create
         :rtype: ExternalLdapUserDomain
         """
@@ -216,6 +227,12 @@ class ExternalLdapUserDomain(Browseable, Element):
         # browse_ldap_automatically default value is True. Set it only if different.
         if not browse_ldap_automatically and is_smc_version_more_than_or_equal("7.3"):
             json.update(browse_ldap_automatically=browse_ldap_automatically)
+        # UPN feature Add additional_username_suffix only if SMC version >= 7.4.0 and value is provided
+        if (
+                additional_username_suffix is not None
+                and is_smc_version_more_than_or_equal("7.4.0")
+        ):
+            json.update(additional_username_suffix=additional_username_suffix)
 
         return ElementCreator(
             cls,

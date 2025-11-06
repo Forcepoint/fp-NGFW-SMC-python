@@ -25,6 +25,7 @@ sys.path.append('../../')  # smc-python
 from smc import session  # noqa
 from smc.api.exceptions import UnsupportedAlertChannel  # noqa
 from smc.elements.alerts import AlertChain  # noqa
+from smc.compat import is_api_version_more_than_or_equal, is_smc_version_equal  # noqa
 
 period = 60
 update_period = 120
@@ -70,12 +71,21 @@ def main():
         logging.info(f"Alert chain is created successfully with name: {alert_chain_name}")
         alert_chain_obj.update(final_action='redirect', alert_chain_ref=existing_alert_chain.href)
         expected_exception = False
+        first_section = None
+        higher_than_6_10 = is_api_version_more_than_or_equal('7.1')
+        is_smc_7_3_0 = is_smc_version_equal("7.3.0")
+        add_before_add_section_allowed = higher_than_6_10 and not is_smc_7_3_0
+        if add_before_add_section_allowed:
+            first_section = alert_chain_obj.add_rule_section("first_section")
         # add alert chain rule
-        alert_chain_obj.add_alert_chain_rule(rule_name_template.format(channel1),
-                                             alert_channel=channel1,
-                                             comment=comment_msg.format(channel1),
-                                             notify_first_block=notify_first_block, period=period,
-                                             amount=amount)
+        first_rule = alert_chain_obj.add_alert_chain_rule(rule_name_template.format(channel1),
+                                                          alert_channel=channel1,
+                                                          comment=comment_msg.format(channel1),
+                                                          notify_first_block=notify_first_block,
+                                                          period=period,
+                                                          amount=amount,
+                                                          after=first_section.tag
+                                                          if add_before_add_section_allowed else None)
         logging.info(
             f"Added alert chain rule : {rule_name_template.format(channel1)} "
             f"to alert chain : {alert_chain_name}")
@@ -83,7 +93,9 @@ def main():
                                              alert_channel=channel2,
                                              comment=comment_msg.format(channel2),
                                              notify_first_block=notify_first_block, period=period,
-                                             amount=amount)
+                                             amount=amount,
+                                             before=first_rule.tag
+                                             if add_before_add_section_allowed else None)
         logging.info(
             f"Added alert chain rule : {rule_name_template.format(channel2)} "
             f"to alert chain : {alert_chain_name}")
@@ -92,16 +104,22 @@ def main():
                                              comment=comment_msg.format(channel3),
                                              notify_first_block=notify_first_block,
                                              period=period,
-                                             amount=amount)
+                                             amount=amount,
+                                             add_pos=1
+                                             if add_before_add_section_allowed else None)
         logging.info(
             f"Added alert chain rule : {rule_name_template.format(channel3)} "
             f"to alert chain : {alert_chain_name}")
-        alert_chain_obj.add_alert_chain_rule(rule_name_template.format(channel4),
-                                             alert_channel=channel4,
-                                             comment=comment_msg.format(channel4))
+        channel4_rule = alert_chain_obj.add_alert_chain_rule(rule_name_template.format(channel4),
+                                                             alert_channel=channel4,
+                                                             comment=comment_msg.format(channel4))
         logging.info(
             f"Added alert chain rule : {rule_name_template.format(channel4)} "
             f"to alert chain : {alert_chain_name}")
+        second_section = None
+        if add_before_add_section_allowed:
+            second_section = alert_chain_obj.add_rule_section("second_section",
+                                                              before=channel4_rule.tag)
         alert_chain_obj.add_alert_chain_rule(rule_name_template.format(channel5),
                                              comment=comment_msg.format(channel5))
         logging.info(

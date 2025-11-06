@@ -1748,6 +1748,79 @@ class PhysicalInterface(Interface):
         """
         return self.data.get("arp_entry")
 
+    def set_sync_parameter(self, sync_mode, full_sync_interval, incr_sync_interval,
+                           sync_security, statesync_group_ip, heartbeat_group_ip):
+        """
+        Set SYNC parameter settings this physical interface.
+        ::
+
+            interface = engine.physical_interface.get(0)
+            interface.set_sync_parameter(
+                sync_mode='sync_all',
+                full_sync_interval=3000,
+                incr_sync_interval=50,
+                sync_security='sign',
+                statesync_group_ip='225.1.1.2',
+                heartbeat_group_ip='225.1.1.1')
+            interface.save()
+
+        :param str sync_mode: defines how the nodes exchange information about the traffic
+         that they process:
+          - sync_all: (recommended) Both full and incremental synchronization messages
+          are sent. This allows frequent updates without consuming resources excessively. Regular
+          full synchronization ensures that all nodes stay synchronized even if some incremental
+          messages are not delivered.
+          - sync_full: (not recommended) Only full synchronization messages are sent.
+          Incremental updates are not sent in between, so nodes may not have the same information
+          on connections unless the full sync interval is significantly reduced.
+          Note! We strongly recommend using Access rule options to disable state synchronization
+          for specific traffic rather than adjusting the State Sync settings for the cluster.
+        :param int full_sync_interval: The Full Synchronization Interface value (in milliseconds):
+         Define how frequently the full synchronizations are done. Do not set the
+         values much higher or lower than their defaults (5000 ms for full)
+         Caution! Adjusting the Sync Intervals has significant impact on the cluster’s
+         performance. Inappropriate settings seriously degrade the firewall’s performance.
+        :param int incr_sync_interval: The Incremental Synchronization Interface
+         value (in milliseconds): Define how frequently the incremental synchronizations are done.
+         Do not set the values much higher or lower than their defaults (50 ms for incremental)
+         Caution! Adjusting the Sync Intervals has significant impact on the cluster’s
+         performance. Inappropriate settings seriously degrade the firewall’s performance.
+        :param str sync_security: The Sync Security Interface value:
+          - none: no security features. Do not select this options unless the heartbeat
+          traffic uses a dedicated, secure network that does not handle other traffic.
+          - sign: (default) transmissions are authenticated to prevent outside
+          injections of connection state information.
+          - encrypt: transmissions are authenticated and encrypted. This option
+          increases the overhead compared to the default option, but is strongly
+          recommended if the node-to-node communications are relayed through insecure networks
+          (for example, if the backup heartbeat is configured on an interface that handles
+          other traffic).
+        :param str statesync_group_ip: an IP address between 224.0.0.0 and 239.255.255.255 if
+         you want to change the multicast IP addresses used for node-to-node communications
+         (default: 225.1.1.2). This multicast IP address must not be used for other purposes
+         on any of the network interfaces.
+        :param str heartbeat_group_ip: an IP address between 224.0.0.0 and 239.255.255.255 if
+         you want to change the multicast IP addresses used for node-to-node communications
+         (default: 225.1.1.1). This multicast IP address must not be used for other purposes
+         on any of the network interfaces.
+        :return: None
+        """
+        self.data["sync_parameter"] = { 'sync_mode': sync_mode,
+                                        'full_sync_interval': full_sync_interval,
+                                        'incr_sync_interval': incr_sync_interval,
+                                        'sync_security': sync_security,
+                                        'statesync_group_ip': statesync_group_ip,
+                                        'heartbeat_group_ip': heartbeat_group_ip }
+
+    @property
+    def sync_parameter(self):
+        """
+        Return Sync Paramerer settings for this physical interface
+
+        :return: sync parameter as dict
+        """
+        return self.data.get("sync_parameter", {})
+
     @property
     def mtu(self):
         """

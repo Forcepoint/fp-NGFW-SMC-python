@@ -226,6 +226,7 @@ class WebApp(NestedDict):
                standalone_enabled=False,
                web_app_identifier=None,
                host_name=None,
+               saml_settings=None,
                ):
         """
         :param bool enabled: If the Web Application is enabled or not.
@@ -243,6 +244,7 @@ class WebApp(NestedDict):
             in SMC Download pages (SMC Downloads has to be enabled )
         :param str web_app_identifier: The Web Application Identifier.
         :param str host_name: The Web Application host name, null if none.
+        :param list of SamlSettings: the list of SAML Settings.
         """
         web_app_data = {
             "enabled": enabled,
@@ -258,6 +260,10 @@ class WebApp(NestedDict):
             "standalone_enabled": standalone_enabled,
             "web_app_identifier": web_app_identifier
         }
+        if (saml_settings and isinstance(saml_settings, list)):
+            web_app_data["saml_settings"] = [
+                s.data for s in saml_settings
+            ]
         return cls(web_app_data)
 
     @property
@@ -303,6 +309,24 @@ class WebApp(NestedDict):
     @property
     def web_app_identifier(self):
         return self.data.get("web_app_identifier")
+
+    @property
+    def saml_settings(self):
+        """
+        Represents the SAML settings.
+        :rtype: list(SamlSettings):
+        """
+        return [SamlSettings(data) for data in self.data.get("saml_settings", [])]
+
+    def get_saml_settings_from_usage(self, usage):
+        """
+        Get SAML settings by usage type.
+
+        :param str usage: the usage type of SAML settings
+        :return: SamlSettings object or None if not found
+        :rtype: SamlSettings or None
+        """
+        return next((s for s in self.saml_settings if s.usage == usage), None)
 
 
 class TlsSettings(NestedDict):
@@ -739,6 +763,38 @@ class ManagementServer(ContactAddressMixin, Element, ManagementLogServerMixin):
         :rtype: list(WebApp):
         """
         return [WebApp(data) for data in self.data.get("web_app")]
+
+    def get_web_app_by_identifier(self, webapp_name):
+        """
+        Retrieves the WebApp by its identifier. None otherwise.
+        """
+        return next((w for w in self.web_app if w.web_app_identifier == webapp_name), None)
+
+    def configure_saml_on_web_app(self, webapp_name, saml_settings_entries):
+        """
+        Configure SAML settings on a WebApp by its identifier.
+        :param str webapp_name: the identifier of the WebApp
+        :param list of SamlSettings saml_settings or None: the list of SAML Settings to configure.
+        If None, it will disable the SAML settings for the WebApp.
+        :return: None
+        :raises ValueError: if the WebApp with the given identifier is not found.
+        """
+        web_app = self.get_web_app_by_identifier(webapp_name)
+        if web_app:
+            saml_usage = "web_access"
+            new_saml_settings_entries = [s for s in web_app.data.get("saml_settings", []) if
+                                         s.get("usage") != saml_usage]
+
+            if saml_settings_entries:
+                for entry in saml_settings_entries:
+                    entry["saml_setting_usage"] = saml_usage
+                    new_saml_settings_entries.append(entry)
+            web_app.data["enable_saml_for_web_access"] = (saml_settings_entries is not None
+                                                          and len(saml_settings_entries) > 0)
+            web_app.data["saml_settings"] = new_saml_settings_entries
+            web_app.update()
+        else:
+            raise ValueError(f"WebApp with identifier {webapp_name} not found.")
 
     @property
     def updates_check_enabled(self):
@@ -2263,6 +2319,46 @@ class WebAccessServer(AbstractWebServer):
     """
     typeof = "web_access_server"
 
+    @property
+    def web_app(self):
+        """
+        Represents a Web Application parameter.
+        :rtype: list(WebApp):
+        """
+        return [WebApp(data) for data in self.data.get("web_app")]
+
+    def get_web_app_by_identifier(self, webapp_name):
+        """
+        Retrieves the WebApp by its identifier. None otherwise.
+        """
+        return next((w for w in self.web_app if w.web_app_identifier == webapp_name), None)
+
+    def configure_saml_on_web_app(self, webapp_name, saml_settings_entries):
+        """
+        Configure SAML settings on a WebApp by its identifier.
+        :param str webapp_name: the identifier of the WebApp
+        :param list of SamlSettings saml_settings or None: the list of SAML Settings to configure.
+        If None, it will disable the SAML settings for the WebApp.
+        :return: None
+        :raises ValueError: if the WebApp with the given identifier is not found.
+        """
+        web_app = self.get_web_app_by_identifier(webapp_name)
+        if web_app:
+            saml_usage = "web_access"
+            new_saml_settings_entries = [s for s in web_app.data.get("saml_settings", []) if
+                                         s.get("usage") != saml_usage]
+
+            if saml_settings_entries:
+                for entry in saml_settings_entries:
+                    entry["saml_setting_usage"] = saml_usage
+                    new_saml_settings_entries.append(entry)
+            web_app.data["enable_saml_for_web_access"] = (saml_settings_entries is not None
+                                                          and len(saml_settings_entries) > 0)
+            web_app.data["saml_settings"] = new_saml_settings_entries
+            web_app.update()
+        else:
+            raise ValueError(f"WebApp with identifier {webapp_name} not found.")
+
 
 class TacacsServer(AuthenticationServerMixin, ContactAddressMixin):
     """
@@ -2608,3 +2704,101 @@ class EpoServer(Element, ContactAddressMixin, IPv6Node):
         :rtype: str
         """
         return self.data.get("epo_login")
+
+
+class SamlSettings(NestedDict):
+    """
+    Represents the SAML Settings for the SMC servers configuring their Web Access or for
+    the L3 engines configuring their user authentication (BBA) or SSL VPN settings.
+    From SMC >= 7.4.0
+    """
+
+    def __init__(self, data):
+        super(SamlSettings, self).__init__(data=data)
+
+    @classmethod
+    def create(cls,
+               saml_method_ref,
+               saml_service_provider_id,
+               saml_tls_credentials_ref=None,
+               saml_name_id_policy_format=None,
+               saml_user_attribute=None,
+               saml_user_name_attr=None,
+               ):
+        """
+        :param AuthenticationMethod saml_method_ref: the SAML Method
+        :param str saml_service_provider_id: the SAML Service Provider Identifier.
+        :param tls.TLSServerCredential saml_tls_credentials_ref: the TLS Server Credentials
+        :param str saml_name_id_policy_format: the SAML NameID Policy Format:
+        - persistent
+        - transient
+        - emailAddress
+        - unspecified.
+        :param str saml_user_attribute: the SAML User Attribute.
+        :param str saml_user_name_attr: The LDAP user name attribute for SAML.
+        """
+        saml_settings_data = {
+            "saml_method_ref": element_resolver(saml_method_ref),
+            "saml_service_provider_id": saml_service_provider_id,
+            "saml_tls_credentials_ref": element_resolver(saml_tls_credentials_ref),
+            "saml_name_id_policy_format": saml_name_id_policy_format,
+            "saml_user_attribute": saml_user_attribute,
+            "saml_user_name_attr": saml_user_name_attr
+        }
+        return cls(saml_settings_data)
+
+    @property
+    def usage(self):
+        """
+        Return SAML Setting Usage:
+        either 'bba' for user authentication settings,
+        either 'ssl_vpn' for SSL VPN Portal settings
+        or 'web_access' for Web Access configuration.
+        """
+        return self.data.get("saml_setting_usage")
+
+    @property
+    def authentication_method(self):
+        """
+        Return the SAML Authentication Method.
+        """
+        return ElementRef(self.data.get("saml_method_ref"))
+
+    @property
+    def service_provider_id(self):
+        """
+        Return the SAML Service Provider Identifier.
+        """
+        return self.data.get("saml_service_provider_id")
+
+    @property
+    def tls_credentials(self):
+        """
+        Return the TLS Server Credentials linked to the SAML Settings.
+        """
+        return ElementRef(self.data.get("saml_tls_credentials_ref")) if self.data.get("saml_tls_credentials_ref") else None
+
+    @property
+    def name_id_policy_format(self):
+        """
+        Return the SAML NameID Policy Format:
+        - persistent
+        - transient
+        - emailAddress
+        - unspecified.
+        """
+        return self.data.get("saml_name_id_policy_format")
+
+    @property
+    def user_attribute(self):
+        """
+        Return the SAML User Attribute.
+        """
+        return self.data.get("saml_user_attribute")
+
+    @property
+    def user_name_attr(self):
+        """
+        Return the LDAP user name attribute for SAML.
+        """
+        return self.data.get("saml_user_name_attr")

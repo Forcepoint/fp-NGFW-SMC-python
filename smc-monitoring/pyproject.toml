@@ -1,0 +1,45 @@
+[build-system]
+requires = [
+    "setuptools",
+    "wheel",
+    "setuptools-scm[toml]",
+]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = 'fp-NGFW-SMC-python-monitoring'
+authors = [
+    {name = "Forcepoint", email = "PSIRT@forcepoint.com"},
+]
+description = "Forcepoint NGFW Management Center Monitoring"
+requires-python = ">=3.5"
+license = {text = "Apache License (2.0)"}
+dynamic = ["version", "readme"]
+dependencies = [
+        "fp_NGFW_SMC_python >= 1.0.21",
+        "websocket-client >=1.5.0",
+]
+classifiers = [
+        "Development Status :: 5 - Production/Stable",
+        "Programming Language :: Python",
+        "Programming Language :: Python :: 3"
+]
+
+
+[tool.setuptools.dynamic]
+version = {attr = "smc_monitoring.__version__"}  # any module attribute compatible with ast.literal_eval
+readme = {file = ["README.rst", "HISTORY.rst"]}
+
+
+[tool.setuptools.packages.find]
+# All the following settings are optional:
+where = ["."]  # ["."] by default
+include = ["smc_monitoring", "smc_monitoring.*"]  # ["*"] by default
+exclude = []  # empty by default
+namespaces = true  # true by default
+
+
+[tool.setuptools]
+include-package-data = true
+license-files = ["LICENSE"]

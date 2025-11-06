@@ -11,18 +11,15 @@
 #  under the License.
 
 import logging
-import threading
 
 from smc.api.session import SessionManager
 from smc.base.util import import_submodules
 
-from .__version__ import __description__, __url__, __version__
-from .__version__ import __author__, __author_email__, __license__
+from .__version__ import  __version__
 
 session_name = None
 manager = SessionManager.create()
 session = manager.get_default_session()
-
 
 def get_session_by_user(user):
     """

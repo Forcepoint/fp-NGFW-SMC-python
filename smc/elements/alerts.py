@@ -15,6 +15,9 @@ Alert element types that can be used as a matching criteria in the rules of an A
 from smc.api.exceptions import AlertChainError, UnsupportedAlertChannel, AlertPolicyError
 from smc.base.model import Element, ElementCreator, SubElement
 from smc.base.util import element_resolver
+from smc.compat import is_api_version_more_than_or_equal, is_smc_version_more_than_or_equal
+from smc.api.exceptions import CreateRuleFailed
+from smc.base.collection import rule_collection
 
 
 class AlertElement(Element):
@@ -117,22 +120,122 @@ class AlertChain(Element):
     def alert_chain_rules(self):
         return [AlertChainRule(**rule) for rule in self.make_request(resource="alert_chain_rules")]
 
+    def add_rule_section(self, name, add_pos=None,
+                         after=None, before=None, background_color=None):
+        return AlertChainRule.create_rule_section(self, self.get_relation("alert_chain_rules"),
+                                                          name, add_pos, after,
+                                                          before, background_color)
+
     def add_alert_chain_rule(self, name, alert_channel=None, destination=None, delay=0,
                              admin_name=[], amount=None, notify_first_block=0, period=0,
-                             comment=None):
-        AlertChainRule.create(self, name, alert_channel, destination, delay, admin_name,
-                              amount, notify_first_block, period, comment)
+                             comment=None, add_pos=None, after=None, before=None, validate=False):
+        return AlertChainRule.create(self, name, alert_channel, destination, delay, admin_name,
+                                             amount, notify_first_block, period, comment, add_pos,
+                                             after, before, validate)
 
 
-class AlertChainRule(SubElement):
+class AlertRuleCommon(object):
+    """
+    Functionality common to all alert rules
+    """
+
+    @property
+    def background_color(self):
+        """
+        Background color in hexadecimal format (#RRGGBB).
+        Applicable for rule section and insert point.
+        """
+        return self.data.get("background_color", None)
+
+    def is_locked(self):
+        """
+        Locked flag for this rule.
+        """
+        return self.data.get("locked", None)
+
+    def lock(self, reason_for=None):
+        """
+        .. Requires SMC version >= 6.10.10 or >= 7.0.2 or >= 7.1.0
+
+        Locks this rule with an optional reason.
+
+        :raises ResourceNotFound: If not running on supported SMC version
+        """
+        if reason_for:
+            return self.make_request(method="update",
+                                     resource="lock",
+                                     params={"reason_for": reason_for})
+        else:
+            return self.make_request(method="update", resource="lock")
+
+    def unlock(self):
+        """
+        .. Requires SMC version >= 6.10.10 or >= 7.0.2 or >= 7.1.0
+
+        Unlocks this rule.
+
+        :raises ResourceNotFound: If not running on supported SMC version
+        """
+        return self.make_request(method="update", resource="unlock")
+
+
+class AlertChainRule(AlertRuleCommon, SubElement):
     """
     This represents a Alert Chain Rule for Alert Chain Policy.
     """
     typeof = "alert_chain_rule"
 
     @staticmethod
+    def create_rule_section(self, rules_href, name, add_pos=None,
+                            after=None, before=None, background_color=None):
+        """
+        Create an alert rule section in an Alert Chain or Alert Policy.
+        To specify a specific numbering position for the rule section, use the `add_pos` field.
+        If no position or before/after is specified, the rule section will be placed
+        at the top which will encapsulate all rules below.
+        Create a rule section for the relavant policy::
+
+            policy = AlertPolicy('mypolicy')
+            policy.alert_rules.create_rule_section(name='attop')
+
+        :param str name: create a rule section by name
+        :param int add_pos: position to insert the rule, starting with position 1.
+            If the position value is greater than the number of rules, the rule is
+            inserted at the bottom. If add_pos is not provided, rule is inserted in
+            position 1. Mutually exclusive with ``after`` and ``before`` params.
+        :param str after: Rule tag to add this rule after. Mutually exclusive with
+            ``add_pos`` and ``before`` params.
+        :param str before: Rule tag to add this rule before. Mutually exclusive with
+            ``add_pos`` and ``after`` params.
+        :param str background_color: the background color of the rule section.
+            in hexadecimal format (#RRGGBB)
+        :raises MissingRequiredInput: when options are specified the need additional
+            setting, i.e. use_vpn action requires a vpn policy be specified.
+        :raises CreateRuleFailed: rule creation failure
+        :return: the created ipv4 rule
+        :rtype: IPv4Rule
+        """
+        params = {}
+        href = AlertChainRule.set_up_positions(self, params, rules_href, add_pos, after, before)
+
+        json = {"comment": name, "alert_channel": None}
+        if (is_api_version_more_than_or_equal("7.1") and
+                is_smc_version_more_than_or_equal("7.1.7") and
+                background_color):
+            json.update(background_color=background_color)
+
+        return ElementCreator(
+            self.__class__,
+            exception=CreateRuleFailed,
+            href=href,
+            params=params,
+            json=json,
+        )
+
+    @staticmethod
     def create(self, name, alert_channel=None, destination=None, delay=0, admin_name=[],
-               amount=None, notify_first_block=0, period=0, comment=None):
+               amount=None, notify_first_block=0, period=0, comment=None, add_pos=None,
+               after=None, before=None, validate=False):
         """
         :param object self: object of AlertChain.
         :param str name: name of alert chain rule.
@@ -153,6 +256,15 @@ class AlertChainRule(SubElement):
         :param int period: The period during which notifications are tracked before activating
         moderation. period need to be mentioned in minutes.
         :param str comment: descript of element.
+        :param int add_pos: position to insert the rule, starting with position 1. If
+            the position value is greater than the number of rules, the rule is inserted at
+            the bottom. If add_pos is not provided, rule is inserted in position 1. Mutually
+            exclusive with ``after`` and ``before`` params.
+        :param str after: Rule tag to add this rule after. Mutually exclusive with ``add_pos``
+            and ``before`` params.
+        :param str before: Rule tag to add this rule before. Mutually exclusive with ``add_pos``
+            and ``after`` params.
+        :param bool validate: validate the rule creation. Default: False
         :raises CreateElementFailed: failed creating element with reason
         :return: instance with meta of alert chain rule
         :rtype: AlertChainRule
@@ -175,12 +287,40 @@ class AlertChainRule(SubElement):
             json.update(amount=amount)
         if destination:
             json.update(destination=destination)
+
+        params = {"validate": False} if not validate else {}
+        href = AlertChainRule.set_up_positions(self, params,
+                                               self.get_relation("alert_chain_rules"),
+                                               add_pos, after, before)
+
         return ElementCreator(
             AlertChainRule,
             exception=AlertChainError,
-            href=self.get_relation("alert_chain_rules"),
+            href=href,
+            params=params,
             json=json,
         )
+
+    @staticmethod
+    def set_up_positions(self, params, href, add_pos, after, before):
+        if add_pos is not None and is_smc_version_more_than_or_equal("7.1.9"):
+            if add_pos <= 0:
+                add_pos = 1
+            rules = self.make_request(href=href)
+            if rules:
+                if len(rules) >= add_pos:  # Position somewhere in the list
+                    for position, entry in enumerate(rules):
+                        if position + 1 == add_pos:
+                            href = self.__class__(**entry).get_relation("add_before")
+                            break
+                else:  # Put at the end
+                    last_rule = rules.pop()
+                    href = self.__class__(**last_rule).get_relation("add_after")
+        elif after:
+            params.update(after=after)
+        elif before:
+            params.update(before=before)
+        return href
 
 
 class AlertPolicy(Element):
@@ -206,9 +346,15 @@ class AlertPolicy(Element):
     def alert_rules(self):
         return [AlertRule(**rule) for rule in self.make_request(resource="alert_rules")]
 
+    def add_rule_section(self, name, add_pos=None,
+                         after=None, before=None, background_color=None):
+        return AlertRule.create_rule_section(self, self.get_relation("alert_rules"), name,
+                                               add_pos, after, before, background_color)
+
     def add_alert_rule(self, name, alert_chain_ref=None, match_sender_ref=[],
                        alert_and_situation_ref=[], min_severity=1, max_severity=10,
-                       rule_validity_times=[], comment=None):
+                       rule_validity_times=[], comment=None, add_pos=None,
+                       after=None, before=None, validate=False):
         """
         creation of the element of type alert_rule.
         :param object self: object of AlertPolicy.
@@ -223,24 +369,82 @@ class AlertPolicy(Element):
             specified time period, the rule matches. Outside the specified time period, the rule
             does not match and the matching continues to the next rule.
         :param str comment: descript of element.
+        :param int add_pos: position to insert the rule, starting with position 1. If
+            the position value is greater than the number of rules, the rule is inserted at
+            the bottom. If add_pos is not provided, rule is inserted in position 1. Mutually
+            exclusive with ``after`` and ``before`` params.
+        :param str after: Rule tag to add this rule after. Mutually exclusive with ``add_pos``
+            and ``before`` params.
+        :param str before: Rule tag to add this rule before. Mutually exclusive with ``add_pos``
+            and ``after`` params.
+        :param bool validate: validate the rule creation. Default: False
         :raises CreateElementFailed: failed creating element with reason
         :return: instance with meta of alert rule
         :rtype: AlertRule
         """
         return AlertRule.create(self, name, alert_chain_ref, match_sender_ref,
-                                alert_and_situation_ref,
-                                min_severity, max_severity, rule_validity_times, comment)
+                                  alert_and_situation_ref,
+                                  min_severity, max_severity, rule_validity_times, comment,
+                                  add_pos, after, before, validate)
 
 
-class AlertRule(SubElement):
+class AlertRule(AlertRuleCommon, SubElement):
     """
     This represents Alert Rule for Alert Policy.
     """
     typeof = "alert_rule"
 
     @staticmethod
+    def create_rule_section(self, rules_href, name, add_pos=None,
+                            after=None, before=None, background_color=None):
+        """
+        Create an alert rule section in an Alert Chain or Alert Policy.
+        To specify a specific numbering position for the rule section, use the `add_pos` field.
+        If no position or before/after is specified, the rule section will be placed
+        at the top which will encapsulate all rules below.
+        Create a rule section for the relavant policy::
+
+            policy = AlertPolicy('mypolicy')
+            policy.alert_rules.create_rule_section(name='attop')
+
+        :param str name: create a rule section by name
+        :param int add_pos: position to insert the rule, starting with position 1.
+            If the position value is greater than the number of rules, the rule is
+            inserted at the bottom. If add_pos is not provided, rule is inserted in
+            position 1. Mutually exclusive with ``after`` and ``before`` params.
+        :param str after: Rule tag to add this rule after. Mutually exclusive with
+            ``add_pos`` and ``before`` params.
+        :param str before: Rule tag to add this rule before. Mutually exclusive with
+            ``add_pos`` and ``after`` params.
+        :param str background_color: the background color of the rule section.
+            in hexadecimal format (#RRGGBB)
+        :raises MissingRequiredInput: when options are specified the need additional
+            setting, i.e. use_vpn action requires a vpn policy be specified.
+        :raises CreateRuleFailed: rule creation failure
+        :return: the created ipv4 rule
+        :rtype: IPv4Rule
+        """
+        params = {}
+        href = AlertChainRule.set_up_positions(self, params, rules_href, add_pos, after, before)
+
+        json = {"comment": name}
+        if (is_api_version_more_than_or_equal("7.1") and
+                is_smc_version_more_than_or_equal("7.1.7") and
+                background_color):
+            json.update(background_color=background_color)
+
+        return ElementCreator(
+            self.__class__,
+            exception=CreateRuleFailed,
+            href=href,
+            params=params,
+            json=json,
+        )
+
+    @staticmethod
     def create(self, name, alert_chain_ref=None, match_sender_ref=[], alert_and_situation_ref=[],
-               min_severity=1, max_severity=10, rule_validity_times=[], comment=None):
+               min_severity=1, max_severity=10, rule_validity_times=[], comment=None, add_pos=None,
+               after=None, before=None, validate=False):
         """
         creation of the element of type alert_rule.
         :param object self: object of AlertPolicy.
@@ -263,11 +467,19 @@ class AlertRule(SubElement):
             specified time period, the rule matches. Outside the specified time period, the rule
             does not match and the matching continues to the next rule.
         :param str comment: descript of element.
+        :param int add_pos: position to insert the rule, starting with position 1. If
+            the position value is greater than the number of rules, the rule is inserted at
+            the bottom. If add_pos is not provided, rule is inserted in position 1. Mutually
+            exclusive with ``after`` and ``before`` params.
+        :param str after: Rule tag to add this rule after. Mutually exclusive with ``add_pos``
+            and ``before`` params.
+        :param str before: Rule tag to add this rule before. Mutually exclusive with ``add_pos``
+            and ``after`` params.
+        :param bool validate: validate the rule creation. Default: False
         :raises CreateElementFailed: failed creating element with reason
         :return: instance with meta of alert rule
         :rtype: AlertRule
         """
-        params = {}
         json = {
             "name": name,
             "match_sender_ref": element_resolver(match_sender_ref),
@@ -279,10 +491,37 @@ class AlertRule(SubElement):
         }
         if alert_chain_ref:
             json.update(alert_chain_ref=element_resolver(alert_chain_ref))
+
+        params = {"validate": False} if not validate else {}
+        href = AlertRule.set_up_positions(self, params,
+                                          self.get_relation("alert_rules"),
+                                          add_pos, after, before)
+
         return ElementCreator(
             AlertRule,
             exception=AlertPolicyError,
-            href=self.get_relation("alert_rules"),
+            href=href,
             params=params,
             json=json,
         )
+
+    @staticmethod
+    def set_up_positions(self, params, href, add_pos, after, before):
+        if add_pos is not None and is_smc_version_more_than_or_equal("7.1.9"):
+            if add_pos <= 0:
+                add_pos = 1
+            rules = self.make_request(href=href)
+            if rules:
+                if len(rules) >= add_pos:  # Position somewhere in the list
+                    for position, entry in enumerate(rules):
+                        if position + 1 == add_pos:
+                            href = self.__class__(**entry).get_relation("add_before")
+                            break
+                else:  # Put at the end
+                    last_rule = rules.pop()
+                    href = self.__class__(**last_rule).get_relation("add_after")
+        elif after:
+            params.update(after=after)
+        elif before:
+            params.update(before=before)
+        return href

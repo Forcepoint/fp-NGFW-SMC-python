@@ -31,7 +31,8 @@ from smc.administration.user_auth.servers import AuthenticationMethod, DomainCon
     ActiveDirectoryServer, LDAPServer  # noqa
 from smc.elements.common import ThirdPartyMonitoring  # noqa
 from smc.elements.network import Host  # noqa
-from smc.compat import is_smc_version_less_than_or_equal, is_api_version_less_than  # noqa
+from smc.compat import is_smc_version_less_than_or_equal, is_api_version_less_than,  \
+    is_api_version_more_than_or_equal  # noqa
 from smc.elements.other import Location  # noqa
 from smc.elements.servers import TacacsServer, LogServer, RadiusServer, IcapServer, SmtpServer, \
     ProxyServer, ManagementServer, WebApp, NetflowCollector, DataContext, \
@@ -375,87 +376,108 @@ def main():
         domain_controller = DomainController("test_user", SECONDARY_ADDRESS1, SHARE_SECRET,
                                              expiration_time=28800, server_type="dc")
         authentication_method = AuthenticationMethod("LDAP Authentication")
-        active_directory_server = ActiveDirectoryServer.create(
-            ACTIVE_DIRECTORY_SERVER,
-            address=PRIMARY_ADDRESS1,
-            auth_ipaddress=PRIMARY_ADDRESS2,
-            auth_port=1812,
-            base_dn='dc=domain,dc=net',
-            bind_password=SHARE_SECRET,
-            bind_user_id="cn=admin,cn=users,dc=domain,dc=net",
-            client_cert_based_user_search="dc",
-            display_name_attr_name="displayName",
-            domain_controller=[
-                domain_controller],
-            email=EMAIL_ADDRESS,
-            frame_ip_attr_name=SECONDARY_ADDRESS2,
-            group_member_attr="member",
-            group_object_class=[
-                "sggroup",
-                "country",
-                "group",
-                "groupOfNames",
-                "organization",
-                "organizationalUnit"
+        ad_server_args = {
+            "name": ACTIVE_DIRECTORY_SERVER,
+            "address": PRIMARY_ADDRESS1,
+            "auth_ipaddress": PRIMARY_ADDRESS2,
+            "auth_port": 1812,
+            "base_dn": 'dc=domain,dc=net',
+            "bind_password": SHARE_SECRET,
+            "bind_user_id": "cn=admin,cn=users,dc=domain,dc=net",
+            "client_cert_based_user_search": "dc",
+            "display_name_attr_name": "displayName",
+            "domain_controller": [domain_controller],
+            "email": EMAIL_ADDRESS,
+            "frame_ip_attr_name": SECONDARY_ADDRESS2,
+            "group_member_attr": "member",
+            "group_object_class": [
+                "sggroup", "country", "group", "groupOfNames", "organization", "organizationalUnit"
             ],
-            internet_auth_service_enabled=True,
-            job_title_attr_name="title",
-            office_location_attr_name="physicalDeliveryOfficeName",
-            photo_attr_name="photo",
-            port=389,
-            protocol="ldap",
-            secondary=[
-                SECONDARY_ADDRESS1
+            "internet_auth_service_enabled": True,
+            "job_title_attr_name": "title",
+            "office_location_attr_name": "physicalDeliveryOfficeName",
+            "photo_attr_name": "photo",
+            "port": 389,
+            "protocol": "ldap",
+            "secondary": [SECONDARY_ADDRESS1],
+            "shared_secret": SHARE_SECRET,
+            "supported_method": [authentication_method],
+            "timeout": 10,
+            "user_object_class": [
+                "inetOrgPerson", "organizationalPerson", "person", "sguser"
             ],
-            shared_secret=SHARE_SECRET,
-            supported_method=[
-                authentication_method
-            ],
-            timeout=10,
-            user_id_attr="sAMAccountName",
-            user_object_class=[
-                "inetOrgPerson",
-                "organizationalPerson",
-                "person",
-                "sguser"
-            ],
-            user_principal_name="userPrincipalName",
-            comment="This is testing of Active Directory Server"
-        )
+            "comment": "This is testing of Active Directory Server"
+        }
+        if is_api_version_more_than_or_equal("7.4"):
+            ad_server_args["short_user_id_attr"] = "sAMAccountName"
+            ad_server_args["long_user_id_attr"] = "userPrincipalName"
+        else:
+            ad_server_args["user_id_attr"] = "sAMAccountName"
+            ad_server_args["user_principal_name"] = "userPrincipalName"
+        ActiveDirectoryServer.create(**ad_server_args)
         active_directory_server = ActiveDirectoryServer(ACTIVE_DIRECTORY_SERVER)
-        assert active_directory_server.address == PRIMARY_ADDRESS1 and active_directory_server. \
-            auth_ipaddress == PRIMARY_ADDRESS2 and active_directory_server.auth_port == 1812 and \
-               active_directory_server.base_dn == 'dc=domain,dc=net' and \
-               active_directory_server.internet_auth_service_enabled and \
-               active_directory_server.user_id_attr == "sAMAccountName" and \
-               active_directory_server.user_principal_name \
-               == "userPrincipalName", ACTIVE_DIRECTORY_SERVER_CREATE_ERROR
+        if is_api_version_more_than_or_equal("7.4"):
+            assert active_directory_server.address == PRIMARY_ADDRESS1 and \
+                   active_directory_server.auth_ipaddress == PRIMARY_ADDRESS2 and \
+                   active_directory_server.auth_port == 1812 and \
+                   active_directory_server.base_dn == 'dc=domain,dc=net' and \
+                   active_directory_server.internet_auth_service_enabled and \
+                   active_directory_server.short_user_id_attr == "sAMAccountName" and \
+                   active_directory_server.long_user_id_attr == "userPrincipalName", \
+                ACTIVE_DIRECTORY_SERVER_CREATE_ERROR
+        else:
+            assert active_directory_server.address == PRIMARY_ADDRESS1 and \
+                   active_directory_server.auth_ipaddress == PRIMARY_ADDRESS2 and \
+                   active_directory_server.auth_port == 1812 and \
+                   active_directory_server.base_dn == 'dc=domain,dc=net' and \
+                   active_directory_server.internet_auth_service_enabled and \
+                   active_directory_server.user_id_attr == "sAMAccountName" and \
+                   active_directory_server.user_principal_name == "userPrincipalName", \
+                ACTIVE_DIRECTORY_SERVER_CREATE_ERROR
+
         logging.info("ActiveDirectoryServer created successfully.")
-        active_directory_server.update(mobile_attr_name=MOBILE_NUMBER, timeout=20,
-                                       user_principal_name="changeduserPrincipalName",
-                                       location_ref=location.href,
-                                       third_party_monitoring=third_party_monitoring.data)
+
+        if is_api_version_more_than_or_equal("7.4"):
+            active_directory_server.update(mobile_attr_name=MOBILE_NUMBER, timeout=20,
+                                           long_user_id_attr="changeduserPrincipalName",
+                                           location_ref=location.href,
+                                           third_party_monitoring=third_party_monitoring.data)
+        else:
+            active_directory_server.update(mobile_attr_name=MOBILE_NUMBER, timeout=20,
+                                           user_principal_name="changeduserPrincipalName",
+                                           location_ref=location.href,
+                                           third_party_monitoring=third_party_monitoring.data)
+
         active_directory_server = ActiveDirectoryServer(ACTIVE_DIRECTORY_SERVER)
-        assert active_directory_server.mobile_attr_name == MOBILE_NUMBER and \
-               active_directory_server.third_party_monitoring.snmp_trap and \
-               active_directory_server.user_principal_name == "changeduserPrincipalName" and \
-               active_directory_server.location_ref.href \
-               == location.href, ACTIVE_DIRECTORY_SERVER_UPDATE_ERROR
+
+        if is_api_version_more_than_or_equal("7.4"):
+            assert active_directory_server.mobile_attr_name == MOBILE_NUMBER and \
+                   active_directory_server.third_party_monitoring.snmp_trap and \
+                   active_directory_server.long_user_id_attr == "changeduserPrincipalName" and \
+                   active_directory_server.location_ref.href == location.href, \
+                ACTIVE_DIRECTORY_SERVER_UPDATE_ERROR
+        else:
+            assert active_directory_server.mobile_attr_name == MOBILE_NUMBER and \
+                   active_directory_server.third_party_monitoring.snmp_trap and \
+                   active_directory_server.user_principal_name == "changeduserPrincipalName" and \
+                   active_directory_server.location_ref.href == location.href, \
+                ACTIVE_DIRECTORY_SERVER_UPDATE_ERROR
+
         logging.info("ActiveDirectoryServer updated successfully.")
 
         # Ldap Server
-        ldap_server = LDAPServer.create(
-            LDAP_SERVER,
-            address=PRIMARY_ADDRESS1,
-            base_dn='dc=domain,dc=net',
-            bind_password=SHARE_SECRET,
-            bind_user_id="cn=admin,cn=users,dc=domain,dc=net",
-            client_cert_based_user_search="dc",
-            display_name_attr_name="displayName",
-            email=EMAIL_ADDRESS,
-            frame_ip_attr_name=SECONDARY_ADDRESS2,
-            group_member_attr="member",
-            group_object_class=[
+        ldap_server_args = {
+            "name": LDAP_SERVER,
+            "address": PRIMARY_ADDRESS1,
+            "base_dn": 'dc=domain,dc=net',
+            "bind_password": SHARE_SECRET,
+            "bind_user_id": "cn=admin,cn=users,dc=domain,dc=net",
+            "client_cert_based_user_search": "dc",
+            "display_name_attr_name": "displayName",
+            "email": EMAIL_ADDRESS,
+            "frame_ip_attr_name": SECONDARY_ADDRESS2,
+            "group_member_attr": "member",
+            "group_object_class": [
                 "sggroup",
                 "country",
                 "group",
@@ -463,45 +485,74 @@ def main():
                 "organization",
                 "organizationalUnit"
             ],
-            job_title_attr_name="title",
-            office_location_attr_name="physicalDeliveryOfficeName",
-            photo_attr_name="photo",
-            port=389,
-            protocol="ldap",
-            secondary=[
-                SECONDARY_ADDRESS1
-            ],
-            supported_method=[
-                authentication_method
-            ],
-            timeout=10,
-            user_id_attr="sAMAccountName",
-            user_object_class=[
+            "job_title_attr_name": "title",
+            "office_location_attr_name": "physicalDeliveryOfficeName",
+            "photo_attr_name": "photo",
+            "port": 389,
+            "protocol": "ldap",
+            "secondary": [SECONDARY_ADDRESS1],
+            "supported_method": [authentication_method],
+            "timeout": 10,
+            "user_object_class": [
                 "inetOrgPerson",
                 "organizationalPerson",
                 "person",
                 "sguser"
             ],
-            user_principal_name="userPrincipalName",
-            auth_attribute="sgauth",
-            comment="This is testing of LDAP Server"
-        )
+            "comment": "This is testing of LDAP Server"
+        }
+
+        if is_api_version_more_than_or_equal("7.4"):
+            ldap_server_args["short_user_id_attr"] = "sAMAccountName"
+            ldap_server_args["long_user_id_attr"] = "userPrincipalName"
+        else:
+            ldap_server_args["user_id_attr"] = "sAMAccountName"
+            ldap_server_args["user_principal_name"] = "userPrincipalName"
+            ldap_server_args["auth_attribute"] = "sgauth"
+
+
+        LDAPServer.create(**ldap_server_args)
         ldap_server = LDAPServer(LDAP_SERVER)
-        assert ldap_server.address == PRIMARY_ADDRESS1 and \
-               ldap_server.email == EMAIL_ADDRESS and \
-               ldap_server.base_dn == 'dc=domain,dc=net' and \
-               ldap_server.user_id_attr == "sAMAccountName" and \
-               ldap_server.user_principal_name == "userPrincipalName", LDAP_SERVER_CREATE_ERROR
+
+        if is_api_version_more_than_or_equal("7.4"):
+            assert ldap_server.address == PRIMARY_ADDRESS1 and \
+                   ldap_server.email == EMAIL_ADDRESS and \
+                   ldap_server.base_dn == 'dc=domain,dc=net' and \
+                   ldap_server.short_user_id_attr == "sAMAccountName" and \
+                   ldap_server.long_user_id_attr == "userPrincipalName", LDAP_SERVER_CREATE_ERROR
+        else:
+            assert ldap_server.address == PRIMARY_ADDRESS1 and \
+                   ldap_server.email == EMAIL_ADDRESS and \
+                   ldap_server.base_dn == 'dc=domain,dc=net' and \
+                   ldap_server.user_id_attr == "sAMAccountName" and \
+                   ldap_server.user_principal_name == "userPrincipalName", LDAP_SERVER_CREATE_ERROR
+
         logging.info("LDAPServer created successfully.")
-        ldap_server.update(mobile_attr_name=MOBILE_NUMBER, timeout=20,
-                           user_principal_name="changeduserPrincipalName",
-                           location_ref=location.href,
-                           third_party_monitoring=third_party_monitoring.data)
+
+        if is_api_version_more_than_or_equal("7.4"):
+            ldap_server.update(mobile_attr_name=MOBILE_NUMBER, timeout=20,
+                               long_user_id_attr="changeduserPrincipalName",
+                               location_ref=location.href,
+                               third_party_monitoring=third_party_monitoring.data)
+        else:
+            ldap_server.update(mobile_attr_name=MOBILE_NUMBER, timeout=20,
+                               user_principal_name="changeduserPrincipalName",
+                               location_ref=location.href,
+                               third_party_monitoring=third_party_monitoring.data)
+
         ldap_server = LDAPServer(LDAP_SERVER)
-        assert ldap_server.mobile_attr_name == MOBILE_NUMBER and \
-               ldap_server.user_principal_name == "changeduserPrincipalName" and \
-               ldap_server.location_ref.href == location.href and \
-               ldap_server.third_party_monitoring.snmp_trap, LDAP_SERVER_UPDATE_ERROR
+
+        if is_api_version_more_than_or_equal("7.4"):
+            assert ldap_server.mobile_attr_name == MOBILE_NUMBER and \
+                   ldap_server.long_user_id_attr == "changeduserPrincipalName" and \
+                   ldap_server.location_ref.href == location.href and \
+                   ldap_server.third_party_monitoring.snmp_trap, LDAP_SERVER_UPDATE_ERROR
+        else:
+            assert ldap_server.mobile_attr_name == MOBILE_NUMBER and \
+                   ldap_server.user_principal_name == "changeduserPrincipalName" and \
+                   ldap_server.location_ref.href == location.href and \
+                   ldap_server.third_party_monitoring.snmp_trap, LDAP_SERVER_UPDATE_ERROR
+
         logging.info("LDAPServer updated successfully.")
 
         sms_http_channel = [

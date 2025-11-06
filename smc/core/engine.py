@@ -51,7 +51,7 @@ from smc.vpn.elements import VPNSite, LinkUsageProfile
 from smc.routing.bgp import DynamicRouting
 from smc.routing.pim import PIMSettings
 from smc.routing.ospf import OSPFProfile
-from smc.core.route import Antispoofing, Routing, Route, PolicyRoute
+from smc.core.route import Antispoofing, Routing, RouteIterable, PolicyRoute
 from smc.core.session_monitoring import SessionMonitoringResult
 from smc.core.contact_address import ContactAddressCollection
 from smc.core.general import DNSRelay, Layer2Settings, DefaultNAT, SNMP, RankedDNSAddress, \
@@ -67,7 +67,7 @@ from smc.core.addon import (
     ZTNAConnector,
     EndpointIntegration
 )
-from smc.elements.servers import LogServer, DHCPServer
+from smc.elements.servers import LogServer, DHCPServer, SamlSettings
 from smc.base.collection import create_collection, sub_collection
 from smc.base.util import element_resolver
 from smc.administration.access_rights import AccessControlList, Permission, \
@@ -77,8 +77,9 @@ from smc.administration.certificates.vpn import GatewayCertificate, GatewayCerti
 from smc.base.structs import BaseIterable, NestedDict
 from smc.elements.profiles import SNMPAgent
 from smc.elements.ssm import SSHKnownHostsLists
-from smc.compat import is_smc_version_less_than_or_equal, is_api_version_less_than_or_equal, \
-    min_smc_version, is_api_version_less_than, is_smc_version_equal, is_smc_version_less_than
+from smc.compat import (is_smc_version_less_than_or_equal, is_api_version_less_than_or_equal, \
+    min_smc_version, is_api_version_less_than, is_smc_version_equal, is_smc_version_less_than,
+                        is_smc_version_more_than_or_equal)
 
 
 class TestEntry(NestedDict):
@@ -928,6 +929,7 @@ class Engine(Element):
         pim_settings=None,
         web_authentication=None,
         nat64_settings=None,
+        saml_settings=None,
         **kw
     ):
         """
@@ -963,6 +965,7 @@ class Engine(Element):
         :param WebAuthentication/dict web_authentication: This represents the Browser-Based User
             Authentication settings for a NGFW.
         :param Nat64Settings/dict nat64_settings: This represents the NAT64 settings for a NGFW.
+        :param list of SamlSettings saml_settings: SAML settings for the Web Authentication.
         """
         node_list = []
         for nodeid in range(1, nodes + 1):  # start at nodeid=1
@@ -1115,6 +1118,13 @@ class Engine(Element):
             nat64_settings = nat64_settings.data \
                 if isinstance(nat64_settings, Nat64Settings) else nat64_settings
             base_cfg.update(ipv6_transition_mechanism=nat64_settings)
+
+        if (is_smc_version_more_than_or_equal("7.4.0")
+                and saml_settings and isinstance(saml_settings, list)):
+            base_cfg["enable_saml_for_bba"] = True
+            base_cfg["saml_settings"] = [
+                s.expand() for s in saml_settings
+            ]
 
         base_cfg.update(kw, comment=comment)  # Add rest of kwargs
         return base_cfg
@@ -2243,7 +2253,7 @@ class Engine(Element):
         try:
             result = self.make_request(EngineCommandFailed, resource="routing_monitoring")
 
-            return Route(result)
+            return RouteIterable(result)
         except SMCConnectionError:
             raise EngineCommandFailed("Timed out waiting for routes")
 
@@ -3286,6 +3296,51 @@ class Engine(Element):
         :rtype: Nat64Settings
         """
         return Nat64Settings(self.data.get("ipv6_transition_mechanism", {}))
+
+    @property
+    def saml_settings(self):
+        """
+        Represents the SAML settings. Either for the user authentication (BBA) or the
+        SSL VPN Portal configuration.
+        :rtype: list(SamlSettings):
+        """
+        return [SamlSettings(data) for data in self.data.get("saml_settings", [])]
+
+    def configure_saml_settings_for_user_authentication(self, saml_settings_entries):
+        """
+        Configure SAML settings for user authentication (BBA). If saml_settings
+        are defined, we enable the SAML for BBA otherwise we disable it.
+        """
+        self._configure_saml_settings_for(saml_settings_entries, False)
+
+    def configure_saml_settings_for_sslvpn_portal(self, saml_settings_entries):
+        """
+        Configure SAML settings for SSL VPN portal. If saml_settings
+        are defined, we enable the SAML for SSL VPN portal otherwise we disable it.
+        """
+        self._configure_saml_settings_for(saml_settings_entries, True)
+
+    def _configure_saml_settings_for(self, saml_settings_entries, ssl_vpn):
+        """
+        Configure SAML settings for BBA (user authentication) or SSL VPN portal. If saml_settings
+        are defined, we enable the SAML otherwise we disable it.
+        """
+        if ssl_vpn:
+            enable_attribute = "enable_saml_for_ssl_vpn"
+            saml_usage = "ssl_vpn"
+        else:
+            enable_attribute = "enable_saml_for_bba"
+            saml_usage = "bba"
+        new_saml_settings_entries = [s for s in self.data.get("saml_settings", [])
+                                     if s.get("usage") != saml_usage]
+
+        if saml_settings_entries:
+            for entry in saml_settings_entries:
+                entry["saml_setting_usage"] = saml_usage
+                new_saml_settings_entries.append(entry)
+        self.data[enable_attribute] = (saml_settings_entries is not None
+                                       and len(saml_settings_entries) > 0)
+        self.data["saml_settings"] = new_saml_settings_entries
 
 
 class VPNMappingCollection(BaseIterable):

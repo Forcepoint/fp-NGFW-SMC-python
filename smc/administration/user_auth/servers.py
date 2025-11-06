@@ -55,11 +55,12 @@ an LDAP domain called 'myldapdomain'.
 
 from smc.administration.certificates import tls
 from smc.base.model import ElementCreator, Element, ElementRef, ElementList
-from smc.api.exceptions import CreateElementFailed
+from smc.api.exceptions import CreateElementFailed, UnsupportedAttribute
 from smc.base.structs import NestedDict
 from smc.base.util import element_resolver
 from smc.elements.servers import ContactAddressMixin, MultiContactServer
-from smc.compat import is_api_version_less_than
+from smc.compat import (is_api_version_less_than, is_api_version_more_than_or_equal,
+                        is_smc_version_less_than, is_smc_version_more_than_or_equal)
 
 
 class AuthenticationMethod(Element):
@@ -129,17 +130,18 @@ class AuthenticationMethod(Element):
             "name": name,
             "type": "saml",
             "saml_metadata_file": idp_metadata_url,
-            "saml_service_provider_id": service_provider_id,
-            "saml_name_id_policy_format": name_id_policy_format,
-            "saml_user_attribute": username_attribute
         }
+        if is_smc_version_less_than("7.4.0"):
+            json.update(saml_service_provider_id=service_provider_id)
+            json.update(saml_user_attribute=username_attribute)
+            json.update(saml_name_id_policy_format=name_id_policy_format)
+            if tls_credentials:
+                tls_credentials_ref = tls.TLSServerCredential(tls_credentials).href
+                json.update(saml_tls_credentials_ref=tls_credentials_ref)
 
         if tls_profile:
             tls_profile_ref = tls.TLSProfile(tls_profile).href
             json.update(saml_tls_profile_ref=tls_profile_ref)
-        if tls_credentials:
-            tls_credentials_ref = tls.TLSServerCredential(tls_credentials).href
-            json.update(saml_tls_credentials_ref=tls_credentials_ref)
 
         json.update(kwargs)
         return ElementCreator(cls, json)
@@ -165,6 +167,10 @@ class AuthenticationMethod(Element):
         Return SAML Service Provider Identifier
         :rtype: str or None
         """
+        if is_smc_version_more_than_or_equal("7.4.0"):
+            raise UnsupportedAttribute(
+                "'saml_service_provider_id' attribute is now managed by the SAML settings from the SMC server.")
+
         return self.data.get('saml_service_provider_id')
 
     @saml_service_provider_id.setter
@@ -172,6 +178,10 @@ class AuthenticationMethod(Element):
         """
         Update SAML Service Provider Identifier
         """
+        if is_smc_version_more_than_or_equal("7.4.0"):
+            raise UnsupportedAttribute(
+                "'saml_service_provider_id' attribute is now managed by the SAML settings from the SMC server.")
+
         self.data['saml_service_provider_id'] = saml_service_provider_id
 
     @property
@@ -180,6 +190,10 @@ class AuthenticationMethod(Element):
         Return SAML NameID Policy Format
         :rtype: str or None
         """
+        if is_smc_version_more_than_or_equal("7.4.0"):
+            raise UnsupportedAttribute(
+                "'saml_name_id_policy_format' attribute is now managed by the SAML settings from the SMC server.")
+
         return self.data.get('saml_name_id_policy_format')
 
     @saml_name_id_policy_format.setter
@@ -187,6 +201,10 @@ class AuthenticationMethod(Element):
         """
         Update SAML NameID Policy Format
         """
+        if is_smc_version_more_than_or_equal("7.4.0"):
+            raise UnsupportedAttribute(
+                "'saml_name_id_policy_format' attribute is now managed by the SAML settings from the SMC server.")
+
         self.data['saml_name_id_policy_format'] = saml_name_id_policy_format
 
     @classmethod
@@ -378,7 +396,7 @@ class ActiveLdapServerMixin(Element, MultiContactServer):
      :param int auth_port: required when internet authentication service is enabled (default: 1812)
      :param str auth_ipaddress: required when internet authentication service is enabled
      :param str shared_secret: required when internet authentication service is enabled
-     :param int auth_attribute: Auth attribute name.
+     :param int auth_attribute: Auth attribute name. (Removed in SMC >= 7.4.0)
      :param int retries: Used with IAS. Number of times firewall will try to connect to the
             RADIUS or TACACS+ authentication server if the connection fails (default: 2)
      """
@@ -410,8 +428,10 @@ class ActiveLdapServerMixin(Element, MultiContactServer):
             mobile_attr_name=None,
             office_location_attr_name=None,
             photo_attr_name=None,
+            short_user_id_attr=None,
             user_id_attr=None,
             user_principal_name=None,
+            long_user_id_attr=None,
             secondary=None,
             location_ref=None,
             tools_profile_ref=None,
@@ -468,9 +488,11 @@ class ActiveLdapServerMixin(Element, MultiContactServer):
                 office location. (default: physicalDeliveryOfficeName)
         :param str photo_attr_name: The name of the attribute for storing the users’ photo.
         :param str user_id_attr: The name that the server uses for the UserID Attribute
-            (default: sAMAccountName)
+            (default: sAMAccountName) (SMC < 7.4.0)
+        :param str short_user_id_attr: same (SMC >= 7.4.0)
         :param str user_principal_name: The name of the attribute for storing the users’ UPN
             (User Principal Name).
+        :param str long_user_id_attr: same (SMC >= 7.4.0)
         :param list(str) secondary: If the device has additional IP addresses, you can enter them
             here instead of creating additional elements for the other IP addresses. The secondary
             IP addresses are valid in policies and in routing and antispoofing. You can add several
@@ -499,18 +521,24 @@ class ActiveLdapServerMixin(Element, MultiContactServer):
             "client_cert_based_user_search": client_cert_based_user_search,
             "display_name_attr_name": display_name_attr_name,
             "frame_ip_attr_name": frame_ip_attr_name,
-            "group_member_attr": group_member_attr,
             "job_title_attr_name": job_title_attr_name,
             "mobile_attr_name": mobile_attr_name,
             "office_location_attr_name": office_location_attr_name,
             "photo_attr_name": photo_attr_name,
-            "user_id_attr": user_id_attr,
-            "user_principal_name": user_principal_name,
             "secondary": secondary or [],
             "location_ref": element_resolver(location_ref),
             "tools_profile_ref": element_resolver(tools_profile_ref),
             "comment": comment
         }
+        if is_api_version_more_than_or_equal("7.4"):
+            json["short_user_id_attr"] = short_user_id_attr
+            json["long_user_id_attr"] = long_user_id_attr
+        else:
+            json["user_id_attr"] = user_id_attr
+            json["user_principal_name"] = user_principal_name
+
+        if group_member_attr:
+            json.update(group_member_attr=group_member_attr)
         if third_party_monitoring:
             json.update(third_party_monitoring=third_party_monitoring.data)
 
@@ -536,6 +564,8 @@ class ActiveLdapServerMixin(Element, MultiContactServer):
                 json.update(ias)
         elif cls.typeof == "ldap_server":
             json.update(auth_attribute=kwargs.pop("auth_attribute", None))
+        if is_api_version_more_than_or_equal("7.4") and "auth_attribute" in json:
+            json.pop("auth_attribute")
         json.update(kwargs)
         return ElementCreator(cls, json)
 
@@ -611,6 +641,22 @@ class ActiveLdapServerMixin(Element, MultiContactServer):
         :rtype: str
         """
         return self.data.get("user_id_attr")
+
+    @property
+    def short_user_id_attr(self):
+        """
+        The name that the server uses for the short user id Attribute (default: sAMAccountName)
+        :rtype: str
+        """
+        return self.data.get("short_user_id_attr")
+
+    @property
+    def long_user_id_attr(self):
+        """
+        The name that the server uses for the long user id Attribute (default: userPrincipalName)
+        :rtype: str
+        """
+        return self.data.get("long_user_id_attr")
 
     @property
     def group_member_attr(self):

@@ -378,18 +378,6 @@ class Rule(object):
         """
         return self.data.get("tag")
 
-    # @property
-    # def time_range(self):
-    #    """
-    #    Time range/s assigned to this rule. May be None if
-    #    no time range configured.
-
-    #    :return: :py:class:`smc.policy.rule_elements.TimeRange`
-    #    """
-    #    time_range = self.data.get('time_range')
-    #    if time_range:
-    #        return TimeRange(self.data.get('time_range'))
-
 
 class RuleCommon(object):
     """

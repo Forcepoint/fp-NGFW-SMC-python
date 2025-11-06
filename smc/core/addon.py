@@ -320,8 +320,26 @@ class UrlFiltering(NestedDict):
         """
         self.update(ts_enabled=False)
 
+    def enable_disable_local_url_categorization(self, enable:bool):
+        """
+        Enable local URL categorization on the engine.
+        Only from SMC > 7.4.0!
+        """
+        self.update(local_url_categorization_enabled=enable)
+
     @property
-    def status(self):
+    def is_local_url_categorization_enabled(self) -> bool:
+        """
+        Return true if the URL Filtering on the engine is enabled and if the local
+        URL categorization is enabled too.
+
+        :rtype: bool
+        """
+        return (self.get("ts_enabled", False) and
+                self.get("local_url_categorization_enabled", False))
+
+    @property
+    def status(self) -> bool:
         """
         Return the status of URL Filtering on the engine
 

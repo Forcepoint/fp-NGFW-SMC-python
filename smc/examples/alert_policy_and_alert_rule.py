@@ -25,6 +25,7 @@ sys.path.append('../../')  # smc-python
 from smc import session  # noqa
 from smc.elements.alerts import AlertChain, AlertPolicy  # noqa
 from smc.elements.other import RuleValidityTime  # noqa
+from smc.compat import is_api_version_more_than_or_equal, is_smc_version_equal  # noqa
 
 comment_msg = "add {} for testing purpose."
 alert_policy = 'alert_policy_test'
@@ -64,21 +65,36 @@ def main():
         logging.info(f"Alert policy is created successfully with name: {alert_policy}.")
         alert_policy_obj.update(comment="Updating alert policy comment")
         logging.info("Successfully updated alert policy comment.")
+        higher_than_6_10 = is_api_version_more_than_or_equal('7.1')
+        is_smc_7_3_0 = is_smc_version_equal("7.3.0")
+        first_section = None
+        add_before_add_section_allowed = higher_than_6_10 and not is_smc_7_3_0
+        if add_before_add_section_allowed:
+            first_section = alert_policy_obj.add_rule_section("first_section")
         # add alert rule
         rule_validity_time = RuleValidityTime('Rule Validity Time 2')
         alert_chain = AlertChain("Default")
-        alert_policy_obj.add_alert_rule(rule_name, rule_validity_times=[rule_validity_time],
-                                        alert_chain_ref=alert_chain,
-                                        comment=comment_msg.format(rule_name))
+        first_rule = alert_policy_obj.add_alert_rule(rule_name,
+                                                     rule_validity_times=[rule_validity_time],
+                                                     alert_chain_ref=alert_chain,
+                                                     comment=comment_msg.format(rule_name),
+                                                     after=first_section.tag
+                                                     if add_before_add_section_allowed else None)
+        second_rule = alert_policy_obj.add_alert_rule(rule_name,
+                                                      rule_validity_times=[rule_validity_time],
+                                                      alert_chain_ref=alert_chain,
+                                                      comment=comment_msg.format(rule_name),
+                                                      before=first_rule.tag
+                                                      if add_before_add_section_allowed else None)
+        third_rule = alert_policy_obj.add_alert_rule(rule_name,
+                                                     rule_validity_times=[rule_validity_time],
+                                                     alert_chain_ref=alert_chain,
+                                                     comment=comment_msg.format(rule_name),
+                                                     add_pos=1
+                                                     if add_before_add_section_allowed else None)
         assert [alert_rule for alert_rule in alert_policy_obj.alert_rules if
                 alert_rule.name == rule_name], CREATE_RULE_ERROR
         logging.info("Added alert rule successfully.")
-        alert_rule = alert_policy_obj.alert_rules[0]
-        alert_rule_name = alert_rule.name
-        alert_rule.delete()
-        assert not [alert_rule for alert_rule in alert_policy_obj.alert_rules if
-                    alert_rule.name == alert_rule_name], DELETE_ERROR
-        logging.info("Alert rule deleted successfully")
     except BaseException as e:
         logging.error(f"Exception:{e}")
         return_code = 1

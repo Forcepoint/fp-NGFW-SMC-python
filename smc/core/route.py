@@ -132,7 +132,7 @@ import collections
 from smc.base.model import SubElement, Element, ElementCache
 from smc.base.util import element_resolver
 from smc.api.exceptions import InterfaceNotFound, ModificationAborted
-from smc.base.structs import SerializedIterable
+from smc.base.structs import SerializedIterable, NestedDict
 
 
 def flush_parent_cache(node):
@@ -1092,13 +1092,7 @@ def del_invalid_routes(engine, nicids):
                 network.delete()
 
 
-route = collections.namedtuple(
-    "Route", "route_network route_netmask route_gateway route_type dst_if src_if, values"
-)
-route.__new__.__defaults__ = (None,) * len(route._fields)
-
-
-class Route(SerializedIterable):
+class Route(NestedDict):
     """
     Active routes obtained from a running engine.
     Obtain routes from an engine reference::
@@ -1114,11 +1108,76 @@ class Route(SerializedIterable):
     :ivar int dst_if: destination interface index
     :ivar int src_if: source interface index
     """
+    def init(self, data):
+        super(Route, self).__init__(data=data)
+
+    @classmethod
+    def create(cls, routing_monitoring_entry):
+        """
+        Create a Route
+        """
+        return Route(data=routing_monitoring_entry)
+
+    def _asdict(self):
+        return self.data
+
+    @property
+    def route_netmask(self):
+        return self.get("route_netmask")
+
+    @property
+    def route_network(self):
+        return self.get("route_network")
+
+    @property
+    def route_gateway(self):
+        return self.get("route_gateway")
+
+    @property
+    def route_type(self):
+        return self.get("route_type")
+
+    @property
+    def dst_if(self):
+        return self.get("dst_if")
+
+    @property
+    def src_if(self):
+        return self.get("src_if")
+
+
+class RouteIterable(object):
+    """
+    Active routes obtained from a running engine.
+    Obtain routes from an engine reference::
+
+        >>> engine = Engine('sg_vm')
+        >>> for route in engine.routing_monitoring:
+        ...    route
+
+    :ivar str route_network: network for this route
+    :ivar int route_netmask: netmask for the route
+    :ivar str route_gateway: route gateway, may be None if it's a local network only
+    :ivar str route_type: status of the route
+    :ivar int dst_if: destination interface index
+    :ivar int src_if: source interface index
+    :ivar kwargs
+    """
 
     def __init__(self, data):
-        routes = data.get("routing_monitoring_entry", [])
-        data = [{k: v for k, v in d.items() if k != "cluster_ref"} for d in routes]
-        super(Route, self).__init__(data, route)
+        routing_entries = data.get("routing_monitoring_entry", [])
+        self._routes = []
+        for route in routing_entries:
+            self._routes.append(Route.create(route))
+
+    def __iter__(self):
+        return iter(self._routes)
+
+    def __len__(self):
+        return len(self._routes)
+
+    def __getitem__(self, index):
+        return self._routes[index]
 
 
 policy_route = collections.namedtuple("PolicyRoute", "source destination gateway_ip comment")

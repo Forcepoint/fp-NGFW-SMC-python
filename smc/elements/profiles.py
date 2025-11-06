@@ -263,11 +263,12 @@ class SNMPAgent(Element):
             monitoring_user_names=[],
             trap_user_name=None,
             hardware_alerts=False,
+            go_offline=False,
             comment=None,
     ):
         json = {
             "boot": False,
-            "go_offline": False,
+            "go_offline": go_offline,
             "go_online": False,
             "hardware_alerts": hardware_alerts,
             "name": name,

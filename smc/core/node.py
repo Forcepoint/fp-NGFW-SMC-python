@@ -860,7 +860,10 @@ class InterfaceStatus(SerializedIterable):
     """
 
     def __init__(self, status):
-        data = status.get("interface_status")
+        if is_smc_version_less_than("7.4"):
+            data = status.get("interface_status")
+        else:
+            data = status.get("interface_statuses")
         super(InterfaceStatus, self).__init__(data, InternalInterfaceStatus)
 
     def get(self, interface_id):
