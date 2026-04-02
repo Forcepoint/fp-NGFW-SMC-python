@@ -117,6 +117,7 @@ from smc.core.interfaces import (
     VirtualPhysicalInterface,
     SwitchPhysicalInterface,
     VPNBrokerInterface,
+    ModemInterface,
     SwitchInterface,
 )
 from smc.core.sub_interfaces import LoopbackClusterInterface, LoopbackInterface
@@ -649,6 +650,53 @@ class SwitchInterfaceCollection(InterfaceCollection):
         interface = {"interface_id": switch.interface_id, "port_group_interface": [switch_port]}
         switch.update_interface(SwitchPhysicalInterface(**interface))
 
+    def add_port_group_interface_n130(
+        self, interface_id, port_interfaces, interfaces=None, zone_ref=None
+    ):
+        """
+        Add a port group to an existing switch physical interface for N130 appliance type having
+        soft switch pint interface as port interfaces. (SSID Soft-Switch Interfaces must be either
+        a Layer 3 Physical Interface or a SSID Interface (without IP Address, not Aggregated
+        and without VLAN defined)
+        It is possible to add IPv4 and IPv6 addresses to the port group interface
+        port should have an address assigned, use the following format::
+
+            engine.switch_physical_interface.add_port_group_interface('SWI_0', [wlan_interface_ref,
+             physical_interface_ref],
+                    interfaces=[{'nodes': [{'address': '12.12.12.12',
+                                            'network_value': '12.12.12.0/24',
+                                            'nodeid': 1}]}])
+
+        To create a generic switch port group without IP addresses assigned
+
+            engine.switch_physical_interface.add_port_group_interface('SWI_0',[wlan_interface_ref,
+             physical_interface_ref])
+
+        .. note:: If the port group ID exists, this method will modify the existing port
+            group with the specified settings
+
+        :param str interface_id: The top level switch, naming convention should be
+            SWP_0, SWP_1, etc. ( Since API 6.8: SWI_0, SWI_1..)
+        :param list port_interfaces : Layer 3 Physical Interface or a SSID Interface ref
+        :param list interfaces: list of interface node definitions if the switch port
+            should have IP address/es assigned (IPv4/IPv6)
+        :param str zone_ref: zone reference, can be name, href or Zone, will be
+            created if it doesn't exist
+        :raises InterfaceNotFound: invalid switch interface_id specified
+        :return: None
+        """
+        switch = self._engine.interface.get(interface_id)
+        switch_port = {
+                "interface_id": f"{interface_id}.4096",
+                "switch_interface_port": [
+                    {"soft_switch_pint_ref": port} for port in port_interfaces
+                ],
+                "zone_ref": zone_ref,
+        }
+        switch_port.update(interfaces=interfaces if interfaces else [])
+        interface = {"interface_id": switch.interface_id, "port_group_interface": [switch_port]}
+        switch.update_interface(SwitchPhysicalInterface(**interface))
+
 
 class TunnelInterfaceCollection(InterfaceCollection):
     """
@@ -871,6 +919,44 @@ class VPNBrokerInterfaceCollection(InterfaceCollection):
         }
         broker_interface = VPNBrokerInterface(**interface)
         self._engine.add_interface(broker_interface, **kw)
+
+
+class ModemInterfaceCollection(InterfaceCollection):
+    """ModemInterfaceCollection Collection provides an interface to
+    retrieving existing interfaces and helper methods to shortcut the
+    creation of an interface.
+    """
+
+    def __init__(self, engine):
+        super(ModemInterfaceCollection, self).__init__(engine, "modem_interface")
+
+    def add_layer3_interface(
+            self,
+            interface_id,
+            apn, interfaces=[], pin_code=None, zone_ref=None, mtu=None,
+            qos_mode=None, qos_limit=None, qos_policy_ref=None, auth_method=None,
+            username=None, password=None, **kw
+    ):
+        """Creates a modem interface with sub-type
+        apn interface and (0, 1, 2) single_node_interface entries. This is to be used for single layer 3
+        firewall instances.
+        """
+        modem_interface_content_for_first_creation = {
+            "interface_id": interface_id,
+            "apn": apn,
+            "interfaces": interfaces,
+            "pin_code": pin_code,
+            "zone_ref": zone_ref,
+            "mtu": mtu,
+            "qos_mode": qos_mode,
+            "qos_limit": qos_limit,
+            "qos_policy_ref": qos_policy_ref,
+            "auth_method": auth_method,
+            "username": username,
+            "password": password,
+        }
+        modem_interface = ModemInterface(**modem_interface_content_for_first_creation)
+        return self._engine.add_interface(modem_interface, **kw)
 
 
 class PhysicalInterfaceCollection(InterfaceCollection):

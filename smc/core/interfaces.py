@@ -54,8 +54,9 @@ from smc.core.sub_interfaces import (
     get_sub_interface,
     SubInterfaceCollection,
 )
-from smc.compat import string_types, is_api_version_less_than_or_equal, min_smc_version
-from smc.elements.helpers import zone_helper, logical_intf_helper
+from smc.compat import (string_types, is_api_version_less_than_or_equal, min_smc_version,
+                        is_smc_version_more_than_or_equal)
+from smc.elements.helpers import zone_helper, logical_intf_helper, qos_policy_helper
 from smc.elements.network import Zone
 from smc.base.structs import BaseIterable, NestedDict
 from smc.policy.qos import QoSPolicy
@@ -1233,6 +1234,128 @@ class VPNBrokerInterface(Interface):
                         base_interface.setdefault("interfaces", []).append({sni.typeof: sni.data})
 
 
+class ModemInterface(Interface):
+    """This interface type represents a Modem interface. Not meant to
+    be used directly: instead use:
+
+    engine.modem_interface.add_layer3_interface to create a
+    ModemInterface
+
+    Usage:
+
+    my_modem_interface = ModemInterface(
+        zone_ref="Internal",
+        mtu=1500,
+        qos_mode="full_qos",
+        qos_limit=1000000,
+        qos_policy=QoSPolicy.get("myqospolicy"),
+        interface_id="0",
+        comment="testing modem interface",
+        pin_code="1234",
+        apn="internet",
+        auth_method="pap",
+        username="myusername",
+        password="mypassword",
+        interfaces = [{'dynamic_index': 1, 'automatic_default_route': True}, {'dynamic_ipv6_index': 2}])
+
+    print(json.dumps(dict(my_interface.data)))
+
+    """
+
+    typeof = "modem_interface"
+
+    def __init__(self, engine=None, meta=None, **kw):
+        super(ModemInterface, self).__init__(engine=engine, meta=meta)
+        self.data = ElementCache()
+        if "modem_interface_type" in kw:
+            self.data["modem_interface_type"] = kw.pop("modem_interface_type")
+        else:
+            self.data["modem_interface_type"] = "LTE"
+        if is_smc_version_more_than_or_equal("7.5"):
+            if "pin_code" in kw:
+                self.data["pin_code"] = kw.pop("pin_code")
+        self.data["interface_id"] = kw.pop("interface_id", "0")
+        self.data["comment"] = kw.pop("comment", None)
+        if "apn" in kw:
+            self.add_apn_interface(**kw)
+
+    def add_apn_interface(self, apn, interfaces=[], zone_ref=None, mtu=None, qos_mode=None,
+                          qos_limit=None, qos_policy_ref=None, auth_method=None,
+                          username=None, password=None, **kw):
+        """
+        Add an APN interface to this modem interface. This will create a new APN interface with the provided settings and associate it with this modem interface.
+        """
+        if is_smc_version_more_than_or_equal("7.5"):
+            apn_content = {}
+
+            apn_content["apn"] = apn
+            if zone_ref:
+                apn_content.update(zone_ref=zone_helper(zone_ref) if zone_ref else None)
+            apn_content["interface_id"] = (str(self.data["interface_id"])+"."+
+                                           str(len(self.data.get("apnInterfaces", []))+1));
+            if auth_method:
+                apn_content["modem_auth_method"] = auth_method
+                apn_content["username"] = username
+                apn_content["password"] = password
+            if mtu:
+                apn_content["mtu"] = mtu
+            if qos_mode:
+                apn_content["qos_mode"] = qos_mode
+                apn_content["qos_limit"] = qos_limit
+                if qos_policy_ref:
+                    apn_content.update(qos_policy_ref=qos_policy_helper(qos_policy_ref)
+                    if qos_policy_ref else None)
+
+            self.data["apnInterfaces"] = self.data.get("apnInterfaces", []) + [apn_content]
+
+            for interface in interfaces:
+                interface_content = {}
+                interface_content["nodeid"] = 1
+                interface_content["nicid"] = apn_content["interface_id"]
+                interface_content["dynamic"] = True
+                interface_content["automatic_default_route"] = (
+                    interface.get("automatic_default_route", False))
+                interface_content["dynamic_index"] = interface.get("dynamic_index", None)
+                interface_content["dynamic_ipv6_index"] = interface.get("dynamic_ipv6_index", None)
+
+                apn_content["interfaces"] = (apn_content.get("interfaces", [])
+                                             + [{"single_node_interface": interface_content}])
+        else:
+            if zone_ref:
+                self.data["zone_ref"] = (zone_helper(zone_ref) if zone_ref else None)
+            if mtu:
+                self.data["mtu"] = mtu
+            if qos_mode:
+                self.data["qos_mode"] = qos_mode
+                self.data["qos_limit"] = qos_limit
+                if qos_policy_ref:
+                    self.data["qos_policy_ref"] = qos_policy_helper(qos_policy_ref) if qos_policy_ref else None
+
+            if len(interfaces) > 0 and len(self.data.get("interfaces", [])) > 0:
+                raise UpdateElementFailed("APN interfaces are only supported on modem interfaces without existing interfaces. Please remove existing interfaces before adding APN interfaces.")
+            elif len(interfaces) > 0:
+                # we consider only the first one since in smc < 7.5.0, there is no support for multiple APN interfaces
+                first_set_interface = interfaces[0]
+                interface_content = {}
+                interface_content["apn"] = apn
+                if "pin_code" in kw:
+                    interface_content["pin_code"] = kw.pop("pin_code")
+                interface_content["nodeid"] = 1
+                interface_content["nicid"] = self.data["interface_id"]
+                interface_content["dynamic"] = True
+                interface_content["automatic_default_route"] = (
+                    first_set_interface.get("automatic_default_route", False))
+                interface_content["dynamic_index"] = first_set_interface.get("dynamic_index", None)
+                interface_content["dynamic_ipv6_index"] = first_set_interface.get("dynamic_ipv6_index", None)
+                if auth_method:
+                    self.data["modem_auth_method"] = auth_method
+                    interface_content["pppoe_username"] = username
+                    interface_content["pppoe_password"] = password
+
+                self.data.setdefault("interfaces", []).append(
+                    {"single_node_interface": interface_content})
+
+
 class SwitchPhysicalInterface(Interface):
     """
     A switch physical interface is a new dedicated physical module supported
@@ -1620,6 +1743,19 @@ class PhysicalInterface(Interface):
             self.data.data.update(dhcpv6_relay=dhcp_relay.data)
         else:
             self.data.data.update(dhcp_relay=dhcp_relay.data)
+
+    @property
+    def native_vlan_id(self):
+        """
+        From SMC >= 7.5.0, get the native VLAN ID for this physical interface.
+        """
+        return self.data.data.get("native_vlan_id", None)
+
+    def update_native_vlan_id(self, native_vlan_id: int):
+        """
+        From SMC >= 7.5.0, update the native VLAN ID for this physical interface.
+        """
+        self.data.data.update(native_vlan_id=native_vlan_id)
 
     @property
     def ndi_interfaces(self):

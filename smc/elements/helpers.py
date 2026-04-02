@@ -14,6 +14,7 @@ Helper functions to retrieve various elements that may be required by specific
 constructors.
 """
 from smc.elements.network import Zone
+from smc.policy.qos import QoSPolicy
 from smc.administration.system import AdminDomain
 from smc.elements.other import LogicalInterface, Location
 from smc.api.exceptions import ElementNotFound
@@ -67,6 +68,23 @@ def zone_helper(zone):
     elif zone.startswith("http"):
         return zone
     return Zone.get_or_create(name=zone).href
+
+
+def qos_policy_helper(qos_policy):
+    """
+    QoS Policy finder by name. If QoS Policy doesn't exist, create it and
+    return the href
+
+    :param str qos_policy: name of QoS Policy (if href, will be returned as is)
+    :return str href: href of QoS Policy
+    """
+    if qos_policy is None:
+        return None
+    elif isinstance(qos_policy, QoSPolicy):
+        return qos_policy.href
+    elif qos_policy.startswith("http"):
+        return qos_policy
+    return QoSPolicy.get_or_create(name=qos_policy).href
 
 
 def logical_intf_helper(interface):

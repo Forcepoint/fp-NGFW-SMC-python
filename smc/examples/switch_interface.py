@@ -29,6 +29,7 @@ import sys
 sys.path.append('../../')  # smc-python
 from smc import session  # noqa
 from smc.core.engines import Layer3Firewall  # noqa
+from smc.compat import is_smc_version_less_than  # noqa
 
 logging.getLogger()
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - '
@@ -37,44 +38,45 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - '
 
 def main():
     return_code = 0
+    arguments = parse_command_line_arguments()
+    session.login(url=arguments.api_url, api_key=arguments.api_key,
+                  login=arguments.smc_user,
+                  pwd=arguments.smc_pwd, api_version=arguments.api_version)
+    logging.info("session OK")
+
     try:
-        arguments = parse_command_line_arguments()
-        session.login(url=arguments.api_url, api_key=arguments.api_key,
-                      login=arguments.smc_user,
-                      pwd=arguments.smc_pwd, api_version=arguments.api_version)
-        logging.info("session OK")
+        if is_smc_version_less_than("7.5.0"):
+            single_fw = Layer3Firewall("Plano")
+            (single_fw.switch_physical_interface.add_switch_interface
+             (1, "110", "My new switch interface"))
 
-        single_fw = Layer3Firewall("Plano")
-        (single_fw.switch_physical_interface.add_switch_interface
-         (1, "110", "My new switch interface"))
+            # retrieve interface id
+            switch_interface_id = single_fw.switch_physical_interface.all()[0].interface_id
 
-        # retrieve interface id
-        switch_interface_id = single_fw.switch_physical_interface.all()[0].interface_id
+            single_fw.switch_physical_interface \
+                .add_port_group_interface(switch_interface_id, 1, [1],
+                                          interfaces=[{'nodes': [{'address': '12.12.12.12',
+                                                                  'network_value': '12.12.12.0/24',
+                                                                  'nodeid': 1}]}])
+            single_fw.switch_physical_interface \
+                .add_port_group_interface(switch_interface_id, 2, [2, 3, 4, 5])
 
-        single_fw.switch_physical_interface \
-            .add_port_group_interface(switch_interface_id, 1, [1],
-                                      interfaces=[{'nodes': [{'address': '12.12.12.12',
-                                                              'network_value': '12.12.12.0/24',
-                                                              'nodeid': 1}]}])
-        single_fw.switch_physical_interface \
-            .add_port_group_interface(switch_interface_id, 2, [2, 3, 4, 5])
+            logging.info(f"{switch_interface_id}:"
+                         f"{single_fw.switch_physical_interface.get(switch_interface_id)}")
 
-        logging.info(f"{switch_interface_id}:"
-                     f"{single_fw.switch_physical_interface.get(switch_interface_id)}")
+            for interface in single_fw.switch_physical_interface:
+                logging.info(f"{interface}: {interface.port_group_interface}")
 
-        for interface in single_fw.switch_physical_interface:
-            logging.info(f"{interface}: {interface.port_group_interface}")
+            interface = single_fw.switch_physical_interface.get(switch_interface_id)
+            for sub_intf in interface.all_interfaces:
+                intf_id = sub_intf.data.interface_id
+                logging.info(f"{intf_id}: {sub_intf}")
 
-        interface = single_fw.switch_physical_interface.get(switch_interface_id)
-        for sub_intf in interface.all_interfaces:
-            intf_id = sub_intf.data.interface_id
-            logging.info(f"{intf_id}: {sub_intf}")
-
+            single_fw.switch_physical_interface.get(switch_interface_id).delete()
     except BaseException as e:
         logging.error(f"Exception:{e}")
         return_code = 1
     finally:
-        single_fw.switch_physical_interface.get(switch_interface_id).delete()
         session.logout()
     return return_code
 

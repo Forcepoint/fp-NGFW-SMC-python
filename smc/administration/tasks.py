@@ -224,6 +224,17 @@ class Task(SubElement):
         """
         return self.make_request(TaskRunFailed, href=self.result_url, raw_result=True).content
 
+    def save_result(self, filename):
+        """
+        Save result of task to specified filename
+
+        :param str filename: path and filename to save result to
+        :raises IOError: if task not finished or unable to save file
+        """
+        if self.in_progress:
+            raise IOError("Task is not finished!")
+        self.make_request(TaskRunFailed, href=self.result_url, raw_result=True, filename=filename)
+
     def get_progress_report(self):
         """
         Get progress report if applicable

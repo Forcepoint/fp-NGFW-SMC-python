@@ -186,21 +186,7 @@ def main():
         interfaces_json = [{'interfaces': [{'nodes': [{'address': '11.11.11.1',
                                                        'network_value': '11.11.11.1/32',
                                                        'nodeid': 1}]}],
-                            'interface_id': '1000', 'type': 'tunnel_interface'},
-                           {'interfaces': [], 'interface_id': 'SWP_0',
-                            'appliance_switch_module': '110 appliance (8 fixed ports)',
-                            'type': 'switch_interface',
-                            'port_group_interface': [{'interface_id': 'SWP_0.4',
-                                                      'switch_interface_port': [{
-                                                          'switch_interface_port_comment': 'port 2',
-                                                          'physical_switch_port_number': 2},
-                                                          {'switch_interface_port_comment': '',
-                                                           'physical_switch_port_number': 4},
-                                                          {'switch_interface_port_comment': '',
-                                                           'physical_switch_port_number': 5},
-                                                          {'switch_interface_port_comment': '',
-                                                           'physical_switch_port_number': 6}]}]
-                            }]
+                            'interface_id': '1000', 'type': 'tunnel_interface'}]
         sidewinder_setting = [
             SidewinderProxyAdvancedSettings.create(attribute="httpkey", sidewinder_type="HTTP",
                                                    value="value1")]

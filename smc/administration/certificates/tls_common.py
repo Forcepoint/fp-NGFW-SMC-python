@@ -75,9 +75,10 @@ def load_cert_chain(chain_file):
 
 def certificate_content(certificate):
     """ decode certificate or use it as it is """
-    cert_value = ''
-    with open(certificate, "rb") as file:
-        cert_value = file.read() if not pem_as_string(certificate) else certificate
+    cert_value = certificate
+    if not pem_as_string(certificate):
+        with open(certificate, "rb") as file:
+            cert_value = file.read()
     return cert_value
 
 
@@ -203,8 +204,8 @@ class ImportPrivateKey(object):
             resource="private_key_import",
             headers={"content-type": "multipart/form-data"},
             files={
-                "private_key": open(private_key, "rb")
-                if not pem_as_string(private_key)
-                else private_key
+                "private_key": private_key
+                if pem_as_string(private_key)
+                else open(private_key, "rb")
             },
         )

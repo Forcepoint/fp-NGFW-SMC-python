@@ -39,6 +39,7 @@ from smc.core.collection import (
     PhysicalInterfaceCollection,
     TunnelInterfaceCollection,
     VPNBrokerInterfaceCollection,
+    ModemInterfaceCollection,
     VirtualPhysicalInterfaceCollection,
     SwitchInterfaceCollection,
 )
@@ -1484,6 +1485,9 @@ class Engine(Element):
         if not min_smc_version("7.0"):
             raise UnsupportedEngineFeature("Need at least 7.0 version of the SMC")
 
+        if is_smc_version_more_than_or_equal("7.5.0"):
+            raise UnsupportedEngineFeature("From SMC 7.5.0, ZTNA add-on support ends")
+
         if self.type not in ("single_fw", "fw_cluster", "virtual_fw"):
             raise UnsupportedEngineFeature(
                 "Enabling ZTNA Connector should be done only on single_fw, "
@@ -2341,17 +2345,15 @@ class Engine(Element):
         """
         return [ReplicaInternalGateway(**gw) for gw in self.make_request(resource="replica_internal_gateway")]
 
-    def create_replica_internal_gateway(self, name, linked_gateway, auto_site_content=True):
+    def create_replica_internal_gateway(self, linked_gateway, name=None):
         """
         Create a replica internal gateway on this engine. A replica gateway is linked to
         an internal gateway from another engine and is used in VPN configurations.
 
-        :param str name: Name for the replica internal gateway
+        :param str name: Name for the replica internal gateway (optional)
         :param linked_gateway: The internal gateway to link to. Can be an InternalGateway
                               object, InternalEndpoint object, or an href string
         :type linked_gateway: InternalGateway or str
-        :param bool auto_site_content: Whether site content should be automatically generated
-                                       from the routing view (default: True)
         :raises ActionCommandFailed: When creation fails
         :return: The created ReplicaInternalGateway
         :rtype: ReplicaInternalGateway
@@ -2364,7 +2366,6 @@ class Engine(Element):
             >>> replica_gw = saint_paul_fw.create_replica_internal_gateway(
             ...     name='Santa Clara Replica',
             ...     linked_gateway=santa_clara_gw,
-            ...     auto_site_content=True
             ... )
             >>> print(replica_gw.name)
             Santa Clara Replica
@@ -2376,11 +2377,11 @@ class Engine(Element):
             linked_gateway_ref = linked_gateway
 
         data = {
-            "name": name,
-            "linked_gateway_ref": linked_gateway_ref,
-            "auto_site_content": auto_site_content
+            "linked_gateway_ref": linked_gateway_ref
         }
 
+        if name:
+            data.update(name=name)
         result = self.make_request(
             method="create",
             resource="replica_internal_gateway",
@@ -2391,8 +2392,11 @@ class Engine(Element):
             return ReplicaInternalGateway(href=result.get('href', f"{self.href}/replica_internal_gateway"), data=result)
 
         for gw in self.replica_internal_gateway:
-            if gw.name == name:
+            if name and name in gw.name:
                 return gw
+            elif not name:
+                if gw.name == gw.data.display_name:
+                    return gw
 
         return None
 
@@ -2715,7 +2719,7 @@ class Engine(Element):
             on layer 3 engines
         :return: list of dict entries with href,name,type, or None
         """
-        return self.make_request(UnsupportedInterfaceType, resource="modem_interface")
+        return ModemInterfaceCollection(self)
 
     @property
     def adsl_interface(self):
@@ -3124,14 +3128,29 @@ class Engine(Element):
             raw_result=True
         )
 
-    def generate_and_sign_user_authentication_certificate(self):
+    def generate_and_sign_user_authentication_certificate(self, subject_alt_name=None, key_length=None):
         """
         Generate and internally sign User Authentication certificate.
-        """
+        :param subject_alt_name: Subject Alternative Name to be included in the certificate.
+              Possible examples:
+                 * DNS:foo
+                 * IP:10.2.2.2
+                 * email:foo@corp.com
+                 * URI:http://corp.com,RID:1.4
+                 * DNS:foo,IP:10.2.2.2,email:foo@corp.com
+        :param key_length: Key length for the certificate.
 
+        :raises CertificateExportError: error exporting certificate
+        """
+        if (is_smc_version_more_than_or_equal("7.5.0")
+                and subject_alt_name):
+            json = {"key_length": key_length, "subject_alt_name": subject_alt_name}
+        else:
+            json = {"key_length": key_length}
         return Task.execute(
             self,
             "web_auth_https_generate_and_sign_certificate",
+            json=json,
             wait_for_finish=True
         )
 
@@ -3163,7 +3182,7 @@ class Engine(Element):
 
         return result.content
 
-    def generate_user_authentication_certificate_request(self):
+    def generate_user_authentication_certificate_request(self, subject_alt_name=None, key_length=None):
         """
         Export the certificate request for the node when working external CA.
         This can return None if the engine type does not have a certificate request.
@@ -3171,10 +3190,16 @@ class Engine(Element):
         :raises CertificateExportError: error exporting certificate
         :rtype: str or None
         """
+        if (is_smc_version_more_than_or_equal("7.5.0")
+                and subject_alt_name):
+            json = {"key_length": key_length, "subject_alt_name": subject_alt_name}
+        else:
+            json = {"key_length": key_length}
         return self.make_request(
             CertificateExportError,
             method="create",
-            resource="web_auth_https_generate_certificate_request"
+            resource="web_auth_https_generate_certificate_request",
+            json=json
         )
 
     def export_user_authentication_certificate_request(self, filename=None):
@@ -3603,6 +3628,18 @@ class VPN(object):
     def ssl_vpn_portal(self):
         """
         SSL VPN Portal settings for this engine.
+        Deprecated since SMC >= 7.5.0 use application_access_portal instead
+
+        Alias for internal_gateway.
+
+        :rtype: InternalGateway
+        """
+        return self.internal_gateway
+
+    @property
+    def application_access_portal(self):
+        """
+        SSL VPN Portal settings for this engine.
 
         Alias for internal_gateway.
 
@@ -3770,10 +3807,20 @@ class VPN(object):
     def ssl_vpn_portal_setting(self):
         """
         SSL VPN Portal settings for this Engine Internal Gateway.
+        Deprecated since SMC >= 7.5.0 use application_access_portal_setting instead
 
         :rtype: List
         """
         return self.internal_gateway.ssl_vpn_portal_setting
+
+    @property
+    def application_access_portal_setting(self):
+        """
+        SSL VPN Portal settings for this Engine Internal Gateway.
+
+        :rtype: List
+        """
+        return self.internal_gateway.application_access_portal_setting
 
     @property
     def ssl_vpn_proxy(self):
@@ -3882,10 +3929,20 @@ class InternalGateway(SubElement):
     def ssl_vpn_portal_setting(self):
         """
         SSL VPN Portal settings for this engine.
+        Deprecated since SMC >= 7.5.0 use application_access_portal_setting instead
 
         :rtype: List
         """
         return self.data.get("ssl_vpn_portal_setting")
+
+    @property
+    def application_access_portal_setting(self):
+        """
+        SSL VPN Portal settings for this engine.
+
+        :rtype: List
+        """
+        return self.data.get("application_access_portal_setting")
 
     @property
     def ssl_vpn_proxy(self):
@@ -3999,6 +4056,23 @@ class ReplicaInternalGateway(SubElement):
 
     typeof = "replica_internal_gateway"
 
+    @property
+    def name(self):
+        """
+        Get the name of the replica internal gateway.
+        Returns 'name' if provided, otherwise falls back to 'display_name'.
+
+        API naming convention:
+        - With name: "Saint Paul - Test Replica Gateway"
+          (engine name + user-provided name)
+        - Without name: "Saint Paul - Replica of Santa Clara VPN Gateway"
+          (engine name + auto-generated description in display_name)
+
+        :return: gateway name
+        :rtype: str
+        """
+        return self.data.get("name") or self.data.get("display_name", "")
+
     def rename(self, name):
         """
         Rename this replica internal gateway.
@@ -4039,26 +4113,7 @@ class ReplicaInternalGateway(SubElement):
             self.get_relation("replica_internal_endpoint"), ReplicaInternalEndpoint
         )
 
-    @property
-    def vpn_site(self):
-        """
-        VPN sites associated with this replica internal gateway.
-
-        :rtype: CreateCollection(VPNSite)
-        """
-        return create_collection(self.get_relation("vpn_site"), VPNSite)
-
-    @property
-    def auto_site_content(self):
-        """
-        Indicates whether the site content is automatically generated
-        from the routing view.
-
-        :return: bool
-        """
-        return self.data.get("auto_site_content", False)
-
-    def create_replica_endpoint(self, linked_endpoint, interface_ip_address, name=None):
+    def create_replica_endpoint(self, linked_endpoint, interface_ip_address):
         """
         Create a replica internal endpoint on this replica gateway.
 
@@ -4070,8 +4125,6 @@ class ReplicaInternalGateway(SubElement):
         :type linked_endpoint: InternalEndpoint or str
         :param str interface_ip_address: The IP address of the local interface to use for this
                                          replica endpoint
-        :param str name: Optional name for the replica endpoint. If not provided,
-                        defaults to the interface_ip_address
         :raises ActionCommandFailed: When creation fails
         :return: The created ReplicaInternalEndpoint
         :rtype: ReplicaInternalEndpoint
@@ -4093,13 +4146,10 @@ class ReplicaInternalGateway(SubElement):
         else:
             linked_endpoint_ref = linked_endpoint
 
-        if name is None:
-            name = interface_ip_address
 
         data = {
             "linked_endpoint_ref": linked_endpoint_ref,
             "interface_ip_address": interface_ip_address,
-            "name": name
         }
 
         self.make_request(
@@ -4108,11 +4158,13 @@ class ReplicaInternalGateway(SubElement):
             json=data
         )
 
+        self.data.pop('replica_internal_endpoint', None)
         for endpoint in self.replica_internal_endpoint:
             if endpoint.interface_ip_address == interface_ip_address:
                 return endpoint
 
-        return ReplicaInternalEndpoint(href=f"{self.href}/replica_internal_endpoint", data=data)
+
+        return None
 
 
 class ReplicaInternalEndpoint(SubElement):
@@ -4140,12 +4192,12 @@ class ReplicaInternalEndpoint(SubElement):
     @property
     def name(self):
         """
-        Get the name from deducted name
+        Get the name from deducted name or name field.
 
         :return: endpoint name
         :rtype: str
         """
-        return self.data.get("deducted_name", self.data.get("name", ""))
+        return self.data.get("deducted_name") or self.data.get("name")
 
     @property
     def interface_ip_address(self):

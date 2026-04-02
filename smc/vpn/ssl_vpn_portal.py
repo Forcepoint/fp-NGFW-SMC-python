@@ -7,10 +7,10 @@ from smc.base.collection import rule_collection
 from smc.core.resource import History
 from smc.policy.rule import RuleCommon, Rule, SubElement
 
-
 class SSLVPNPortal(Element):
     """
     An SSL VPN Portal.
+    Deprecated since SMC >= 7.5.0, replaced by ApplicationAccessPortal.
     """
     typeof = "ssl_vpn_portal"
 
@@ -267,6 +267,7 @@ class SSLVPNPortal(Element):
 class SSLVPNHttpField(NestedDict):
     """
     An HTTP field to be used in an SSL VPN
+    Deprecated since SMC >= 7.5.0, replaced by ApplicationAccessHttpField.
     """
 
     def __init__(self, http_field_name=None, http_field_value=None):
@@ -277,6 +278,7 @@ class SSLVPNHttpField(NestedDict):
 class SSLVPNHostname(NestedDict):
     """
     An SSL VPN name which can be an IP Address or FQDN.
+    Deprecated since SMC >= 7.5.0, replaced by ApplicationAccessHostname.
     """
 
     def __init__(self, ssl_vpn_hostname):
@@ -287,6 +289,7 @@ class SSLVPNHostname(NestedDict):
 class SSLVPNAllowedURL(NestedDict):
     """
     An SSL VPN allowed URL dict for Free Form URL SSLVPN Web Service
+    Deprecated since SMC >= 7.5.0, replaced by ApplicationAccessAllowedURL.
     """
 
     def __init__(self, protocol="HTTP", url_host=None, port=None):
@@ -297,6 +300,7 @@ class SSLVPNAllowedURL(NestedDict):
 class SSLVPNSSODomain(Element):
     """
     An SSL VPN Single Sign On Domain.
+    Deprecated since SMC >= 7.5.0, replaced by ApplicationAccessSSODomain.
     """
     typeof = "ssl_vpn_sso_domain"
 
@@ -336,6 +340,7 @@ class SSLVPNSSODomain(Element):
 class SSLVPNServiceProfile(Element):
     """
     An SSL VPN Service Profile.
+    Deprecated since SMC >= 7.5.0, replaced by ApplicationAccessServiceProfile.
     """
 
     typeof = "ssl_vpn_service_profile"
@@ -478,6 +483,7 @@ class SSLVPNServiceProfile(Element):
 class SSLVPNWebService(Element):
     """
     An SSL VPN Web Service.
+    Deprecated since SMC >= 7.5.0, replaced by ApplicationAccessWebService.
     """
 
     typeof = "ssl_vpn_web_service"
@@ -696,6 +702,7 @@ class SSLVPNWebService(Element):
 class SSLVPNRule(RuleCommon, Rule, SubElement):
     """
     An SSL VPN Policy Rule
+    Deprecated since SMC >= 7.5.0, replaced by ApplicationAccessRule.
     """
 
     typeof = "sslvpn_rule"
@@ -869,6 +876,7 @@ class Authentication(NestedDict):
 class SSLVPNPolicyRule(object):
     """
     An SSL VPN Policy Rule collector.
+    Deprecated since SMC >= 7.5.0, replaced by ApplicationAccessPolicyRule.
     """
     @property
     def sslvpn_rules(self):
@@ -878,6 +886,7 @@ class SSLVPNPolicyRule(object):
 class SSLVPNPolicy(SSLVPNPolicyRule, Element):
     """
     An SSL VPN Policy.
+    Deprecated since SMC >= 7.5.0, replaced by ApplicationAccessPolicy.
     """
 
     typeof = "ssl_vpn_policy"

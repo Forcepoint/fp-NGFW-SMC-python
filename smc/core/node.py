@@ -390,10 +390,11 @@ class Node(SubElement):
 
         :param str comment: (optional) comment to audit
         :raises NodeCommandFailed: online not available
-        :return: None
+        :return: operation result
         """
-        self.make_request(
-            NodeCommandFailed, method="update", resource="go_online", params={"comment": comment}
+        return self.make_request(
+            NodeCommandFailed, method="update", resource="go_online",
+            params={"comment": comment}, raw_result=True
         )
 
     def go_offline(self, comment=None):
@@ -402,10 +403,11 @@ class Node(SubElement):
 
         :param str comment: optional comment to audit
         :raises NodeCommandFailed: offline not available
-        :return: None
+        :return: operation result
         """
-        self.make_request(
-            NodeCommandFailed, method="update", resource="go_offline", params={"comment": comment}
+        return self.make_request(
+            NodeCommandFailed, method="update", resource="go_offline",
+            params={"comment": comment}, raw_result=True
         )
 
     def go_standby(self, comment=None):
@@ -415,10 +417,11 @@ class Node(SubElement):
 
         :param str comment: optional comment to audit
         :raises NodeCommandFailed: engine cannot go standby
-        :return: None
+        :return: operation result
         """
-        self.make_request(
-            NodeCommandFailed, method="update", resource="go_standby", params={"comment": comment}
+        return self.make_request(
+            NodeCommandFailed, method="update", resource="go_standby",
+            params={"comment": comment}, raw_result=True
         )
 
     def lock_online(self, comment=None):
@@ -427,10 +430,11 @@ class Node(SubElement):
 
         :param str comment: comment for audit
         :raises NodeCommandFailed: cannot lock online
-        :return: None
+        :return: operation result
         """
-        self.make_request(
-            NodeCommandFailed, method="update", resource="lock_online", params={"comment": comment}
+        return self.make_request(
+            NodeCommandFailed, method="update", resource="lock_online",
+            params={"comment": comment}, raw_result=True
         )
 
     def lock_offline(self, comment=None):
@@ -440,10 +444,11 @@ class Node(SubElement):
 
         :param str comment: comment for audit
         :raises NodeCommandFailed: lock offline failed
-        :return: None
+        :return: operation result
         """
-        self.make_request(
-            NodeCommandFailed, method="update", resource="lock_offline", params={"comment": comment}
+        return self.make_request(
+            NodeCommandFailed, method="update", resource="lock_offline",
+            params={"comment": comment}, raw_result=True
         )
 
     def reset_user_db(self, comment=None):

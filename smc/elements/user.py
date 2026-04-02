@@ -193,6 +193,7 @@ class AdminUser(UserMixin, Element):
         ldap_group_href=None,
         tls_field=None,
         tls_value=None,
+        login_name_on_engine=None,
     ):
         """
         Create an admin user account.
@@ -218,6 +219,7 @@ class AdminUser(UserMixin, Element):
         :param ldap_group_href External user href to link as SMC admin
         :param tls_field: TLS field name for client identity
         :param tls_value: TLS value corresponding the field for client identity
+        :param login_name_on_engine: Login name on engine for this admin user (available from SMC 7.5.0)
         :raises CreateElementFailed: failure creating element with reason
         :return: instance with meta
         :rtype: AdminUser
@@ -239,6 +241,9 @@ class AdminUser(UserMixin, Element):
             "ldap_user": ldap_user_href,
             "ldap_group": ldap_group_href,
         }
+
+        if login_name_on_engine:
+            json["login_name_on_engine"] = login_name_on_engine
 
         if tls_field:
             json["client_identity"] = {"tls_field": tls_field, "tls_value": tls_value}

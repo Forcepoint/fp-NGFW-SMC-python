@@ -124,7 +124,7 @@ def send_request(user_session, method, request):
                 if logger.isEnabledFor(logging.DEBUG):
                     debug(response)
 
-                if response.status_code not in (200, 202):
+                if response.status_code not in (200, 202, 304):
                     raise SMCOperationFailure(response)
 
             elif method == DELETE:

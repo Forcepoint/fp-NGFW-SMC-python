@@ -323,7 +323,7 @@ class UrlFiltering(NestedDict):
     def enable_disable_local_url_categorization(self, enable:bool):
         """
         Enable local URL categorization on the engine.
-        Only from SMC > 7.4.0!
+        Only from SMC >= 7.4.0!
         """
         self.update(local_url_categorization_enabled=enable)
 
@@ -337,6 +337,24 @@ class UrlFiltering(NestedDict):
         """
         return (self.get("ts_enabled", False) and
                 self.get("local_url_categorization_enabled", False))
+
+    def enable_disable_local_real_time_scanning(self, enable:bool):
+        """
+        Enable real-time methods for local scanning on the engine.
+        Only from SMC >= 7.5.0!
+        """
+        self.update(local_real_time_scanning_enabled=enable)
+
+    @property
+    def is_local_real_time_scanning_enabled(self) -> bool:
+        """
+        Return true if the real-time methods for local scanning is enabled and if the local
+        URL categorization is enabled too.
+
+        :rtype: bool
+        """
+        return (self.get("ts_enabled", False) and
+                self.get("local_real_time_scanning_enabled", False))
 
     @property
     def status(self) -> bool:

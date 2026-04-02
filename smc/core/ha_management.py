@@ -36,10 +36,14 @@ To get the HA Diagnostics, do::
     msg:    Contact IP addresses: LocationHQ:127.0.0.1 HQ:127.0.0.1 Default:127.0.0.1
     ...
 """
+import time
+
 from smc.api.common import fetch_entry_point, SMCRequest, _get_session
-from smc.api.exceptions import HaCommandException
+from smc.api.exceptions import HaCommandException, HaRequestException
 from smc.base.model import Element
 from smc.base.structs import NestedDict
+from smc.compat import min_smc_version
+from smc.elements.servers import ManagementServer
 
 
 class HAInfo(NestedDict):
@@ -214,12 +218,173 @@ class HAManagement(object):
         if response.status_code != 200:
             raise HaCommandException(response)
 
+    @staticmethod
+    def check_result(smc_result):
+        """
+        Check the smc_result content and raise HaRequestException if there is no JSON content.
+        :param SMCResult raw result of the SMC API request
+        :raise: HaRequestException: if there is no JSON payload in the result
+        """
+        if smc_result.json is None :
+            raise HaRequestException(smc_result.msg)
+
     def get_ha(self):
         """
         :return: HA Information
         :rtype: HAInfo
         """
         return HAInfo(SMCRequest(href=self.entry).read().json)
+
+    def set_activation(self, timeout=600, verbose=False):
+        """
+        Launches the activation of the connected Management Server.
+
+        <b>Warning:</b> This method does not tolerate the presence of a Standby Management Server
+        with existing replication issues.
+        If such a server is present, it must be excluded before using this method.
+
+        Therefore, this method must be called on the Standby Management Server to activate.
+        This method is available only for SMC ≥ 7.3.0.
+
+        If the system state is considered suspicious, the activation request is rejected.
+        In such cases, you must run database_replication_diagnostic on each server and act according to the reported state.
+
+        This method waits until the timeout expires for the activation to be fully applied on all servers.
+
+        :param int timeout: Maximum time to wait for stabilization, default 600s ( 10 minutes ).
+        :param bool verbose: Prints the current replication state every 10 seconds, default False.
+        :return: The replication state at the end of the activation procedure.
+        :rtype: JSON payload with the following structure:
+        {
+            "success": boolean that indicates whether the activation was successful,
+            "state": string that describes the final replication state or an error message if the activation failed or timed out
+        }
+        """
+        try:
+            success = False
+            response = self.set_active()
+            if min_smc_version("7.3"):
+                if response.status_code == 200:
+                    start_time = time.time()
+                    time.sleep(10)  # time.sleep parameter is in seconds.
+                    while True:
+                        try:
+                            # this entry point does not exist in old SMC version (introduction in
+                            # 7.3.4, 7.4.2 and 7.5.0)
+                            state = self.database_replication_diagnostic()["state"]
+                        except Exception:
+                            response_message = ("This version of SMC does not support the required"
+                                                "API entry point 'database_replication_diagnostic'."
+                                                "Please check the replication state manually."
+                                                "Standby server initialization against the new server will continue in the background.")
+                            success = True
+                            break
+                        if state.startswith("[ACT_REP]"):
+                            response_message = state
+                            success = True
+                            break
+                        if time.time() - start_time > timeout:
+                            response_message = (f"Timeout reached ({timeout} seconds), final replication "
+                                                f"state is {state}")
+                            break
+                        if verbose:
+                            print(f"Current replication state: {state}, in progress since {int(time.time() - start_time)} seconds")
+                        time.sleep(10)  # time.sleep parameter is in seconds.
+                else:
+                    response_message = f"Activation request failed: {response}"
+            else:
+                response_message = (f"Activation request done, but replication state cannot be "
+                                    f"monitored for SMC versions prior to 7.3. Please check the replication state manually.")
+                success = True
+
+        except HaCommandException as e:
+            response_message = f"Activation request failed: {e}"
+        return {
+            "success": success,
+            "state": response_message
+        }
+
+    def init_standby(self, server, timeout=600, verbose=False):
+        """
+        Launches the initialization of the incremental replication for the standby server provided as a parameter.
+
+        <b>Warning:</b> This method does not tolerate the presence of a Standby Management Server
+        with existing replication issues.
+        If such a server is present, it must be excluded before using this method.
+
+        Therefore, this method must be called on the Standby Management Server to activate.
+        This method is available only for SMC ≥ 7.3.0.
+
+        If the system state is considered suspicious, the initialization request is rejected.
+        In such cases, you must run database_replication_diagnostic on each server and act according to the reported state.
+
+        This method waits until the timeout expires for the initialization to be fully applied on all servers.
+
+        :param ManagementServer server: Management Server to initialize.
+        :param int timeout: Maximum time to wait for stabilization, default 600s ( 10 minutes ).
+        :param bool verbose: Prints the current replication state every 10 seconds, default False.
+        :return: The replication state at the end of the initialization procedure.
+        :rtype: JSON payload with the following structure:
+        {
+            "success": boolean that indicates whether the activation was successful,
+            "state": string that describes the final replication state or an error message if the activation failed or timed out
+        }
+        """
+        try:
+            success = False
+            response = self.full_replication(server)
+            if min_smc_version("7.3"):
+                if response.status_code == 200:
+                    start_time = time.time()
+                    time.sleep(10)  # time.sleep parameter is in seconds.
+                    while True:
+                        # this entry point does not exist in old SMC version (introduction in
+                        # 7.3.4, 7.4.2 and 7.5.0)
+                        try:
+                            diagnostic_result = self.all_servers_replication_diagnostic()
+                        except Exception:
+                            response_message = ("This version of SMC does not support"
+                                                "the required API entry point 'all_servers_replication_states'."
+                                                "Please check the replication state manually."
+                                                "Standby server initialization has been requested successfully")
+                            success = True
+                            break
+                        state = None
+                        if diagnostic_result is None:
+                            state = f"{server.name} replication state not available"
+                        else:
+                            for standby_server in diagnostic_result["standby_server_states"]:
+                                if standby_server.get("server_name") == server.name:
+                                    state = standby_server.get("state")
+                                    break
+                        if state is None:
+                            state = f"{server.name} replication state not available"
+                        if state.startswith("[STB_REP]"):
+                            response_message = state
+                            success = True
+                            break
+                        if time.time() - start_time > timeout:
+                            response_message = (f"Timeout reached ({timeout} seconds), final replication "
+                                                f"state is {state}")
+                            break
+                        if verbose:
+                            print(f"Current replication state {server.name}: {state}, in progress "
+                                  f"since"
+                                  f" {int(time.time() - start_time)} seconds")
+                        time.sleep(10)  # time.sleep parameter is in seconds.
+                else:
+                    response_message = f"Init standby request failed: {response}"
+            else:
+                response_message = (f"Init standby request done, but replication state cannot be "
+                                    f"monitored for SMC versions prior to 7.3. Please check the replication state manually.")
+                success = True
+
+        except HaCommandException as e:
+            response_message = f"Init standby request failed: {e}"
+        return {
+            "success": success,
+            "state": response_message
+        }
 
     def set_active(self, server=None, force=False):
         """
@@ -366,4 +531,179 @@ class HAManagement(object):
         """
         params = {"deep": deep, "exclude_info": exclude_info, "global_timeout": global_timeout,
                   "server_timeout": server_timeout}
-        return HADiagnostic(SMCRequest(href=self.entry+"/diagnostic", params=params).read().json)
+        result = SMCRequest(href=self.entry+"/diagnostic", params=params).read();
+        self.check_result(result)
+        return HADiagnostic(result.json)
+
+    def all_servers_replication_diagnostic(self):
+        """
+        Returns a diagnostic for database replication status across all servers.
+
+        Provides information about the active server state and all standby servers'
+        replication states in the high availability management servers.
+
+        SMC API entry point for this method is only available for SMC 7.3.4+, 7.4.2+ or higher.
+
+        :return: Replication diagnostic information containing:
+                 - active_server_state: Current state of the active server's database replication
+                 - standby_server_states: List of standby servers with their replication states,
+                   each containing:
+                   - server_name: Name of the standby server
+                   - state: Current replication state description
+        :rtype: dict
+
+        Example response::
+        {
+            "active_server_state": "[ACT_REP] Active database replication is enabled",
+            "standby_server_states": [
+                {
+                    "server_name": "DK_MGT_2",
+                    "state": "[STB_REP] Standby database replication is enabled"
+                },
+                {
+                    "server_name": "HOST_MGT",
+                    "state": "[STB_REP] Standby database replication is enabled"
+                }
+            ]
+        }
+        """
+        if min_smc_version("7.3"):
+            result = SMCRequest(href=self.entry + "/all_servers_replication_states").read()
+            self.check_result(result)
+            return response.json
+        else:
+            raise HaCommandException("This method is only available for SMC 7.3 or higher.")
+
+    def database_replication_diagnostic(self):
+        """
+        Returns a diagnostic for database replication status.
+
+        Provides information about the database replication state including server details,
+        license validity, replication configuration, and active connections.
+
+        SMC API entry point for this method is only available for SMC 7.3 or higher.
+
+        :return: Database replication diagnostic information containing:
+                 - server_name: Name of the server
+                 - valid_license: Whether the license is valid
+                 - servers: List of servers with their IDs
+                 - state: Current replication state description
+                 - table_count: Number of tables being replicated
+                 - element_count: Number of elements being replicated
+                 - active_server_publication: Whether active server publication is enabled
+                 - standby_server_registered: Number of registered standby servers
+                 - active_replication_streaming: Number of active replication streams
+                 - active_replication_to_standby_servers: List of active replication connections
+                   to standby servers with connection details
+                 - standby_replication_subscription: Number of standby replication subscriptions
+        :rtype: dict
+
+        Example response::
+
+            {
+              "server_name": "HOST_MGT",
+              "valid_license": true,
+              "servers": "[HOST_MGT (10), DK_MGT_2 (1296), DK_MGT_1 (1174)]",
+              "state": "[ACT_REP] Active database replication is enabled",
+              "table_count": "371",
+              "element_count": "1428",
+              "active_server_publication": true,
+              "standby_server_registered": "2",
+              "active_replication_streaming": "2",
+              "active_replication_to_standby_servers": [
+                "[PG-PUB|-->127.0.0.1  on port 44946|sub_smc1174|pid:16159|Since:2026-02-23 08:15:33+0100",
+                "[PG-PUB|-->127.0.0.1  on port 46142|sub_smc1296|pid:16930|Since:2026-02-23 08:16:12+0100"
+              ],
+              "standby_replication_subscription": "0"
+            }
+        """
+        if min_smc_version("7.3"):
+            result = SMCRequest(href=self.entry+"/database_replication_diagnostic").read()
+            self.check_result(result)
+            return result.json
+        else:
+            raise HaCommandException("This method is only available for SMC 7.3 or higher.")
+
+    def audit_replication_diagnostic(self):
+        """
+        Returns a diagnostic for audit replication status.
+
+        Provides information about the audit replication state including server details,
+        replication status, and file counts.
+
+        SMC API entry point for this method is only available for SMC 7.3 or higher.
+
+        :return: Audit replication diagnostic information containing:
+                 - server_name: Name of the server
+                 - status: Whether audit replication is active
+                 - last_error: Last error message or status description
+                 - state: Current replication state (e.g., "Listening")
+                 - last_update: Timestamp of last update in milliseconds
+                 - info: Additional information about the server mode (mostly active mode or standby mode)
+                 - input_files_count: Number of input files being processed
+                 - output_files_count: Number of output files generated
+        :rtype: dict
+
+        Example response::
+
+            {
+              "server_name": "HOST_MGT",
+              "status": true,
+              "last_error": "Active server - listening",
+              "state": "Listening",
+              "last_update": 1771579987596,
+              "info": "Active server mode has been enabled",
+              "input_files_count": 3,
+              "output_files_count": 25
+            }
+        """
+        if min_smc_version("7.3"):
+            result = SMCRequest(href=self.entry+"/audit_replication_diagnostic").read()
+            self.check_result(result)
+            return result.json
+        else:
+            raise HaCommandException("This method is only available for SMC 7.3 or higher.")
+
+    def audit_scan(self):
+        """
+        Launch an audit scan request on the standby management server.
+        Active management server will reject the request.
+
+        SMC API entry point for this method is only available for SMC 7.3 or higher.
+
+        :return: the confirmation message.
+        :rtype: requests.Response
+        """
+        if min_smc_version("7.3"):
+            session = _get_session(SMCRequest._session_manager)
+            response = session.session.post(
+                url=self.entry+"/audit_scan_request"
+            )
+            self.check_status(response)
+            return response
+        else:
+            raise HaCommandException("This method is only available for SMC 7.3 or higher.")
+
+    def audit_full_scan(self, disable_delay = False):
+        """
+        Launch an audit full scan request on the standby management server.
+        Active management server will reject the request.
+
+        SMC API entry point for this method is only available for SMC 7.3 or higher.
+
+        :param bool disable_delay: disable delay will start a full scan without moderation, default False
+
+        :return: the confirmation message or error message.
+        :rtype: requests.Response
+        """
+        if min_smc_version("7.3"):
+            params = {"disable_delay": disable_delay}
+            session = _get_session(SMCRequest._session_manager)
+            response = session.session.post(
+                url=self.entry+f"/audit_full_scan_request",
+                params=params,
+            )
+            self.check_status(response)
+            return response
+        else:
+            raise HaCommandException("This method is only available for SMC 7.3 or higher.")
