@@ -2020,11 +2020,11 @@ class Engine(Element):
         :rtype: :class:`smc_monitoring.monitors.blocklist.BlocklistEntry`
         """
         try:
-            from smc_monitoring.monitors.blocklist import BlocklistQuery
+            from smc_monitoring.monitors.block_list import BlockListQuery
         except ImportError:
             pass
         else:
-            query = BlocklistQuery(self.name)
+            query = BlockListQuery(self.name)
             for record in query.fetch_as_element(**kw):
                 yield record
 
@@ -2060,13 +2060,14 @@ class Engine(Element):
         """
         try:
             from smc_monitoring.monitors.blacklist import BlacklistQuery
+            from smc_monitoring.monitors.block_list import BlockListQuery
         except ImportError:
             pass
         else:
             if is_api_version_less_than("7.0"):
                 query = BlacklistQuery(self.name)
             else:
-                query = BlocklistQuery(self.name)
+                query = BlockListQuery(self.name)
 
             for record in query.fetch_as_element(**kw):
                 yield record
