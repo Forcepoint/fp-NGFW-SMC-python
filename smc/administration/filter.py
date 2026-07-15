@@ -12,6 +12,10 @@
 """
 Filter elements. These elements can be used for logs query.
 """
+from __future__ import annotations
+
+from typing import Any, Optional, Union, Iterator
+
 from smc.base.model import Element, ElementCreator
 
 
@@ -24,7 +28,7 @@ class Filter(Element):
     _reserved = ("comment", "key", "link", "name", "read_only", "system")
 
     @classmethod
-    def create(cls, name, comment=None):
+    def create(cls, name: str, comment: Optional[str] = None) -> Filter:
         """
         Create a new Filter.
 

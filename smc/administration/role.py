@@ -71,6 +71,10 @@ Once modification is complete, call update on the role::
     'http://172.18.1.151:8082/6.4/elements/role/10'
 
 """
+from __future__ import annotations
+
+from typing import Any, Optional, Union, Iterator
+
 from smc.base.model import Element, ElementCreator
 
 
@@ -85,7 +89,7 @@ class Role(Element):
     _reserved = ("comment", "key", "link", "name", "read_only", "system")
 
     @classmethod
-    def create(cls, name, comment=None):
+    def create(cls, name: str, comment: Optional[str] = None) -> Role:
         """
         Create a new role. The role will not have any permissions by default
         so it will be required to call enable on the role after creation.
@@ -98,7 +102,7 @@ class Role(Element):
         json = {"name": name, "comment": comment}
         return ElementCreator(cls, json)
 
-    def enable(self, values):
+    def enable(self, values: list) -> None:
         """
         Enable specific permissions on this role. Use :py:attr:`~permissions` to
         view valid permission settings and current value/s. Change is committed
@@ -111,7 +115,7 @@ class Role(Element):
             if value in self.data:
                 self.data[value] = True
 
-    def disable(self, values):
+    def disable(self, values: list) -> None:
         """
         Disable specific permissions on this role. Use :py:attr:`~permissions` to
         view valid permission settings and current value/s. Change is committed
@@ -125,7 +129,7 @@ class Role(Element):
                 self.data[value] = False
 
     @property
-    def permissions(self):
+    def permissions(self) -> list:
         """
         Return valid permissions and setting for this role. Permissions are
         returned as a list of dict items, {permission: state}. State for the

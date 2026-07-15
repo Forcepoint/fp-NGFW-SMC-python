@@ -26,13 +26,14 @@ from smc import session  # noqa
 from smc.base.util import merge_dicts  # noqa
 from smc.administration.certificates.tls import ClientProtectionCA, TLSProfile  # noqa
 from smc.core.engines import Layer3Firewall  # noqa
+from smc.core.interfaces import Layer3PhysicalInterface, TunnelInterface, ModemInterface  # noqa
 from smc.core.general import NTPSettings  # noqa
 from smc.elements.profiles import DNSRelayProfile, WebAuthHtmlPage  # noqa
 from smc.elements.servers import NTPServer, DNSServer  # noqa
 from smc.core.engine import SidewinderProxyAdvancedSettings, ScanDetectionSetting, \
     StaticMulticastRoute, WebAuthentication  # noqa
 from smc.elements.alerts import IdsAlert  # noqa
-from smc.compat import is_api_version_less_than  # noqa
+from smc.compat import is_api_version_less_than, is_smc_version_more_than_or_equal  # noqa
 from smc.administration.system import System  # noqa
 
 engine_name = "myFw"
@@ -66,6 +67,11 @@ SCAN_DETECTION_UPDATE_ERROR = "Fail to update engine with scan detection setting
 TIME_UNIT = "minute"
 EVENT_COUNTS = 230
 TIME_WINDOW = 2
+ERROR_UPDATE_INTERFACE = "Failed to update interface via engine.interface.update()."
+ERROR_REMOVE_INTERFACE = "Failed to remove interface via engine.interface.remove()."
+ERROR_UPDATE_TUNNEL_INTERFACE = "Failed to update tunnel interface via engine.tunnel_interface.update()."
+ERROR_UPDATE_MODEM_INTERFACE = "Failed to update modem interface via engine.modem_interface.update()."
+ERROR_REMOVE_MODEM_INTERFACE = "Failed to remove modem interface via engine.modem_interface.remove()."
 
 # static_multicast_route
 ERROR_CREATE_STATIC_MULTICAST_ROUTE = "Fail to create engine with static multicast route setting."
@@ -113,7 +119,7 @@ def get_engine_health(engine_name):
 def initial_contact_engine(engine_name: str, out_path: str = "/tmp/", demo_mode=False):
     engine = Layer3Firewall(engine_name)
     for node in engine.nodes:
-        node.initial_contact(
+        node.initial_contact(root_password="T3mpP&d8x)T",
             filename=f"{out_path}/{node.name.replace(" ", "_")}_engine.cfg"
         )
 
@@ -169,7 +175,8 @@ def main():
         arguments = parse_command_line_arguments()
         session.login(url=arguments.api_url, api_key=arguments.api_key,
                       login=arguments.smc_user,
-                      pwd=arguments.smc_pwd, api_version=arguments.api_version)
+                      pwd=arguments.smc_pwd, api_version=arguments.api_version,
+                      verify=False)
         logging.info("session OK")
         system = System()
 
@@ -453,6 +460,96 @@ def main():
                local_log_obj.lls_guaranteed_free_percent == LOG_SETTING2, ERROR_UPDATE_LOG_SETTING
         logging.info("Successfully updated engine with the local log storage settings.")
 
+        engine.physical_interface.add_layer3_interface(
+            interface_id=10,
+            address="10.20.20.1",
+            network_value="10.20.20.0/24",
+            comment="initial comment"
+        )
+        engine.interface.update(10, comment="updated comment", mtu=1400)
+        updated = engine.interface.get(10)
+        assert updated.comment == "updated comment", ERROR_UPDATE_INTERFACE
+        assert updated.mtu == 1400, ERROR_UPDATE_INTERFACE
+        logging.info("Interface top-level attributes updated via engine.interface.update()")
+        new_iface = Layer3PhysicalInterface(
+            interface_id=10,
+            interfaces=[{"nodes": [{"address": "10.20.20.2",
+                                    "network_value": "10.20.20.0/24",
+                                    "nodeid": 1}]}]
+        )
+        engine.interface.update(10, interface=new_iface)
+        updated = engine.interface.get(10)
+        assert any(addr == "10.20.20.2" for addr, _, _ in updated.addresses), ERROR_UPDATE_INTERFACE
+        logging.info("Interface IP address updated via engine.interface.update(interface=...)")
+        engine.interface.remove(10)
+        assert 10 not in engine.interface, ERROR_REMOVE_INTERFACE
+        logging.info("Interface removed successfully via engine.interface.remove()")
+
+        new_tunnel = TunnelInterface(
+            interface_id=1000,
+            interfaces=[{"nodes": [{"address": "77.77.77.1",
+                                    "network_value": "77.77.77.0/24",
+                                    "nodeid": 1}]}]
+        )
+        engine.tunnel_interface.update(1000, interface=new_tunnel)
+        updated = engine.tunnel_interface.get(1000)
+        assert any(addr == "77.77.77.1" for addr, _, _ in updated.addresses), ERROR_UPDATE_TUNNEL_INTERFACE
+        logging.info("Tunnel interface updated via engine.tunnel_interface.update(interface=...)")
+
+        engine.modem_interface.add_layer3_interface(
+            interface_id=5,
+            apn="internet",
+            interfaces=[{"dynamic_index": 1, "automatic_default_route": True}]
+        )
+        engine.modem_interface.update(5, comment="updated modem comment")
+        updated = engine.modem_interface.get(5)
+        assert updated.comment == "updated modem comment", ERROR_UPDATE_MODEM_INTERFACE
+        logging.info("Modem interface updated via engine.modem_interface.update()")
+
+        other_modem = ModemInterface(
+            interface_id=5,
+            apn="internet-updated",
+            comment="updated via update_interface",
+            interfaces=[{"dynamic_index": 1, "automatic_default_route": True}]
+        )
+        modem_iface = engine.modem_interface.get(5)
+        modem_iface.update_interface(other_modem)
+        updated = engine.modem_interface.get(5)
+        assert updated.comment == "updated via update_interface", ERROR_UPDATE_MODEM_INTERFACE
+        if is_smc_version_more_than_or_equal("7.5"):
+            apn = next(a for a in updated.data.get("apnInterfaces", [])
+                       if a.get("interface_id") == "5.1")
+            assert apn.get("apn") == "internet-updated", ERROR_UPDATE_MODEM_INTERFACE
+        logging.info("Modem interface updated via modem_iface.update_interface()")
+        if is_smc_version_more_than_or_equal("7.5"):
+            modem_iface = engine.modem_interface.get(5)
+            modem_iface.add_apn_interface(
+                apn="internet2",
+                interfaces=[{"dynamic_index": 2, "automatic_default_route": False}]
+            )
+            updated = engine.modem_interface.get(5)
+            assert any(a.get("interface_id") == "5.2"
+                       for a in updated.data.get("apnInterfaces", [])), ERROR_UPDATE_MODEM_INTERFACE
+            logging.info("Second APN added via modem_iface.add_apn_interface()")
+
+            modem_iface = engine.modem_interface.get(5)
+            modem_iface.update_apn_interface("5.2", mtu=1400)
+            updated = engine.modem_interface.get(5)
+            apn = next(a for a in updated.data.get("apnInterfaces", [])
+                       if a.get("interface_id") == "5.2")
+            assert apn.get("mtu") == 1400, ERROR_UPDATE_MODEM_INTERFACE
+            logging.info("APN updated via modem_iface.update_apn_interface()")
+
+            modem_iface = engine.modem_interface.get(5)
+            modem_iface.delete_apn_interface("5.2")
+            updated = engine.modem_interface.get(5)
+            assert not any(a.get("interface_id") == "5.2"
+                           for a in updated.data.get("apnInterfaces", [])), ERROR_REMOVE_MODEM_INTERFACE
+            logging.info("APN deleted via modem_iface.delete_apn_interface()")
+        engine.modem_interface.remove(5)
+        assert 5 not in engine.modem_interface, ERROR_REMOVE_MODEM_INTERFACE
+        logging.info("Modem interface removed via engine.modem_interface.remove()")
+
         # checking log moderation
         engine = Layer3Firewall(engine_name)
         log_moderation_list = engine.log_moderation
@@ -487,12 +584,13 @@ def main():
         logging.exception(f"Exception:{e}")
         return_code = 1
     finally:
-        # Delete NTP server and Firewall
-        Layer3Firewall("myFw").delete()
-        NTPServer("myNTPServer").delete()
-        ClientProtectionCA("client.test.local").delete()
-        DNSServer("mydnsserver").delete()
-        DNSRelayProfile("dnsrules").delete()
+        if arguments.clean_created_resources:
+            # Delete NTP server and Firewall
+            Layer3Firewall("myFw").delete()
+            NTPServer("myNTPServer").delete()
+            ClientProtectionCA("client.test.local").delete()
+            DNSServer("mydnsserver").delete()
+            DNSRelayProfile("dnsrules").delete()
         session.logout()
     return return_code
 
@@ -530,6 +628,10 @@ def parse_command_line_arguments():
         '--api-key',
         type=str, default=None,
         help='SMC API api key (Default: None)')
+    parser.add_argument(
+        '--clean-created-resources',
+        action=argparse.BooleanOptionalAction, default=True,
+        help='Delete created elements at the end (Default: True)')
 
     arguments = parser.parse_args()
 

@@ -9,6 +9,10 @@
 #  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #  License for the specific language governing permissions and limitations
 #  under the License.
+from __future__ import annotations
+
+from typing import Any, Optional, Union, Iterator
+
 """
 Module that controls aspects of the System itself, such as updating dynamic
 packages, updating engines, applying global block lists, etc.
@@ -43,12 +47,13 @@ from smc.administration.updates import EngineUpgrade, UpdatePackage
 from smc.api.common import fetch_entry_point
 from smc.api.exceptions import ResourceNotFound, ActionCommandFailed, CertificateImportError, \
     EngineCommandFailed, ElementNotFound, SMCConnectionError, UnsupportedEntryPoint, \
-    DeleteElementFailed, CreateElementFailed
+    DeleteElementFailed, CreateElementFailed, UnsupportedEntryPoint
 from smc.base.collection import sub_collection
-from smc.base.model import SubElement, Element, ElementCreator
+from smc.base.model import SubElement, Element, ElementCreator, ElementCache
 from smc.base.util import millis_to_utc, extract_self, element_resolver
 from smc.compat import is_api_version_less_than, \
     is_smc_version_less_than, is_smc_version_more_than_or_equal
+
 from smc.elements.other import prepare_blacklist
 from smc.elements.other import prepare_block_list
 from smc.core.session_monitoring import SessionMonitoringResult
@@ -67,19 +72,19 @@ class System(SubElement):
     and updating engines
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         entry = fetch_entry_point("system")
         super(System, self).__init__(href=entry)
 
     @property
-    def smc_version(self):
+    def smc_version(self) -> Optional[str]:
         """
         Return the SMC version
         """
         return self.make_request(resource="smc_version").get("value")
 
     @property
-    def smc_time(self):
+    def smc_time(self) -> Any:
         """
         Return the SMC time as datetime object in UTC
 
@@ -87,7 +92,7 @@ class System(SubElement):
         """
         return millis_to_utc(int(self.make_request(resource="smc_time").get("value")))
 
-    def bind_license(self, element_href, license_id=None, **kwargs):
+    def bind_license(self, element_href: Any, license_id: Optional[str] = None, **kwargs: Any) -> None:
         """
         Bind license on element.
 
@@ -113,7 +118,7 @@ class System(SubElement):
                               json={"component_href": element_href, "license_item_id": license_id,
                                     "node2": node2})
 
-    def collect_sginfo(self, perform_backup=False, no_log=True, hprof="limited", **kwargs):
+    def collect_sginfo(self, perform_backup: bool = False, no_log: bool = True, hprof: str = "limited", **kwargs: Any) -> Any:
         """
         Collect SMC Server SGInfo and also possibly Management Server backup.
 
@@ -143,21 +148,22 @@ class System(SubElement):
                 self,
                 "collect_sginfo",
                 json={"perform_backup": perform_backup,
-                                    "no_log": no_log, "hprof": hprof},
+                      "no_log": no_log,
+                      "hprof": hprof},
                 **kwargs
             )
         else:
             raise UnsupportedEntryPoint("Need at least 7.1.9 version of the SMC and API 7.1")
 
     @property
-    def massive_license_bind(self):
+    def massive_license_bind(self) -> Any:
         """
         Bind licenses on all unlicensed nodes
         """
         return self.make_request(method="create", resource="massive_license_bind").get("value")
 
     @property
-    def last_activated_package(self):
+    def last_activated_package(self) -> Optional[str]:
         """
         Return the last activated package by id
 
@@ -166,7 +172,7 @@ class System(SubElement):
         return self.make_request(resource="last_activated_package").get("value")
 
     @property
-    def temporary_banned_source_ip_statuses(self):
+    def temporary_banned_source_ip_statuses(self) -> Any:
         """
         Return the possible current temporary banned source ip statuses:
         If no banned source ip:
@@ -186,7 +192,7 @@ class System(SubElement):
         """
         return self.make_request(resource="temporary_banned_ip_statuses").get("statuses")
 
-    def unlock_temporary_banned_source_ip(self, override_source_ip=None, unlock_reason=None):
+    def unlock_temporary_banned_source_ip(self, override_source_ip: Optional[str] = None, unlock_reason: Optional[str] = None) -> Any:
         """
         Unlocks the possible temporary banned source ip.
         By default, the considered source_ip is the request remote address. The default unlock
@@ -207,7 +213,7 @@ class System(SubElement):
                                  params=params)
 
 
-    def browse_trash_bin(self, filter=None):
+    def browse_trash_bin(self, filter: Optional[str] = None) -> Any:
         """
         Browse system level trash bin
 
@@ -219,7 +225,7 @@ class System(SubElement):
             resource="browse_trash_bin", params={"filter": filter}
         )
 
-    def empty_trash_bin(self):
+    def empty_trash_bin(self) -> None:
         """
         Empty system level trash bin
 
@@ -228,7 +234,7 @@ class System(SubElement):
         """
         self.make_request(method="delete", resource="empty_trash_bin")
 
-    def find_system_element(self, element_type, system_key):
+    def find_system_element(self, element_type: Any, system_key: Any) -> Any:
         """
         Search an element from its system key and its type
 
@@ -245,7 +251,7 @@ class System(SubElement):
         # consider the first result entry
         return Element.from_meta(**system_ref[0])
 
-    def update_package(self):
+    def update_package(self) -> Any:
         """
         Show all update packages on SMC.
 
@@ -261,7 +267,7 @@ class System(SubElement):
         """
         return sub_collection(self.get_relation("update_package"), UpdatePackage)
 
-    def update_package_import(self, import_update_package_file):
+    def update_package_import(self, import_update_package_file: str) -> list[Any]:
         """
         Import update package into SMC. Specify the fully qualified path
         to the update package file.
@@ -288,7 +294,7 @@ class System(SubElement):
 
         return update_packages_elements
 
-    def engine_upgrade_import(self, import_engine_upgrade_file, force_import=False):
+    def engine_upgrade_import(self, import_engine_upgrade_file: str, force_import: bool = False) -> list[Any]:
         """
         Import upgrade package into SMC. Specify the fully qualified path
         to the upgrade package file.
@@ -326,7 +332,7 @@ class System(SubElement):
                     engine_upgrade_element.append(engine_upgrade)
         return engine_upgrade_element
 
-    def engine_upgrade(self):
+    def engine_upgrade(self) -> Any:
         """
         List all engine upgrade packages available
 
@@ -344,7 +350,7 @@ class System(SubElement):
         """
         return sub_collection(self.get_relation("engine_upgrade"), EngineUpgrade)
 
-    def system_properties(self):
+    def system_properties(self) -> Any:
         """
         List all global system properties available.
 
@@ -359,7 +365,7 @@ class System(SubElement):
         """
         return sub_collection(self.get_relation('system_properties'), SystemProperty)
 
-    def system_property(self, system_key):
+    def system_property(self, system_key: Any) -> Any:
         """
         Retrieve the global system property from its system key (unique id).
         Otherwise BaseException.
@@ -371,19 +377,50 @@ class System(SubElement):
         """
         return Element.from_href(self.get_relation('system_properties') + '/{}'.format(system_key))
 
-    def update_system_property(self, system_key, new_value):
+    def system_properties_metadata(self) -> list:
         """
-        Update the global system property from its system key (unique id)
-        with the specified value (str).
+        Retrieve the full, self-describing definition of every global system property in a
+        single call (uses the ``expand=true`` query parameter). Each returned
+        :class:`~smc.administration.system_properties.SystemProperty` exposes its name,
+        system_key, value, default_value, value_type, possible_values and description.
+
+        Available since SMC 7.1.11/SMC 7.3.5/SMC 7.4.2/SMC 7.5.1/SMC 7.6.0.
+
+            system = System()
+            for prop in system.system_properties_metadata():
+                print(prop.name, prop.value_type, prop.description)
+
+        :raises ActionCommandFailed: failure to retrieve resource
+        :rtype: list(SystemProperty)
+        """
+        result = self.make_request(resource="system_properties", params={"expand": True})
+        properties = []
+        for data in result.get("element", []):
+            cache = ElementCache(data)
+            prop = SystemProperty(
+                name=data.get("name"), href=cache.get_link("self"), type=cache.type
+            )
+            prop.data = cache
+            properties.append(prop)
+        return properties
+
+    def update_system_property(self, system_key: Any, new_value: str, **kwargs) -> Any:
+        """
+        Update the global system property from its system key (unique id integer)
+        with:
+        - :param the specified value (str) when new_value is defined.
+        - :param the specified references (list of str), empty list by default.
         If the system property does not exist a BaseException is thrown.
 
             system = System()
-            system.update_system_property(system_key=8, value="0")
+            system.update_system_property(system_key=92, new_value="true")
+            system.update_system_property(system_key=8, new_value="0",
+            new_ref=["https://192.0.2.2:8082/7.5/elements/tls_server_credentials/6"])
         """
-        return self.system_property(system_key=system_key).update(value=new_value)
+        return self.system_property(system_key=system_key).update(value=new_value, **kwargs)
 
     @property
-    def uncommitted(self):
+    def uncommitted(self) -> Any:
         """
         Returns a list of uncommitted system elements
 
@@ -394,7 +431,7 @@ class System(SubElement):
         """
         return self.make_request(resource="uncommitted")
 
-    def clean_invalid_filters(self):
+    def clean_invalid_filters(self) -> None:
         """
         Remove all invalid filters when there are not referenced.
 
@@ -403,7 +440,7 @@ class System(SubElement):
         """
         self.make_request(method="delete", resource="clean_invalid_filters")
 
-    def block_list(self, src, dst, duration=3600, **kw):
+    def block_list(self, src: Any, dst: Any, duration: int = 3600, **kw: Any) -> None:
         """
         Add block_list to all defined engines.
         Use the cidr netmask at the end of src and dst, such as:
@@ -429,7 +466,7 @@ class System(SubElement):
             method="create", resource="block_list", json=json
         )
 
-    def block_list_bulk(self, block_list):
+    def block_list_bulk(self, block_list: Any) -> None:
         """
         Add block_list entries to all defined engines in bulk. For block_list to work,
         you must also create a rule with action "Apply Blocklist".
@@ -444,7 +481,7 @@ class System(SubElement):
             EngineCommandFailed, method="create", resource="block_list", json=block_list.entries
         )
 
-    def blacklist(self, src, dst, duration=3600, **kw):
+    def blacklist(self, src: Any, dst: Any, duration: int = 3600, **kw: Any) -> None:
         """
         Add blacklist to all defined engines.
         Use the cidr netmask at the end of src and dst, such as:
@@ -480,7 +517,7 @@ class System(SubElement):
         )
 
     @property
-    def licenses(self):
+    def licenses(self) -> Any:
         """
         List of all engine related licenses
         This will provide details related to whether the license is bound,
@@ -497,7 +534,7 @@ class System(SubElement):
         """
         return Licenses(self.make_request(resource="licenses"))
 
-    def license_fetch(self, proof_of_serial):
+    def license_fetch(self, proof_of_serial: str) -> Any:
         """
         Request a license download for the specified POS (proof of serial).
 
@@ -508,7 +545,7 @@ class System(SubElement):
             resource="license_fetch", params={"proofofserial": proof_of_serial}
         )
 
-    def license_install(self, license_file):
+    def license_install(self, license_file: str) -> None:
         """
         Install a new license.
 
@@ -523,7 +560,7 @@ class System(SubElement):
             files={"license_file": open(license_file, "rb")},
         )
 
-    def license_details(self):
+    def license_details(self) -> Any:
         """
         This represents the license details for the SMC. This will include
         information with regards to the POL/POS, features, type, etc
@@ -533,7 +570,7 @@ class System(SubElement):
         """
         return self.make_request(resource="license_details")
 
-    def license_check_for_new(self):
+    def license_check_for_new(self) -> Any:
         """
         Launch the check and download of licenses on the Management Server.
         This task can be long so call returns immediately.
@@ -542,7 +579,7 @@ class System(SubElement):
         """
         return self.make_request(resource="license_check_for_new")
 
-    def delete_license(self, license_id):
+    def delete_license(self, license_id: Any) -> Any:
         """
         Delete a license based on license id.
         """
@@ -554,7 +591,7 @@ class System(SubElement):
         )
 
     # @ReservedAssignment
-    def visible_virtual_engine_mapping(self, filter=None):
+    def visible_virtual_engine_mapping(self, filter: Optional[str] = None) -> Any:
         """
         Mappings for master engines and virtual engines
 
@@ -568,7 +605,7 @@ class System(SubElement):
         )
 
     # @ReservedAssignment
-    def visible_security_group_mapping(self, filter=None):
+    def visible_security_group_mapping(self, filter: Optional[str] = None) -> Any:
         """
         Return all security groups assigned to VSS container types. This
         is only available on SMC >= 6.5.
@@ -585,7 +622,7 @@ class System(SubElement):
             resource="visible_security_group_mapping", params={"filter": filter}
         )
 
-    def references_by_element(self, element_href):
+    def references_by_element(self, element_href: str) -> Any:
         """
         Return all references to element specified.
 
@@ -600,14 +637,14 @@ class System(SubElement):
 
     def export_elements(
             self,
-            filename="export_elements.zip",
-            recursive=True,
-            typeof="all",
-            timeout=5,
-            max_tries=36,
-            exclude_trashed=None,
-            file_password=None
-    ):
+            filename: str = "export_elements.zip",
+            recursive: bool = True,
+            typeof: str = "all",
+            timeout: int = 5,
+            max_tries: int = 36,
+            exclude_trashed: Optional[bool] = None,
+            file_password: Optional[str] = None
+    ) -> Any:
         """
         Export elements from SMC.
 
@@ -644,12 +681,12 @@ class System(SubElement):
 
     def export_ldif_elements(
             self,
-            filename="export_ldif_elements.zip",
-            timeout=5,
-            max_tries=36,
-            ldap_domain=None,
-            **kwargs
-    ):
+            filename: str = "export_ldif_elements.zip",
+            timeout: int = 5,
+            max_tries: int = 36,
+            ldap_domain: Optional[str] = None,
+            **kwargs: Any
+    ) -> Any:
         """
         Export internal LDAP elements in LDIF format from SMC.
 
@@ -675,7 +712,7 @@ class System(SubElement):
             max_tries=max_tries
         )
 
-    def import_ldif_elements(self, filename, ldap_domain=None, **kwargs):
+    def import_ldif_elements(self, filename: str, ldap_domain: Optional[str] = None, **kwargs: Any) -> None:
         """
         Import LDIF elements into SMC. Specify the fully qualified path
         to the import ldif file.
@@ -718,7 +755,7 @@ class System(SubElement):
 
         logger.info("LDIF import task succeeded")
 
-    def active_alerts_ack_all(self):
+    def active_alerts_ack_all(self) -> None:
         """
         Acknowledge all active alerts in the SMC. Only valid for
         SMC version >= 6.2.
@@ -728,7 +765,7 @@ class System(SubElement):
         """
         self.make_request(method="delete", resource="active_alerts_ack_all")
 
-    def import_elements(self, import_file, import_only_new=False, restoration=True, timeout=None, file_password=None):
+    def import_elements(self, import_file: str, import_only_new: bool = False, restoration: bool = True, timeout: Optional[int] = None, file_password: Optional[str] = None) -> None:
         """
         Import elements into SMC. Specify the fully qualified path
         to the import file.
@@ -776,7 +813,7 @@ class System(SubElement):
 
         logger.info("XML import task succeeded")
 
-    def import_elements_interactive_mode(self, import_file, default_method="import", timeout=300):
+    def import_elements_interactive_mode(self, import_file: str, default_method: str = "import", timeout: int = 300) -> None:
         """
         Import elements into SMC in interactive mode by handling all conflicts.
         Specify the fully qualified path o the import file.
@@ -866,12 +903,12 @@ class System(SubElement):
 
         logger.info("XML import task succeeded")
 
-    def force_unlock(self, element):
+    def force_unlock(self, element: Any) -> Any:
         return self.make_request(
             method="create", resource="force_unlock", json={"value": element.href}
         )
 
-    def unlicensed_components(self):
+    def unlicensed_components(self) -> Any:
         """
         Return list of unlicensed element (if any)
         """
@@ -879,8 +916,30 @@ class System(SubElement):
             method="read", resource="unlicensed_components"
         )
 
+    def license_allocate(self, license_id: str, domain: Any) -> Any:
+        """
+        Allocate an engine license to an administrative domain.
+
+        In a sub-domain an engine is only considered licensed once its license is
+        allocated to that domain (not merely bound). Pass an empty/None domain to
+        de-allocate.
+
+        :param str license_id: license item id (``License.license_id``)
+        :param str,AdminDomain domain: domain (or its href) to allocate the license to
+        :raises ActionCommandFailed: allocation failed
+        :return: None
+        """
+        return self.make_request(
+            method="create",
+            resource="license_allocate",
+            json={
+                "license_item_id": license_id,
+                "domain_href": element_resolver(domain) if domain else "",
+            },
+        )
+
     @property
-    def mgt_integration_configuration(self):
+    def mgt_integration_configuration(self) -> Any:
         """
         Retrieve the management API configuration for 3rd party integration
         devices.
@@ -889,7 +948,7 @@ class System(SubElement):
         """
         return self.make_request(resource="mgt_integration_configuration")
 
-    def upcoming_event(self):
+    def upcoming_event(self) -> UpcomingEvents:
         """
         Allows to retrieve the upcoming events.
 
@@ -897,7 +956,7 @@ class System(SubElement):
         """
         return UpcomingEvents(self.make_request(resource="upcoming_event"))
 
-    def upcoming_event_policy(self):
+    def upcoming_event_policy(self) -> UpcomingEventsPolicy:
         """
         Allows to retrieve the upcoming events.
 
@@ -905,7 +964,7 @@ class System(SubElement):
         """
         return UpcomingEventsPolicy(self.make_request(resource="upcoming_event_policy"))
 
-    def update_upcoming_event_policy(self, upcoming_event_policy):
+    def update_upcoming_event_policy(self, upcoming_event_policy: Any) -> None:
         """
         Allows to change the upcoming event policy.
         As a note, only super users are able to perform such operation.
@@ -919,7 +978,7 @@ class System(SubElement):
             json=self.create_upcoming_event_policy_payload(upcoming_event_policy))
 
     @staticmethod
-    def create_upcoming_event_policy_payload(upcoming_event_policy):
+    def create_upcoming_event_policy_payload(upcoming_event_policy: Any) -> dict[str, Any]:
         json = {"entries": []}
         entries = []
         for entry in upcoming_event_policy.upcoming_event_policy:
@@ -927,7 +986,7 @@ class System(SubElement):
         json.update(entries=entries)
         return json
 
-    def upcoming_event_ignore_settings(self):
+    def upcoming_event_ignore_settings(self) -> UpcomingEventIgnoreSettings:
         """
         Allows to retrieve the upcoming event ignore settings.
 
@@ -936,7 +995,7 @@ class System(SubElement):
         return UpcomingEventIgnoreSettings(
             self.make_request(resource="upcoming_event_ignore_settings"))
 
-    def update_upcoming_event_ignore_settings(self, situations_to_ignore):
+    def update_upcoming_event_ignore_settings(self, situations_to_ignore: list[Any]) -> None:
         """
         Allows to change the upcoming event ignore settings for the current administrator.
         As a note, all upcoming events linked to the situation will be filtered.
@@ -950,7 +1009,7 @@ class System(SubElement):
             json=self.create_upcoming_event_ignore_settings_payload(situations_to_ignore))
 
     @staticmethod
-    def create_upcoming_event_ignore_settings_payload(situations_to_ignore):
+    def create_upcoming_event_ignore_settings_payload(situations_to_ignore: list[Any]) -> dict[str, Any]:
         json = {"entries": []}
         entries = []
         for situation in situations_to_ignore:
@@ -958,14 +1017,14 @@ class System(SubElement):
         json.update(entries=entries)
         return json
 
-    def smc_certificate_authority(self):
+    def smc_certificate_authority(self) -> Any:
         """
         Show all Certificate Authorities on SMC.
         :rtype: SubElementCollection(CertificateAuthority).
         """
         return sub_collection(self.get_relation("certificate_authority"), CertificateAuthority)
 
-    def import_new_certificate_authority_certificate(self, certificate):
+    def import_new_certificate_authority_certificate(self, certificate: Any) -> None:
         """
         Create new SMC CA from certificate.
         """
@@ -978,7 +1037,7 @@ class System(SubElement):
                           },
                           )
 
-    def massive_delete(self, elements_list):
+    def massive_delete(self, elements_list: list[Any]) -> None:
         """
         Massive delete of several elements
         elements_list: List of element as object to delete
@@ -996,7 +1055,7 @@ class System(SubElement):
                           resource="massive_delete",
                           json={"resource": [element.href for element in elements_list]})
 
-    def clean_scale_sets(self):
+    def clean_scale_sets(self) -> None:
         """
         Removes all inactive Cloud Firewalls from all Cloud Auto-Scaled Groups.
         If no active Cloud Firewalls are there in a Cloud Auto-Scaled Group, we remove the
@@ -1007,8 +1066,8 @@ class System(SubElement):
                           method="delete",
                           resource="clean_scale_sets")
 
-    def create_cloud_firewall(self, cloud_fw: dict, scale_set_name: str,
-                              validate=True, audit=True):
+    def create_cloud_firewall(self, cloud_fw: dict[str, Any], scale_set_name: str,
+                              validate: bool = True, audit: bool = True) -> None:
         """
         Creates a Cloud Firewall inside a Cloud Auto-Scaled Group by using a particular
         argument container describing the Cloud Firewall and
@@ -1021,7 +1080,7 @@ class System(SubElement):
                           params={"validate": validate, "audit": audit},
                           json={"scale_set_name": scale_set_name, "cloud_firewall": cloud_fw})
 
-    def delete_crl_cache(self):
+    def delete_crl_cache(self) -> None:
         """
         Delete CRL cache
         """
@@ -1029,13 +1088,13 @@ class System(SubElement):
                           method="delete",
                           resource="clean_crl_cache")
 
-    def system_snapshots(self):
+    def system_snapshots(self) -> Any:
         """
         Retrieve the list of system snapshots
         """
         return sub_collection(self.get_relation("system_snapshot"), SystemSnapshot)
 
-    def connectivity_monitoring(self, filter=None):
+    def connectivity_monitoring(self, filter: Optional[Any] = None) -> list[Any]:
         """
         Retrieve the connectivity monitoring
         """
@@ -1065,7 +1124,7 @@ class SystemSnapshot(Element):
     """
     typeof = "system_snapshot"
 
-    def download(self, filename=None):
+    def download(self, filename: Optional[str] = None) -> None:
         """
         Download snapshot to filename
 
@@ -1110,17 +1169,17 @@ class AdminDomain(Element):
 
     @classmethod
     def create(cls,
-               name,
-               announcement_enabled=False,
-               announcement_message=None,
-               contact_email=None,
-               contact_number=None,
-               category_filter_system=True,
-               show_not_categorized=True,
-               user_alert_check=[],
-               logo_ref=None,
-               comment=None
-               ):
+               name: str,
+               announcement_enabled: bool = False,
+               announcement_message: Optional[str] = None,
+               contact_email: Optional[str] = None,
+               contact_number: Optional[str] = None,
+               category_filter_system: bool = True,
+               show_not_categorized: bool = True,
+               user_alert_check: list[Any] = [],
+               logo_ref: Optional[Any] = None,
+               comment: Optional[str] = None
+               ) -> AdminDomain:
         """
         Create a new Admin Domain element for SMC objects.
 
@@ -1162,11 +1221,11 @@ class AdminDomain(Element):
         return ElementCreator(cls, json)
 
     @property
-    def contact_email(self):
+    def contact_email(self) -> Optional[str]:
         return self.data.contact_email
 
     @property
-    def contact_number(self):
+    def contact_number(self) -> Optional[str]:
         """
         Contact Number
         :rtype: str
@@ -1174,7 +1233,7 @@ class AdminDomain(Element):
         return self.data.contact_number
 
     @property
-    def announcement_enabled(self):
+    def announcement_enabled(self) -> Optional[bool]:
         """
         Display flag of announcement message
         :rtype: bool
@@ -1182,7 +1241,7 @@ class AdminDomain(Element):
         return self.data.announcement_enabled
 
     @property
-    def announcement_message(self):
+    def announcement_message(self) -> Optional[str]:
         """
         Announcement message to be displayed before the login window.
         :rtype: str
@@ -1190,7 +1249,7 @@ class AdminDomain(Element):
         return self.data.announcement_message
 
     @property
-    def category_filter_system(self):
+    def category_filter_system(self) -> Optional[bool]:
         """
         Flag to know if we need to show system elements
         :@rtype: bool
@@ -1198,7 +1257,7 @@ class AdminDomain(Element):
         return self.data.category_filter_system
 
     @property
-    def show_not_categorized(self):
+    def show_not_categorized(self) -> Optional[bool]:
         """
         Flag to know if we need to show not categorized.
         :rtype: bool
@@ -1206,14 +1265,14 @@ class AdminDomain(Element):
         return self.data.show_not_categorized
 
     @property
-    def user_alert_check(self):
+    def user_alert_check(self) -> list[Any]:
         """
         The list of User alert checks.
         :rtype: list(UserAlertCheck)
         """
         return self.data.user_alert_check
 
-    def get_active_alerts(self, full=True):
+    def get_active_alerts(self, full: bool = True) -> Any:
         """
         Available for all SMC API Versions but only for SMC Version above 7.1 (7.1 included)
 
@@ -1246,11 +1305,11 @@ class ConnectivityRow(NestedDict):
     Represents a Connectivity Row.
     """
 
-    def __init__(self, data):
+    def __init__(self, data: Any) -> None:
         super(ConnectivityRow, self).__init__(data=data)
 
     @property
-    def peerA(self):
+    def peerA(self) -> Any:
         """
         The peer A.
         :rtype: Element
@@ -1258,7 +1317,7 @@ class ConnectivityRow(NestedDict):
         return Element.from_href(self.data.get("peerA"))
 
     @property
-    def peerB(self):
+    def peerB(self) -> Any:
         """
         The peer B.
         :rtype: Element
@@ -1266,7 +1325,7 @@ class ConnectivityRow(NestedDict):
         return Element.from_href(self.data.get("peerB"))
 
     @property
-    def type(self):
+    def type(self) -> Optional[str]:
         """
         The connectivity row type.
         :rtype: str
@@ -1274,7 +1333,7 @@ class ConnectivityRow(NestedDict):
         return self.data.get("type")
 
     @property
-    def direction(self):
+    def direction(self) -> Optional[str]:
         """
         The connectivity row direction: Client or Server.
         :rtype: str
@@ -1282,7 +1341,7 @@ class ConnectivityRow(NestedDict):
         return self.data.get("direction")
 
     @property
-    def port(self):
+    def port(self) -> Optional[str]:
         """
         The connectivity row port. The port range.
         :rtype: str
@@ -1290,7 +1349,7 @@ class ConnectivityRow(NestedDict):
         return self.data.get("port")
 
     @property
-    def status(self):
+    def status(self) -> Optional[str]:
         """
         The connectivity row status: Unknown, OK, Warning, Error, Idle, Closed, ...
         :rtype: str
@@ -1298,7 +1357,7 @@ class ConnectivityRow(NestedDict):
         return self.data.get("status")
 
     @property
-    def info(self):
+    def info(self) -> Optional[str]:
         """
         The connectivity row info.
         :rtype: str

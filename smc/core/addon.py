@@ -9,6 +9,9 @@
 #  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #  License for the specific language governing permissions and limitations
 #  under the License.
+from __future__ import annotations
+from typing import Any, Optional, Union, Iterator
+
 """
 Engine feature add on functionality such as default NAT, Antivirus,
 File Reputation, etc. These are common settings that are located under
@@ -46,7 +49,7 @@ from smc.base.util import element_resolver
 # inherit similar enable/disable/off/on, etc, whatever makes sense
 
 
-def get_proxy(http_proxy):
+def get_proxy(http_proxy: Any) -> list[Any]:
     if http_proxy:
         proxies = [element_resolver(proxy) for proxy in http_proxy]
     else:
@@ -83,11 +86,11 @@ class AntiVirus(NestedDict):
     .. note:: You must call engine.update() to commit any changes.
     """
 
-    def __init__(self, engine):
+    def __init__(self, engine: Any) -> None:
         av = engine.data.get("antivirus", {})
         super(AntiVirus, self).__init__(data=av)
 
-    def update_frequency(self, when):
+    def update_frequency(self, when: str) -> None:
         """
         Set the update frequency. By default this is daily.
 
@@ -97,7 +100,7 @@ class AntiVirus(NestedDict):
         if when in ("never", "1hour", "startup", "daily", "weekly"):
             self.update(antivirus_update=when)
 
-    def update_day(self, day):
+    def update_day(self, day: str) -> None:
         """
         Update the day when updates should occur.
 
@@ -108,7 +111,7 @@ class AntiVirus(NestedDict):
         if day in ("mo", "tu", "we", "th", "fr", "sa", "su"):
             self.update(antivirus_update_day=day)
 
-    def log_level(self, level):
+    def log_level(self, level: str) -> None:
         """
         Set the log level for antivirus alerting.
 
@@ -117,7 +120,7 @@ class AntiVirus(NestedDict):
         if level in ("none", "transient", "stored", "essential", "alert"):
             self.update(virus_log_level=level)
 
-    def http_proxy(self, proxy, proxy_port, user=None, password=None):
+    def http_proxy(self, proxy: str, proxy_port: Union[str, int], user: Optional[str] = None, password: Optional[str] = None) -> None:
         """
         .. versionadded:: 0.5.7
             Requires SMC and engine version >= 6.4
@@ -136,14 +139,14 @@ class AntiVirus(NestedDict):
             antivirus_http_proxy_enabled=True,
         )
 
-    def disable(self):
+    def disable(self) -> None:
         """
         Disable antivirus on the engine
         """
         self.update(antivirus_enabled=False)
 
     @property
-    def status(self):
+    def status(self) -> bool:
         """
         Status of AV on this engine
 
@@ -151,7 +154,7 @@ class AntiVirus(NestedDict):
         """
         return self.get("antivirus_enabled", False)
 
-    def enable(self):
+    def enable(self) -> None:
         """
         Enable antivirus on the engine
         """
@@ -165,7 +168,7 @@ class AntiVirus(NestedDict):
             else 21600000,
         )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "{0}(enabled={1})".format(self.__class__.__name__, self.status)
 
 
@@ -185,18 +188,18 @@ class FileReputation(NestedDict):
     .. note:: You must call engine.update() to commit any changes.
     """
 
-    def __init__(self, engine):
+    def __init__(self, engine: Any) -> None:
         gti = engine.data.get("gti_settings") or engine.data.get("file_reputation_settings", {})
         super(FileReputation, self).__init__(data=gti)
 
-    def disable(self):
+    def disable(self) -> None:
         """
         Disable any file reputation on the engine.
         """
         self.update(file_reputation_context="disabled")
 
     @property
-    def status(self):
+    def status(self) -> bool:
         """
         Return the status of File Reputation on this engine.
 
@@ -207,7 +210,7 @@ class FileReputation(NestedDict):
         return True
 
     @property
-    def http_proxy(self):
+    def http_proxy(self) -> list[Any]:
         """
         Return any HTTP Proxies that are configured for File
         Reputation.
@@ -217,7 +220,7 @@ class FileReputation(NestedDict):
         """
         return [Element.from_href(proxy) for proxy in self.get("http_proxy")]
 
-    def enable(self, http_proxy=None):
+    def enable(self, http_proxy: Any = None) -> None:
         """
         Enable GTI reputation on the engine. If proxy servers
         are needed, provide a list of proxy elements.
@@ -227,7 +230,7 @@ class FileReputation(NestedDict):
         """
         self.update(file_reputation_context="gti_cloud_only", http_proxy=get_proxy(http_proxy))
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "{0}(enabled={1})".format(self.__class__.__name__, self.status)
 
 
@@ -244,23 +247,23 @@ class SidewinderProxy(object):
     .. note:: You must call engine.update() to commit any changes.
     """
 
-    def __init__(self, engine):
+    def __init__(self, engine: Any) -> None:
         self.engine = engine
 
-    def enable(self):
+    def enable(self) -> None:
         """
         Enable Sidewinder proxy on the engine
         """
         self.engine.data["sidewinder_proxy_enabled"] = True
 
-    def disable(self):
+    def disable(self) -> None:
         """
         Disable Sidewinder proxy on the engine
         """
         self.engine.data["sidewinder_proxy_enabled"] = False
 
     @property
-    def status(self):
+    def status(self) -> bool:
         """
         Status of Sidewinder proxy on this engine
 
@@ -268,7 +271,7 @@ class SidewinderProxy(object):
         """
         return self.engine.data["sidewinder_proxy_enabled"]
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "{0}(enabled={1})".format(self.__class__.__name__, self.status)
 
 
@@ -289,12 +292,12 @@ class UrlFiltering(NestedDict):
     .. note:: You must call engine.update() to commit any changes.
     """
 
-    def __init__(self, engine):
+    def __init__(self, engine: Any) -> None:
         ts = engine.data.get("ts_settings", {})
         super(UrlFiltering, self).__init__(data=ts)
 
     @property
-    def http_proxy(self):
+    def http_proxy(self) -> list[Any]:
         """
         Return any HTTP Proxies that are configured for Url
         Filtering.
@@ -304,7 +307,7 @@ class UrlFiltering(NestedDict):
         """
         return [Element.from_href(proxy) for proxy in self.get("http_proxy")]
 
-    def enable(self, http_proxy=None):
+    def enable(self, http_proxy: Any = None) -> None:
         """
         Enable URL Filtering on the engine. If proxy servers
         are needed, provide a list of HTTPProxy elements.
@@ -314,13 +317,13 @@ class UrlFiltering(NestedDict):
         """
         self.update(ts_enabled=True, http_proxy=get_proxy(http_proxy))
 
-    def disable(self):
+    def disable(self) -> None:
         """
         Disable URL Filtering on the engine
         """
         self.update(ts_enabled=False)
 
-    def enable_disable_local_url_categorization(self, enable:bool):
+    def enable_disable_local_url_categorization(self, enable: bool) -> None:
         """
         Enable local URL categorization on the engine.
         Only from SMC >= 7.4.0!
@@ -338,7 +341,7 @@ class UrlFiltering(NestedDict):
         return (self.get("ts_enabled", False) and
                 self.get("local_url_categorization_enabled", False))
 
-    def enable_disable_local_real_time_scanning(self, enable:bool):
+    def enable_disable_local_real_time_scanning(self, enable: bool) -> None:
         """
         Enable real-time methods for local scanning on the engine.
         Only from SMC >= 7.5.0!
@@ -365,7 +368,7 @@ class UrlFiltering(NestedDict):
         """
         return self.get("ts_enabled", False)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "{0}(enabled={1})".format(self.__class__.__name__, self.status)
 
 
@@ -387,13 +390,13 @@ class Sandbox(NestedDict):
     .. note:: You must call engine.update() to commit any changes.
     """
 
-    def __init__(self, engine):
+    def __init__(self, engine: Any) -> None:
         self.engine = engine
         sb = engine.data.get("sandbox_settings", {})
         super(Sandbox, self).__init__(data=sb)
 
     @property
-    def status(self):
+    def status(self) -> bool:
         """
         Status of sandbox on this engine
 
@@ -405,7 +408,7 @@ class Sandbox(NestedDict):
             return True
         return False  # Tmp, attribute missing on newly created engines
 
-    def disable(self):
+    def disable(self) -> None:
         """
         Disable the sandbox on this engine.
         """
@@ -415,13 +418,13 @@ class Sandbox(NestedDict):
 
     def enable(
             self,
-            license_key="",
-            license_token="",
-            sandbox_type="cloud_sandbox",
-            service="Automatic",
-            http_proxy=None,
-            sandbox_data_center="Automatic",
-    ):
+            license_key: str = "",
+            license_token: str = "",
+            sandbox_type: str = "cloud_sandbox",
+            service: str = "Automatic",
+            http_proxy: Any = None,
+            sandbox_data_center: str = "Automatic",
+    ) -> None:
         """
         Enable sandbox on this engine. Provide a valid license key
         and license token obtained from your engine licensing.
@@ -456,7 +459,7 @@ class Sandbox(NestedDict):
         self.engine.data.update(sandbox_type=sandbox_type)
 
     @property
-    def http_proxy(self):
+    def http_proxy(self) -> list[Any]:
         """
         Return any HTTP Proxies that are configured for Sandbox.
         :return: list of http proxy instances
@@ -465,7 +468,7 @@ class Sandbox(NestedDict):
         return [Element.from_href(proxy) for proxy in self.get("http_proxy")]
 
     @staticmethod
-    def get_permalink(engine_key, file_id):
+    def get_permalink(engine_key: str, file_id: str) -> str:
         """
         Return a report url for Sandbox.
         :param str engine_key: the engine node key for the report generated
@@ -481,7 +484,7 @@ class Sandbox(NestedDict):
         else:
             return result.msg
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "{0}(enabled={1})".format(self.__class__.__name__, self.status)
 
 
@@ -495,11 +498,11 @@ class TLSInspection(object):
     .. note:: You must call engine.update() to commit any changes.
     """
 
-    def __init__(self, engine):
+    def __init__(self, engine: Any) -> None:
         self.engine = engine
 
     @property
-    def server_credentials(self):
+    def server_credentials(self) -> list[Any]:
         """
         Return a list of assigned (if any) TLSServerCredentials
         assigned to this engine.
@@ -508,7 +511,7 @@ class TLSInspection(object):
         """
         return [Element.from_href(credential) for credential in self.engine.server_credential]
 
-    def add_tls_credential(self, credentials):
+    def add_tls_credential(self, credentials: Any) -> None:
         """
         Add a list of TLSServerCredential to this engine.
         TLSServerCredentials can be in element form or can also
@@ -523,7 +526,7 @@ class TLSInspection(object):
             if href not in self.engine.server_credential:
                 self.engine.server_credential.append(href)
 
-    def remove_tls_credential(self, credentials):
+    def remove_tls_credential(self, credentials: Any) -> None:
         """
         Remove a list of TLSServerCredentials on this engine.
 
@@ -553,10 +556,10 @@ class ZTNAConnector:
     .. note:: You must call engine.update() to commit any changes.
     """
 
-    def __init__(self, engine):
+    def __init__(self, engine: Any) -> None:
         self.engine = engine
 
-    def enable(self, bgkey, datacenter, auto_update):
+    def enable(self, bgkey: str, datacenter: str, auto_update: bool) -> None:
         """
         Enable ZTNA Connector on the engine.
 
@@ -570,14 +573,14 @@ class ZTNAConnector:
             "auto_update": auto_update
         })
 
-    def disable(self):
+    def disable(self) -> None:
         """
         Disable ZTNA Connector on the engine.
         """
         self.engine.data.pop("ztna_connector_settings", None)
 
     @property
-    def status(self):
+    def status(self) -> bool:
         """
         Return the status (enabled/disabled) of ZTNA Connector on the engine
 
@@ -586,7 +589,7 @@ class ZTNAConnector:
         return "ztna_connector_settings" in self.engine.data
 
     @property
-    def bgkey(self):
+    def bgkey(self) -> Optional[str]:
         "get ztna installation key or None"
         if not self.status:
             return None
@@ -594,7 +597,7 @@ class ZTNAConnector:
         return settings.get("bgkey")
 
     @property
-    def datacenter(self):
+    def datacenter(self) -> Optional[str]:
         "get ztna datacenter or None"
         if not self.status:
             return None
@@ -602,23 +605,23 @@ class ZTNAConnector:
         return settings.get("datacenter")
 
     @property
-    def auto_update(self):
+    def auto_update(self) -> Optional[bool]:
         "get ztna auto_update or None"
         if not self.status:
             return None
         settings = self.engine.data.get("ztna_connector_settings")
         return settings.get("auto_update")
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "{0}(enabled={1})".format(self.__class__.__name__, self.status)
 
 
 class ClientInspection(object):
-    def __init__(self, engine):
+    def __init__(self, engine: Any) -> None:
         self.engine = engine
 
     @property
-    def status(self):
+    def status(self) -> bool:
         """
         Whether client based decryption is enabled or disabled.
 
@@ -630,7 +633,7 @@ class ClientInspection(object):
         else:
             return self.engine.tls_client_protection is not None
 
-    def enable(self, ca_for_signing, tls_trusted_ca_tags=None, tls_trusted_cas=None):
+    def enable(self, ca_for_signing: Any, tls_trusted_ca_tags: Any = None, tls_trusted_cas: Any = None) -> None:
         """
         Enable client decryption. Provide a valid client protection
         CA that the engine will use to decrypt.
@@ -659,7 +662,7 @@ class ClientInspection(object):
                 'tls_trusted_ca_ref': element_resolver(tls_trusted_cas),
                 'proxy_usage': 'tls_inspection'})
 
-    def disable(self):
+    def disable(self) -> None:
         """
         Disable client decryption.
 
@@ -668,7 +671,7 @@ class ClientInspection(object):
         self.engine.data.update(tls_client_protection=None)
 
     @property
-    def ca_for_signing(self):
+    def ca_for_signing(self) -> Any:
         """
         Return the Client Protection Certificate Authority assigned
         to this engine. The CA is used to provide decryption services
@@ -687,7 +690,7 @@ class ClientInspection(object):
             return None
 
     @property
-    def tls_trusted_ca_tags(self):
+    def tls_trusted_ca_tags(self) -> list[Any]:
         """
         Return the TLS trusted CA tags.
 
@@ -704,7 +707,7 @@ class ClientInspection(object):
             return []
 
     @property
-    def tls_trusted_cas(self):
+    def tls_trusted_cas(self) -> list[Any]:
         """
         Return the TLS trusted CAs.
 
@@ -720,7 +723,7 @@ class ClientInspection(object):
         else:
             return []
 
-    def __str__(self):
+    def __str__(self) -> str:
         return 'ClientInspection for {}'.format(self.engine.name)
 
 
@@ -736,13 +739,13 @@ class EndpointIntegration(NestedDict):
     .. note:: You must call engine.update() to commit any changes.
     """
 
-    def __init__(self, engine):
+    def __init__(self, engine: Any) -> None:
         self.engine = engine
         eca = engine.data.get("eca_settings", {})
         super(EndpointIntegration, self).__init__(data=eca)
 
     @property
-    def status(self):
+    def status(self) -> bool:
         """
         Status of Endpoint Integration on this engine
 
@@ -752,7 +755,7 @@ class EndpointIntegration(NestedDict):
             return True
         return False
 
-    def disable(self):
+    def disable(self) -> None:
         """
         Disable the Endpoint Integration on this engine.
         """
@@ -760,13 +763,13 @@ class EndpointIntegration(NestedDict):
 
     def enable(
             self,
-            eca_client_config=None,
-            eca_client_network_ref=None,
-            eca_server_network_ref=None,
-            enabled_interface=None,
-            listened_zone_ref=None,
-            listening_port=9111,
-    ):
+            eca_client_config: Any = None,
+            eca_client_network_ref: Any = None,
+            eca_server_network_ref: Any = None,
+            enabled_interface: Any = None,
+            listened_zone_ref: Any = None,
+            listening_port: int = 9111,
+    ) -> None:
         """
         Enable Endpoint Integration with Forcepoint Endpoint Context Agent
         on this engine.
@@ -806,7 +809,7 @@ class EndpointIntegration(NestedDict):
         self.engine.data.setdefault("eca_settings", {}).update(self.data)
 
     @property
-    def eca_client_config(self):
+    def eca_client_config(self) -> Any:
         """
         Return eca_client_config that is configured for ECA.
         :return: eca_client_config object
@@ -815,5 +818,5 @@ class EndpointIntegration(NestedDict):
         config = self.get("eca_client_config")
         return Element.from_href(config)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "{0}(enabled={1})".format(self.__class__.__name__, self.status)

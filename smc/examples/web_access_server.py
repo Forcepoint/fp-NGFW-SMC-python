@@ -21,18 +21,40 @@ import sys
 
 sys.path.append('../../')  # smc-python
 from smc import session  # noqa
-from smc.compat import is_api_version_less_than  # noqa
+from smc.compat import is_api_version_less_than, is_smc_version_less_than  # noqa
 from smc.administration.certificates.tls import TLSServerCredential, TLSCryptographySuite  # noqa
+from smc.administration.user_auth.servers import AuthenticationMethod  # noqa
 from smc.elements.other import Location  # noqa
-from smc.elements.servers import WebPortalServer, WebAccessServer, LogServer, WebApp  # noqa
+from smc.elements.servers import WebPortalServer, WebAccessServer, LogServer, WebApp, \
+    SamlSettings  # noqa
 
 WEB_SERVER_NAME = "web_server_test"
+SAML_METHOD_NAME = "web_server_test_saml_method"
 WEB_SERVER_CREATE_ERROR = "Failed to create web access server with parameter."
 WEB_SERVER_UPDATE_ERROR = "Failed to update web access server."
+WEB_SERVER_CERT_UPDATE_ERROR = "Failed to update web app server credentials."
+WEB_SERVER_SAML_UPDATE_ERROR = "Failed to update web app SAML settings."
+# Inline metadata (no external URL) so the test doesn't depend on network access to a real IdP.
+IDP_METADATA_XML = (
+    '<?xml version="1.0" encoding="UTF-8"?>'
+    '<EntityDescriptor xmlns="urn:oasis:names:tc:SAML:2.0:metadata" '
+    'entityID="https://idp.example.com/saml/metadata">'
+    '<IDPSSODescriptor protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">'
+    '<SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" '
+    'Location="https://idp.example.com/saml/sso"/>'
+    '</IDPSSODescriptor>'
+    '</EntityDescriptor>'
+)
 
 logging.getLogger()
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - '
                                                '%(name)s - [%(levelname)s] : %(message)s')
+
+
+def delete_element(cls, name, log_message):
+    if cls.objects.filter(name=name, exact_match=True):
+        cls(name).delete()
+        logging.info(log_message)
 
 
 def main():
@@ -83,15 +105,47 @@ def main():
             if is_api_version_less_than("7.3") else WebAccessServer(WEB_SERVER_NAME)
         assert web_access_server.location_ref.href == location.href, WEB_SERVER_UPDATE_ERROR
         logging.info("WebAccessServer updated successfully.")
+        print("Updating web app cert")
+        new_tls_server_creds = list(TLSServerCredential.objects.all())[1]
+        web_access_server.update_web_app("webswing", server_credentials_ref=new_tls_server_creds)
+        web_access_server = WebPortalServer(WEB_SERVER_NAME) \
+            if is_api_version_less_than("7.3") else WebAccessServer(WEB_SERVER_NAME)
+        updated_web_app = web_access_server.get_web_app_by_identifier("webswing")
+        assert updated_web_app.server_credentials_ref.href == new_tls_server_creds.href, \
+            WEB_SERVER_CERT_UPDATE_ERROR
+        logging.info("WebApp server_credentials_ref updated successfully.")
+
+        if not is_smc_version_less_than("7.4.0"):
+            print("Updating web app SAML settings")
+            saml_method = AuthenticationMethod.create_saml(
+                name=SAML_METHOD_NAME,
+                idp_metadata_url=IDP_METADATA_XML)
+            saml_settings = SamlSettings.create(
+                saml_method_ref=saml_method,
+                saml_service_provider_id="web_server_test_sp",
+                saml_tls_credentials_ref=tls_server_creds,
+                saml_name_id_policy_format="persistent")
+            web_access_server.configure_saml_on_web_app("webswing", [saml_settings])
+            web_access_server = WebPortalServer(WEB_SERVER_NAME) \
+                if is_api_version_less_than("7.3") else WebAccessServer(WEB_SERVER_NAME)
+            updated_web_app = web_access_server.get_web_app_by_identifier("webswing")
+            assert updated_web_app.enable_saml_for_web_access is True and \
+                updated_web_app.saml_settings[0]["saml_method_ref"] == saml_method.href, \
+                WEB_SERVER_SAML_UPDATE_ERROR
+            logging.info("WebApp SAML settings updated successfully.")
     except BaseException as e:
         logging.error(f"Exception:{e}")
         return_code = 1
     finally:
+        # The web access server's SAML settings reference the AuthenticationMethod, so it
+        # must be deleted first before the method can be removed.
         if is_api_version_less_than("7.3"):
             WebPortalServer(WEB_SERVER_NAME).delete()
         else:
             WebAccessServer(WEB_SERVER_NAME).delete()
         logging.info("WebAccessServer deleted successfully.")
+        delete_element(AuthenticationMethod, SAML_METHOD_NAME,
+                       "Deleted AuthenticationMethod successfully.")
         session.logout()
     return return_code
 

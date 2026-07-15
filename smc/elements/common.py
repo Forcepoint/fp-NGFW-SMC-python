@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import Any, Optional, Union, Iterator
+
 from smc.base.model import Element
 from smc.base.structs import NestedDict
 from smc.base.util import element_resolver
@@ -6,7 +10,7 @@ from smc.base.util import element_resolver
 class ElementWithLocation:
 
     @property
-    def location_ref(self):
+    def location_ref(self) -> Any:
         """
         The location of server
         :rtype Location:
@@ -16,22 +20,22 @@ class ElementWithLocation:
 
 class NodeElement(ElementWithLocation):
     @property
-    def tools_profile_ref(self):
+    def tools_profile_ref(self) -> Any:
         """
-        Allows you to add commands to the element’s right-click menu.
+        Allows you to add commands to the element's right-click menu.
         :rtype DeviceToolsProfile
         """
         return Element.from_href(self.data.get("tools_profile_ref"))
 
     @property
-    def third_party_monitoring(self):
+    def third_party_monitoring(self) -> "ThirdPartyMonitoring":
         """
         This represents Monitoring Settings for Third Party Monitoring.
         """
         return ThirdPartyMonitoring(self.data.get("third_party_monitoring"))
 
     @property
-    def secondary(self):
+    def secondary(self) -> Optional[list[Any]]:
         """
         If the device has additional IP addresses, you can enter them here instead of creating
         additional elements for the other IP addresses. The secondary IP addresses are valid in
@@ -41,7 +45,7 @@ class NodeElement(ElementWithLocation):
         """
         return self.data.get("secondary")
 
-    def add_secondary(self, address, append_lists=False):
+    def add_secondary(self, address: Any, append_lists: bool = False) -> None:
         """
         Add secondary IP addresses to this host element. If append_list
         is True, then add to existing list. Otherwise overwrite.
@@ -58,19 +62,20 @@ class ThirdPartyMonitoring(NestedDict):
     This represents Monitoring Settings for Third Party Monitoring.
     """
 
-    def __init__(self, data):
+    def __init__(self, data: Any) -> None:
         super(ThirdPartyMonitoring, self).__init__(data=data)
 
     @classmethod
-    def create(cls,
-               encoding="UTF-8",
-               logging_profile_ref=None,
-               monitoring_log_server_ref=None,
-               netflow=False,
-               probing_profile_ref=None,
-               snmp_trap=False,
-               time_zone="Europe/Paris"
-               ):
+    def create(
+        cls,
+        encoding: str = "UTF-8",
+        logging_profile_ref: Optional[Any] = None,
+        monitoring_log_server_ref: Optional[Any] = None,
+        netflow: bool = False,
+        probing_profile_ref: Optional[Any] = None,
+        snmp_trap: bool = False,
+        time_zone: str = "Europe/Paris",
+    ) -> "ThirdPartyMonitoring":
         """
         :param str encoding: The log reception the encoding.
         :param LoggingProfile logging_profile_ref: Activates syslog reception from this device. You
@@ -103,7 +108,7 @@ class ThirdPartyMonitoring(NestedDict):
         return cls(data)
 
     @property
-    def encoding(self):
+    def encoding(self) -> Optional[str]:
         """
         The log reception the encoding.
         :rtype str
@@ -111,7 +116,7 @@ class ThirdPartyMonitoring(NestedDict):
         return self.data.get("encoding")
 
     @property
-    def snmp_trap(self):
+    def snmp_trap(self) -> Optional[bool]:
         """
         Activates SNMP trap reception from this device. The data that the device sends must be
         formatted according to the MIB definitions currently active in the system.
@@ -120,7 +125,7 @@ class ThirdPartyMonitoring(NestedDict):
         return self.data.get("snmp_trap")
 
     @property
-    def netflow(self):
+    def netflow(self) -> Optional[bool]:
         """
         Activates NetFlow (v6 and v16) and IPFIX (NetFlow v20) data reception from this device.
         :rtype bool
@@ -128,7 +133,7 @@ class ThirdPartyMonitoring(NestedDict):
         return self.data.get("netflow")
 
     @property
-    def time_zone(self):
+    def time_zone(self) -> Optional[str]:
         """
         The log reception the time zone.
         :rtype str
@@ -136,7 +141,7 @@ class ThirdPartyMonitoring(NestedDict):
         return self.data.get("time_zone")
 
     @property
-    def logging_profile_ref(self):
+    def logging_profile_ref(self) -> Any:
         """
         Activates syslog reception from this device.
         :rtype LoggingProfile
@@ -144,7 +149,7 @@ class ThirdPartyMonitoring(NestedDict):
         return Element.from_href(self.data.get("logging_profile_ref"))
 
     @property
-    def monitoring_log_server_ref(self):
+    def monitoring_log_server_ref(self) -> Any:
         """
         Monitoring Log Server that monitors this device (third-party monitoring)
         :rtype LogServer
@@ -152,7 +157,7 @@ class ThirdPartyMonitoring(NestedDict):
         return Element.from_href(self.data.get("monitoring_log_server_ref"))
 
     @property
-    def probing_profile_ref(self):
+    def probing_profile_ref(self) -> Any:
         """
         Probing Profile that contains the definitions for the monitoring.
         :rtype ProbingProfile
@@ -163,7 +168,7 @@ class ThirdPartyMonitoring(NestedDict):
 class IpAddressMixin:
 
     @property
-    def address(self):
+    def address(self) -> Optional[str]:
         """
         Single valid IPv4 address.
         :rtype str
@@ -171,7 +176,7 @@ class IpAddressMixin:
         return self.data.get("address")
 
     @property
-    def ipv6_address(self):
+    def ipv6_address(self) -> Optional[str]:
         """
         Single valid IPv6 address.
         :rtype str

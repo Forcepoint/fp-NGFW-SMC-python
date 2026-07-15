@@ -98,12 +98,14 @@ date::
 .. note:: You can use the helper method :func:`smc.base.util.datetime_to_ms`
     for obtaining millisecond times for scheduled tasks.
 """
+from __future__ import annotations
+from typing import Any, Optional, Union, Iterator
 
 from smc.base.model import Element, SubElement, ElementCreator, ElementRef
 from smc.api.exceptions import ActionCommandFailed, UnsupportedEngineFeature, InvalidEngineNode
 from smc.administration.tasks import Task
 from smc.base.structs import NestedDict
-from smc.compat import min_smc_version, is_api_version_less_than
+from smc.compat import min_smc_version, is_api_version_less_than, supported_parameter_check
 from smc.elements.servers import ManagementServer, LogServer
 from smc.core.engines import MasterEngine, MasterEngineCluster, Engine
 from smc.core.node import Node
@@ -111,7 +113,7 @@ from smc.elements.other import FilterExpression
 from smc.base.util import datetime_from_ms, element_resolver
 
 
-def policy_validation_settings(**kwargs):
+def policy_validation_settings(**kwargs: Any) -> dict[str, Any]:
     """
     Set policy validation settings. This is used when policy based
     tasks are created and `validate_policy` is set to True. The
@@ -148,7 +150,7 @@ def policy_validation_settings(**kwargs):
     return {"validation_settings": validation_settings}
 
 
-def log_target_types(all_logs=False, **kwargs):
+def log_target_types(all_logs: bool = False, **kwargs: Any) -> dict[str, Any]:
     """
     Log targets for log tasks. A log target defines the log types
     that will be affected by the operation. For example, when creating
@@ -184,7 +186,7 @@ def log_target_types(all_logs=False, **kwargs):
     return log_types
 
 
-def counter_target_types(all_counters=False, **kwargs):
+def counter_target_types(all_counters: bool = False, **kwargs: Any) -> dict[str, Any]:
     """
     Data counters for counters tasks. A data target defines the data types
     that will be affected by the operation. For example, when creating
@@ -214,7 +216,7 @@ def counter_target_types(all_counters=False, **kwargs):
     return counter_types
 
 
-def server_directory(**kwargs):
+def server_directory(**kwargs: Any) -> dict[str, Any]:
     """
     create a server directory dict. This is used for export/archive logs
     tasks.
@@ -240,7 +242,7 @@ def server_directory(**kwargs):
     return srv_directory
 
 
-def server_directories_settings(srv_directories):
+def server_directories_settings(srv_directories: Any) -> dict[str, Any]:
     """
     Server directories used to retrieve logs.. This is needed for export or archive logs
     tasks.
@@ -248,6 +250,9 @@ def server_directories_settings(srv_directories):
     :param list server_directories: list of server_directory
     :return: dict of server_directories settings
     """
+    if srv_directories is None:
+        return {}
+
     server_directories = []
 
     for srv_directory in srv_directories:
@@ -268,7 +273,7 @@ class TaskSchedule(SubElement):
     """
 
     @property
-    def activated(self):
+    def activated(self) -> bool:
         """
         Whether this schedule is active for this task.
 
@@ -277,7 +282,7 @@ class TaskSchedule(SubElement):
         return self.data.get("activated", False)
 
     @property
-    def activation_date(self):
+    def activation_date(self) -> Any:
         """
         Return the UTC time when the task is set to first run.
         The activation date is returned as a python datetime
@@ -288,7 +293,7 @@ class TaskSchedule(SubElement):
         """
         return datetime_from_ms(self.data.get("activation_date"))
 
-    def activate(self):
+    def activate(self) -> None:
         """
         If a task is suspended, this will re-activate the task.
         Usually it's best to check for activated before running
@@ -311,7 +316,7 @@ class TaskSchedule(SubElement):
                 "Task is already activated. To " "suspend, call suspend() on this task schedule"
             )
 
-    def suspend(self):
+    def suspend(self) -> None:
         """
         Suspend this scheduled task.
 
@@ -333,7 +338,7 @@ class ScheduledTaskMixin(object):
     Actions common to all scheduled tasks.
     """
 
-    def start(self):
+    def start(self) -> Task:
         """
         Start the scheduled task now. Task can then be tracked by
         using common Task methods.
@@ -345,7 +350,7 @@ class ScheduledTaskMixin(object):
         return Task(self.make_request(ActionCommandFailed, method="create", resource="start"))
 
     @property
-    def task_schedule(self):
+    def task_schedule(self) -> list[TaskSchedule]:
         """
         Return any task schedules associated with this
         scheduled task.
@@ -358,16 +363,16 @@ class ScheduledTaskMixin(object):
 
     def add_schedule(
         self,
-        name,
-        activation_date,
-        day_period="one_time",
-        final_action="ALERT_FAILURE",
-        activated=True,
-        minute_period="one_time",
-        day_mask=None,
-        repeat_until_date=None,
-        comment=None,
-    ):
+        name: str,
+        activation_date: int,
+        day_period: str = "one_time",
+        final_action: str = "ALERT_FAILURE",
+        activated: bool = True,
+        minute_period: str = "one_time",
+        day_mask: Optional[int] = None,
+        repeat_until_date: Optional[int] = None,
+        comment: Optional[str] = None,
+    ) -> Any:
         """
         Add a schedule to an existing task.
 
@@ -417,7 +422,7 @@ class ScheduledTaskMixin(object):
         )
 
     @property
-    def resources(self):
+    def resources(self) -> list[Any]:
         """
         Resources associated with this task. Depending on the task, this
         may be engines, policies, servers, etc.
@@ -443,7 +448,7 @@ class RefreshPolicyTask(ScheduledTaskMixin, Element):
     typeof = "refresh_policy_task"
 
     @classmethod
-    def create(cls, name, engines, comment=None, validate_policy=True, **kwargs):
+    def create(cls, name: str, engines: list[Any], comment: Optional[str] = None, validate_policy: bool = True, **kwargs: Any) -> RefreshPolicyTask:
         """
         Create a refresh policy task associated with specific
         engines. A policy refresh task does not require a policy
@@ -492,7 +497,7 @@ class UploadPolicyTask(ScheduledTaskMixin, Element):
     typeof = "upload_policy_task"
 
     @classmethod
-    def create(cls, name, engines, policy, comment=None, validate_policy=False, **kwargs):
+    def create(cls, name: str, engines: list[Any], policy: Any, comment: Optional[str] = None, validate_policy: bool = False, **kwargs: Any) -> UploadPolicyTask:
         """
         Create an upload policy task associated with specific
         engines. A policy reassigns any policies that might be
@@ -537,7 +542,7 @@ class RemoteUpgradeTask(ScheduledTaskMixin, Element):
     typeof = 'remote_upgrade_task'
 
     @classmethod
-    def create(cls, name, list_of_engine_or_node, package, comment=None, **kwargs):
+    def create(cls, name: str, list_of_engine_or_node: list[Any], package: str, comment: Optional[str] = None, **kwargs: Any) -> RemoteUpgradeTask:
         """
         Create an upload policy task associated with specific
         engines or nodes. A policy reassigns any policies that might be
@@ -583,7 +588,7 @@ class ValidatePolicyTask(ScheduledTaskMixin, Element):
     policy = ElementRef("policy")
 
     @classmethod
-    def create(cls, name, engines, policy=None, comment=None, **kwargs):
+    def create(cls, name: str, engines: list[Any], policy: Optional[Any] = None, comment: Optional[str] = None, **kwargs: Any) -> ValidatePolicyTask:
         """
         Create a new validate policy task.
         If a policy is not specified, the engines existing policy will
@@ -624,7 +629,7 @@ class RefreshMasterEnginePolicyTask(ScheduledTaskMixin, Element):
     typeof = "refresh_master_and_virtual_policy_task"
 
     @classmethod
-    def create(cls, name, master_engines, comment=None, **kwargs):
+    def create(cls, name: str, master_engines: list[Any], comment: Optional[str] = None, **kwargs: Any) -> RefreshMasterEnginePolicyTask:
         """
         Create a refresh task for master engines.
 
@@ -667,18 +672,19 @@ class DeleteLogTask(ScheduledTaskMixin, Element):
     @classmethod
     def create(
         cls,
-        name,
-        servers=None,
-        time_range="yesterday",
-        all_logs=False,
-        filter_for_delete=None,
-        comment=None,
-        start_time=None,
-        end_time=None,
-        relative_time_begin=None,
-        relative_time_end=None,
-        **kwargs
-    ):
+        name: str,
+        servers: Optional[list[Any]] = None,
+        time_range: str = "yesterday",
+        all_logs: bool = False,
+        filter_for_delete: Optional[Any] = None,
+        comment: Optional[str] = None,
+        start_time: Optional[str] = None,
+        end_time: Optional[str] = None,
+        relative_time_begin: Optional[str] = None,
+        relative_time_end: Optional[str] = None,
+        use_elasticsearch: bool = False,
+        **kwargs: Any,
+    ) -> DeleteLogTask:
         """
         Create a new delete log task. Provide True to all_logs to delete
         all log types. Otherwise provide kwargs to specify each log by
@@ -709,6 +715,8 @@ class DeleteLogTask(ScheduledTaskMixin, Element):
         :param str end_time: the end time in ms used when the 'time_limit_type' is set to 'absolute_time_range'.
         :param str relative_time_begin: the begin number of days when the 'time_limit_type' is set to 'relative_time_range'.
         :param str relative_time_end: the end number of days when the 'time_limit_type' is set to 'relative_time_range' or 'before'.
+        :param bool use_elasticsearch: if True, Elasticsearch is used as the log data source
+            instead of legacy file storage. (default: False)
         :param kwargs: see :func:`~log_target_types` for keyword
             arguments and default values.
         :raises ElementNotFound: specified servers were not found
@@ -739,6 +747,10 @@ class DeleteLogTask(ScheduledTaskMixin, Element):
             "comment": comment,
         }
 
+        if use_elasticsearch:
+            json["use_elasticsearch"] = use_elasticsearch
+
+        supported_parameter_check("use_elasticsearch", json, "7.3.5")
         json.update(**log_target_types(all_logs, **kwargs))
 
         return ElementCreator(cls, json)
@@ -755,8 +767,8 @@ class ServerBackupTask(ScheduledTaskMixin, Element):
     typeof = "backup_task"
 
     @classmethod
-    def create(cls, name, servers, backup_log_data=False, encrypt_password=None, comment=None,
-               path=None, script=None):
+    def create(cls, name: str, servers: list[Any], backup_log_data: bool = False, encrypt_password: Optional[str] = None, comment: Optional[str] = None,
+               path: Optional[str] = None, script: Optional[Any] = None) -> ServerBackupTask:
         """
         Create a new server backup task. This task provides the ability
         to backup individual or all management and log servers under
@@ -800,7 +812,7 @@ class ServerBackupTask(ScheduledTaskMixin, Element):
         return ElementCreator(cls, json)
 
     @property
-    def servers(self):
+    def servers(self) -> Any:
         return self.data.get("resources")
 
 
@@ -823,8 +835,8 @@ class SGInfoTask(ScheduledTaskMixin, Element):
 
     @classmethod
     def create(
-        cls, name, engines, include_core_files=False, include_slapcat_output=False, comment=None
-    ):
+        cls, name: str, engines: list[Any], include_core_files: bool = False, include_slapcat_output: bool = False, comment: Optional[str] = None
+    ) -> SGInfoTask:
         """
         Create an sginfo task.
 
@@ -943,23 +955,24 @@ class ExportLogTask(ScheduledTaskMixin, Element):
     @classmethod
     def create(
             cls,
-            name,
-            servers=None,
-            time_range="yesterday",
-            file_name=None,
-            file_format="xml",
-            is_local_location=True,
-            filter_for_export=None,
-            all_logs=False,
-            overwrite_file_flag="overwrite",
-            server_directory_lst=None,
-            comment=None,
-            start_time=None,
-            end_time=None,
-            relative_time_begin=None,
-            relative_time_end=None,
-            **kwargs
-    ):
+            name: str,
+            servers: Optional[list[Any]] = None,
+            time_range: str = "yesterday",
+            file_name: Optional[str] = None,
+            file_format: str = "xml",
+            is_local_location: bool = True,
+            filter_for_export: Optional[Any] = None,
+            all_logs: bool = False,
+            overwrite_file_flag: str = "overwrite",
+            server_directory_lst: Optional[list[Any]] = None,
+            comment: Optional[str] = None,
+            start_time: Optional[str] = None,
+            end_time: Optional[str] = None,
+            relative_time_begin: Optional[str] = None,
+            relative_time_end: Optional[str] = None,
+            use_elasticsearch: bool = False,
+            **kwargs: Any,
+    ) -> ExportLogTask:
         """
         Create a new export log task. Provide True to all_logs to export
         all log types. Otherwise provide kwargs to specify each log by
@@ -1004,12 +1017,15 @@ class ExportLogTask(ScheduledTaskMixin, Element):
         :param str overwrite_file_flag: The overwrite options:
             ***append***: append option.
             ***overwrite***: overwrite option.
-            ***use_number_in_file_name*** create an unique file with number as name.
+            ***create*** create an unique file with number as name.
             ***fail_task***: fail the task.
         :param str start_time: the start time in ms used when the 'time_limit_type' is set to 'absolute_time_range' or 'after'.
         :param str end_time: the end time in ms used when the 'time_limit_type' is set to 'absolute_time_range'.
         :param str relative_time_begin: the begin number of days when the 'time_limit_type' is set to 'relative_time_range'.
         :param str relative_time_end: the end number of days when the 'time_limit_type' is set to 'relative_time_range' or 'before'.
+        :param bool use_elasticsearch: if True, Elasticsearch is used as the log data source
+            instead of legacy file storage. When enabled, server_directory_lst is not required.
+            (default: False)
         :param kwargs: see :func:`~log_target_types` for keyword
             arguments and default values.
         :raises ElementNotFound: specified servers were not found
@@ -1039,6 +1055,10 @@ class ExportLogTask(ScheduledTaskMixin, Element):
             "comment": comment,
         }
 
+        if use_elasticsearch:
+            json["use_elasticsearch"] = use_elasticsearch
+
+        supported_parameter_check("use_elasticsearch", json, "7.3.5")
         json.update(**log_target_types(all_logs, **kwargs))
         json.update(**server_directories_settings(server_directory_lst))
 
@@ -1062,22 +1082,22 @@ class ArchiveLogTask(ScheduledTaskMixin, Element):
     @classmethod
     def create(
             cls,
-            name,
-            servers=None,
-            time_range="yesterday",
-            filter_for_export=None,
-            filter_for_delete=None,
-            delete_source_data=False,
-            all_logs=False,
-            server_directory_lst=None,
-            is_local_location=False,
-            comment=None,
-            start_time=None,
-            end_time=None,
-            relative_time_begin=None,
-            relative_time_end=None,
-            **kwargs
-    ):
+            name: str,
+            servers: Optional[list[Any]] = None,
+            time_range: str = "yesterday",
+            filter_for_export: Optional[Any] = None,
+            filter_for_delete: Optional[Any] = None,
+            delete_source_data: bool = False,
+            all_logs: bool = False,
+            server_directory_lst: Optional[list[Any]] = None,
+            is_local_location: bool = False,
+            comment: Optional[str] = None,
+            start_time: Optional[str] = None,
+            end_time: Optional[str] = None,
+            relative_time_begin: Optional[str] = None,
+            relative_time_end: Optional[str] = None,
+            **kwargs: Any,
+    ) -> ArchiveLogTask:
         """
         Create a new archive log task. Provide True to all_logs to archive
         all log types. Otherwise provide kwargs to specify each log by
@@ -1153,11 +1173,11 @@ class ArchiveLogTask(ScheduledTaskMixin, Element):
 
 class TrafficCaptureInterfaceSettings(NestedDict):
 
-    def __init__(self, data):
+    def __init__(self, data: Any) -> None:
         super(TrafficCaptureInterfaceSettings, self).__init__(data=data)
 
     @classmethod
-    def create(cls, node_ref=None, pint_ref=None, filter=None):
+    def create(cls, node_ref: Optional[Any] = None, pint_ref: Optional[Any] = None, filter: Optional[str] = None) -> TrafficCaptureInterfaceSettings:
         """
 
         :param Node node_ref: Individual engine node on which traffic is being captured. Required.
@@ -1174,7 +1194,7 @@ class TrafficCaptureInterfaceSettings(NestedDict):
         return cls(interface_setting)
 
     @classmethod
-    def create_interface_setting_for_all_node(cls, engine, pint_ref=None, filter=None):
+    def create_interface_setting_for_all_node(cls, engine: Any, pint_ref: Optional[Any] = None, filter: Optional[str] = None) -> list[TrafficCaptureInterfaceSettings]:
         """
         This method is used to create interface settings for all nodes of the engine with
             the same filter for the given interface.
@@ -1201,16 +1221,16 @@ class TrafficCaptureTask(ScheduledTaskMixin, Element):
     @classmethod
     def create(
             cls,
-            name,
-            interface_settings=None,
-            max_file_size_in_mb=500,
-            capture_headers_only=False,
-            description=None,
-            duration_in_sec=3600,
-            sg_info_option=False,
-            destination_file=None,
-            comment=None,
-    ):
+            name: str,
+            interface_settings: Optional[list[Any]] = None,
+            max_file_size_in_mb: int = 500,
+            capture_headers_only: bool = False,
+            description: Optional[str] = None,
+            duration_in_sec: int = 3600,
+            sg_info_option: bool = False,
+            destination_file: Optional[str] = None,
+            comment: Optional[str] = None,
+    ) -> TrafficCaptureTask:
         """
         This creates the Traffic Capture task element. It captures traffic on specific engine's
         physical interface with some parameters given below.
@@ -1247,23 +1267,23 @@ class TrafficCaptureTask(ScheduledTaskMixin, Element):
         return ElementCreator(cls, json)
 
     @property
-    def max_file_size(self):
+    def max_file_size(self) -> Any:
         return self.data.get("max_file_size")
 
     @property
-    def capture_headers_only(self):
+    def capture_headers_only(self) -> Any:
         return self.data.get("capture_headers_only")
 
     @property
-    def duration(self):
+    def duration(self) -> Any:
         return self.data.get("duration")
 
     @property
-    def interface_setting(self):
+    def interface_setting(self) -> Any:
         return self.data.get("interface_setting")
 
     @property
-    def sg_info_option(self):
+    def sg_info_option(self) -> Any:
         return self.data.get("sg_info_option")
 
 
@@ -1274,17 +1294,17 @@ class DeleteCounterDataTask(ScheduledTaskMixin, Element):
     @classmethod
     def create(
             cls,
-            name,
-            all_counters=False,
-            servers=None,
-            time_range="yesterday",
-            comment=None,
-            start_time=None,
-            end_time=None,
-            relative_time_begin=None,
-            relative_time_end=None,
-            **kwargs
-    ):
+            name: str,
+            all_counters: bool = False,
+            servers: Optional[list[Any]] = None,
+            time_range: str = "yesterday",
+            comment: Optional[str] = None,
+            start_time: Optional[str] = None,
+            end_time: Optional[str] = None,
+            relative_time_begin: Optional[str] = None,
+            relative_time_end: Optional[str] = None,
+            **kwargs: Any,
+    ) -> DeleteCounterDataTask:
         """
         Create a new delete counter data task. Provides True to all_counters to delete
         all counter types. Otherwise provide kwargs to specify each log by

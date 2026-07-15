@@ -12,6 +12,10 @@
 """
 Exceptions Module
 """
+from __future__ import annotations
+
+from typing import Any, Optional, Union, Iterator
+
 import smc.api.web
 from smc.base.util import unicode_to_bytes
 
@@ -28,7 +32,7 @@ class SessionNotFound(SMCException):
 
 
 class SessionManagerNotFound(Exception):
-    def __init__(self, message=""):
+    def __init__(self, message: str = "") -> None:
         msg = (
             "A session manager was not found for this session. This generally means "
             "the session was not obtained through the standard session factory or the session "
@@ -72,7 +76,7 @@ class SMCOperationFailure(SMCException):
     :ivar smcresult: :py:class:`smc.api.web.SMCResult` object for consistent returns
     """
 
-    def __init__(self, response=None):
+    def __init__(self, response: Optional[Any] = None) -> None:
         # Response is type <class 'requests.models.Response'>
         self.response = response
         self.code = None
@@ -80,7 +84,7 @@ class SMCOperationFailure(SMCException):
         if response is not None:
             self._unpack_response()
 
-    def _unpack_response(self):
+    def _unpack_response(self) -> None:
         details = None
         self.code = self.response.status_code
         if self.response.headers.get("content-type") == "application/json":
@@ -118,10 +122,10 @@ class SMCOperationFailure(SMCException):
         else:
             self.smcresult.msg = message
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "SMCOperationFailure(response=%s)" % (self.response)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "SMCOperationFailure (response=%s)- %s" % (self.response.status_code,
                                                           self.smcresult.msg)
 

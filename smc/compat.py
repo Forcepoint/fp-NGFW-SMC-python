@@ -12,6 +12,8 @@
 """
 Compatibility for py2 / py3
 """
+from __future__ import annotations
+from typing import Any, Optional, Union, Iterator
 import sys
 import smc
 import re
@@ -40,7 +42,7 @@ else:
 PYTHON_v3_9 = sys.version_info >= (3, 9)
 
 
-def min_smc_version(version):
+def min_smc_version(version: str) -> bool:
     """
     Is version at least the minimum provided
     Used for compatibility with selective functions
@@ -48,7 +50,7 @@ def min_smc_version(version):
     return LooseVersion(smc.session.api_version) >= LooseVersion(version)
 
 
-def get_best_version(*versions):
+def get_best_version(*versions: Any) -> Any:
     """
     Given a list of (version, value) pairs this function will return the
     value best suited for the current api version. Use this with key name
@@ -70,7 +72,7 @@ def get_best_version(*versions):
 
 
 # if check version is minor or major, corresponding smc version will be return (major/minor)
-def get_smc_version(check_version):
+def get_smc_version(check_version: str) -> str:
     smc_version = smc.administration.system.System().smc_version
     if re.match(r"\d.\d+.\d", check_version):
         smc_version = '.'.join(smc_version.split()[0].split('.')[:3])
@@ -79,17 +81,17 @@ def get_smc_version(check_version):
     return smc_version
 
 
-def is_smc_version_less_than_or_equal(check_version):
+def is_smc_version_less_than_or_equal(check_version: str) -> bool:
     smc_version = get_smc_version(check_version)
     return LooseVersion(smc_version) <= LooseVersion(check_version)
 
 
-def is_smc_version_more_than_or_equal(check_version):
+def is_smc_version_more_than_or_equal(check_version: str) -> bool:
     smc_version = get_smc_version(check_version)
     return LooseVersion(smc_version) >= LooseVersion(check_version)
 
 
-def is_smc_version_less_than(check_version):
+def is_smc_version_less_than(check_version: str) -> bool:
     """
     check smc version url is less or not
     :param str check_version: smc version
@@ -98,7 +100,7 @@ def is_smc_version_less_than(check_version):
     return LooseVersion(smc_version) < LooseVersion(check_version)
 
 
-def is_smc_version_equal(check_version):
+def is_smc_version_equal(check_version: str) -> bool:
     """
     check smc version url is equal or not.
     :param str check_version: smv version
@@ -107,19 +109,24 @@ def is_smc_version_equal(check_version):
     return LooseVersion(smc_version) == LooseVersion(check_version)
 
 
-def is_api_version_less_than_or_equal(check_version):
+def is_api_version_less_than_or_equal(check_version: str) -> bool:
     return LooseVersion(smc.session.api_version) <= LooseVersion(check_version)
 
 
-def is_api_version_more_than_or_equal(check_version):
+def is_api_version_more_than_or_equal(check_version: str) -> bool:
     return LooseVersion(smc.session.api_version) >= LooseVersion(check_version)
 
 
-def is_api_version_less_than(check_version):
+def is_api_version_less_than(check_version: str) -> bool:
     return LooseVersion(smc.session.api_version) < LooseVersion(check_version)
 
 
-def supported_parameter_check(check_parameter, json, version, message=None):
+def supported_parameter_check(
+    check_parameter: Any,
+    json: dict,
+    version: str,
+    message: Optional[str] = None,
+) -> None:
     """
     Check if a parameter is supported based on the SMC version
     :param str/list check_parameter: parameter to check
@@ -137,7 +144,7 @@ def supported_parameter_check(check_parameter, json, version, message=None):
                                                           f" SMC version < {version}")
 
 
-def supported_feature_check(version, message):
+def supported_feature_check(version: str, message: str) -> None:
     """
     Check if a feature is supported based on the SMC version
     :param str version: version to check against

@@ -46,6 +46,8 @@ to block input while waiting for the engine to reach a specific status::
         print("Status after 5 sec wait: %s" % waiter.result(5))
 
 """
+from __future__ import annotations
+from typing import Any, Optional, Union, Iterator
 import time
 import threading
 from smc.compat import PYTHON_v3_9
@@ -86,7 +88,7 @@ class NodeWaiter(threading.Thread):
     a nodes status and wait for a specific response.
     """
 
-    def __init__(self, resource, status, timeout=5, max_wait=36, **kw):
+    def __init__(self, resource: Any, status: str, timeout: int = 5, max_wait: int = 36, **kw: Any) -> None:
         threading.Thread.__init__(self)
         self._desired_status = status
         self._resource = resource  # node resource
@@ -98,7 +100,7 @@ class NodeWaiter(threading.Thread):
         self.daemon = True
         self.start()
 
-    def run(self):
+    def run(self) -> None:
         while not self.finished():
             time.sleep(self._timeout)
             try:
@@ -112,7 +114,7 @@ class NodeWaiter(threading.Thread):
         for call in self.callbacks:
             call(self._status)
 
-    def _get_status(self):
+    def _get_status(self) -> Optional[str]:
         # Raises NodeCommandFailed
         # Modified in 0.6.2 to support SMC 6.5 where the attribute name changed
         status = self._resource.status()
@@ -122,10 +124,10 @@ class NodeWaiter(threading.Thread):
         else:
             return latest[0] or None
 
-    def finished(self):
+    def finished(self) -> bool:
         return self._done.is_set() or self._status == self._desired_status or self._max_wait == 0
 
-    def add_done_callback(self, callback):
+    def add_done_callback(self, callback: Any) -> None:
         """
         Add a callback to run after the task completes.
         The callable must take 1 argument which will be
@@ -138,7 +140,7 @@ class NodeWaiter(threading.Thread):
         if callable(callback):
             self.callbacks.append(callback)
 
-    def done(self):
+    def done(self) -> bool:
         """
         Is the task still running or considered complete
 
@@ -149,7 +151,7 @@ class NodeWaiter(threading.Thread):
             (PYTHON_v3_9 and not self.is_alive()) or \
             (not PYTHON_v3_9 and not self.isAlive())
 
-    def result(self, timeout=None):
+    def result(self, timeout: Optional[float] = None) -> Any:
         """
         Get current status result after waiting timeout
         Result does a join on the thread to get a status update. It
@@ -159,13 +161,13 @@ class NodeWaiter(threading.Thread):
         self.wait(timeout)
         return self._status
 
-    def wait(self, timeout=None):
+    def wait(self, timeout: Optional[float] = None) -> None:
         """
         Blocking method to wait for thread
         """
         self.join(timeout)
 
-    def stop(self):
+    def stop(self) -> None:
         """
         Stop thread if it's still running
         """
@@ -188,7 +190,7 @@ class ConfigurationStatusWaiter(NodeWaiter):
 
     value = ("configuration_status",)
 
-    def __init__(self, resource, status, **kw):
+    def __init__(self, resource: Any, status: str, **kw: Any) -> None:
         if status not in CFG_STATUS:
             raise ValueError("Status is invalid. Valid options are: %s" % CFG_STATUS)
         super(ConfigurationStatusWaiter, self).__init__(resource, status, **kw)
@@ -212,7 +214,7 @@ class NodeStatusWaiter(NodeWaiter):
     # None for both attributes
     value = ("status", "monitoring_status", "engine_node_status")
 
-    def __init__(self, resource, status, **kw):
+    def __init__(self, resource: Any, status: str, **kw: Any) -> None:
         if status not in STATUS:
             raise ValueError("Status is invalid. Valid options are: %s" % STATUS)
         super(NodeStatusWaiter, self).__init__(resource, status, **kw)
@@ -233,7 +235,7 @@ class NodeStateWaiter(NodeWaiter):
 
     value = ("state", "monitoring_state")
 
-    def __init__(self, resource, status, **kw):
+    def __init__(self, resource: Any, status: str, **kw: Any) -> None:
         if status not in STATE:
             raise ValueError("Status is invalid. Valid options are: %s" % STATE)
         super(NodeStateWaiter, self).__init__(resource, status, **kw)

@@ -56,6 +56,8 @@ Generate a report based on an existing or created report design::
     >>> report.export_pdf(filename='/foo/bar/a.pdf')
 
 """
+from __future__ import annotations
+from typing import Any, Optional, Union, Iterator, List
 from smc.base.model import Element, ElementCreator
 from smc.administration.tasks import Task
 from smc.base.util import datetime_from_ms, element_resolver
@@ -89,9 +91,17 @@ class ReportDesign(Element):
     typeof = "report_design"
 
     def generate(
-            self, start_time=None, end_time=None, launch_time=None, overriding_duration=None,
-            use_elasticsearch=False, senders=None, wait_for_finish=False, timeout=5, **kw
-    ):  # @ReservedAssignment
+            self,
+            start_time: Optional[int] = None,
+            end_time: Optional[int] = None,
+            launch_time: Optional[int] = None,
+            overriding_duration: Optional[int] = None,
+            use_elasticsearch: bool = False,
+            senders: Optional[List[Any]] = None,
+            wait_for_finish: bool = False,
+            timeout: int = 5,
+            **kw: Any,
+    ) -> Any:  # @ReservedAssignment
         """
         Generate the report and optionally wait for results.
         You can optionally add filters to the report by providing the senders
@@ -127,7 +137,7 @@ class ReportDesign(Element):
         )
 
     @property
-    def report_files(self):
+    def report_files(self) -> List[Report]:
         """
         Retrieve all reports that are currently available on the SMC.
 
@@ -157,7 +167,7 @@ class ReportTemplate(Element):
 
     typeof = "report_template"
 
-    def create_design(self, name):
+    def create_design(self, name: str) -> ReportDesign:
         """
         Create a report design based on an existing template.
 
@@ -186,7 +196,7 @@ class Report(Element):
     typeof = "report_file"
 
     @property
-    def creation_time(self):
+    def creation_time(self) -> Any:
         """
         When this report was generated. Using local time.
 
@@ -195,7 +205,7 @@ class Report(Element):
         return datetime_from_ms(self.data.get("creation_time"))
 
     @property
-    def period_begin(self):
+    def period_begin(self) -> Any:
         """
         Period when this report was specified to start.
 
@@ -204,7 +214,7 @@ class Report(Element):
         return datetime_from_ms(self.data.get("period_begin"))
 
     @property
-    def period_end(self):
+    def period_end(self) -> Any:
         """
         Period when this report was specified to end.
 
@@ -212,7 +222,7 @@ class Report(Element):
         """
         return datetime_from_ms(self.data.get("period_end"))
 
-    def export_pdf(self, filename):
+    def export_pdf(self, filename: str) -> None:
         """
         Export the report in PDF format. Specify a path for which
         to save the file, including the trailing filename.
@@ -227,7 +237,7 @@ class Report(Element):
             headers={"accept": "application/pdf"},
         )
 
-    def export_text(self, filename=None):
+    def export_text(self, filename: Optional[str] = None) -> Optional[Any]:
         """
         Export in text format. Optionally provide a filename to
         save to.
@@ -255,17 +265,19 @@ class ReportOperation(Element):
     typeof = "report_operation"
 
     @classmethod
-    def create(cls,
-               launch_time=None,
-               overriding_duration=None,
-               report_design=None,
-               report_per_sender=None,
-               use_elasticsearch=False,
-               export_in_txt=False,
-               export_in_pdf=False,
-               export_in_html=False,
-               stored=False,
-               email=None):
+    def create(
+        cls,
+        launch_time: Optional[int] = None,
+        overriding_duration: Optional[int] = None,
+        report_design: Optional[Any] = None,
+        report_per_sender: Optional[bool] = None,
+        use_elasticsearch: bool = False,
+        export_in_txt: bool = False,
+        export_in_pdf: bool = False,
+        export_in_html: bool = False,
+        stored: bool = False,
+        email: Optional[str] = None,
+    ) -> ReportOperation:
         """
         Create a report design based on an existing template
         :param int launch_time: report launch time in seconds
@@ -296,7 +308,7 @@ class ReportOperation(Element):
         return ElementCreator(cls, json)
 
     @property
-    def status(self):
+    def status(self) -> Any:
         status = self.make_request(resource="status")
         return status
 
@@ -309,9 +321,15 @@ class MiniReport(Element):
     typeof = "mini_report"
 
     def generate(
-            self, launch_time=None, overriding_duration=None,
-            use_elasticsearch=False, senders=None, wait_for_finish=False, timeout=5, **kw
-    ):  # @ReservedAssignment
+            self,
+            launch_time: Optional[int] = None,
+            overriding_duration: Optional[int] = None,
+            use_elasticsearch: bool = False,
+            senders: Optional[List[Any]] = None,
+            wait_for_finish: bool = False,
+            timeout: int = 5,
+            **kw: Any,
+    ) -> Any:  # @ReservedAssignment
         """
         Generate the mini report and optionally wait for results.
         You can optionally add filters to the mini report by providing the senders

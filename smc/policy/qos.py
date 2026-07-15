@@ -13,6 +13,8 @@
 QoS Policy that would be applied to a rule set or physical / tunnel interface.
 QoS can also be applied at the VLAN level of an interface.
 """
+from __future__ import annotations
+from typing import Any, Optional, Union, Iterator
 from smc.base.model import Element, ElementCreator
 
 
@@ -27,7 +29,7 @@ class QoSPolicy(Element):
     typeof = "qos_policy"
 
     @classmethod
-    def create(cls, name, comment=None):
+    def create(cls, name: str, comment: Optional[str] = None) -> "QoSPolicy":
         """
         Create QoS Policy
         :param str name: name of QoS Policy
@@ -41,7 +43,7 @@ class QoSPolicy(Element):
 
 
 class LinkSelection(object):
-    def __init__(self, bandwidth=0, jitter=0, latency=0, packet_loss=0, stability=0):
+    def __init__(self, bandwidth: int = 0, jitter: int = 0, latency: int = 0, packet_loss: int = 0, stability: int = 0) -> None:
         self.bandwidth = bandwidth
         self.jitter = jitter
         self.latency = latency
@@ -55,19 +57,19 @@ class LinkSelection(object):
         link_selection_json.update(stability=stability)
         self.link_selection = link_selection_json
 
-    def jitter(self):
+    def jitter(self) -> int:
         return self.jitter
 
-    def latency(self):
+    def latency(self) -> int:
         return self.latency
 
-    def bandwidth(self):
+    def bandwidth(self) -> int:
         return self.bandwidth
 
-    def packet_loss(self):
+    def packet_loss(self) -> int:
         return self.packet_loss
 
-    def stability(self):
+    def stability(self) -> int:
         return self.stability
 
 
@@ -83,7 +85,7 @@ class QoSClass(Element):
     typeof = "qos_class"
 
     @classmethod
-    def create(cls, name, comment=None, lsv_override=None, link_selection=None):
+    def create(cls, name: str, comment: Optional[str] = None, lsv_override: Optional[bool] = None, link_selection: Optional[LinkSelection] = None) -> "QoSClass":
         """
         Create the QoS Class.
 
@@ -104,7 +106,7 @@ class QoSClass(Element):
         return ElementCreator(cls, json)
 
     @property
-    def link_selection(self):
+    def link_selection(self) -> Any:
         """
         link_selection
         """

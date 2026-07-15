@@ -9,6 +9,8 @@
 #  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #  License for the specific language governing permissions and limitations
 #  under the License.
+from __future__ import annotations
+from typing import Any, Optional, Union, Iterator
 
 """
 Route module encapsulates functions related to static routing and
@@ -135,7 +137,7 @@ from smc.api.exceptions import InterfaceNotFound, ModificationAborted
 from smc.base.structs import SerializedIterable, NestedDict
 
 
-def flush_parent_cache(node):
+def flush_parent_cache(node: Any) -> None:
     """
     Flush parent cache will recurse back up the tree and
     wipe the cache from each parent node reference on the
@@ -157,12 +159,12 @@ class RoutingTree(SubElement):
     and antispoofing operate.
     """
 
-    def __init__(self, data=None, **meta):
+    def __init__(self, data: Any = None, **meta: Any) -> None:
         super(RoutingTree, self).__init__(**meta)
         if data is not None:
             self.data = ElementCache(data)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Any]:
         for node in self.data[self.typeof]:
             data = ElementCache(node)
             yield (
@@ -172,7 +174,7 @@ class RoutingTree(SubElement):
             )
 
     @property
-    def name(self):
+    def name(self) -> Optional[str]:
         """
         Interface name / ID for routing level
 
@@ -182,7 +184,7 @@ class RoutingTree(SubElement):
         return self.data.get("name")
 
     @property
-    def nicid(self):
+    def nicid(self) -> Optional[str]:
         """
         NIC id for this interface
 
@@ -192,7 +194,7 @@ class RoutingTree(SubElement):
         return self.data.get("nic_id")
 
     @property
-    def dynamic_nicid(self):
+    def dynamic_nicid(self) -> Optional[str]:
         """
         NIC id for this dynamic interface
 
@@ -202,7 +204,7 @@ class RoutingTree(SubElement):
         return self.data.get("dynamic_nicid")
 
     @property
-    def ip(self):
+    def ip(self) -> Optional[str]:
         """
         IP network / host for this route
 
@@ -212,7 +214,7 @@ class RoutingTree(SubElement):
         return self.data.get("ip")
 
     @property
-    def level(self):
+    def level(self) -> Optional[str]:
         """
         Routing nodes have multiple 'levels' where routes can
         be nested. Most routes are placed at the interface level.
@@ -225,7 +227,7 @@ class RoutingTree(SubElement):
         return self.data.get("level")
 
     @property
-    def related_element_type(self):
+    def related_element_type(self) -> Optional[str]:
         """
         .. versionadded:: 0.6.0
             Requires SMC version >= 6.4
@@ -244,7 +246,7 @@ class RoutingTree(SubElement):
         )  # pre-6.4
 
     @property
-    def probe_test(self):
+    def probe_test(self) -> Optional[str]:
         """
         probe test for a route.
         possible values: ping, next_hop_reachability, not_enabled
@@ -255,11 +257,11 @@ class RoutingTree(SubElement):
         return self.data.get("probe_test")
 
     @probe_test.setter
-    def probe_test(self, value):
+    def probe_test(self, value: Any) -> None:
         self.data["probe_test"] = value
 
     @property
-    def probe_ecmp(self):
+    def probe_ecmp(self) -> Optional[int]:
         """
         the ECMP for multi path routing.
 
@@ -268,11 +270,11 @@ class RoutingTree(SubElement):
         return self.data.get("probe_ecmp")
 
     @probe_ecmp.setter
-    def probe_ecmp(self, value):
+    def probe_ecmp(self, value: Any) -> None:
         self.data["probe_ecmp"] = value
 
     @property
-    def probe_metric(self):
+    def probe_metric(self) -> Optional[int]:
         """
         the probe metric.
 
@@ -281,11 +283,11 @@ class RoutingTree(SubElement):
         return self.data.get("probe_metric")
 
     @probe_metric.setter
-    def probe_metric(self, value):
+    def probe_metric(self, value: Any) -> None:
         self.data["probe_metric"] = value
 
     @property
-    def probe_ipaddress(self):
+    def probe_ipaddress(self) -> Optional[str]:
         """
         the probe ipaddress, when the probe test is Ping.
 
@@ -294,11 +296,11 @@ class RoutingTree(SubElement):
         return self.data.get("probe_ipaddress")
 
     @probe_ipaddress.setter
-    def probe_ipaddress(self, value):
+    def probe_ipaddress(self, value: Any) -> None:
         self.data["probe_ipaddress"] = value
 
     @property
-    def probe_retry_count(self):
+    def probe_retry_count(self) -> Optional[int]:
         """
         the probe retry counter.
 
@@ -307,11 +309,11 @@ class RoutingTree(SubElement):
         return self.data.get("probe_retry_count")
 
     @probe_retry_count.setter
-    def probe_retry_count(self, value):
+    def probe_retry_count(self, value: Any) -> None:
         self.data["probe_retry_count"] = value
 
     @property
-    def probe_interval(self):
+    def probe_interval(self) -> Optional[int]:
         """
         the probe interval.
 
@@ -320,10 +322,10 @@ class RoutingTree(SubElement):
         return self.data.get("probe_interval")
 
     @probe_interval.setter
-    def probe_interval(self, value):
+    def probe_interval(self, value: Any) -> None:
         self.data["probe_interval"] = value
 
-    def as_tree(self, level=0):
+    def as_tree(self, level: int = 0) -> str:
         """
         Display the routing tree representation in string
         format
@@ -335,7 +337,7 @@ class RoutingTree(SubElement):
             ret += routing_node.as_tree(level + 1)
         return ret
 
-    def get(self, interface_id):
+    def get(self, interface_id: Union[str, int]) -> Any:
         """
         Obtain routing configuration for a specific interface by
         ID.
@@ -356,15 +358,15 @@ class RoutingTree(SubElement):
             "Specified interface {} does not exist on " "this engine.".format(interface_id)
         )
 
-    def delete(self):
+    def delete(self) -> None:  # type: ignore[override]
         super(RoutingTree, self).delete()
         flush_parent_cache(self._parent)
 
-    def update(self):
-        super(RoutingTree, self).update()
+    def update(self, **kwargs: Any) -> None:  # type: ignore[override]
+        super(RoutingTree, self).update(**kwargs)
         flush_parent_cache(self._parent)
 
-    def all(self):
+    def all(self) -> list[Any]:
         """
         Return all routes for this engine.
 
@@ -373,12 +375,12 @@ class RoutingTree(SubElement):
         """
         return [node for node in self]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "{}(name={},level={},type={})".format(
             self.__class__.__name__, self.name, self.level, self.related_element_type
         )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)
 
 
@@ -390,12 +392,12 @@ class Routing(RoutingTree):
 
     typeof = "routing_node"
 
-    def __init__(self, data=None, **meta):
+    def __init__(self, data: Any = None, **meta: Any) -> None:
         self._parent = meta.pop("parent", None)
         super(Routing, self).__init__(data, **meta)
 
     @property
-    def routing_node_element(self):
+    def routing_node_element(self) -> Any:
         """
         A routing node element will reference the element used to represent
         the node (i.e. router, host, network, netlink, bgp peering, etc).
@@ -417,7 +419,7 @@ class Routing(RoutingTree):
         return from_meta(self)
 
     @property
-    def bgp_peerings(self):
+    def bgp_peerings(self) -> Any:
         """
         BGP Peerings applied to a routing node. This can be called from
         the engine, interface or network level. Return is a tuple
@@ -442,7 +444,7 @@ class Routing(RoutingTree):
         return gateway_by_type(self, "bgp_peering")
 
     @property
-    def netlinks(self):
+    def netlinks(self) -> Any:
         """
         Netlinks applied to a routing node. This can be called
         from the engine, interface or network level. Return is a
@@ -465,7 +467,7 @@ class Routing(RoutingTree):
         return gateway_by_type(self, "netlink")
 
     @property
-    def ospf_areas(self):
+    def ospf_areas(self) -> Any:
         """
         OSPFv2 areas applied to a routing node. This can be called from
         the engine, interface or network level. Return is a tuple
@@ -486,7 +488,7 @@ class Routing(RoutingTree):
         """
         return gateway_by_type(self, "ospfv2_area")
 
-    def add_traffic_handler(self, netlink, netlink_gw=None, network=None):
+    def add_traffic_handler(self, netlink: Any, netlink_gw: Any = None, network: Optional[str] = None) -> bool:
         """
         Add a traffic handler to a routing node. A traffic handler can be
         either a static netlink or a multilink traffic handler. If ``network``
@@ -526,12 +528,12 @@ class Routing(RoutingTree):
 
     def add_ospf_area(
         self,
-        ospf_area,
-        ospf_interface_setting=None,
-        network=None,
-        communication_mode="not_forced",
-        unicast_ref=None,
-    ):
+        ospf_area: Any,
+        ospf_interface_setting: Any = None,
+        network: Optional[str] = None,
+        communication_mode: str = "not_forced",
+        unicast_ref: Any = None,
+    ) -> bool:
         """
         Add OSPF Area to this routing node.
 
@@ -577,7 +579,7 @@ class Routing(RoutingTree):
         )
         return self._add_gateway_node("ospfv2_area", routing_node_gateway, network)
 
-    def add_bgp_peering(self, bgp_peering, external_bgp_peer=None, network=None):
+    def add_bgp_peering(self, bgp_peering: Any, external_bgp_peer: Any = None, network: Optional[str] = None) -> bool:
         """
         Add a BGP configuration to this routing interface.
         If the interface has multiple ip addresses, all networks will receive
@@ -604,7 +606,7 @@ class Routing(RoutingTree):
         routing_node_gateway = RoutingNodeGateway(bgp_peering, destinations=destination)
         return self._add_gateway_node("bgp_peering", routing_node_gateway, network)
 
-    def add_pim_interface_settings(self, pim_interface_settings, network=None):
+    def add_pim_interface_settings(self, pim_interface_settings: Any, network: Optional[str] = None) -> bool:
         """
         Add a PIM IPv4 Interface settings to this routing interface.
 
@@ -625,7 +627,7 @@ class Routing(RoutingTree):
         routing_node_gateway = RoutingNodeGateway(pim_interface_settings)
         return self._add_gateway_node("pim_ipv4_interface_settings", routing_node_gateway, network)
 
-    def add_static_route(self, gateway, destination, network=None):
+    def add_static_route(self, gateway: Any, destination: Any, network: Optional[str] = None) -> bool:
         """
         Add a static route to this route table. Destination can be any element
         type supported in the routing table such as a Group of network members.
@@ -651,7 +653,7 @@ class Routing(RoutingTree):
         routing_node_gateway = RoutingNodeGateway(gateway, destinations=destination)
         return self._add_gateway_node("router", routing_node_gateway, network)
 
-    def add_dynamic_gateway(self, networks):
+    def add_dynamic_gateway(self, networks: Any) -> bool:
         """
         A dynamic gateway object creates a router object that is
         attached to a DHCP interface. You can associate networks with
@@ -674,7 +676,7 @@ class Routing(RoutingTree):
         )
         return self._add_gateway_node("dynamic_netlink", routing_node_gateway)
 
-    def _add_gateway_node_on_tunnel(self, routing_node_gateway):
+    def _add_gateway_node_on_tunnel(self, routing_node_gateway: Any) -> bool:
         """
         Add a gateway node on a tunnel interface. Tunnel interface elements
         are attached to the interface level and not directly nested under
@@ -706,7 +708,7 @@ class Routing(RoutingTree):
             self.update()
         return modified
 
-    def _add_gateway_node(self, gw_type, routing_node_gateway, network=None):
+    def _add_gateway_node(self, gw_type: str, routing_node_gateway: Any, network: Optional[str] = None) -> bool:
         """
         Add a gateway node to existing routing tree. Gateways are only added if
         they do not already exist. If they do exist, check the destinations of
@@ -800,7 +802,7 @@ class Routing(RoutingTree):
             self.update()
         return modified
 
-    def remove_route_gateway(self, element, network=None):
+    def remove_route_gateway(self, element: Any, network: Optional[str] = None) -> bool:
         """
         Remove a route element by href or Element. Use this if you want to
         remove a netlink or a routing element such as BGP or OSPF. Removing
@@ -846,7 +848,7 @@ class Routing(RoutingTree):
 
 
 class RoutingNodeGateway(Routing):
-    def __init__(self, element=None, level="gateway", **kwargs):
+    def __init__(self, element: Any = None, level: str = "gateway", **kwargs: Any) -> None:
         self.destinations = kwargs.pop("destinations", [])
         self.data = ElementCache(kwargs)
         self.data.update(level=level, routing_node=[])
@@ -878,12 +880,12 @@ class Antispoofing(RoutingTree):
 
     typeof = "antispoofing_node"
 
-    def __init__(self, data=None, **meta):
+    def __init__(self, data: Any = None, **meta: Any) -> None:
         self._parent = meta.pop("parent", None)
         super(Antispoofing, self).__init__(data, **meta)
 
     @property
-    def autogenerated(self):
+    def autogenerated(self) -> bool:
         """
         Was the entry auto generated by a route entry or
         added manually as an override
@@ -893,7 +895,7 @@ class Antispoofing(RoutingTree):
         return self.data.get("auto_generated") == "true"
 
     @property
-    def validity(self):
+    def validity(self) -> Optional[str]:
         """
         Enabled or disabled antispoofing entry
 
@@ -902,7 +904,7 @@ class Antispoofing(RoutingTree):
         """
         return self.data.get("validity")
 
-    def add(self, element):
+    def add(self, element: Any) -> bool:
         """
         Add an entry to this antispoofing node level.
         Entry can be either href or network elements specified
@@ -938,10 +940,10 @@ class Antispoofing(RoutingTree):
             return True
         return False
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.data.get("antispoofing_node", []))
 
-    def remove(self, element):
+    def remove(self, element: Any) -> bool:
         """
         Remove a specific user added element from the antispoofing tables of
         a given interface. This will not remove autogenerated or system level
@@ -967,7 +969,7 @@ class Antispoofing(RoutingTree):
         return False
 
 
-def from_meta(node):
+def from_meta(node: Any) -> Any:
     """
     Helper method that reolves a routing node to element. Rather than doing
     a lookup and fetch, the routing node provides the information to
@@ -986,13 +988,13 @@ def from_meta(node):
     )
 
 
-def route_level(root, level):
+def route_level(root: Any, level: str) -> list[Any]:
     """
     Helper method to recurse the current node and return
     the specified routing node level.
     """
 
-    def recurse(nodes):
+    def recurse(nodes: Any) -> None:
         for node in nodes:
             if node.level == level:
                 routing_node.append(node)
@@ -1004,7 +1006,7 @@ def route_level(root, level):
     return routing_node
 
 
-def gateway_by_type(self, type=None, on_network=None):  # @ReservedAssignment
+def gateway_by_type(self: Any, type: Optional[str] = None, on_network: Optional[str] = None) -> Any:  # @ReservedAssignment
     """
     Return gateways for the specified node. You can also
     specify type to find only gateways of a specific type.
@@ -1044,7 +1046,7 @@ def gateway_by_type(self, type=None, on_network=None):  # @ReservedAssignment
                     yield (interface, network, node)
 
 
-def _which_ip_protocol(element):
+def _which_ip_protocol(element: Any) -> tuple[Any, Any]:
     """
     Validate the protocol addresses for the element. Most elements can
     have an IPv4 or IPv6 address assigned on the same element. This
@@ -1071,7 +1073,7 @@ def _which_ip_protocol(element):
     return True, True
 
 
-def del_invalid_routes(engine, nicids):
+def del_invalid_routes(engine: Any, nicids: Any) -> None:
     """
     Helper method to run through and delete any routes that are tagged
     as invalid or to_delete by a list of nicids. Since we could have a
@@ -1108,41 +1110,41 @@ class Route(NestedDict):
     :ivar int dst_if: destination interface index
     :ivar int src_if: source interface index
     """
-    def init(self, data):
+    def init(self, data: Any) -> None:
         super(Route, self).__init__(data=data)
 
     @classmethod
-    def create(cls, routing_monitoring_entry):
+    def create(cls, routing_monitoring_entry: Any) -> "Route":
         """
         Create a Route
         """
         return Route(data=routing_monitoring_entry)
 
-    def _asdict(self):
+    def _asdict(self) -> Any:
         return self.data
 
     @property
-    def route_netmask(self):
+    def route_netmask(self) -> Optional[int]:
         return self.get("route_netmask")
 
     @property
-    def route_network(self):
+    def route_network(self) -> Optional[str]:
         return self.get("route_network")
 
     @property
-    def route_gateway(self):
+    def route_gateway(self) -> Optional[str]:
         return self.get("route_gateway")
 
     @property
-    def route_type(self):
+    def route_type(self) -> Optional[str]:
         return self.get("route_type")
 
     @property
-    def dst_if(self):
+    def dst_if(self) -> Optional[int]:
         return self.get("dst_if")
 
     @property
-    def src_if(self):
+    def src_if(self) -> Optional[int]:
         return self.get("src_if")
 
 
@@ -1164,19 +1166,19 @@ class RouteIterable(object):
     :ivar kwargs
     """
 
-    def __init__(self, data):
+    def __init__(self, data: Any) -> None:
         routing_entries = data.get("routing_monitoring_entry", [])
-        self._routes = []
+        self._routes: list[Route] = []
         for route in routing_entries:
             self._routes.append(Route.create(route))
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Any]:
         return iter(self._routes)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._routes)
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int) -> "Route":
         return self._routes[index]
 
 
@@ -1224,12 +1226,12 @@ class PolicyRoute(SerializedIterable):
     :ivar str comment: optional comment
     """
 
-    def __init__(self, engine):
+    def __init__(self, engine: Any) -> None:
         self.engine = engine
         data = engine.data.get("policy_route")
         super(PolicyRoute, self).__init__(data, policy_route)
 
-    def create(self, source, destination, gateway_ip, comment=None):
+    def create(self, source: str, destination: str, gateway_ip: str, comment: Optional[str] = None) -> None:
         """
         Add a new policy route to the engine.
 
@@ -1246,7 +1248,7 @@ class PolicyRoute(SerializedIterable):
         )
         self.engine.data.policy_route.append(route_dict)
 
-    def delete(self, **kw):
+    def delete(self, **kw: Any) -> None:
         """
         Delete a policy route from the engine. You can delete using a
         single field or multiple fields for a more exact match.

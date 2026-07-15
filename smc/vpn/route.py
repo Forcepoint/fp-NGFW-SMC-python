@@ -143,6 +143,10 @@ Create a no-encryption GRE route based VPN between two managed NGFWs::
         remote_endpoint=remote_gateway)
 
 """
+from __future__ import annotations
+
+from typing import Any, Optional, Union, Iterator
+
 from smc.base.model import Element, ElementCreator, ElementRef, SubElement
 from smc.base.collection import sub_collection
 from smc.base.util import element_resolver
@@ -166,7 +170,7 @@ class RouteVPN(Element):
     monitoring_group = ElementRef(("6.5", "monitoring_group_ref"), ("6.6", "tunnel_group_ref"))
 
     @classmethod
-    def create_ipsec_tunnel(cls, *args, **kwargs):
+    def create_ipsec_tunnel(cls, *args: Any, **kwargs: Any) -> RouteVPN:
         """
         The VPN tunnel type negotiates IPsec tunnels in the same way
         as policy-based VPNs, but traffic is selected to be sent into
@@ -198,18 +202,18 @@ class RouteVPN(Element):
     @classmethod
     def _create_ipsec_tunnel_65(
             cls,
-            name,
-            local_endpoint,
-            remote_endpoint,
-            preshared_key=None,
-            monitoring_group=None,
-            vpn_profile=None,
-            mtu=0,
-            pmtu_discovery=True,
-            ttl=0,
-            enabled=True,
-            comment=None,
-    ):
+            name: str,
+            local_endpoint: Any,
+            remote_endpoint: Any,
+            preshared_key: Optional[str] = None,
+            monitoring_group: Optional[Any] = None,
+            vpn_profile: Optional[Any] = None,
+            mtu: int = 0,
+            pmtu_discovery: bool = True,
+            ttl: int = 0,
+            enabled: bool = True,
+            comment: Optional[str] = None,
+    ) -> RouteVPN:
         group = monitoring_group or RouteVPNTunnelMonitoringGroup("Uncategorized")
         profile = vpn_profile or VPNProfile("Suite-B-GCM-128")
 
@@ -236,19 +240,19 @@ class RouteVPN(Element):
     @classmethod
     def _create_ipsec_tunnel_66(
             cls,
-            name,
-            local_endpoint,
-            remote_endpoint,
-            preshared_key=None,
-            monitoring_group=None,
-            vpn_profile=None,
-            mtu=0,
-            pmtu_discovery=True,
-            ttl=0,
-            enabled=True,
-            comment=None,
-            **kwargs
-    ):
+            name: str,
+            local_endpoint: Any,
+            remote_endpoint: Any,
+            preshared_key: Optional[str] = None,
+            monitoring_group: Optional[Any] = None,
+            vpn_profile: Optional[Any] = None,
+            mtu: int = 0,
+            pmtu_discovery: bool = True,
+            ttl: int = 0,
+            enabled: bool = True,
+            comment: Optional[str] = None,
+            **kwargs: Any
+    ) -> RouteVPN:
         group = monitoring_group or TunnelMonitoringGroup("Uncategorized")
         profile = vpn_profile or VPNProfile("Suite-B-GCM-128")
 
@@ -278,18 +282,18 @@ class RouteVPN(Element):
     @classmethod
     def _create_tunnel_mode(
             cls,
-            name,
-            local_endpoint,
-            remote_endpoint,
-            policy_vpn,
-            tunnel_mode,
-            mtu=0,
-            pmtu_discovery=True,
-            ttl=0,
-            enabled=True,
-            comment=None,
-            **kwargs
-    ):
+            name: str,
+            local_endpoint: Any,
+            remote_endpoint: Any,
+            policy_vpn: Any,
+            tunnel_mode: str,
+            mtu: int = 0,
+            pmtu_discovery: bool = True,
+            ttl: int = 0,
+            enabled: bool = True,
+            comment: Optional[str] = None,
+            **kwargs: Any
+    ) -> RouteVPN:
         """
         Create a Route based tunnel mode route VPN. Tunnel mode wraps the
         tunnel in an IPSEC tunnel to provide encrypted end-to-end
@@ -335,32 +339,32 @@ class RouteVPN(Element):
             raise CreateVPNFailed(err)
 
     @classmethod
-    def create_gre_tunnel_mode(cls, **kwargs):
+    def create_gre_tunnel_mode(cls, **kwargs: Any) -> RouteVPN:
         return cls._create_tunnel_mode(tunnel_mode='gre', **kwargs)
 
     @classmethod
-    def create_ipip_tunnel_mode(cls, **kwargs):
+    def create_ipip_tunnel_mode(cls, **kwargs: Any) -> RouteVPN:
         return cls._create_tunnel_mode(tunnel_mode='ipip', **kwargs)
 
     @classmethod
-    def create_sit_tunnel_mode(cls, **kwargs):
+    def create_sit_tunnel_mode(cls, **kwargs: Any) -> RouteVPN:
         return cls._create_tunnel_mode(tunnel_mode='sit', **kwargs)
 
     @classmethod
     def _create_tunnel_no_encryption(
             cls,
-            name,
-            local_endpoint,
-            remote_endpoint,
-            tunnel_mode,
-            mtu=0,
-            pmtu_discovery=True,
-            ttl=0,
-            enabled=True,
-            comment=None,
-            gre_keepalive_period=None,
-            gre_keepalive_retry=None,
-    ):
+            name: str,
+            local_endpoint: Any,
+            remote_endpoint: Any,
+            tunnel_mode: str,
+            mtu: int = 0,
+            pmtu_discovery: bool = True,
+            ttl: int = 0,
+            enabled: bool = True,
+            comment: Optional[str] = None,
+            gre_keepalive_period: Optional[int] = None,
+            gre_keepalive_retry: Optional[int] = None,
+    ) -> RouteVPN:
         """
         Create a No Encryption route Based VPN.
         :param str name: name of VPN
@@ -408,19 +412,19 @@ class RouteVPN(Element):
             raise CreateVPNFailed(err)
 
     @classmethod
-    def create_gre_tunnel_no_encryption(cls, **kwargs):
+    def create_gre_tunnel_no_encryption(cls, **kwargs: Any) -> RouteVPN:
         return cls._create_tunnel_no_encryption(tunnel_mode='gre', **kwargs)
 
     @classmethod
-    def create_ipip_tunnel_no_encryption(cls, **kwargs):
+    def create_ipip_tunnel_no_encryption(cls, **kwargs: Any) -> RouteVPN:
         return cls._create_tunnel_no_encryption(tunnel_mode='ipip', **kwargs)
 
     @classmethod
-    def create_sit_tunnel_no_encryption(cls, **kwargs):
+    def create_sit_tunnel_no_encryption(cls, **kwargs: Any) -> RouteVPN:
         return cls._create_tunnel_no_encryption(tunnel_mode='sit', **kwargs)
 
     @classmethod
-    def _create_transport_mode(cls, *args, **kwargs):
+    def _create_transport_mode(cls, *args: Any, **kwargs: Any) -> RouteVPN:
         """
         Create a transport based route VPN. This VPN type uses IPSEC
         for protecting the payload, therefore a VPN Profile is specified.
@@ -451,20 +455,20 @@ class RouteVPN(Element):
     @classmethod
     def _create_transport_mode_65(
             cls,
-            name,
-            local_endpoint,
-            remote_endpoint,
-            preshared_key,
-            tunnel_mode,
-            monitoring_group=None,
-            vpn_profile=None,
-            mtu=0,
-            ttl=0,
-            pmtu_discovery=True,
-            enabled=True,
-            comment=None,
-            **kwargs
-    ):
+            name: str,
+            local_endpoint: Any,
+            remote_endpoint: Any,
+            preshared_key: str,
+            tunnel_mode: str,
+            monitoring_group: Optional[Any] = None,
+            vpn_profile: Optional[Any] = None,
+            mtu: int = 0,
+            ttl: int = 0,
+            pmtu_discovery: bool = True,
+            enabled: bool = True,
+            comment: Optional[str] = None,
+            **kwargs: Any
+    ) -> RouteVPN:
         group = monitoring_group or RouteVPNTunnelMonitoringGroup("Uncategorized")
         profile = vpn_profile or VPNProfile("Suite-B-GCM-128")
 
@@ -492,20 +496,20 @@ class RouteVPN(Element):
     @classmethod
     def _create_transport_mode_66(
             cls,
-            name,
-            local_endpoint,
-            remote_endpoint,
-            preshared_key,
-            tunnel_mode,
-            monitoring_group=None,
-            vpn_profile=None,
-            mtu=0,
-            ttl=0,
-            pmtu_discovery=True,
-            enabled=True,
-            comment=None,
-            **kwargs
-    ):
+            name: str,
+            local_endpoint: Any,
+            remote_endpoint: Any,
+            preshared_key: str,
+            tunnel_mode: str,
+            monitoring_group: Optional[Any] = None,
+            vpn_profile: Optional[Any] = None,
+            mtu: int = 0,
+            ttl: int = 0,
+            pmtu_discovery: bool = True,
+            enabled: bool = True,
+            comment: Optional[str] = None,
+            **kwargs: Any
+    ) -> RouteVPN:
         group = monitoring_group or TunnelMonitoringGroup("Uncategorized")
         profile = vpn_profile or VPNProfile("Suite-B-GCM-128")
 
@@ -534,31 +538,31 @@ class RouteVPN(Element):
             raise CreateVPNFailed(err)
 
     @classmethod
-    def create_gre_transport_mode(cls, **kwargs):
+    def create_gre_transport_mode(cls, **kwargs: Any) -> RouteVPN:
         return cls._create_transport_mode_66(tunnel_mode='gre', **kwargs)
 
     @classmethod
-    def create_ipip_transport_mode(cls, **kwargs):
+    def create_ipip_transport_mode(cls, **kwargs: Any) -> RouteVPN:
         return cls._create_transport_mode_66(tunnel_mode='ipip', **kwargs)
 
     @classmethod
-    def create_sit_transport_mode(cls, **kwargs):
+    def create_sit_transport_mode(cls, **kwargs: Any) -> RouteVPN:
         return cls._create_transport_mode_66(tunnel_mode='sit', **kwargs)
 
     @classmethod
     def create_geneve_mode(
             cls,
-            name,
-            local_endpoint,
-            remote_endpoint,
-            geneve_vni=0,
-            geneve_destination_port=6081,
-            mtu=0,
-            pmtu_discovery=True,
-            ttl=0,
-            enabled=True,
-            comment=None,
-    ):
+            name: str,
+            local_endpoint: Any,
+            remote_endpoint: Any,
+            geneve_vni: int = 0,
+            geneve_destination_port: int = 6081,
+            mtu: int = 0,
+            pmtu_discovery: bool = True,
+            ttl: int = 0,
+            enabled: bool = True,
+            comment: Optional[str] = None,
+    ) -> RouteVPN:
         """
         Create a Geneve (Generic Network Virtualization Encapsulation) No Encryption tunnel.
         The Geneve packet format consists of a compact tunnel header encapsulated in UDP over
@@ -602,7 +606,7 @@ class RouteVPN(Element):
         except CreateElementFailed as err:
             raise CreateVPNFailed(err)
 
-    def enable(self):
+    def enable(self) -> None:
         """
         Enable this route based VPN
 
@@ -611,7 +615,7 @@ class RouteVPN(Element):
         if not self.enabled:
             self.update(enabled=True)
 
-    def disable(self):
+    def disable(self) -> None:
         """
         Disable this route based VPN
 
@@ -620,7 +624,7 @@ class RouteVPN(Element):
         if self.enabled:
             self.update(enabled=False)
 
-    def set_preshared_key(self, new_key):
+    def set_preshared_key(self, new_key: str) -> None:
         """
         Set the preshared key for this VPN. A pre-shared key is only
         present when the tunnel type is 'VPN' or the encryption mode
@@ -631,7 +635,7 @@ class RouteVPN(Element):
         if self.data.get("preshared_key"):
             self.update(preshared_key=new_key)
 
-    def set_tunnel_group(self, tunnel_group):
+    def set_tunnel_group(self, tunnel_group: Any) -> None:
         """
         Set the tunnel group for this RBVPN.
 
@@ -641,7 +645,7 @@ class RouteVPN(Element):
             self.update(tunnel_group_ref=tunnel_group.href)
 
     @property
-    def local_endpoint(self):
+    def local_endpoint(self) -> TunnelEndpoint:
         """
         The local endpoint for this RBVPN
 
@@ -650,7 +654,7 @@ class RouteVPN(Element):
         return TunnelEndpoint(**self.rbvpn_tunnel_side_a)
 
     @property
-    def remote_endpoint(self):
+    def remote_endpoint(self) -> TunnelEndpoint:
         """
         The remote endpoint for this RBVPN
 
@@ -659,7 +663,7 @@ class RouteVPN(Element):
         return TunnelEndpoint(**self.rbvpn_tunnel_side_b)
 
     @property
-    def tunnel_mode(self):
+    def tunnel_mode(self) -> Optional[str]:
         """
         The tunnel mode for this RBVPN
 
@@ -668,7 +672,7 @@ class RouteVPN(Element):
         return self.data.get("tunnel_mode")
 
     @property
-    def tunnels(self):
+    def tunnels(self) -> Any:
         """
         Return all tunnels for this RBVPN in case of Tunnel Type 'VPN'.
         This provides access to enabling/disabling for the linked endpoints.
@@ -682,7 +686,7 @@ class RouteVPN(Element):
         return sub_collection(self.get_relation("gateway_endpoint_tunnel"), EndpointTunnel)
 
     @property
-    def ppk(self):
+    def ppk(self) -> Optional[Any]:
         """
         Get the ppk for this RBVPN
 
@@ -704,7 +708,7 @@ class TunnelMonitoringGroup(Element):
     typeof = "rbvpn_tunnel_group"
 
     @classmethod
-    def create(cls, name, link_usage_profile=None, comment=None):
+    def create(cls, name: str, link_usage_profile: Optional[Any] = None, comment: Optional[str] = None) -> TunnelMonitoringGroup:
         json = {
             "name": name,
             "comment": comment,
@@ -743,15 +747,15 @@ class TunnelEndpoint(object):
     gateway = ElementRef("gateway_ref")
 
     def __init__(
-            self, gateway_ref=None, tunnel_interface_ref=None, endpoint_ref=None, ip_address=None
-    ):
+            self, gateway_ref: Optional[Any] = None, tunnel_interface_ref: Optional[Any] = None, endpoint_ref: Optional[Any] = None, ip_address: Optional[Any] = None
+    ) -> None:
         self.gateway_ref = gateway_ref
         self.tunnel_interface_ref = tunnel_interface_ref
         self.endpoint_ref = endpoint_ref
         self.ip_address = ip_address
 
     @property
-    def endpoint(self):
+    def endpoint(self) -> Any:
         """
         Endpoint is used to specify which interface is enabled for
         VPN. This is the InternalEndpoint property of the
@@ -767,7 +771,7 @@ class TunnelEndpoint(object):
         return Element.from_href(self.endpoint_ref)
 
     @property
-    def tunnel_interface(self):
+    def tunnel_interface(self) -> Optional[Any]:
         """
         Show the tunnel interface for this TunnelEndpoint.
 
@@ -778,7 +782,7 @@ class TunnelEndpoint(object):
             return TunnelInterface(href=self.tunnel_interface_ref)
 
     @classmethod
-    def create_gre_tunnel_endpoint(cls, endpoint=None, tunnel_interface=None, remote_address=None):
+    def create_gre_tunnel_endpoint(cls, endpoint: Optional[Any] = None, tunnel_interface: Optional[Any] = None, remote_address: Optional[str] = None) -> TunnelEndpoint:
         """
         Create the GRE tunnel mode or no encryption mode endpoint.
         If the GRE tunnel mode endpoint is an SMC managed device,
@@ -797,7 +801,7 @@ class TunnelEndpoint(object):
                                           remote_address)
 
     @classmethod
-    def create_tunnel_endpoint(cls, endpoint=None, tunnel_interface=None, remote_address=None):
+    def create_tunnel_endpoint(cls, endpoint: Optional[Any] = None, tunnel_interface: Optional[Any] = None, remote_address: Optional[str] = None) -> TunnelEndpoint:
         """
         Create the and endpoint in tunnel mode or no encryption.
         If the tunnel mode endpoint is an SMC managed device,
@@ -819,7 +823,7 @@ class TunnelEndpoint(object):
         )
 
     @classmethod
-    def create_gre_transport_endpoint(cls, endpoint, tunnel_interface=None):
+    def create_gre_transport_endpoint(cls, endpoint: Any, tunnel_interface: Optional[Any] = None) -> TunnelEndpoint:
         """
         Create the GRE transport mode endpoint.
 
@@ -832,7 +836,7 @@ class TunnelEndpoint(object):
         return cls.create_transport_endpoint(endpoint, tunnel_interface)
 
     @classmethod
-    def create_transport_endpoint(cls, endpoint, tunnel_interface=None):
+    def create_transport_endpoint(cls, endpoint: Any, tunnel_interface: Optional[Any] = None) -> TunnelEndpoint:
         """
         Create the transport mode endpoint. If the transport mode
         endpoint is an SMC managed device, both an endpoint and a tunnel
@@ -849,7 +853,7 @@ class TunnelEndpoint(object):
         return TunnelEndpoint(endpoint_ref=endpoint.href, tunnel_interface_ref=tunnel_interface)
 
     @classmethod
-    def create_ipsec_endpoint(cls, gateway, tunnel_interface=None):
+    def create_ipsec_endpoint(cls, gateway: Any, tunnel_interface: Optional[Any] = None) -> TunnelEndpoint:
         """
         Create the VPN tunnel endpoint. If the VPN tunnel endpoint
         is an SMC managed device, both a gateway and a tunnel interface
@@ -867,11 +871,11 @@ class TunnelEndpoint(object):
         return TunnelEndpoint(gateway_ref=gateway.href, tunnel_interface_ref=tunnel_interface)
 
     @property
-    def data(self):
+    def data(self) -> dict[str, Any]:
         return {k: v for k, v in vars(self).items() if v}
 
     @property
-    def remote_address(self):
+    def remote_address(self) -> Optional[Any]:
         """
         Show the remote IP address configured for a GRE RBVPN using Tunnel
         or No Encryption Mode configurations.
@@ -887,7 +891,7 @@ class EndpointTunnel(SubElement):
     whether the link is enabled.
     """
 
-    def enable_disable(self):
+    def enable_disable(self) -> None:
         """
         Enable or disable the tunnel link between endpoints.
 
@@ -900,7 +904,7 @@ class EndpointTunnel(SubElement):
             self.update(enabled=True)
 
     @property
-    def enabled(self):
+    def enabled(self) -> Optional[bool]:
         """
         Whether the VPN link between endpoints is enabled
 
@@ -908,8 +912,8 @@ class EndpointTunnel(SubElement):
         """
         return self.data.get("enabled", False)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "{0}(name={1})".format(self.__class__.__name__, self.name)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)

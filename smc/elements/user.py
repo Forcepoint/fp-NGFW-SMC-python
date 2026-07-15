@@ -59,6 +59,10 @@ Set an initial password for the Admin User::
     :class:`smc.administration.access_rights.AccessControlList` for more information.
 
 """
+from __future__ import annotations
+
+from typing import Any, Optional, Union, Iterator
+
 from smc.base.model import Element, ElementCreator
 from smc.api.exceptions import ModificationFailed
 from smc.administration.access_rights import Permission
@@ -73,7 +77,7 @@ class UserMixin(object):
     API Clients.
     """
 
-    def enable_disable(self):
+    def enable_disable(self) -> None:
         """
         Toggle enable and disable of administrator account.
         Change is committed immediately.
@@ -83,7 +87,7 @@ class UserMixin(object):
         """
         self.update(href=self.get_relation("enable_disable"), etag=None)
 
-    def change_password(self, password):
+    def change_password(self, password: str) -> None:
         """
         Change user password. Change is committed immediately.
 
@@ -97,7 +101,7 @@ class UserMixin(object):
             params={"password": password},
         )
 
-    def generate_password(self):
+    def generate_password(self) -> Optional[str]:
         """
         Generate a random password for this user.
 
@@ -108,7 +112,17 @@ class UserMixin(object):
         if "value" in pwd:
             return pwd["value"][0]
 
-    def add_permission(self, permission):
+    @property
+    def password_meta_data(self) -> Any:
+        """
+        Provides creation_date and expiration_date of the password for AdminUser, ApiClient and
+        WebPortalAdminUser.
+        :return: PasswordMetaData : PasswordMetaData contains creation_date and expiration_date.
+        """
+        pwd_meta_data = self.make_request(resource="pwd_meta_data")
+        return PasswordMetaData(pwd_meta_data)
+
+    def add_permission(self, permission: list) -> None:
         """
         Add a permission to this Admin User. A role defines permissions that
         can be enabled or disabled. Elements define the target for permission
@@ -131,7 +145,7 @@ class UserMixin(object):
         self.update()
 
     @property
-    def permissions(self):
+    def permissions(self) -> list[Any]:
         """
         Return each permission role mapping for this Admin User. A permission
         role will have 3 fields:
@@ -177,30 +191,35 @@ class AdminUser(UserMixin, Element):
     @classmethod
     def create(
         cls,
-        name,
-        local_admin=False,
-        allow_sudo=False,
-        superuser=False,
-        enabled=True,
-        engine_target=None,
-        can_use_api=True,
-        console_superuser=False,
-        allowed_to_login_in_shared=True,
-        auth_method=None,
-        comment=None,
-        permissions=None,
-        ldap_user_href=None,
-        ldap_group_href=None,
-        tls_field=None,
-        tls_value=None,
-        login_name_on_engine=None,
-    ):
+        name: str,
+        local_admin: bool = False,
+        allow_sudo: bool = False,
+        superuser: bool = False,
+        enabled: bool = True,
+        engine_target: Optional[list] = None,
+        can_use_api: bool = True,
+        console_superuser: bool = False,
+        allowed_to_login_in_shared: bool = True,
+        auth_method: Optional[Any] = None,
+        comment: Optional[str] = None,
+        permissions: Optional[list] = None,
+        ldap_user_href: Optional[str] = None,
+        ldap_group_href: Optional[str] = None,
+        tls_field: Optional[str] = None,
+        tls_value: Optional[str] = None,
+        login_name_on_engine: Optional[str] = None,
+        password: Optional[str] = None,
+    ) -> AdminUser:
         """
         Create an admin user account.
 
         .. versionadded:: 0.6.2
             Added can_use_api, console_superuser, and allowed_to_login_in_shared.
             Requires SMC >= SMC 6.4
+
+        .. versionadded:: 1.0.35
+            Added password to set the admin password at creation.
+            Requires SMC >= 7.1.11/7.3.5/7.4.2/7.5.1/7.6.0.
 
         :param str name: name of account
         :param bool local_admin: is a local admin only
@@ -220,6 +239,8 @@ class AdminUser(UserMixin, Element):
         :param tls_field: TLS field name for client identity
         :param tls_value: TLS value corresponding the field for client identity
         :param login_name_on_engine: Login name on engine for this admin user (available from SMC 7.5.0)
+        :param str password: password to set on the admin at creation (available from SMC 7.3.0).
+            When omitted, the password can still be set afterwards with change_password.
         :raises CreateElementFailed: failure creating element with reason
         :return: instance with meta
         :rtype: AdminUser
@@ -245,6 +266,9 @@ class AdminUser(UserMixin, Element):
         if login_name_on_engine:
             json["login_name_on_engine"] = login_name_on_engine
 
+        if password:
+            json["password"] = password
+
         if tls_field:
             json["client_identity"] = {"tls_field": tls_field, "tls_value": tls_value}
 
@@ -259,7 +283,7 @@ class AdminUser(UserMixin, Element):
         return ElementCreator(cls, json)
 
     @property
-    def enabled(self):
+    def enabled(self) -> Optional[bool]:
         """
         Read only enabled status
 
@@ -267,7 +291,7 @@ class AdminUser(UserMixin, Element):
         """
         return self.data.get("enabled")
 
-    def unlock_account(self, unlock_reason: str):
+    def unlock_account(self, unlock_reason: str) -> None:
         """
         Unlock the SMC Administrator User account.
         By default, the audit message for this operation will be:
@@ -281,7 +305,7 @@ class AdminUser(UserMixin, Element):
             params={"unlock_reason": unlock_reason},
         )
 
-    def change_engine_password(self, password):
+    def change_engine_password(self, password: str) -> None:
         """Change Engine password for engines on allowed
         list.
 
@@ -296,16 +320,6 @@ class AdminUser(UserMixin, Element):
             params={"password": password},
         )
 
-    @property
-    def password_meta_data(self):
-        """
-        Provides creation_date and expiration_date of the password for AdminUser,ApiClient and
-        WebPortalAdminUser.
-        :return: PasswordMetaData : PasswordMetaData contains creation_date and expiration_date.
-        """
-        pwd_meta_data = self.make_request(resource="pwd_meta_data")
-        return PasswordMetaData(pwd_meta_data)
-
 
 class ApiClient(UserMixin, Element):
     """
@@ -317,12 +331,12 @@ class ApiClient(UserMixin, Element):
     @classmethod
     def create(
         cls,
-        name,
-        enabled=True,
-        superuser=True,
-        allowed_to_login_in_shared=True,
-        permissions=None,
-    ):
+        name: str,
+        enabled: bool = True,
+        superuser: bool = True,
+        allowed_to_login_in_shared: bool = True,
+        permissions: Optional[list] = None,
+    ) -> ApiClient:
         """
         Create a new API Client. Once client is created,
         you can create a new password by::
@@ -365,11 +379,11 @@ class PasswordMetaData(NestedDict):
 
     typeof = "pwd_meta_data"
 
-    def __init__(self, value):
+    def __init__(self, value: Any) -> None:
         super(PasswordMetaData, self).__init__(data=value)
 
 
-def update_granted_element_json_field(json, key, value):
+def update_granted_element_json_field(json: dict, key: str, value: Any) -> None:
     """
     Update field from dict in json format with conditions:
     - value is not defined: add empty list as value
@@ -404,32 +418,37 @@ class WebPortalAdminUser(UserMixin, Element):
     @classmethod
     def create(
         cls,
-        name,
-        enabled=True,
-        granted_engine='ANY',
-        console_superuser=False,
-        log_service_enabled=True,
-        policy_service_enabled=True,
-        report_service_enabled=True,
-        show_inspection_policy=True,
-        show_main_policy=True,
-        show_only_ip_addresses=True,
-        show_sub_policy=True,
-        show_template_policy=False,
-        show_upload_comment=True,
-        show_upload_history=True,
-        granted_template_policy='ANY',
-        granted_sub_policy='ANY',
-        granted_report_design='ANY',
-        filter_tag='ANY',
-        comment=None,
-    ):
+        name: str,
+        enabled: bool = True,
+        granted_engine: Any = 'ANY',
+        console_superuser: bool = False,
+        log_service_enabled: bool = True,
+        policy_service_enabled: bool = True,
+        report_service_enabled: bool = True,
+        show_inspection_policy: bool = True,
+        show_main_policy: bool = True,
+        show_only_ip_addresses: bool = True,
+        show_sub_policy: bool = True,
+        show_template_policy: bool = False,
+        show_upload_comment: bool = True,
+        show_upload_history: bool = True,
+        granted_template_policy: Any = 'ANY',
+        granted_sub_policy: Any = 'ANY',
+        granted_report_design: Any = 'ANY',
+        filter_tag: Any = 'ANY',
+        comment: Optional[str] = None,
+        password: Optional[str] = None,
+    ) -> WebPortalAdminUser:
         """
         Create a web portal admin user account.
 
         .. versionadded:: 0.6.2
             Added can_use_api, console_superuser, and allowed_to_login_in_shared.
             Requires SMC >= SMC 6.4
+
+        .. versionadded:: 1.0.35
+            Added password to set the web portal user password at creation.
+            Requires SMC >= 7.1.11/7.3.5/7.4.2/7.5.1/7.6.0.
 
         :param str name: name of account
         :param bool enabled: is account enabled
@@ -460,6 +479,9 @@ class WebPortalAdminUser(UserMixin, Element):
             'ANY' means all Filter tags are granted(default value)
             Empty list or None means no filter tag is granted
         :param str comment: comment associated with webportal user element
+        :param str password: password to set on the web portal user at creation
+            (available from SMC 7.3.0). When omitted, the password can still be set
+            afterwards with change_password.
         :raises CreateElementFailed: failure creating element with reason
         :return: instance with meta
         :rtype: WebPortalAdminUser
@@ -481,6 +503,9 @@ class WebPortalAdminUser(UserMixin, Element):
             "comment": comment,
         }
 
+        if password:
+            json["password"] = password
+
         for field in ["granted_engine", "granted_template_policy", "granted_sub_policy", "granted_report_design",
                       "filter_tag"]:
             update_granted_element_json_field(json, field, locals()[field])
@@ -488,10 +513,10 @@ class WebPortalAdminUser(UserMixin, Element):
         return ElementCreator(cls, json)
 
     @property
-    def enabled(self):
+    def enabled(self) -> Optional[bool]:
         return self.data.get("enabled")
 
-    def unlock_account(self, unlock_reason: str):
+    def unlock_account(self, unlock_reason: str) -> None:
         """
         Unlock the web portal admin user account.
         By default, the audit message for this operation will be:
@@ -506,65 +531,65 @@ class WebPortalAdminUser(UserMixin, Element):
         )
 
     @property
-    def granted_engine(self):
+    def granted_engine(self) -> Any:
         return self.data.get("granted_engine")
 
     @property
-    def console_superuser(self):
+    def console_superuser(self) -> Optional[bool]:
         return self.data.get("console_superuser")
 
     @property
-    def log_service_enabled(self):
+    def log_service_enabled(self) -> Optional[bool]:
         return self.data.get("log_service_enabled")
 
     @property
-    def policy_service_enabled(self):
+    def policy_service_enabled(self) -> Optional[bool]:
         return self.data.get("policy_service_enabled")
 
     @property
-    def report_service_enabled(self):
+    def report_service_enabled(self) -> Optional[bool]:
         return self.data.get("report_service_enabled")
 
     @property
-    def show_inspection_policy(self):
+    def show_inspection_policy(self) -> Any:
         return self.data.data("show_inspection_policy")
 
     @property
-    def show_main_policy(self):
+    def show_main_policy(self) -> Optional[bool]:
         return self.data.get("show_main_policy")
 
     @property
-    def show_only_ip_addresses(self):
+    def show_only_ip_addresses(self) -> Optional[bool]:
         return self.data.get("show_only_ip_addresses")
 
     @property
-    def show_sub_policy(self):
+    def show_sub_policy(self) -> Optional[bool]:
         return self.data.get("show_sub_policy")
 
     @property
-    def show_template_policy(self):
+    def show_template_policy(self) -> Optional[bool]:
         return self.data.get("show_template_policy")
 
     @property
-    def show_upload_comment(self):
+    def show_upload_comment(self) -> Optional[bool]:
         return self.data.get("show_upload_comment")
 
     @property
-    def show_upload_history(self):
+    def show_upload_history(self) -> Optional[bool]:
         return self.data.get("show_upload_history")
 
     @property
-    def granted_template_policy(self):
+    def granted_template_policy(self) -> Any:
         return self.data.get("granted_template_policy")
 
     @property
-    def granted_sub_policy(self):
+    def granted_sub_policy(self) -> Any:
         return self.data.get("granted_sub_policy")
 
     @property
-    def granted_report_design(self):
+    def granted_report_design(self) -> Any:
         return self.data.get("granted_report_design")
 
     @property
-    def filter_tag(self):
+    def filter_tag(self) -> Any:
         return self.data.get("filter_tag")

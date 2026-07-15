@@ -13,6 +13,9 @@
 Access Control Lists are assigned to SMC admin accounts to grant limited
 access permissions to either Engines, Policies or Domains.
 """
+from __future__ import annotations
+
+from typing import Any, Iterator, Optional, Union
 
 from smc.base.model import Element, ElementCreator
 from smc.base.structs import NestedDict
@@ -36,7 +39,7 @@ class AccessControlList(Element):
     typeof = "access_control_list"
 
     @classmethod
-    def create(cls, name, granted_element=None):
+    def create(cls, name: str, granted_element: Optional[Any] = None) -> "AccessControlList":
         """
         Create a new ACL
 
@@ -54,7 +57,7 @@ class AccessControlList(Element):
         return ElementCreator(cls, json)
 
     @property
-    def permissions(self):
+    def permissions(self) -> list[Any]:
         """
         Elements associated to this permission. Granted elements can be
         Engines, Policies or other Access Control Lists.
@@ -63,7 +66,7 @@ class AccessControlList(Element):
         """
         return [Element.from_href(e) for e in self.granted_element]
 
-    def add_permission(self, elements):
+    def add_permission(self, elements: Any) -> None:
         """
         Add permission/s to this ACL. By default this change is committed
         after the method is called.
@@ -78,7 +81,7 @@ class AccessControlList(Element):
         self.data["granted_element"].extend(elements)
         self.update()
 
-    def remove_permission(self, elements):
+    def remove_permission(self, elements: Any) -> None:
         """
         Remove permission/s to this ACL. Change is committed at end of
         method call.
@@ -112,7 +115,12 @@ class Permission(NestedDict):
     .. seealso:: :py:mod:`smc.elements.user`
     """
 
-    def __init__(self, granted_elements=None, role_ref=None, granted_domain_ref=None):
+    def __init__(
+        self,
+        granted_elements: Optional[Any] = None,
+        role_ref: Optional[Any] = None,
+        granted_domain_ref: Optional[Any] = None,
+    ) -> None:
         if granted_elements is None:
             granted_elements = []
         data = dict(
@@ -124,7 +132,7 @@ class Permission(NestedDict):
         super(Permission, self).__init__(data=data)
 
     @classmethod
-    def create(cls, elements, role, domain=None):
+    def create(cls, elements: Any, role: Any, domain: Optional[Any] = None) -> "Permission":
         """
         Create a permission.
 
@@ -141,7 +149,7 @@ class Permission(NestedDict):
         return Permission(granted_elements=elements, role_ref=role, granted_domain_ref=domain)
 
     @property
-    def granted_elements(self):
+    def granted_elements(self) -> list[Any]:
         """
         List of elements this permission has rights to. Elements will be of type
         Engine, Policy or ACLs
@@ -151,7 +159,7 @@ class Permission(NestedDict):
         return [Element.from_href(element) for element in self.get("granted_elements")]
 
     @property
-    def role(self):
+    def role(self) -> Any:
         """
         Specific Role assigned to this permission. A role is what allows read/write
         access to specific operations on the granted elements
@@ -161,7 +169,7 @@ class Permission(NestedDict):
         return Element.from_href(self.get("role_ref"))
 
     @property
-    def domain(self):
+    def domain(self) -> Any:
         """
         Domain this permission applies to. Shared Domain if unspecified.
 
@@ -169,7 +177,7 @@ class Permission(NestedDict):
         """
         return Element.from_href(self.get("granted_domain_ref", "Shared Domain"))
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "Permission(elements={}, role={}, domain={})".format(
             self.granted_elements, self.role, self.domain
         )
@@ -180,11 +188,16 @@ class GrantedElementPermissions(NestedDict):
     The Granted Element permissions container.
     """
 
-    def __init__(self, data):
+    def __init__(self, data: Any) -> None:
         super(GrantedElementPermissions, self).__init__(data=data)
 
     @classmethod
-    def create(cls, cluster_ref=None, granted_access_control_list=[], role_containers=[]):
+    def create(
+        cls,
+        cluster_ref: Optional[Any] = None,
+        granted_access_control_list: list[Any] = [],
+        role_containers: list[Any] = [],
+    ) -> "GrantedElementPermissions":
         """
         :param str cluster_ref: The associated cluster with granted permission.
         :param list(str) granted_access_control_list: Granted Access Control Lists.
@@ -200,20 +213,20 @@ class GrantedElementPermissions(NestedDict):
         return cls(json)
 
     @property
-    def cluster_ref(self):
+    def cluster_ref(self) -> Optional[str]:
         """
         The associated cluster with granted permission.
         """
         return self.data.get("cluster_ref")
 
-    def granted_access_control_list(self):
+    def granted_access_control_list(self) -> Any:
         """
         Granted Access Control Lists.
         """
         return self.data.get("granted_access_control_list")
 
     @property
-    def role_containers(self):
+    def role_containers(self) -> list[Any]:
         """
         Granted Role containers.
         """
@@ -225,11 +238,16 @@ class AdminRoleContainer(NestedDict):
     Represents a permission for a Granted Element: Role <-> Administrator <-> Granted Domain
     """
 
-    def __init__(self, data):
+    def __init__(self, data: Any) -> None:
         super(AdminRoleContainer, self).__init__(data=data)
 
     @classmethod
-    def create(cls, roles=[], admin=None, granted_domain=None):
+    def create(
+        cls,
+        roles: list[Any] = [],
+        admin: Optional[Any] = None,
+        granted_domain: Optional[Any] = None,
+    ) -> "AdminRoleContainer":
         """
         Represents a permission for a Granted Element: Role <-> Administrator <-> Granted Domain.
         :param Role roles: The dedicated Administrative Roles for access rights.
@@ -243,21 +261,21 @@ class AdminRoleContainer(NestedDict):
         return cls(json)
 
     @property
-    def roles(self):
+    def roles(self) -> Any:
         """
         The dedicated Administrative Roles for access rights.
         """
         return self.data.get("roles")
 
     @property
-    def admin_ref(self):
+    def admin_ref(self) -> Optional[str]:
         """
         The dedicated Administrator.
         """
         return self.data.get("admin_ref")
 
     @property
-    def granted_domain_ref(self):
+    def granted_domain_ref(self) -> Optional[str]:
         """
         The dedicated Administrative Domain.
         """

@@ -35,7 +35,7 @@ Some of the functionality you get with the SMC Python API:
 Requirements
 ------------
 
-Python >= 3.5
+Python >= 3.9
 
 Requests >= 2.32.0
 websocket-client >= 1.8.0
@@ -117,5 +117,5 @@ Documentation
 
 `View Documentation on Read The Docs <http://fp-ngfw-smc-python.readthedocs.io/en/latest/?badge=latest>`__
 
-.. |Python version| image:: https://img.shields.io/badge/python-2.7%20%7C%203.5%20%7C%203.6-blue
+.. |Python version| image:: https://img.shields.io/badge/python-3.9%2B-blue
     :target: https://pypi.python.org/pypi/fp-NGFW-SMC-python/

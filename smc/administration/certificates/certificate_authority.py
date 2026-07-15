@@ -12,6 +12,9 @@
 """
 Module representing certificate authority in SMC
 """
+from __future__ import annotations
+
+from typing import Any, Optional, Union, Iterator
 
 from smc.administration.tasks import TaskOperationPoller
 from smc.api.exceptions import TaskRunFailed
@@ -28,14 +31,14 @@ class CertificateAuthority(Element):
     typeof = 'certificate_authority'
 
     @property
-    def certificate_state(self):
+    def certificate_state(self) -> Optional[str]:
         """
         represents the state of the certificate authority.
         :rtype: str
         """
         return self.data.get("certificate_state")
 
-    def un_trust(self):
+    def un_trust(self) -> Any:
         task = self.make_request(
             TaskRunFailed, method="update", resource="untrust"
         )
@@ -43,7 +46,7 @@ class CertificateAuthority(Element):
             task=task, wait_for_finish=True
         )
 
-    def export_certificate(self, filename=None):
+    def export_certificate(self, filename: Optional[str] = None) -> Optional[str]:
         """
         Export the certificate for the given Certificate Authority.
         :raises CertificateExportError: error exporting certificate
@@ -59,17 +62,17 @@ class CertificateAuthority(Element):
 
         return result.content
 
-    def duplicate(self, name):
+    def duplicate(self, name: Any) -> Any:
         raise NotImplementedError(f"This method is not supported for {self.__class__.__name__}")
 
-    def export(self, name):
+    def export(self, name: Any) -> Any:
         raise NotImplementedError(f"This method is not supported for {self.__class__.__name__}")
 
-    def add_category(self, name):
+    def add_category(self, name: Any) -> Any:
         raise NotImplementedError(f"This method is not supported for {self.__class__.__name__}")
 
-    def categories(self, name):
+    def categories(self, name: Any) -> Any:
         raise NotImplementedError(f"This method is not supported for {self.__class__.__name__}")
 
-    def rename(self, name):
+    def rename(self, name: Any) -> Any:
         raise NotImplementedError(f"This method is not supported for {self.__class__.__name__}")

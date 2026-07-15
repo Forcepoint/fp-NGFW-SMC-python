@@ -9,6 +9,8 @@
 #  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #  License for the specific language governing permissions and limitations
 #  under the License.
+from __future__ import annotations
+from typing import Any, Optional, Union, Iterator
 
 from smc.base.model import Element, ElementCreator
 
@@ -23,7 +25,7 @@ class LLDPProfile(Element):
     typeof = "lldp_profile"
 
     @property
-    def transmit_delay(self):
+    def transmit_delay(self) -> Optional[int]:
         """
         The transmit delay determines the delay between
         any two consecutive LLDP advertisement frames.
@@ -31,11 +33,11 @@ class LLDPProfile(Element):
         return self.data.get("transmit_delay")
 
     @transmit_delay.setter
-    def transmit_delay(self, value):
+    def transmit_delay(self, value: Any) -> None:
         self.data.update(transmit_delay=value)
 
     @property
-    def hold_time_multiplier(self):
+    def hold_time_multiplier(self) -> Optional[int]:
         """
         Represents the multiplier to apply to the advertisement interval.
         The product of the advertisement interval and the hold time multiplier
@@ -44,18 +46,18 @@ class LLDPProfile(Element):
         return self.data.get("hold_time_multiplier")
 
     @hold_time_multiplier.setter
-    def hold_time_multiplier(self, value):
+    def hold_time_multiplier(self, value: Any) -> None:
         self.data.update(hold_time_multiplier=value)
 
     @property
-    def chassis_id(self):
+    def chassis_id(self) -> Optional[Any]:
         """
         TLV field: Chassis ID. The MAC address of the first Ethernet port (Always enabled)
         """
         return self.data.get("chassis_id")
 
     @property
-    def port_id(self):
+    def port_id(self) -> Optional[Any]:
         """
         TLV field: Port ID. The name that the SNMP Agent uses for the interface
         (Always enabled)
@@ -63,7 +65,7 @@ class LLDPProfile(Element):
         return self.data.get("port_id")
 
     @property
-    def time_to_live(self):
+    def time_to_live(self) -> Optional[Any]:
         """
         TLV field: Time to Live.	Automatically calculated based on transmit delay
         and hold time multiplier (Always enabled)
@@ -71,7 +73,7 @@ class LLDPProfile(Element):
         return self.data.get("time_to_live")
 
     @property
-    def port_description(self):
+    def port_description(self) -> Optional[Any]:
         """
         TLV field: Port Description. The description that the SNMP Agent uses for the interface
         (Always enabled)
@@ -79,61 +81,61 @@ class LLDPProfile(Element):
         return self.data.get("port_description")
 
     @property
-    def system_name(self):
+    def system_name(self) -> Optional[str]:
         """
         TLV field: System Name. The system name that the SNMP Agent uses
         """
         return self.data.get("system_name")
 
     @system_name.setter
-    def system_name(self, value):
+    def system_name(self, value: Any) -> None:
         self.data.update(system_name=value)
 
     @property
-    def system_description(self):
+    def system_description(self) -> Optional[str]:
         """
         TLV field: System Description. The system description that the SNMP Agent uses
         """
         return self.data.get("system_description")
 
     @system_description.setter
-    def system_description(self, value):
+    def system_description(self, value: Any) -> None:
         self.data.update(system_description=value)
 
     @property
-    def system_capabilities(self):
+    def system_capabilities(self) -> Optional[Any]:
         """
         TLV field: System Capabilities. Capability bit-map. Depends on the interface type
         """
         return self.data.get("system_capabilities")
 
     @system_capabilities.setter
-    def system_capabilities(self, value):
+    def system_capabilities(self, value: Any) -> None:
         self.data.update(system_capabilities=value)
 
     @property
-    def management_address(self):
+    def management_address(self) -> Optional[Any]:
         """
         TLV Field: Management Address IP addresses of the control interfaces
         """
         return self.data.get("management_address")
 
     @management_address.setter
-    def management_address(self, value):
+    def management_address(self, value: Any) -> None:
         self.data.update(management_address=value)
 
     @classmethod
     def create(
             cls,
-            name,
-            transmit_delay,
-            hold_time_multiplier,
-            system_name,
-            system_description,
-            system_capabilities,
-            management_address,
-            comment=None
-            ):
+            name: str,
+            transmit_delay: int,
+            hold_time_multiplier: int,
+            system_name: bool,
+            system_description: bool,
+            system_capabilities: bool,
+            management_address: bool,
+            comment: Optional[str] = None,
+            ) -> LLDPProfile:
         """
         Create a LLDPProfile.
         :param str name: name of TLS Profile

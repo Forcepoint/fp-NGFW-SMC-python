@@ -31,6 +31,8 @@ overidden.
           needed, calling open() will lock the policy from test_external modifications
           until save() is called.
 """
+from __future__ import annotations
+from typing import Any, Optional, Union, Iterator
 import collections
 from smc.api.exceptions import PolicyCommandFailed
 from smc.administration.tasks import Task
@@ -59,13 +61,13 @@ class Policy(Element):
 
     def upload(
         self,
-        engine,
-        timeout=5,
-        wait_for_finish=False,
-        preserve_connections=True,
-        generate_snapshot=True,
-        **kw
-    ):
+        engine: Any,
+        timeout: int = 5,
+        wait_for_finish: bool = False,
+        preserve_connections: bool = True,
+        generate_snapshot: bool = True,
+        **kw: Any
+    ) -> Any:
         """
         Upload policy to specific device. Using wait for finish
         returns a poller thread for monitoring progress::
@@ -96,7 +98,7 @@ class Policy(Element):
             **kw
         )
 
-    def force_unlock(self):
+    def force_unlock(self) -> None:
         """
         Forcibly unlock a locked policy
 
@@ -104,7 +106,7 @@ class Policy(Element):
         """
         self.make_request(PolicyCommandFailed, method="create", resource="force_unlock")
 
-    def save_as(self, new_name: str):
+    def save_as(self, new_name: str) -> Any:
         """
         Save as the current policy
 
@@ -116,7 +118,7 @@ class Policy(Element):
                                                    params={"name": new_name},
                                                    raw_result=True).href)
 
-    def search_rule(self, search):
+    def search_rule(self, search: str) -> list:
         """
         Search a rule for a rule tag or name value
         Result will be the meta data for rule (name, href, type)
@@ -146,7 +148,7 @@ class Policy(Element):
             return results
         return []
 
-    def rule_counters(self, engine=None, duration_type="one_week", duration=0, start_time=0):
+    def rule_counters(self, engine: Any = None, duration_type: str = "one_week", duration: int = 0, start_time: int = 0) -> list:
         """
         .. versionadded:: 0.5.6
             Obtain rule counters for this policy. Requires SMC >= 6.2
@@ -187,10 +189,10 @@ class InspectionPolicy(Policy):
 
     typeof = "inspection_template_policy"
 
-    def export(self):
+    def export(self) -> None:  # type: ignore[override]
         pass  # Not valid for inspection policy
 
-    def upload(self):
+    def upload(self) -> None:  # type: ignore[override]
         pass  # Not valid for inspection policy
 
 
@@ -208,11 +210,11 @@ class RuleCounter(collections.namedtuple("RuleCounter", "hits rule_ref total_hit
 
     __slots__ = ()
 
-    def __new__(cls, rule_ref, hits=0, total_hits=0):  # @ReservedAssignment
+    def __new__(cls, rule_ref: Any, hits: int = 0, total_hits: int = 0) -> "RuleCounter":  # @ReservedAssignment
         return super(RuleCounter, cls).__new__(cls, hits, rule_ref, total_hits)
 
     @property
-    def rule(self):
+    def rule(self) -> Any:
         """
         Return the Rule element for this rule counter. A rule may be from
         the policy or the policy template.

@@ -16,7 +16,7 @@ authors = [
     {name = "Forcepoint", email = "PSIRT@forcepoint.com"},
 ]
 description = "Python based API to Forcepoint NGFW Management Center"
-requires-python = ">=3.5"
+requires-python = ">=3.9"
 license = {text = "Apache License (2.0)"}
 dynamic = ["version", "readme"]
 dependencies = [
@@ -47,3 +47,55 @@ namespaces = true  # true by default
 [tool.setuptools]
 include-package-data = true
 license-files = ["LICENSE"]
+
+[tool.setuptools.package-data]
+smc = ["py.typed"]
+
+[tool.mypy]
+python_version = "3.9"
+ignore_missing_imports = true
+# Strictness is enabled per-module as annotations are added.
+# Add an [[tool.mypy.overrides]] block for each annotated module.
+
+[[tool.mypy.overrides]]
+module = [
+  "smc.base.model", "smc.base.decorators",
+  "smc.core.engines", "smc.core.engine", "smc.core.interfaces", "smc.core.node",
+  "smc.elements.network", "smc.elements.servers",
+  "smc.policy.rule_elements",
+  "smc.vpn.ssl_vpn_portal", "smc.vpn.application_access_portal", "smc.vpn.elements",
+  "smc.administration.monitoring_status", "smc.administration.system",
+  "smc.routing.bgp",
+  "smc.core.route", "smc.core.addon",
+  "smc.base.collection",
+  "smc.administration.user_auth.servers",
+  "smc.elements.profiles", "smc.core.sub_interfaces",
+  "smc.vpn.policy", "smc.vpn.route", "smc.core.ha_management",
+  "smc.api.session", "smc.core.general", "smc.core.collection",
+  "smc.routing.pim", "smc.administration.upcoming_event", "smc.elements.service",
+  "smc.policy.rule", "smc.policy.rule_nat",
+  "smc.elements.protocols", "smc.routing.route_map", "smc.elements.alerts", "smc.core.engine_vss",
+  "smc.elements.user", "smc.elements.other", "smc.elements.netlink",
+  "smc.administration.tasks", "smc.administration.scheduled_tasks",
+  "smc.administration.certificates.vpn", "smc.administration.certificates.tls",
+  "smc.core.lldp", "smc.base.structs",
+  "smc.administration.eca_client_config", "smc.elements.situations",
+  "smc.core.external_pki", "smc.administration.access_rights",
+  "smc.elements.group", "smc.elements.common", "smc.base.decorators",
+  "smc.administration.user_auth.users", "smc.core.contact_address", "smc.routing.ospf",
+  "smc.policy.layer3", "smc.administration.updates", "smc.policy.qos",
+  "smc.policy.policy", "smc.policy.interface", "smc.core.policy",
+  "smc.api.web", "smc.administration.license",
+  "smc.administration.certificates.tls_common", "smc.administration.certificates.certificate_authority",
+  "smc.elements.ssm", "smc.policy.ips", "smc.api.entry_point",
+  "smc.core.waiters", "smc.core.resource", "smc.compat", "smc.administration.reports",
+  "smc.core.engine", "smc.api.common", "smc.base.util",
+  "smc.routing.access_list", "smc.administration.system_properties",
+  "smc.policy.layer2", "smc.policy.file_filtering", "smc.elements.helpers",
+  "smc.core.advanced_settings", "smc.api.exceptions",
+  "smc.administration.role", "smc.elements.tags", "smc.core.engines",
+  "smc.base.mixins", "smc.api.configloader", "smc.core.session_monitoring",
+  "smc.administration.filter",
+]
+check_untyped_defs = true
+disallow_untyped_defs = true

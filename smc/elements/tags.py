@@ -12,6 +12,10 @@
 """
 Tag elements like 'ip_country_group' or 'ip_list_group'.
 """
+from __future__ import annotations
+
+from typing import Any, Optional, Union, Iterator
+
 from smc.base.model import Element, ElementCreator
 from smc.api.exceptions import CreateElementFailed, DeleteElementFailed
 
@@ -138,8 +142,8 @@ class FilterExpressionTag(Element):
     @classmethod
     def create(
         cls,
-        name
-    ):
+        name: str
+    ) -> FilterExpressionTag:
         """
         Create a new Filter tag. Once cerated you can add elements:
 
@@ -154,7 +158,7 @@ class FilterExpressionTag(Element):
         """
         return ElementCreator(cls, {"name": name})
 
-    def add_element(self, element):
+    def add_element(self, element: Any) -> None:
         """
         Add a filter expression element to this filter tag.
 
@@ -169,7 +173,7 @@ class FilterExpressionTag(Element):
             json={"value": element},
         )
 
-    def delete_element(self, element):
+    def delete_element(self, element: Any) -> None:
         """
         Delete a filter expression element from this filter tag.
 

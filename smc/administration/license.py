@@ -12,6 +12,9 @@
 """
 Module representing read-only licenses in SMC
 """
+from __future__ import annotations
+
+from typing import Any, Optional, Union, Iterator
 
 
 class Licenses(object):
@@ -19,18 +22,18 @@ class Licenses(object):
     List of all available licenses for this Management Server.
     """
 
-    def __init__(self, licenses):
+    def __init__(self, licenses: Any) -> None:
         self.licenses = []
         for lic in licenses["license"]:
             self.licenses.append(License(**lic))
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Any]:
         return iter(self.licenses)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.licenses)
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int) -> Any:
         return self.licenses[index]
 
 
@@ -56,18 +59,18 @@ class License(object):
 
     typeof = "licenses"
 
-    def __init__(self, **data):
+    def __init__(self, **data: Any) -> None:
         for d, v in data.items():
             setattr(self, d, v)
 
     @property
-    def name(self):
+    def name(self) -> Any:
         return self.license_id
 
-    def __getattr__(self, attr):
+    def __getattr__(self, attr: str) -> Any:
         return None
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "{0}(id={1},binding={2},bound_to={3})".format(
             self.__class__.__name__, self.name, self.binding_state, self.bound_to
         )

@@ -13,6 +13,10 @@
 AccessList module represents functionality that support dynamic routing
 filters based on IPv4 or IPv6 access lists such as OSPF and BGP.
 """
+from __future__ import annotations
+
+from typing import Any, Optional, Union, Iterator
+
 import collections
 from smc.base.model import Element, ElementCreator
 from smc.api.exceptions import ElementNotFound
@@ -43,7 +47,7 @@ class AccessList(object):
     """
 
     @classmethod
-    def create(cls, name, entries=None, comment=None, **kw):
+    def create(cls, name: str, entries: Optional[list] = None, comment: Optional[str] = None, **kw: Any) -> Any:
         """
         Create an Access List Entry.
 
@@ -73,10 +77,10 @@ class AccessList(object):
 
         return ElementCreator(cls, json)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.data.get("entries", []))
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Any]:
         for entry in self.data.get("entries", []):
             value = entry.get("{}_entry".format(self.typeof))
             data = {}
@@ -84,7 +88,7 @@ class AccessList(object):
                 data.update({field: value.get(field, None)})
             yield self._view(**data)
 
-    def add_entry(self, **kw):
+    def add_entry(self, **kw: Any) -> None:
         """
         Add an entry to an AccessList. Use the supported arguments
         for the inheriting class for keyword arguments.
@@ -94,7 +98,7 @@ class AccessList(object):
         """
         self.data.setdefault("entries", []).append({"{}_entry".format(self.typeof): kw})
 
-    def remove_entry(self, **field_value):
+    def remove_entry(self, **field_value: Any) -> None:
         """
         Remove an AccessList entry by field specified. Use the supported
         arguments for the inheriting class for keyword arguments.
@@ -110,7 +114,7 @@ class AccessList(object):
         ]
 
     @classmethod
-    def update_or_create(cls, with_status=False, overwrite_existing=False, **kw):
+    def update_or_create(cls, with_status: bool = False, overwrite_existing: bool = False, **kw: Any) -> Any:
         """
         Update or create the Access List. This method will not attempt to
         evaluate whether the access list has differences, instead it will

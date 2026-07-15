@@ -27,6 +27,9 @@ multicast stream. This is the most efficient use of bandwidth, but all devices a
 applications must have support for IGMPv3 and this variant of PIM. However,
 SSM mapping allows IGMPv2 requests to be converted into IGMPv3 requests.
 """
+from __future__ import annotations
+from typing import Any, Optional, Union, Iterator
+
 from smc.base.model import Element, ElementCreator, ElementCache, ElementRef, SubElement
 from smc.base.structs import NestedDict
 from smc.base.util import element_resolver
@@ -39,13 +42,20 @@ class PIMSettings(object):
 
     pim_profile = ElementRef("pim_profile_ref")
 
-    def __init__(self, engine):
+    def __init__(self, engine: Any) -> None:
         self.data = engine.get("data", {}).get("pim_settings", {})
 
     @classmethod
-    def create(cls, pim_profile_ref, mroute_preference="best_match_preferred", rp_priority=64,
-               bsr_priority=64, rp_candidate_interface=None, bsr_candidate_interface=None,
-               sm_rp_candidate_entry=[]):
+    def create(
+        cls,
+        pim_profile_ref: Any,
+        mroute_preference: str = "best_match_preferred",
+        rp_priority: int = 64,
+        bsr_priority: int = 64,
+        rp_candidate_interface: Optional[Any] = None,
+        bsr_candidate_interface: Optional[Any] = None,
+        sm_rp_candidate_entry: list = [],
+    ) -> "PIMSettings":
         """
         :param PIMIPv4Profile pim_profile_ref: The PIM IPv4 profile.
         :param str mroute_preference: the MRoute preference:
@@ -73,7 +83,7 @@ class PIMSettings(object):
         return cls({"data": data})
 
     @property
-    def mroute_preference(self):
+    def mroute_preference(self) -> Optional[str]:
         """
         Get the MRoute preference:
           * best_match_preferred: The Best Match Preferred mode.
@@ -84,7 +94,7 @@ class PIMSettings(object):
         return self.data.get("mroute_preference")
 
     @property
-    def rp_priority(self):
+    def rp_priority(self) -> int:
         """
         Get The RP Priority. The default value is 64.
 
@@ -93,7 +103,7 @@ class PIMSettings(object):
         return int(self.data.get("rp_priority"))
 
     @property
-    def bsr_priority(self):
+    def bsr_priority(self) -> int:
         """
         Get The BSR Priority. The default value is 64.
 
@@ -102,7 +112,7 @@ class PIMSettings(object):
         return int(self.data.get("bsr_priority"))
 
     @property
-    def rp_candidate_interface(self):
+    def rp_candidate_interface(self) -> Optional[Any]:
         """
         The PIM IPv4 Multicast Group Entries.
 
@@ -115,7 +125,7 @@ class PIMSettings(object):
             return None
 
     @property
-    def bsr_candidate_interface(self):
+    def bsr_candidate_interface(self) -> Optional[Any]:
         """
         the BSR interface reference.
 
@@ -128,7 +138,7 @@ class PIMSettings(object):
             return None
 
     @property
-    def sm_rp_candidate_entry(self):
+    def sm_rp_candidate_entry(self) -> list[Any]:
         """
         the PIM-SM Bootstrap Settings
 
@@ -150,7 +160,14 @@ class IGMPQuerierSettings(Element):
     typeof = "igmp_querier_settings"
 
     @classmethod
-    def create(cls, name, igmp_version, query_interval=125, robustness=2, comment=None):
+    def create(
+        cls,
+        name: str,
+        igmp_version: str,
+        query_interval: int = 125,
+        robustness: int = 2,
+        comment: Optional[str] = None,
+    ) -> "IGMPQuerierSettings":
         """
         Create an IGMP Querier Settings element to be applied on the engine.
         You can configure IGMP-based multicast forwarding for a specified Engine element.
@@ -187,7 +204,7 @@ class IGMPQuerierSettings(Element):
         return ElementCreator(cls, json)
 
     @property
-    def igmp_version(self):
+    def igmp_version(self) -> int:
         """
         The IGMP version among:
         * igmpv1: IGMP v1.
@@ -200,7 +217,7 @@ class IGMPQuerierSettings(Element):
         return int(self.data.get("igmp_version"))
 
     @property
-    def query_interval(self):
+    def query_interval(self) -> int:
         """
         how often the hello packet is sent in seconds.
         This option is not supported when IGMP Version is IGMPv1.
@@ -211,7 +228,7 @@ class IGMPQuerierSettings(Element):
         return int(self.data.get("query_interval"))
 
     @property
-    def robustness(self):
+    def robustness(self) -> int:
         """
         the robustness value. If you expect packet loss in the
         network, increase this value to send more IGMP messages.
@@ -234,8 +251,15 @@ class PIMIPv4InterfaceSettings(Element):
     igmp_querier_settings_ref = ElementRef("igmp_querier_settings_ref")
 
     @classmethod
-    def create(cls, name, igmp_querier_settings_ref, dr_priority=1,
-               zbr=None, random_delay=5, comment=None):
+    def create(
+        cls,
+        name: str,
+        igmp_querier_settings_ref: Any,
+        dr_priority: int = 1,
+        zbr: Optional[int] = None,
+        random_delay: int = 5,
+        comment: Optional[str] = None,
+    ) -> "PIMIPv4InterfaceSettings":
         """
         Create a PIM IPv4 interface settings for Engine multicast routing.
         You can configure PIM multicast forwarding for a specified Engine element.
@@ -271,7 +295,7 @@ class PIMIPv4InterfaceSettings(Element):
         return ElementCreator(cls, json)
 
     @property
-    def dr_priority(self):
+    def dr_priority(self) -> int:
         """
         the designated router (DR) priority
         that is advertised in hello messages. By default: 1
@@ -282,7 +306,7 @@ class PIMIPv4InterfaceSettings(Element):
         return int(self.data.get("dr_priority"))
 
     @property
-    def zbr(self):
+    def zbr(self) -> int:
         """
         the multicast groups for zone border routers (ZBR).
         To specify multiple multicast groups, separate them with a comma.
@@ -294,7 +318,7 @@ class PIMIPv4InterfaceSettings(Element):
         return int(self.data.get("zbr"))
 
     @property
-    def random_delay(self):
+    def random_delay(self) -> int:
         """
         The random delay before hello messages are sent.
         The delay prevents PIM routers from receiving multiple hello messages at the same time.
@@ -313,9 +337,18 @@ class PIMIPv4Profile(Element):
     typeof = "pim_ipv4_profile"
 
     @classmethod
-    def create(cls, name, pim_multicast_group_entry=[], hello_interval=30,
-               joined_prune=60, spt_switch_threshold_unit='packets', spt_switch_threshold=0,
-               spt_switch_interval=100, smart_multicast_antispoofing=True, comment=None):
+    def create(
+        cls,
+        name: str,
+        pim_multicast_group_entry: list = [],
+        hello_interval: int = 30,
+        joined_prune: int = 60,
+        spt_switch_threshold_unit: str = "packets",
+        spt_switch_threshold: int = 0,
+        spt_switch_interval: int = 100,
+        smart_multicast_antispoofing: bool = True,
+        comment: Optional[str] = None,
+    ) -> "PIMIPv4Profile":
         """
         Create a PIM IPv4 Profile for Engine multicast routing.
         You can configure PIM multicast forwarding for a specified Engine element.
@@ -354,7 +387,7 @@ class PIMIPv4Profile(Element):
         })
 
     @property
-    def hello_interval(self):
+    def hello_interval(self) -> int:
         """
         how often hello messages are sent in seconds.
 
@@ -364,7 +397,7 @@ class PIMIPv4Profile(Element):
         return int(self.data.get("hello_interval"))
 
     @property
-    def joined_prune(self):
+    def joined_prune(self) -> int:
         """
         how often joined/prune messages are sent in seconds.
 
@@ -374,7 +407,7 @@ class PIMIPv4Profile(Element):
         return int(self.data.get("joined_prune"))
 
     @property
-    def spt_switch_threshold_unit(self):
+    def spt_switch_threshold_unit(self) -> int:
         """
         The PIM-SM SPT switch threshold unit.
          The default value is packets.
@@ -388,7 +421,7 @@ class PIMIPv4Profile(Element):
         return int(self.data.get("spt_switch_threshold_unit"))
 
     @property
-    def spt_switch_interval(self):
+    def spt_switch_interval(self) -> int:
         """
         how frequently the SPT switch threshold
         state is checked in seconds.
@@ -400,7 +433,7 @@ class PIMIPv4Profile(Element):
         return int(self.data.get("spt_switch_interval"))
 
     @property
-    def smart_multicast_antispoofing(self):
+    def smart_multicast_antispoofing(self) -> int:
         """
         When selected, antispoofing rules are automatically configured
         to avoid inadvertently blocking multicast traffic.
@@ -412,7 +445,7 @@ class PIMIPv4Profile(Element):
         return int(self.data.get("smart_multicast_antispoofing"))
 
     @property
-    def pim_multicast_group_entry(self):
+    def pim_multicast_group_entry(self) -> list[Any]:
         """
         The PIM IPv4 Multicast Group Entries.
 
@@ -427,11 +460,17 @@ class PIMIPv4MulticastGroupEntry(NestedDict):
     Represents the PIM IPv4 Multicast Group Entry.
     """
 
-    def __init__(self, data):
+    def __init__(self, data: Any) -> None:
         super(PIMIPv4MulticastGroupEntry, self).__init__(data)
 
     @classmethod
-    def create(cls, multicast_ip_network, multicast_group_ref, mode, mapping):
+    def create(
+        cls,
+        multicast_ip_network: str,
+        multicast_group_ref: Any,
+        mode: str,
+        mapping: str,
+    ) -> "PIMIPv4MulticastGroupEntry":
         """
         :param str multicast_ip_network: The manual Multicast IPv4 Network.
          Otherwise, please specify a Network element as Multicast element.
@@ -461,11 +500,11 @@ class RpCandidateInterfaceEntry(NestedDict):
     Represents the RP Candidate listening Interface.
     """
 
-    def __init__(self, data):
+    def __init__(self, data: Any) -> None:
         super(RpCandidateInterfaceEntry, self).__init__(data)
 
     @classmethod
-    def create(cls, nicid, address):
+    def create(cls, nicid: str, address: str) -> "RpCandidateInterfaceEntry":
         """
         :param str nicid: the interface nic id in string format.
         :param str address: the IPv4 address.
@@ -483,11 +522,11 @@ class BsrCandidateInterfaceEntry(NestedDict):
     Represents the BSR Candidate listening Interface.
     """
 
-    def __init__(self, data):
+    def __init__(self, data: Any) -> None:
         super(BsrCandidateInterfaceEntry, self).__init__(data)
 
     @classmethod
-    def create(cls, nicid, address):
+    def create(cls, nicid: str, address: str) -> "BsrCandidateInterfaceEntry":
         """
         :param str nicid: the interface nic id in string format.
         :param str address: the IPv4 address.
@@ -505,11 +544,15 @@ class SMRPCandidateEntry(NestedDict):
     Represents the BSR Candidate listening Interface.
     """
 
-    def __init__(self, data):
+    def __init__(self, data: Any) -> None:
         super(SMRPCandidateEntry, self).__init__(data)
 
     @classmethod
-    def create(cls, rp_multicast_group_ref, multicast_ip_network):
+    def create(
+        cls,
+        rp_multicast_group_ref: Any,
+        multicast_ip_network: str,
+    ) -> "SMRPCandidateEntry":
         """
         :param Network rp_multicast_group_ref: The Multicast Group network element.
          Otherwise, please specify a manual Multicast IPv4 Network.

@@ -25,6 +25,10 @@ For example, update revocation check in certificate settings:
     node.pki_certificate_info()
 
 """
+from __future__ import annotations
+
+from typing import Any, Iterator, Optional, Union
+
 from smc.base.structs import NestedDict
 from smc.compat import is_smc_version_less_than
 
@@ -35,12 +39,12 @@ class PkiCertificateSettings(NestedDict):
     request in case of external PKI installation.
     """
 
-    def __init__(self, component):
+    def __init__(self, component: Any) -> None:
         settings = component.data["external_pki_certificate_settings"]
         super(PkiCertificateSettings, self).__init__(data=settings)
 
     @classmethod
-    def create(cls, subject_name, subject_alt_name):
+    def create(cls, subject_name: str, subject_alt_name: str) -> Any:
         """
         Create a new definition of certificate settings
         :param subject_name
@@ -53,7 +57,7 @@ class PkiCertificateSettings(NestedDict):
         return cls
 
     @property
-    def certificate_type(self):
+    def certificate_type(self) -> Optional[str]:
         """
         represents the type of certificate.
 
@@ -62,12 +66,12 @@ class PkiCertificateSettings(NestedDict):
         return self.get("certificate_type")
 
     @certificate_type.setter
-    def certificate_type(self, value):
+    def certificate_type(self, value: str) -> None:
         if not is_smc_version_less_than("6.10"):
             self.update(certificate_type=value)
 
     @property
-    def check_revocation(self):
+    def check_revocation(self) -> Optional[bool]:
         """
         indicates if revocation should be checked.
         :rtype: bool
@@ -75,12 +79,12 @@ class PkiCertificateSettings(NestedDict):
         return self.get("check_revocation")
 
     @check_revocation.setter
-    def check_revocation(self, value):
+    def check_revocation(self, value: bool) -> None:
         if not is_smc_version_less_than("6.10"):
             self.update(check_revocation=value)
 
     @property
-    def ignore_revocation_on_failure(self):
+    def ignore_revocation_on_failure(self) -> Optional[bool]:
         """
         indicates if revocation should be ignored in case of failure.
         :rtype: bool
@@ -88,12 +92,12 @@ class PkiCertificateSettings(NestedDict):
         return self.get("ignore_revocation_on_failure")
 
     @ignore_revocation_on_failure.setter
-    def ignore_revocation_on_failure(self, value):
+    def ignore_revocation_on_failure(self, value: bool) -> None:
         if not is_smc_version_less_than("6.10"):
             self.update(ignore_revocation_on_failure=value)
 
     @property
-    def subject_name(self):
+    def subject_name(self) -> Optional[str]:
         """
         indicates if revocation should be ignored in case of failure.
         :rtype: str
@@ -101,12 +105,12 @@ class PkiCertificateSettings(NestedDict):
         return self.get("subject_name")
 
     @subject_name.setter
-    def subject_name(self, value):
+    def subject_name(self, value: str) -> None:
         if not is_smc_version_less_than("6.10"):
             self.update(subject_name=value)
 
     @property
-    def subject_alt_name(self):
+    def subject_alt_name(self) -> Optional[str]:
         """
         indicates if revocation should be ignored in case of failure.
         :rtype: str
@@ -114,7 +118,7 @@ class PkiCertificateSettings(NestedDict):
         return self.get("subject_alt_name")
 
     @subject_alt_name.setter
-    def subject_alt_name(self, value):
+    def subject_alt_name(self, value: str) -> None:
         if not is_smc_version_less_than("6.10"):
             self.update(subject_alt_name=value)
 
@@ -125,11 +129,11 @@ class PkiCertificateInfo(NestedDict):
     This is available only in case of external PKI installation.
     """
 
-    def __init__(self, data=None, **meta):
+    def __init__(self, data: Optional[Any] = None, **meta: Any) -> None:
         super(PkiCertificateInfo, self).__init__(data, **meta)
 
     @property
-    def certificate_authority(self):
+    def certificate_authority(self) -> Optional[str]:
         """
         represents the name of the certificate authority used to sign this
         certificate.
@@ -138,7 +142,7 @@ class PkiCertificateInfo(NestedDict):
         return self.get("certificate_authority")
 
     @property
-    def certificate(self):
+    def certificate(self) -> Optional[str]:
         """
         represents the Certificate as clear text.
         :rtype: str
@@ -146,7 +150,7 @@ class PkiCertificateInfo(NestedDict):
         return self.get("certificate")
 
     @property
-    def valid_from(self):
+    def valid_from(self) -> Optional[str]:
         """
         indicates the Certificate validity start date
         :rtype: str
@@ -154,7 +158,7 @@ class PkiCertificateInfo(NestedDict):
         return self.get("valid_from")
 
     @property
-    def expiration_date(self):
+    def expiration_date(self) -> Optional[str]:
         """
         indicates the Certificate expiration date
         :rtype: str
@@ -162,7 +166,7 @@ class PkiCertificateInfo(NestedDict):
         return self.get("expiration_date")
 
     @property
-    def subject_name(self):
+    def subject_name(self) -> Optional[str]:
         """
         return the set of X509GeneralName representing the certificate subject name
         :rtype: str
@@ -170,7 +174,7 @@ class PkiCertificateInfo(NestedDict):
         return self.get("subject_name")
 
     @property
-    def subject_alt_name(self):
+    def subject_alt_name(self) -> Optional[str]:
         """
         return the set of X509GeneralName representing the certificate subject alt name
         :rtype: str
@@ -178,7 +182,7 @@ class PkiCertificateInfo(NestedDict):
         return self.get("subject_alt_name")
 
     @property
-    def signature_algorithm(self):
+    def signature_algorithm(self) -> Optional[str]:
         """
         return the signature algorithm
         :rtype: str

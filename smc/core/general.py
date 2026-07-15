@@ -13,7 +13,8 @@
 General configuration areas for an engine. This correlates to service level
 settings such as DNSRelay, SNMP, etc.
 """
-
+from __future__ import annotations
+from typing import Any, Optional, Union, Iterator
 import collections
 from smc.base.model import Element
 from smc.base.util import element_resolver
@@ -35,11 +36,11 @@ class SNMP(object):
     .. seealso:: :class:`smc.elements.profiles.SNMPAgent`
     """
 
-    def __init__(self, engine):
+    def __init__(self, engine: Any) -> None:
         self.engine = engine
 
     @property
-    def agent(self):
+    def agent(self) -> Any:
         """
         The SNMP agent profile used for this engine.
 
@@ -48,7 +49,7 @@ class SNMP(object):
         return self.engine.from_href(getattr(self.engine, "snmp_agent_ref", None))
 
     @property
-    def status(self):
+    def status(self) -> bool:
         """
         Status of SNMP on this engine
 
@@ -56,7 +57,7 @@ class SNMP(object):
         """
         return bool(getattr(self.engine, "snmp_agent_ref", False))
 
-    def disable(self):
+    def disable(self) -> None:
         """
         Disable SNMP on this engine. You must call `update` on the engine
         for this to take effect.
@@ -65,7 +66,7 @@ class SNMP(object):
         """
         self.engine.data.update(snmp_agent_ref=None, snmp_location="", snmp_interface=[])
 
-    def enable(self, snmp_agent, snmp_location=None, snmp_interface=None, snmp_engine_id=None):
+    def enable(self, snmp_agent: Any, snmp_location: Optional[str] = None, snmp_interface: Optional[list] = None, snmp_engine_id: Optional[str] = None) -> None:
         """
         Enable SNMP on the engine. Specify a list of interfaces
         by ID to enable only on those interfaces. Only interfaces
@@ -97,7 +98,7 @@ class SNMP(object):
             for node in self.engine.nodes:
                 node.update(snmp_engine_id=snmp_engine_id)
 
-    def _iface_dict(self, snmp_interface):
+    def _iface_dict(self, snmp_interface: list) -> list:
         return [
             values
             for interface in snmp_interface
@@ -105,10 +106,10 @@ class SNMP(object):
         ]
 
     @property
-    def _nicids(self):
+    def _nicids(self) -> list[Any]:
         return [str(nic.get("nicid")) for nic in getattr(self.engine, "snmp_interface", [])]
 
-    def update_configuration(self, **kwargs):
+    def update_configuration(self, **kwargs: Any) -> bool:
         """
         Update the SNMP configuration using any kwargs supported in the
         `enable` constructor. Return whether a change was made. You must call
@@ -139,7 +140,7 @@ class SNMP(object):
         return updated
 
     @property
-    def location(self):
+    def location(self) -> Optional[str]:
         """
         Return the SNMP location string
 
@@ -148,7 +149,7 @@ class SNMP(object):
         return getattr(self.engine, "snmp_location", None)
 
     @property
-    def interface(self):
+    def interface(self) -> list[Any]:
         """
         Return a list of physical interfaces that the SNMP
         agent is bound to.
@@ -158,7 +159,7 @@ class SNMP(object):
         nics = set([nic.get("nicid") for nic in getattr(self.engine, "snmp_interface", [])])
         return [self.engine.interface.get(nic) for nic in nics]
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "{0}(enabled={1})".format(self.__class__.__name__, self.status)
 
 
@@ -166,13 +167,13 @@ class NTPSettings(object):
     """
     This represents the definition of NTP settings.
     """
-    def __init__(self, engine=None):
+    def __init__(self, engine: Optional[Any] = None) -> None:
         self.engine = engine
         if engine is None:
             self.data = {}
 
     @classmethod
-    def create(cls, ntp_enable, ntp_servers):
+    def create(cls, ntp_enable: bool, ntp_servers: list) -> "NTPSettings":
         """
         Create a new defintiion of NTPSettings
         :param bool ntp_enable: is NTP enabled
@@ -186,7 +187,7 @@ class NTPSettings(object):
         return cls
 
     @property
-    def ntp_enable(self):
+    def ntp_enable(self) -> Optional[bool]:
         """
         Is NTP enabled? (required)
 
@@ -196,7 +197,7 @@ class NTPSettings(object):
             if self.engine is not None else self.data.get("ntp_enable")
 
     @property
-    def ntp_servers(self):
+    def ntp_servers(self) -> list[Any]:
         """
         Define one or more NTP Servers.
 
@@ -216,11 +217,11 @@ class DNSRelay(object):
     .. seealso:: :class:`smc.elements.profiles.DNSRelayProfile`
     """
 
-    def __init__(self, engine):
+    def __init__(self, engine: Any) -> None:
         self.engine = engine
 
     @property
-    def status(self):
+    def status(self) -> Any:
         """
         Status of DNS Relay on this engine.
 
@@ -228,7 +229,7 @@ class DNSRelay(object):
         """
         return getattr(self.engine, "dns_relay_profile_ref", False)
 
-    def enable(self, interface_id, dns_relay_profile=None):
+    def enable(self, interface_id: Any, dns_relay_profile: Optional[Any] = None) -> None:
         """
         Enable the DNS Relay service on this engine.
 
@@ -249,7 +250,7 @@ class DNSRelay(object):
         self.engine.data.update(dns_relay_profile_ref=href)
         self.engine.data.update(dns_relay_interface=intf.ndi_interfaces)
 
-    def disable(self):
+    def disable(self) -> None:
         """
         Disable DNS Relay on this engine
 
@@ -258,7 +259,7 @@ class DNSRelay(object):
         self.engine.data.update(dns_relay_interface=[])
         self.engine.data.pop("dns_relay_profile_ref", None)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "{0}(enabled={1})".format(self.__class__.__name__, self.status)
 
 
@@ -271,11 +272,11 @@ class DefaultNAT(object):
     .. note:: You must call engine.update() to commit any changes.
     """
 
-    def __init__(self, engine):
+    def __init__(self, engine: Any) -> None:
         self.engine = engine
 
     @property
-    def status(self):
+    def status(self) -> str:
         """
         Status of default nat on the engine.
 
@@ -288,7 +289,7 @@ class DefaultNAT(object):
         return self.engine.data["default_nat"]
 
     @status.setter
-    def status(self, default_nat):
+    def status(self, default_nat: str) -> None:
         """
         Status of default nat on the engine.
 
@@ -300,19 +301,19 @@ class DefaultNAT(object):
         """
         self.engine.data["default_nat"] = default_nat
 
-    def enable(self):
+    def enable(self) -> None:
         """
         Enable default NAT on this engine
         """
         self.engine.data["default_nat"] = 'true'
 
-    def disable(self):
+    def disable(self) -> None:
         """
         Disable default NAT on this engine
         """
         self.engine.data["default_nat"] = 'false'
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "{0}(enabled={1})".format(self.__class__.__name__, self.status)
 
 
@@ -338,17 +339,17 @@ class RankedDNSAddress(object):
     .. note:: You must call engine.update() to commit any changes.
     """
 
-    def __init__(self, entries):
+    def __init__(self, entries: list) -> None:
         self.entries = entries
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Any]:
         for entry in self.entries:
             yield DNSEntry(**entry)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.entries)
 
-    def __contains__(self, entry):
+    def __contains__(self, entry: Any) -> bool:
         for e in self:
             try:
                 if e.ne_ref == entry.href:
@@ -358,7 +359,7 @@ class RankedDNSAddress(object):
                     return True
         return False
 
-    def _rank_dns(self, entry, prepend=False):
+    def _rank_dns(self, entry: list, prepend: bool = False) -> None:
         if prepend and len(self) or not len(self):
             start_rank = 0
         else:
@@ -382,10 +383,10 @@ class RankedDNSAddress(object):
             except AttributeError:
                 self.entries.append({"rank": float(num), "value": addr})
 
-    def add(self, values):
+    def add(self, values: list) -> None:
         return self.append(values)
 
-    def append(self, values):
+    def append(self, values: list) -> None:
         """
         Add DNS entries to the engine at the end of the existing list (if any).
         A DNS entry can be either a raw IP Address, or an element of type
@@ -401,7 +402,7 @@ class RankedDNSAddress(object):
         """
         self._rank_dns(values)
 
-    def prepend(self, values):
+    def prepend(self, values: list) -> None:
         """
         Prepend DNS entries to the engine at the beginning of the existing list
         (if any). A DNS entry can be either a raw IP Address, or an element of type
@@ -412,7 +413,7 @@ class RankedDNSAddress(object):
         """
         self._rank_dns(values, prepend=True)
 
-    def remove(self, values):
+    def remove(self, values: list) -> None:
         """
         Remove DNS entries from this ranked DNS list. A DNS entry can be either
         a raw IP Address, or an element of type :class:`smc.elements.network.Host`
@@ -452,14 +453,14 @@ class DNSEntry(collections.namedtuple("DNSEntry", "value rank ne_ref")):
 
     __slots__ = ()
 
-    def __new__(cls, rank, value=None, ne_ref=None):  # @ReservedAssignment
+    def __new__(cls, rank: Any, value: Optional[str] = None, ne_ref: Optional[str] = None) -> "DNSEntry":  # @ReservedAssignment
         return super(DNSEntry, cls).__new__(cls, value, rank, ne_ref)
 
     @property
-    def element(self):
+    def element(self) -> Any:
         return Element.from_href(self.ne_ref)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "DNSEntry(rank={0},value={1},ne_ref={2})".format(self.rank, self.value, self.element)
 
 
@@ -483,11 +484,11 @@ class Layer2Settings(NestedDict):
     .. warning:: This feature requires SMC and engine version >= 6.3
     """
 
-    def __init__(self, engine):
+    def __init__(self, engine: Any) -> None:
         l2 = engine.data["l2fw_settings"]
         super(Layer2Settings, self).__init__(data=l2)
 
-    def connection_tracking(self, mode):
+    def connection_tracking(self, mode: str) -> None:
         """
         Set the connection tracking mode for these layer 2 settings.
 
@@ -497,7 +498,7 @@ class Layer2Settings(NestedDict):
         if mode in ("normal", "strict", "loose"):
             self.update(tracking_mode=mode)
 
-    def bypass_on_overload(self, value):
+    def bypass_on_overload(self, value: bool) -> None:
         """
         Set the l2fw settings to bypass on overload.
 
@@ -506,13 +507,13 @@ class Layer2Settings(NestedDict):
         """
         self.update(bypass_overload_traffic=value)
 
-    def disable(self):
+    def disable(self) -> None:
         """
         Disable the layer 2 interface policy
         """
         self.pop("l2_interface_policy_ref", None)
 
-    def enable(self, policy):
+    def enable(self, policy: Any) -> None:
         """
         Set a layer 2 interface policy.
 
@@ -530,7 +531,7 @@ class Layer2Settings(NestedDict):
         self.update(l2_interface_policy_ref=element_resolver(policy))
 
     @property
-    def policy(self):
+    def policy(self) -> Any:
         """
         Return the InterfacePolicy for this layer 3 firewall.
 
@@ -538,5 +539,5 @@ class Layer2Settings(NestedDict):
         """
         return InterfacePolicy.from_href(self.get("l2_interface_policy_ref"))
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "{0}(policy={1})".format(self.__class__.__name__, self.policy)

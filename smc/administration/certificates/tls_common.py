@@ -15,6 +15,9 @@ handling in SMC.
 Importing certificates and private keys can be done by providing a file
 where the certificates/keys are stored, or providing in string format.
 """
+from __future__ import annotations
+
+from typing import Any, Optional, Union, Iterator
 
 import re
 from smc.compat import unicode
@@ -22,15 +25,17 @@ from smc.base.util import save_to_file
 from smc.api.exceptions import CertificateImportError, CertificateExportError
 
 
-CERT_TYPES = (b"PRIVATE KEY", b"RSA PRIVATE KEY", b"CERTIFICATE")
-
+# Matches any PEM block type (RFC 7468 labels: uppercase letters, digits, spaces).
+# Using a general pattern instead of an explicit list ensures support for all types:
+# CERTIFICATE, PRIVATE KEY, RSA PRIVATE KEY, EC PRIVATE KEY, DSA PRIVATE KEY,
+# ENCRYPTED PRIVATE KEY, CERTIFICATE REQUEST, PUBLIC KEY, X509 CRL, etc.
 _PEM_RE = re.compile(
-    b"-----BEGIN (" + b"|".join(CERT_TYPES) + b""")-----\r?.+?\r?-----END \\1-----\r?\n?""",
+    b"-----BEGIN ([A-Z][A-Z0-9 ]*)-----\r?.+?\r?-----END \\1-----\r?\n?",
     re.DOTALL,
 )
 
 
-def pem_as_string(cert):
+def pem_as_string(cert: Any) -> Any:
     """
     Only return False if the certificate is a file path. Otherwise it
     is a file object or raw string and will need to be fed to the
@@ -39,12 +44,12 @@ def pem_as_string(cert):
     if hasattr(cert, "read"):  # File object - return as is
         return cert
     cert = cert.encode("utf-8") if isinstance(cert, unicode) else cert
-    if re.match(_PEM_RE, cert):
+    if re.search(_PEM_RE, cert):
         return True
     return False
 
 
-def load_cert_chain(chain_file):
+def load_cert_chain(chain_file: Any) -> list:
     """
     Load the certificates from the chain file.
 
@@ -67,13 +72,14 @@ def load_cert_chain(chain_file):
 
     if not cert_type_matches:
         raise ValueError(
-            "No certificate types were found. Valid types " "are: {}".format(CERT_TYPES)
+            "No PEM blocks found. The file must contain at least one "
+            "-----BEGIN <TYPE>----- / -----END <TYPE>----- section."
         )
 
     return cert_type_matches
 
 
-def certificate_content(certificate):
+def certificate_content(certificate: Any) -> Any:
     """ decode certificate or use it as it is """
     cert_value = certificate
     if not pem_as_string(certificate):
@@ -88,7 +94,7 @@ class ImportExportCertificate(object):
     classes.
     """
 
-    def import_certificate(self, certificate):
+    def import_certificate(self, certificate: Any) -> None:
         """
         Import a valid certificate. Certificate can be either a file path
         or a string of the certificate. If string certificate, it must include
@@ -112,7 +118,7 @@ class ImportExportCertificate(object):
             },
         )
 
-    def export_certificate(self, filename=None):
+    def export_certificate(self, filename: Optional[str] = None) -> Optional[str]:
         """
         Export the certificate. Returned certificate will be in string
         format. If filename is provided, the certificate will also be saved
@@ -138,7 +144,7 @@ class ImportExportIntermediate(object):
     certificates
     """
 
-    def import_intermediate_certificate(self, certificate):
+    def import_intermediate_certificate(self, certificate: Any) -> None:
         """
         Import a valid certificate. Certificate can be either a file path
         or a string of the certificate. If string certificate, it must include
@@ -159,7 +165,7 @@ class ImportExportIntermediate(object):
             },
         )
 
-    def export_intermediate_certificate(self, filename=None):
+    def export_intermediate_certificate(self, filename: Optional[str] = None) -> Optional[str]:
         """
         Export the intermediate certificate. Returned certificate will be in
         string format. If filename is provided, the certificate will also be
@@ -186,12 +192,13 @@ class ImportPrivateKey(object):
     require private keys.
     """
 
-    def import_private_key(self, private_key):
+    def import_private_key(self, private_key: Any) -> None:
         """
         Import a private key. The private key can be a path to a file
         or the key in string format. If in string format, the key must
-        start with -----BEGIN. Key types supported are PRIVATE RSA KEY
-        and PRIVATE KEY.
+        contain a -----BEGIN <TYPE>----- block. Supported types include
+        PRIVATE KEY, RSA PRIVATE KEY, EC PRIVATE KEY, DSA PRIVATE KEY,
+        ENCRYPTED PRIVATE KEY, and any other standard PEM key type.
 
         :param str private_key: fully qualified path to private key file
         :raises CertificateImportError: failure to import cert with reason

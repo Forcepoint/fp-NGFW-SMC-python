@@ -9,6 +9,8 @@
 #  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #  License for the specific language governing permissions and limitations
 #  under the License.
+from __future__ import annotations
+from typing import Any, Optional, Union, Iterator
 
 from smc.policy.rule import Rule, RuleCommon
 from smc.base.model import Element, SubElement, ElementCreator
@@ -21,7 +23,7 @@ from smc.base.structs import NestedDict
 
 class NATRule(Rule):
     @property
-    def used_on(self):
+    def used_on(self) -> Any:
         """
         Used on specific whether this NAT rule has a specific engine that
         this rule applies to. Default is ANY (unspecified).
@@ -36,7 +38,7 @@ class NATRule(Rule):
         return "ANY" if used_on.get("any") else "NONE"
 
     @used_on.setter
-    def used_on(self, value):
+    def used_on(self, value: Any) -> None:
         try:
             used_on = element_resolver(value)
             if used_on == "ANY":
@@ -48,7 +50,7 @@ class NATRule(Rule):
         except ElementNotFound:
             pass
 
-    def _update_nat_field(self, source_or_dest):
+    def _update_nat_field(self, source_or_dest: Any) -> None:
         """
         If the source or destination field of a rule is changed and the rule
         is a NAT rule, this method will check to see if the changed field
@@ -75,15 +77,15 @@ class NATRule(Rule):
                 )
 
     @property
-    def action(self):
+    def action(self) -> None:
         pass
 
     @property
-    def authentication_options(self):
+    def authentication_options(self) -> None:
         pass
 
     @property
-    def dynamic_src_nat(self):
+    def dynamic_src_nat(self) -> DynamicSourceNAT:
         """
         Dynamic Source NAT configuration for this NAT rule.
 
@@ -92,7 +94,7 @@ class NATRule(Rule):
         return DynamicSourceNAT(self)
 
     @property
-    def static_src_nat(self):
+    def static_src_nat(self) -> StaticSourceNAT:
         """
         Static Source NAT configuraiton for this NAT rule.
 
@@ -101,7 +103,7 @@ class NATRule(Rule):
         return StaticSourceNAT(self)
 
     @property
-    def static_dst_nat(self):
+    def static_dst_nat(self) -> StaticDestNAT:
         """
         Static Destination NAT configuration for this NAT rule
 
@@ -110,15 +112,15 @@ class NATRule(Rule):
         return StaticDestNAT(self)
 
     def _update_nat(self,
-                    rule_values,
-                    dynamic_src_nat=None,
-                    dynamic_src_nat_ports=(1024, 65535),
-                    dynamic_src_nat_automatic_proxy=None,
-                    static_src_nat=None,
-                    static_dst_nat=None,
-                    static_dst_nat_ports=None,
-                    static_dst_nat_automatic_proxy=None
-                    ):
+                    rule_values: dict[str, Any],
+                    dynamic_src_nat: Any = None,
+                    dynamic_src_nat_ports: tuple[int, int] = (1024, 65535),
+                    dynamic_src_nat_automatic_proxy: Optional[bool] = None,
+                    static_src_nat: Any = None,
+                    static_dst_nat: Any = None,
+                    static_dst_nat_ports: Any = None,
+                    static_dst_nat_automatic_proxy: Optional[bool] = None
+                    ) -> dict[str, Any]:
         if dynamic_src_nat:
             nat = DynamicSourceNAT()
             start_port, end_port = dynamic_src_nat_ports
@@ -166,19 +168,20 @@ class NATRule(Rule):
 
         return rule_values
 
-    def update(self,
-               validate=True,
-               sources=None,
-               destinations=None,
-               services=None,
-               dynamic_src_nat=None,
-               dynamic_src_nat_ports=(1024, 65535),
-               dynamic_src_nat_automatic_proxy=None,
-               static_src_nat=None,
-               static_dst_nat=None,
-               static_dst_nat_ports=None,
-               static_dst_nat_automatic_proxy=None,
-               **kwargs):
+    def update(  # type: ignore[override]
+               self,
+               validate: bool = True,
+               sources: Any = None,
+               destinations: Any = None,
+               services: Any = None,
+               dynamic_src_nat: Any = None,
+               dynamic_src_nat_ports: tuple[int, int] = (1024, 65535),
+               dynamic_src_nat_automatic_proxy: Optional[bool] = None,
+               static_src_nat: Any = None,
+               static_dst_nat: Any = None,
+               static_dst_nat_ports: Any = None,
+               static_dst_nat_automatic_proxy: Optional[bool] = None,
+               **kwargs: Any) -> str:
         """
         update a rule
 
@@ -242,15 +245,15 @@ class NATValue(NestedDict):
     :ivar str max_port: max port for this translation
     """
 
-    def __init__(self, values):
+    def __init__(self, values: Any) -> None:
         super(NATValue, self).__init__(data=values)
 
     @property
-    def as_element(self):
+    def as_element(self) -> Any:
         if "element" in self:
             return Element.from_href(self.get("element"))
 
-    def _update_field(self, natvalue):
+    def _update_field(self, natvalue: NATValue) -> bool:
         """
         Update this NATValue if values are different
 
@@ -278,7 +281,7 @@ class NATValue(NestedDict):
 
         return updated
 
-    def __getattr__(self, key):
+    def __getattr__(self, key: str) -> Any:
         return self.get(key)
 
 
@@ -288,13 +291,13 @@ class NATElement(NestedDict):
     configurations.
     """
 
-    def __init__(self, rule=None):
+    def __init__(self, rule: Any = None) -> None:
         options = LogOptions().data if not rule else rule.data.get("options")
         self.rule = rule
         super(NATElement, self).__init__(data=options)
 
     @property
-    def has_nat(self):
+    def has_nat(self) -> bool:
         """
         Is NAT already enabled (assuming modification) or newly
         created.
@@ -303,7 +306,7 @@ class NATElement(NestedDict):
         """
         return self.typeof in self
 
-    def set_none(self):
+    def set_none(self) -> None:
         """
         Clear the NAT field for this NAT rule. You must call
         `update` or `save` on the rule to commit this change.
@@ -313,7 +316,7 @@ class NATElement(NestedDict):
         self.pop(self.typeof, None)
 
     @property
-    def automatic_proxy(self):
+    def automatic_proxy(self) -> Optional[bool]:
         """
         Is proxy arp enabled. Leaving this in the on state is recommended.
 
@@ -323,10 +326,11 @@ class NATElement(NestedDict):
         return self.get(self.typeof, {}).get("automatic_proxy")
 
     @automatic_proxy.setter
-    def automatic_proxy(self, value):
+    def automatic_proxy(self, value: Optional[bool]) -> None:
         self.setdefault(self.typeof, {}).update(automatic_proxy=value)
 
-    def update_field(self, element_or_ip_address=None, start_port=None, end_port=None, **kw):
+    def update_field(self, element_or_ip_address: Any = None, start_port: Optional[int] = None,
+                     end_port: Optional[int] = None, **kw: Any) -> bool:
         """
         Update the source NAT translation on this rule.
         You must call `save` or `update` on the rule to make this
@@ -389,11 +393,11 @@ class NATElement(NestedDict):
 
         return updated
 
-    def _translated_value(self, src_dict):
+    def _translated_value(self, src_dict: dict[str, Any]) -> dict[str, Any]:
         return {"translated_value": src_dict}
 
     @property
-    def translated_value(self):
+    def translated_value(self) -> Optional[NATValue]:
         """
         The translated value for this NAT type. If this rule
         does not have a NAT value defined, this will return
@@ -428,9 +432,10 @@ class StaticSourceNAT(NATElement):
 class StaticDestNAT(NATElement):
     typeof = "static_dst_nat"
 
-    def update_field(
-        self, element_or_ip_address=None, original_port=None, translated_port=None, **kw
-    ):
+    def update_field(  # type: ignore[override]
+        self, element_or_ip_address: Any = None, original_port: Any = None,
+        translated_port: Any = None, **kw: Any
+    ) -> bool:
         """
         Update the destination NAT translation on this rule. You must call
         `save` or `update` on the rule to make this modification. The
@@ -516,7 +521,7 @@ class StaticDestNAT(NATElement):
         return updated
 
     @property
-    def original_value(self):
+    def original_value(self) -> Optional[NATValue]:
         if self.typeof in self:
             return NATValue(self.get(self.typeof, {}).get("original_value"))
 
@@ -531,11 +536,11 @@ class DynamicSourceNAT(NATElement):
     typeof = "dynamic_src_nat"
 
     @property
-    def original_value(self):
+    def original_value(self) -> None:
         pass
 
     @property
-    def start_port(self):
+    def start_port(self) -> Optional[int]:
         """
         Start port for dynamic source NAT (PAT)
 
@@ -545,7 +550,7 @@ class DynamicSourceNAT(NATElement):
             return self.translated_value.min_port
 
     @property
-    def end_port(self):
+    def end_port(self) -> Optional[int]:
         """
         Ending port specified for outbound dynamic source NAT (PAT)
 
@@ -554,11 +559,11 @@ class DynamicSourceNAT(NATElement):
         if self.has_nat:
             return self.translated_value.max_port
 
-    def _translated_value(self, src_dict):
+    def _translated_value(self, src_dict: dict[str, Any]) -> dict[str, Any]:
         return {"translation_values": [src_dict]}
 
     @property
-    def translated_value(self):
+    def translated_value(self) -> Optional[NATValue]:
         """
         The translated value for this NAT type. If this rule
         does not have a NAT value defined, this will return
@@ -571,7 +576,7 @@ class DynamicSourceNAT(NATElement):
             return NATValue(self.get(self.typeof, {}).get("translation_values")[0])
 
 
-def _resolve_nat_element(element_or_ip_address):
+def _resolve_nat_element(element_or_ip_address: Any) -> dict[str, Any]:
     """
     NAT elements can be referenced by either IP address or as type
     Element. Resolve that to the right dict structure for the rule
@@ -587,7 +592,7 @@ def _resolve_nat_element(element_or_ip_address):
     return src
 
 
-def _extract_ports(port_string):
+def _extract_ports(port_string: Any) -> dict[str, Any]:
     """
     Return a dict for translated_value based on a string or int
     value.
@@ -669,26 +674,26 @@ class IPv4NATRule(RuleCommon, NATRule, SubElement):
 
     def create(
         self,
-        name,
-        sources=None,
-        destinations=None,
-        services=None,
-        dynamic_src_nat=None,
-        dynamic_src_nat_ports=(1024, 65535),
-        dynamic_src_nat_automatic_proxy=None,
-        static_src_nat=None,
-        static_dst_nat=None,
-        static_dst_nat_ports=None,
-        static_dst_nat_automatic_proxy=None,
-        is_disabled=False,
-        used_on="ANY",
-        add_pos=None,
-        insert_point=None,
-        after=None,
-        before=None,
-        comment=None,
-        validate=True,
-    ):
+        name: str,
+        sources: Any = None,
+        destinations: Any = None,
+        services: Any = None,
+        dynamic_src_nat: Any = None,
+        dynamic_src_nat_ports: tuple[int, int] = (1024, 65535),
+        dynamic_src_nat_automatic_proxy: Optional[bool] = None,
+        static_src_nat: Any = None,
+        static_dst_nat: Any = None,
+        static_dst_nat_ports: Any = None,
+        static_dst_nat_automatic_proxy: Optional[bool] = None,
+        is_disabled: bool = False,
+        used_on: Any = "ANY",
+        add_pos: Optional[int] = None,
+        insert_point: Optional[str] = None,
+        after: Optional[str] = None,
+        before: Optional[str] = None,
+        comment: Optional[str] = None,
+        validate: bool = True,
+    ) -> IPv4NATRule:
         """
         Create a NAT rule.
 

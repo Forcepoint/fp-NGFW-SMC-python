@@ -15,12 +15,16 @@ Middle tier helper module to wrap CRUD operations and catch exceptions
 SMCRequest is the general data structure that is sent to the send_request
 method in smc.api.web.SMCConnection to submit the data to the SMC.
 """
+from __future__ import annotations
+
+from typing import Any, Optional, Union, Iterator
+
 import smc
 from smc.api.web import send_request
 from smc.api.exceptions import SMCOperationFailure, SMCConnectionError, SessionManagerNotFound
 
 
-def _get_session(session_manager=None):
+def _get_session(session_manager: Any = None) -> Any:
     try:
         if not session_manager:
             session_manager = getattr(SMCRequest, "_session_manager")
@@ -55,15 +59,15 @@ class SMCRequest(object):
 
     def __init__(
         self,
-        href=None,
-        json=None,
-        params=None,
-        filename=None,
-        etag=None,
-        user_session=None,
-        send_none_json=False,
-        **kwargs
-    ):
+        href: Optional[str] = None,
+        json: Optional[Any] = None,
+        params: Optional[Any] = None,
+        filename: Optional[str] = None,
+        etag: Optional[str] = None,
+        user_session: Optional[Any] = None,
+        send_none_json: bool = False,
+        **kwargs: Any,
+    ) -> None:
 
         #: Filename if a file download is requested
         self.filename = filename
@@ -89,32 +93,32 @@ class SMCRequest(object):
         for k, v in kwargs.items():
             setattr(self, k, v)
 
-    def __call__(self, session):
+    def __call__(self, session: Any) -> None:
         pass
 
-    def create(self):
+    def create(self) -> Any:
         return self._make_request(method="POST")
 
-    def delete(self):
+    def delete(self) -> Any:
         return self._make_request(method="DELETE")
 
-    def update(self):
+    def update(self) -> Any:
         return self._make_request(method="PUT")
 
-    def read(self):
+    def read(self) -> Any:
         return self._make_request(method="GET")
 
-    def options(self):
+    def options(self) -> Any:
         return self._make_request(method="OPTIONS")
 
-    def patch(self, merge=False):
+    def patch(self, merge: bool = False) -> Any:
         if merge:
             self.headers['accept'] = 'application/merge-patch+json'
         else:
             self.headers['accept'] = 'application/json-patch+json'
         return self._make_request(method="PATCH")
 
-    def _make_request(self, method):
+    def _make_request(self, method: str) -> Any:
         err = None
         result = None
         try:
@@ -143,18 +147,18 @@ class SMCRequest(object):
                 raise err
             return result
 
-    def __str__(self):
+    def __str__(self) -> str:
         sb = []
         for key in self.__dict__:
             sb.append("{key}='{value}'".format(key=key, value=self.__dict__[key]))
         return "SMCRequest({})".format(",".join(sb))
 
 
-def entry_point():
+def entry_point() -> Any:
     return _get_session().entry_points
 
 
-def fetch_entry_point(name):
+def fetch_entry_point(name: str) -> Optional[str]:
     """
     Get the entry point href based on the input name. Entry points are
     cached during the connection and can be accessed through the session
@@ -169,7 +173,7 @@ def fetch_entry_point(name):
     return entry_point().get(name)  # from entry point cache
 
 
-def fetch_meta_by_name(name, filter_context=None, exact_match=True):
+def fetch_meta_by_name(name: str, filter_context: Optional[str] = None, exact_match: bool = True) -> Any:
     """
     Find the element based on name and optional filters. By default, the
     name provided uses the standard filter query. Additional filters can

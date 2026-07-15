@@ -10,6 +10,10 @@
 #  License for the specific language governing permissions and limitations
 #  under the License.
 
+from __future__ import annotations
+
+from typing import Any, Optional, Union, Iterator
+
 from smc.base.model import Element, ElementCreator, SubElement, ElementRef
 from smc.api.exceptions import (
     CreatePolicyFailed,
@@ -51,12 +55,12 @@ class PolicyVPN(Element):
     @classmethod
     def create(
         cls,
-        name,
-        nat=False,
-        mobile_vpn_topology_mode=None,
-        vpn_profile=None,
-        link_usage_profile=None,
-    ):
+        name: str,
+        nat: bool = False,
+        mobile_vpn_topology_mode: Optional[str] = None,
+        vpn_profile: Optional[Any] = None,
+        link_usage_profile: Optional[Any] = None,
+    ) -> PolicyVPN:
         """
         Create a new policy based VPN
 
@@ -86,7 +90,7 @@ class PolicyVPN(Element):
             raise CreatePolicyFailed(err)
 
     @property
-    def nat(self):
+    def nat(self) -> Optional[bool]:
         """
         Is NAT enabled on this vpn policy
 
@@ -95,7 +99,7 @@ class PolicyVPN(Element):
         """
         return self.data.get("nat")
 
-    def enable_disable_nat(self):
+    def enable_disable_nat(self) -> None:
         """
         Enable or disable NAT on this policy. If NAT is disabled, it
         will be enabled and vice versa.
@@ -108,7 +112,7 @@ class PolicyVPN(Element):
             self.data["nat"] = True
 
     @property
-    def central_gateway_node(self):
+    def central_gateway_node(self) -> Any:
         """
         Central Gateway Node acts as the hub of a hub-spoke VPN.
 
@@ -120,7 +124,7 @@ class PolicyVPN(Element):
         )
 
     @property
-    def satellite_gateway_node(self):
+    def satellite_gateway_node(self) -> Any:
         """
         Node level settings for configured satellite gateways
 
@@ -132,7 +136,7 @@ class PolicyVPN(Element):
         )
 
     @property
-    def mobile_gateway_node(self):
+    def mobile_gateway_node(self) -> Any:
         """
         Mobile Gateway's are represented by client endpoints connecting
         to the policy based VPN.
@@ -144,7 +148,7 @@ class PolicyVPN(Element):
         )
 
     @property
-    def tunnels(self):
+    def tunnels(self) -> Any:
         """
         Return all tunnels for this VPN. A tunnel is defined as two end
         points within the VPN topology. Endpoints are automatically
@@ -163,7 +167,7 @@ class PolicyVPN(Element):
         """
         return sub_collection(self.get_relation("gateway_tunnel"), GatewayTunnel)
 
-    def open(self):
+    def open(self) -> None:
         """
         Open the policy for editing. This is only a valid method for
         SMC version <= 6.1
@@ -173,7 +177,7 @@ class PolicyVPN(Element):
         """
         self.make_request(PolicyCommandFailed, method="create", resource="open")
 
-    def save(self):
+    def save(self) -> None:
         """
         Save the policy after editing. This is only a valid method for
         SMC version <= 6.1
@@ -184,7 +188,7 @@ class PolicyVPN(Element):
         self.make_request(PolicyCommandFailed, method="create", resource="save")
         self._del_cache()
 
-    def close(self):
+    def close(self) -> None:
         """
         Close the policy. This is only a valid method for
         SMC version <= 6.1
@@ -194,7 +198,7 @@ class PolicyVPN(Element):
         """
         self.make_request(PolicyCommandFailed, method="create", resource="close")
 
-    def validate(self):
+    def validate(self) -> Any:
         """
         Return a validation string from the SMC after running validate on
         this VPN policy.
@@ -205,7 +209,7 @@ class PolicyVPN(Element):
         return self.make_request(resource="validate")
 
     @property
-    def mobile_vpn_topology(self):
+    def mobile_vpn_topology(self) -> Optional[str]:
         """
         Is the policy VPN configured for mobile VPN gateways.
         Valid modes: 'Selected Gateways below', 'Only central Gateways from overall topology',
@@ -213,7 +217,7 @@ class PolicyVPN(Element):
         """
         return self.data.get("mobile_vpn_topology_mode")
 
-    def add_mobile_gateway(self, all_central_gateways=False, all_gateways=False, gateways=None):
+    def add_mobile_gateway(self, all_central_gateways: bool = False, all_gateways: bool = False, gateways: Optional[Any] = None) -> None:
         """
         Add a mobile VPN gateway to this policy VPN. You can select all central
         gateways, all gateways in overall topology or specify a list of gateways
@@ -261,7 +265,7 @@ class PolicyVPN(Element):
                 json={"gateway": gateway, "node_usage": "mobile"},
             )
 
-    def add_central_gateway(self, gateway):
+    def add_central_gateway(self, gateway: Any) -> None:
         """
         Add SMC managed internal gateway to the Central Gateways of this VPN
 
@@ -281,7 +285,7 @@ class PolicyVPN(Element):
             json={"gateway": gateway, "node_usage": "central"},
         )
 
-    def add_satellite_gateway(self, gateway):
+    def add_satellite_gateway(self, gateway: Any) -> None:
         """
         Add gateway node as a satellite gateway for this VPN. You must first
         have the gateway object created. This is typically used when you either
@@ -305,7 +309,7 @@ class PolicyVPN(Element):
         )
 
     @staticmethod
-    def add_internal_gateway_to_vpn(internal_gateway_href, vpn_policy, vpn_role="central"):
+    def add_internal_gateway_to_vpn(internal_gateway_href: str, vpn_policy: str, vpn_role: str = "central") -> bool:
         """
         Add an internal gateway (managed engine node) to a VPN policy
         based on the internal gateway href.
@@ -347,7 +351,7 @@ class GatewayNode(SubElement):
     """
 
     @cached_property
-    def gateway(self):
+    def gateway(self) -> Any:
         """
         The VPN gateway for this node. This is either an internal gateway
         or an external gateway
@@ -358,14 +362,14 @@ class GatewayNode(SubElement):
         return Element.from_href(self.data["gateway"])
 
     @property
-    def name(self):
+    def name(self) -> str:
         """
         Get the name from the gateway_profile reference
         """
         return self.gateway.name
 
     @property
-    def enabled_sites(self):
+    def enabled_sites(self) -> Any:
         """
         Return a collection of VPN Site elements that are enabled
         for this VPN gateway.
@@ -375,7 +379,7 @@ class GatewayNode(SubElement):
         return sub_collection(self.get_relation("enabled_vpn_site"), GatewayTreeNode)
 
     @property
-    def disabled_sites(self):
+    def disabled_sites(self) -> Any:
         """
         Return a collection of VPN Site elements that are disabled
         for this VPN gateway.
@@ -398,7 +402,7 @@ class GatewayTreeNode(SubElement):
     """
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self.vpn_site.name
 
     """
@@ -406,7 +410,7 @@ class GatewayTreeNode(SubElement):
     satellite gateway configuration within a VPN.
     """
 
-    def enable_disable(self):
+    def enable_disable(self) -> None:
         """
         Enable or disable this VPN Site from within the VPN policy context.
 
@@ -416,7 +420,7 @@ class GatewayTreeNode(SubElement):
         self.make_request(PolicyCommandFailed, method="delete", resource="self")
 
     @property
-    def vpn_site(self):
+    def vpn_site(self) -> Any:
         """
         The VPN Site element associated with this gateway
 
@@ -425,10 +429,10 @@ class GatewayTreeNode(SubElement):
         """
         return VPNSite(href=self.data.get("vpn_site"))
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "{0}(name={1})".format(self.__class__.__name__, self.name)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)
 
 
@@ -450,7 +454,7 @@ class GatewayTunnel(SubElement):
         the remote gateway.
     """
 
-    def enable_disable(self):
+    def enable_disable(self) -> None:
         """
         Enable or disable the tunnel link between endpoints.
 
@@ -463,7 +467,7 @@ class GatewayTunnel(SubElement):
             self.update(enabled=True)
 
     @property
-    def enabled(self):
+    def enabled(self) -> Optional[bool]:
         """
         Whether the VPN link between endpoints is enabled
 
@@ -471,7 +475,7 @@ class GatewayTunnel(SubElement):
         """
         return self.data.get("enabled", False)
 
-    def preshared_key(self, key):
+    def preshared_key(self, key: str) -> None:
         """
         Set a new preshared key for the IPSEC endpoints.
 
@@ -481,7 +485,7 @@ class GatewayTunnel(SubElement):
         """
         self.update(preshared_key=key)
 
-    def set_ppk(self, ppk):
+    def set_ppk(self, ppk: Any) -> None:
         """
         Set a new Post Quantum pre-shared key for the Tunnels.
         :param object ppk: Post Quantum pre-shared key to use
@@ -492,7 +496,7 @@ class GatewayTunnel(SubElement):
                                          " only supported in SMC/engine version >= 7.3.0")
         self.update(ppk_ref=element_resolver(ppk))
 
-    def remove_ppk(self):
+    def remove_ppk(self) -> None:
         """
         Remove Post Quantum pre-shared key for the Tunnels.
         :raises UpdateElementFailed: failed with reason
@@ -501,7 +505,7 @@ class GatewayTunnel(SubElement):
         self.update(ppk_ref=None)
 
     @property
-    def tunnel_side_a(self):
+    def tunnel_side_a(self) -> Any:
         """
         Return the gateway node for tunnel side A. This will
         be an instance of GatewayNode.
@@ -511,7 +515,7 @@ class GatewayTunnel(SubElement):
         return type("TunnelSideA", (GatewayNode,), {"href": self.data.get("gateway_node_1")})()
 
     @property
-    def tunnel_side_b(self):
+    def tunnel_side_b(self) -> Any:
         """
         Return the gateway node for tunnel side B. This will
         be an instance of GatewayNode.
@@ -521,7 +525,7 @@ class GatewayTunnel(SubElement):
         return type("TunnelSideB", (GatewayNode,), {"href": self.data.get("gateway_node_2")})()
 
     @property
-    def endpoint_tunnels(self):
+    def endpoint_tunnels(self) -> Any:
         """
         Return all Endpoint tunnels for this gateway tunnel. A tunnel
         is defined as two end points within the VPN topology.
@@ -543,12 +547,12 @@ class GatewayTunnel(SubElement):
         """
         return sub_collection(self.get_relation("gateway_endpoint_tunnel"), EndpointTunnel)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "{0}(tunnel_side_a={1},tunnel_side_b={2})".format(
             self.__class__.__name__, self.tunnel_side_a.name, self.tunnel_side_b.name
         )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)
 
 
@@ -556,7 +560,7 @@ class ClientGateway(Element):
     typeof = "client_gateway"
 
     @property
-    def internal_endpoint(self):
+    def internal_endpoint(self) -> Any:
         """
         Internal endpoints to enable VPN for the engine.
 
@@ -565,7 +569,7 @@ class ClientGateway(Element):
         return sub_collection(self.get_relation("internal_endpoint"), InternalEndpoint)
 
     @property
-    def vpn_site(self):
+    def vpn_site(self) -> Any:
         """
         A VPN site defines a collection of IP's or networks that
         identify address space that is defined on the other end of
@@ -586,7 +590,7 @@ class EndpointTunnel(SubElement):
     and setting the presharred key.
     """
 
-    def enable_disable(self):
+    def enable_disable(self) -> None:
         """
         Enable or disable the tunnel link between endpoints.
 
@@ -599,7 +603,7 @@ class EndpointTunnel(SubElement):
             self.update(enabled=True)
 
     @property
-    def enabled(self):
+    def enabled(self) -> Optional[bool]:
         """
         Whether the VPN link between endpoints is enabled
 
@@ -608,7 +612,7 @@ class EndpointTunnel(SubElement):
         return self.data.get("enabled", False)
 
     @property
-    def internal_endpoint_side_a(self):
+    def internal_endpoint_side_a(self) -> Any:
         """
         Return the Internal Endpoint for tunnel side A. This will
         be an instance of InternalEndpoint.
@@ -620,7 +624,7 @@ class EndpointTunnel(SubElement):
         )()
 
     @property
-    def internal_endpoint_side_b(self):
+    def internal_endpoint_side_b(self) -> Any:
         """
         Return the Internal Endpoint for tunnel side B. This will
         be an instance of InternalEndpoint.
@@ -631,8 +635,8 @@ class EndpointTunnel(SubElement):
             "EndpointTunnelSideB", (InternalEndpoint,), {"href": self.data.get("endpoint_2")}
         )()
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "{0}(name={1})".format(self.__class__.__name__, self.name)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)

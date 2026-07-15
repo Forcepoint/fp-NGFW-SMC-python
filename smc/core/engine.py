@@ -10,8 +10,10 @@
 #  License for the specific language governing permissions and limitations
 #  under the License.
 
+from __future__ import annotations
+
 from collections import namedtuple
-from typing import List
+from typing import Any, Iterator, List, Optional, Union
 import pytz
 
 from smc.base.util import save_to_file
@@ -43,10 +45,10 @@ from smc.core.collection import (
     VirtualPhysicalInterfaceCollection,
     SwitchInterfaceCollection,
 )
-from smc.administration.tasks import Task
+from smc.administration.tasks import Task, TaskOperationPoller
 from smc.administration.certificates.tls_common import certificate_content
 from smc.elements.group import ConnectionSynchronizationGroup
-from smc.elements.other import prepare_block_list, prepare_blacklist
+from smc.elements.other import prepare_block_list, prepare_blacklist, Location, Geolocation
 from smc.elements.network import Alias
 from smc.vpn.elements import VPNSite, LinkUsageProfile
 from smc.routing.bgp import DynamicRouting
@@ -87,7 +89,7 @@ class TestEntry(NestedDict):
     """
     Represents the parent TestEntry element.
     """
-    def __init__(self, data):
+    def __init__(self, data: Any) -> None:
         super(TestEntry, self).__init__(data=data)
 
     @property
@@ -176,12 +178,12 @@ class FileSystemTest(TestEntry):
     """
     typeof = "filesystemspace_test"
 
-    def __init__(self, data):
+    def __init__(self, data: Any) -> None:
         super(FileSystemTest, self).__init__(data=data)
 
     @classmethod
     def create(cls, test_active: bool, test_interval: int, online_state: bool, test_action: str,
-               on_partition: str, free_space: int, **kw):
+               on_partition: str, free_space: int, **kw) -> FileSystemTest:
         """
         :param bool test_active: Flag to know if the test is active?
         :param int test_interval: Represents the time in seconds to specify how often the test is run.
@@ -231,12 +233,12 @@ class ExternalTest(TestEntry):
     """
     typeof = "external_test"
 
-    def __init__(self, data):
+    def __init__(self, data: Any) -> None:
         super(ExternalTest, self).__init__(data=data)
 
     @classmethod
     def create(cls, test_active: bool, test_interval: int, online_state: bool, test_action: str,
-               retry_count: int, test_timeout: int, command_line: str, **kw):
+               retry_count: int, test_timeout: int, command_line: str, **kw) -> ExternalTest:
         """
         :param bool test_active: Flag to know if the test is active?
         :param int test_interval: Represents the time in seconds to specify how often the test is run.
@@ -308,12 +310,12 @@ class InlinePairlinkSpeedTest(TestEntry):
     """
     typeof = "inline_test"
 
-    def __init__(self, data):
+    def __init__(self, data: Any) -> None:
         super(InlinePairlinkSpeedTest, self).__init__(data=data)
 
     @classmethod
     def create(cls, test_active: bool, test_interval: int, online_state: bool, test_action: str,
-               test_timeout: int, **kw):
+               test_timeout: int, **kw) -> InlinePairlinkSpeedTest:
         """
         :param bool test_active: Flag to know if the test is active?
         :param int test_interval: Represents the time in seconds to specify how often the test is run.
@@ -349,12 +351,12 @@ class SwapFreeTest(TestEntry):
     """
     typeof = "freeswapspace_test"
 
-    def __init__(self, data):
+    def __init__(self, data: Any) -> None:
         super(SwapFreeTest, self).__init__(data=data)
 
     @classmethod
     def create(cls, test_active: bool, test_interval: int, online_state: bool, test_action: str,
-               free_space: int, **kw):
+               free_space: int, **kw) -> SwapFreeTest:
         """
         :param bool test_active: Flag to know if the test is active?
         :param int test_interval: Represents the time in seconds to specify how often the test is run.
@@ -395,7 +397,7 @@ class InterfaceTest(TestEntry):
     :param int nicid: Represents the Interface ID on which the test is run representing.
     """
 
-    def __init__(self, data):
+    def __init__(self, data: Any) -> None:
         super(InterfaceTest, self).__init__(data=data)
 
     @property
@@ -420,11 +422,11 @@ class EnabledInterfaceEntry(NestedDict):
     Represents the enabled interface.
     """
 
-    def __init__(self, data):
+    def __init__(self, data: Any) -> None:
         super(EnabledInterfaceEntry, self).__init__(data=data)
 
     @classmethod
-    def create(cls, address: str, nicid: str):
+    def create(cls, address: str, nicid: str) -> EnabledInterfaceEntry:
         """
         :param str address: the IPv4 address.
         :param str nicid: the interface nic id in string format.
@@ -453,12 +455,12 @@ class LinkStatusTest(InterfaceTest):
     """
     typeof = "linkstatus_test"
 
-    def __init__(self, data):
+    def __init__(self, data: Any) -> None:
         super(LinkStatusTest, self).__init__(data=data)
 
     @classmethod
     def create(cls, test_active: bool, test_interval: int, online_state: bool, test_action: str,
-               nicid: str, down_ratio: int, **kw):
+               nicid: str, down_ratio: int, **kw) -> LinkStatusTest:
         """
         :param bool test_active: Flag to know if the test is active?
         :param int test_interval: Represents the time in seconds to specify how often the test is run.
@@ -501,13 +503,13 @@ class MultipingTest(InterfaceTest):
     """
     typeof = "multiping_test"
 
-    def __init__(self, data):
+    def __init__(self, data: Any) -> None:
         super(MultipingTest, self).__init__(data=data)
 
     @classmethod
     def create(cls, test_active: bool, test_interval: int, online_state: bool, test_action: str,
                nicid: str, retry_count: int, test_timeout: int, target_addresses: list[str],
-               enabled_interfaces: list[EnabledInterfaceEntry], **kw):
+               enabled_interfaces: list[EnabledInterfaceEntry], **kw) -> MultipingTest:
         """
         :param bool test_active: Flag to know if the test is active?
         :param int test_interval: Represents the time in seconds to specify how often the test is run.
@@ -565,7 +567,7 @@ class MultipingTest(InterfaceTest):
         return self.data.get("value")
 
     @target_addresses.setter
-    def target_addresses(self, value: list[str]):
+    def target_addresses(self, value: list[str]) -> None:
         self.data.set("value", value)
 
     @property
@@ -587,7 +589,7 @@ class MultipingTest(InterfaceTest):
         return [EnabledInterfaceEntry(entry) for entry in self.data.get("enabled_interface", [])]
 
     @enabled_interfaces.setter
-    def enabled_interfaces(self, value: list[EnabledInterfaceEntry]):
+    def enabled_interfaces(self, value: list[EnabledInterfaceEntry]) -> None:
         self.data.set("enabled_interface", None)
         if value:
             enabled_interfaces = []
@@ -597,8 +599,8 @@ class MultipingTest(InterfaceTest):
 
 
 class LinkUsageExceptionRules(NestedDict):
-    def __init__(self, destinations=None, services=None, sources=None, isp_link_ref=None,
-                 comment=None):
+    def __init__(self, destinations: Any = None, services: Any = None, sources: Any = None,
+                 isp_link_ref: Any = None, comment: Optional[str] = None) -> None:
         """
         LinkUsageExceptionRules
         Set to engine if Link usage profile is set to engine in routing
@@ -654,7 +656,7 @@ class LinkUsageExceptionRules(NestedDict):
         super(LinkUsageExceptionRules, self).__init__(data=dc)
 
     @property
-    def isp_link_ref(self):
+    def isp_link_ref(self) -> Any:
         """
         isp_link
         :rtype: isp_link
@@ -664,11 +666,11 @@ class LinkUsageExceptionRules(NestedDict):
          )
 
     @isp_link_ref.setter
-    def isp_link_ref(self, value):
+    def isp_link_ref(self, value: Any) -> None:
         self.update(isp_link_ref=value)
 
     @property
-    def comment(self):
+    def comment(self) -> Optional[str]:
         """
         comment.
         :rtype: str
@@ -676,15 +678,15 @@ class LinkUsageExceptionRules(NestedDict):
         return self.get("comment")
 
     @comment.setter
-    def comment(self, value):
+    def comment(self, value: Optional[str]) -> None:
         self.update(comment=value)
 
     @property
-    def destinations(self):
+    def destinations(self) -> Any:
         return self.get("destinations")
 
     @destinations.setter
-    def destinations(self, value):
+    def destinations(self, value: Any) -> None:
         if value == "any":
             value = {"any": "true"}
             self.update(destinations=value)
@@ -698,21 +700,21 @@ class LinkUsageExceptionRules(NestedDict):
             self.update(destinations=destinations_json)
 
     @property
-    def sources(self):
+    def sources(self) -> Any:
         return self.get("sources")
 
     @sources.setter
-    def sources(self, value):
+    def sources(self, value: Any) -> None:
         if value == "any":
             value = {"any": "true"}
         self.update(sources=value)
 
     @property
-    def services(self):
+    def services(self) -> Any:
         return self.get("services")
 
     @services.setter
-    def services(self, value):
+    def services(self, value: Any) -> None:
         if value == "any":
             value = {"any": "true"}
         self.update(services=value)
@@ -728,11 +730,11 @@ class CloudGroup(Element):
     @classmethod
     def create(
         cls,
-        name,
-        elements=[],
-        is_monitored=False,
-        comment=None
-    ):
+        name: str,
+        elements: list[Any] = [],
+        is_monitored: bool = False,
+        comment: Optional[str] = None,
+    ) -> CloudGroup:
         """
         Create will return the Cloud Auto-Scaled Group configuration as a dict that is a
         representation of the Cloud Auto-Scaled Group.
@@ -757,14 +759,14 @@ class CloudGroup(Element):
         return ElementCreator(cls, json)
 
     @property
-    def is_monitored(self):
+    def is_monitored(self) -> bool:
         return getattr(self, "is_monitored", False)
 
     @property
-    def elements(self):
+    def elements(self) -> list[Any]:
         return [Element.from_href(element) for element in getattr(self, "element", [])]
 
-    def clean(self):
+    def clean(self) -> None:
         """
         Removes all inactive Cloud FW from scale set.
         If no active Cloud Firewalls are there, the Cloud Auto-Scaled Group is removed.
@@ -778,12 +780,12 @@ class CloudGroup(Element):
 
     def refresh(
             self,
-            timeout=3,
-            wait_for_finish=False,
-            preserve_connections=True,
-            generate_snapshot=True,
-            **kw
-    ):
+            timeout: int = 3,
+            wait_for_finish: bool = False,
+            preserve_connections: bool = True,
+            generate_snapshot: bool = True,
+            **kw: Any,
+    ) -> TaskOperationPoller:
         """
         Refresh existing policy on specified Cloud Auto-Scaled Group. This is an asynchronous
         call that will return a 'follower' link that can be queried to
@@ -808,13 +810,13 @@ class CloudGroup(Element):
 
     def upload(
             self,
-            policy=None,
-            timeout=5,
-            wait_for_finish=False,
-            preserve_connections=True,
-            generate_snapshot=True,
-            **kw
-    ):
+            policy: Optional[str] = None,
+            timeout: int = 5,
+            wait_for_finish: bool = False,
+            preserve_connections: bool = True,
+            generate_snapshot: bool = True,
+            **kw: Any,
+    ) -> TaskOperationPoller:
         """
         Upload policy to Cloud Auto-Scaled Group. This is used when a new policy is required
         for a Cloud Auto-Scaled Group, or this is the first time a policy is pushed to a
@@ -852,7 +854,7 @@ class CloudGroup(Element):
         )
 
     @property
-    def pending_changes(self):
+    def pending_changes(self) -> PendingChanges:
         """
         Pending changes provides insight into changes on an engine that are
         pending approval or disapproval. Feature requires SMC >= v6.2.
@@ -901,38 +903,38 @@ class Engine(Element):
     @classmethod
     def _create(
         cls,
-        name,
-        node_type,
-        physical_interfaces,
-        nodes=1,
-        nodes_definition=[],
-        loopback_ndi=None,
-        log_server_ref=None,
-        domain_server_address=None,
-        enable_antivirus=False,
-        enable_gti=False,
-        sidewinder_proxy_enabled=False,
-        known_host_lists=[],
-        default_nat=None,
-        location_ref=None,
-        enable_ospf=None,
-        ospf_profile=None,
-        snmp_agent=None,
-        comment=None,
-        ntp_settings=None,
-        timezone=None,
-        lldp_profile=None,
-        link_usage_profile=None,
-        discard_quic_if_cant_inspect=True,
-        ssm_advanced_setting=None,
-        scan_detection=None,
-        static_multicast_route=None,
-        pim_settings=None,
-        web_authentication=None,
-        nat64_settings=None,
-        saml_settings=None,
-        **kw
-    ):
+        name: str,
+        node_type: str,
+        physical_interfaces: list[Any],
+        nodes: int = 1,
+        nodes_definition: list = [],
+        loopback_ndi: Optional[Any] = None,
+        log_server_ref: Optional[str] = None,
+        domain_server_address: Optional[list] = None,
+        enable_antivirus: bool = False,
+        enable_gti: bool = False,
+        sidewinder_proxy_enabled: bool = False,
+        known_host_lists: list = [],
+        default_nat: Optional[Any] = None,
+        location_ref: Optional[str] = None,
+        enable_ospf: Optional[bool] = None,
+        ospf_profile: Optional[Any] = None,
+        snmp_agent: Optional[Any] = None,
+        comment: Optional[str] = None,
+        ntp_settings: Optional[Any] = None,
+        timezone: Optional[str] = None,
+        lldp_profile: Optional[Any] = None,
+        link_usage_profile: Optional[Any] = None,
+        discard_quic_if_cant_inspect: bool = True,
+        ssm_advanced_setting: Optional[Any] = None,
+        scan_detection: Optional[Any] = None,
+        static_multicast_route: Optional[Any] = None,
+        pim_settings: Optional[Any] = None,
+        web_authentication: Optional[Any] = None,
+        nat64_settings: Optional[Any] = None,
+        saml_settings: Optional[Any] = None,
+        **kw: Any,
+    ) -> dict[str, Any]:
         """
         Create will return the engine configuration as a dict that is a
         representation of the engine. The creating class will also add
@@ -1131,13 +1133,13 @@ class Engine(Element):
         return base_cfg
 
     @property
-    def type(self):
+    def type(self) -> str:
         if not self._meta:
             self.href
         return self._meta.type
 
     @property
-    def version(self):
+    def version(self) -> Optional[str]:
         """
         Version of this engine. Can be none if the engine has not been
         initialized yet.
@@ -1147,7 +1149,7 @@ class Engine(Element):
         return getattr(self, "engine_version", None)
 
     @property
-    def installed_policy(self):
+    def installed_policy(self) -> Optional[str]:
         """
         Return the name of the policy installed on this engine. If
         no policy, None will be returned.
@@ -1157,7 +1159,7 @@ class Engine(Element):
         for node in self.nodes:
             return node.health.installed_policy
 
-    def rename(self, name):
+    def rename(self, name: str) -> None:
         """
         Rename the firewall engine, nodes, and internal gateway (VPN gw)
 
@@ -1169,21 +1171,21 @@ class Engine(Element):
         self.vpn.rename(name)
 
     @property
-    def log_server(self):
+    def log_server(self) -> Optional[LogServer]:
         """
         Log server for this engine.
 
         :return: The specified log server
         :rtype: LogServer
         """
-        return Element.from_href(self.log_server_ref)
+        return Element.from_href(self.log_server_ref)  # type: ignore[return-value]
 
     @log_server.setter
-    def log_server(self, value):
+    def log_server(self, value: Any) -> None:
         self.data.update(log_server_ref=location_helper(value))
 
     @property
-    def location(self):
+    def location(self) -> Optional[Location]:
         """
         The location for this engine. May be None if no specific
         location has been assigned.
@@ -1197,14 +1199,14 @@ class Engine(Element):
         location = Element.from_href(self.location_ref)
         if location and location.name == "Default":
             return None
-        return location
+        return location  # type: ignore[return-value]
 
     @location.setter
-    def location(self, value):
+    def location(self, value: Any) -> None:
         self.data.update(location_ref=location_helper(value))
 
     @property
-    def geolocation(self):
+    def geolocation(self) -> Optional[Geolocation]:
         """
         Return the geolocation for the given engine. This attribute requires
         at least SMC version >= 6.5.x. If no geolocation is assigned or the
@@ -1228,14 +1230,14 @@ class Engine(Element):
             href or type Geolocation element.
         :rtype: Geolocation or None
         """
-        return self.from_href(getattr(self, "geolocation_ref", None))
+        return self.from_href(getattr(self, "geolocation_ref", None))  # type: ignore[return-value]
 
     @geolocation.setter
-    def geolocation(self, value):
+    def geolocation(self, value: Any) -> None:
         self.data.update(geolocation_ref=element_resolver(value))
 
     @property
-    def default_nat(self):
+    def default_nat(self) -> DefaultNAT:
         """
         Configure default nat on the engine. Default NAT provides automatic
         NAT without the requirement to add specific NAT rules. This is a
@@ -1249,7 +1251,7 @@ class Engine(Element):
         raise UnsupportedEngineFeature("This engine type does not support default NAT.")
 
     @property
-    def dns(self):
+    def dns(self) -> RankedDNSAddress:
         """
         Current DNS entries for the engine. Add and remove DNS entries.
         This resource is iterable and yields instances of
@@ -1270,7 +1272,7 @@ class Engine(Element):
         return RankedDNSAddress(self.data.get("domain_server_address", []))
 
     @property
-    def snmp(self):
+    def snmp(self) -> SNMP:
         """
         SNMP engine settings. SNMP is supported on all engine types,
         however can be enabled only on NDI interfaces (interfaces that
@@ -1286,7 +1288,7 @@ class Engine(Element):
         )
 
     @property
-    def ntp_settings(self):
+    def ntp_settings(self) -> NTPSettings:
         """
         NTP settings definition for the engine
         :rtype: NTPSettings
@@ -1294,7 +1296,7 @@ class Engine(Element):
         return NTPSettings(self)
 
     @property
-    def automatic_rules_settings(self):
+    def automatic_rules_settings(self) -> AutomaticRulesSettings:
         """
         Represents the container for all automatic rules settings for a cluster.
         Example of using automatic rules settings:
@@ -1311,7 +1313,7 @@ class Engine(Element):
         return AutomaticRulesSettings(self)
 
     @property
-    def connection_timeout(self):
+    def connection_timeout(self) -> IdleTimeout:
         """
         This is definition of timeout by protocol or by TCP connection state. You can define general
         timeouts for removing idle connections from the state table, including non-TCP
@@ -1339,7 +1341,7 @@ class Engine(Element):
         return IdleTimeout(self)
 
     @property
-    def local_log_storage(self):
+    def local_log_storage(self) -> LocalLogStorageSettings:
         """
         Local Log Storage Settings for not virtual engines.
         Example of using local log storage settings:
@@ -1363,7 +1365,7 @@ class Engine(Element):
         return LocalLogStorageSettings(self)
 
     @property
-    def log_moderation(self):
+    def log_moderation(self) -> LogModeration:
         """
         This is the definition of Log Compression for the engine or for an interface. You can also
         configure Log Compression to save resources on the engine. By default, each generated
@@ -1392,7 +1394,7 @@ class Engine(Element):
         return LogModeration(self)
 
     @property
-    def antivirus(self):
+    def antivirus(self) -> AntiVirus:
         """
         AntiVirus engine settings. Note that for virtual engines
         the AV settings are configured on the Master Engine.
@@ -1411,7 +1413,7 @@ class Engine(Element):
         )
 
     @property
-    def file_reputation(self):
+    def file_reputation(self) -> FileReputation:
         """
         File reputation status on engine. Note that for virtual engines
         the AV settings are configured on the Master Engine.
@@ -1429,7 +1431,7 @@ class Engine(Element):
         )
 
     @property
-    def sidewinder_proxy(self):
+    def sidewinder_proxy(self) -> SidewinderProxy:
         """
         Configure Sidewinder Proxy settings on this engine. Sidewinder
         proxy is supported on layer 3 engines and require SMC and engine
@@ -1448,7 +1450,7 @@ class Engine(Element):
         )
 
     @property
-    def known_host_lists(self):
+    def known_host_lists(self) -> SSHKnownHostsLists:
         """
         Configure SSH known host lists on the engine. Can only be set
         if Sidewinder Proxy is enabled.
@@ -1463,7 +1465,7 @@ class Engine(Element):
         )
 
     @property
-    def url_filtering(self):
+    def url_filtering(self) -> UrlFiltering:
         """
         Configure URL Filtering settings on the engine.
         Get current status::
@@ -1481,7 +1483,7 @@ class Engine(Element):
         )
 
     @property
-    def ztna_connector(self):
+    def ztna_connector(self) -> ZTNAConnector:
         if not min_smc_version("7.0"):
             raise UnsupportedEngineFeature("Need at least 7.0 version of the SMC")
 
@@ -1496,7 +1498,7 @@ class Engine(Element):
         return ZTNAConnector(self)
 
     @property
-    def sandbox(self):
+    def sandbox(self) -> Sandbox:
         """
         Configure sandbox settings on the engine.
         Get current status::
@@ -1514,7 +1516,7 @@ class Engine(Element):
         )
 
     @property
-    def endpoint_integration(self):
+    def endpoint_integration(self) -> EndpointIntegration:
         """
         Endpoint Integration status on engine. Note that for master engines
         the endpoint integrations settings are configured on Virtual Engines.
@@ -1553,13 +1555,13 @@ class Engine(Element):
                 result.append(LinkStatusTest(test["linkstatus_test"]))
         return result
 
-    def add_test_entry(self, test_entry: TestEntry):
+    def add_test_entry(self, test_entry: TestEntry) -> None:
         """
         Adds a new test entry.
         """
         self.data.get("tests", []).append({test_entry.typeof: test_entry.data})
 
-    def set_test_entries(self, test_entries: list[TestEntry]):
+    def set_test_entries(self, test_entries: list[TestEntry]) -> None:
         """
         Sets test entries
         """
@@ -1571,7 +1573,7 @@ class Engine(Element):
             self.data.data["tests"] = new_tests
 
     @property
-    def dns_relay(self):
+    def dns_relay(self) -> DNSRelay:
         """
         Enable, disable or get status for the DNS Relay Service
         on this engine. You must still separately configure the
@@ -1587,7 +1589,7 @@ class Engine(Element):
         raise UnsupportedEngineFeature("DNS Relay requires a layer 3 engine and version >= v6.2.")
 
     @property
-    def tls_inspection(self):
+    def tls_inspection(self) -> TLSInspection:
         """
         TLS Inspection settings manage certificates assigned to the
         engine for TLS server decryption (inbound) and TLS client
@@ -1606,7 +1608,7 @@ class Engine(Element):
         return TLSInspection(self)
 
     @property
-    def client_inspection(self):
+    def client_inspection(self) -> ClientInspection:
         """
         Client TLS Inspection settings manage certificates assigned to the
         engine for TLS client decryption (outbound). In order to enable either, you must
@@ -1623,15 +1625,15 @@ class Engine(Element):
         return ClientInspection(self)
 
     @property
-    def ospf(self):
+    def ospf(self) -> Any:
         return self.dynamic_routing.ospf
 
     @property
-    def bgp(self):
+    def bgp(self) -> Any:
         return self.dynamic_routing.bgp
 
     @property
-    def dynamic_routing(self):
+    def dynamic_routing(self) -> DynamicRouting:
         """
         Dynamic Routing entry point. Access BGP, OSPF configurations
 
@@ -1643,7 +1645,7 @@ class Engine(Element):
         raise UnsupportedEngineFeature("Dynamic routing is only supported on layer 3 engine types")
 
     @property
-    def pim_settings(self):
+    def pim_settings(self) -> Optional[PIMSettings]:
         """
         PIM Multicast Routing entry point.
 
@@ -1655,7 +1657,7 @@ class Engine(Element):
             return None
 
     @pim_settings.setter
-    def pim_settings(self, value):
+    def pim_settings(self, value: Any) -> None:
         mode = None if value is None else "pim_ipv4"
         if isinstance(value, PIMSettings):
             self.data.update(multicast_routing_mode=mode,
@@ -1665,7 +1667,7 @@ class Engine(Element):
                              pim_settings=value)
 
     @property
-    def l2fw_settings(self):
+    def l2fw_settings(self) -> Layer2Settings:
         """
         Layer 2 Firewall Settings make it possible for a layer 3 firewall
         to run specified interfaces in layer 2 mode. This requires that
@@ -1683,7 +1685,7 @@ class Engine(Element):
         )
 
     @property
-    def nodes(self):
+    def nodes(self) -> Any:
         """
         Return a list of child nodes of this engine. This can be
         used to iterate to obtain access to node level operations
@@ -1703,7 +1705,7 @@ class Engine(Element):
         return resource
 
     @property
-    def granted_permissions(self):
+    def granted_permissions(self) -> Iterator[Optional[AccessControlList]]:
         """
         Retrieve the access control list permissions for this engine instance.
         ::
@@ -1722,15 +1724,16 @@ class Engine(Element):
         """
         acl_list = list(AccessControlList.objects.all())
 
-        def acl_map(elem_href):
+        def acl_map(elem_href: str) -> Optional[Any]:
             for elem in acl_list:
                 if elem.href == elem_href:
                     return elem
+            return None
         for acl in self.permissions.granted_access_control_list:
             yield (acl_map(acl))
 
     @property
-    def permissions(self):
+    def permissions(self) -> GrantedElementPermissions:
         """
         Retrieve the permissions for this engine instance.
         :rtype: GrantedElementPermissions
@@ -1743,7 +1746,7 @@ class Engine(Element):
         return GrantedElementPermissions(data)
 
     @permissions.setter
-    def permissions(self, permissions):
+    def permissions(self, permissions: Any) -> None:
         """
         Update the permissions for this engine instance.
         Example to update permission:
@@ -1784,7 +1787,7 @@ class Engine(Element):
                           json=permissions.data, etag=etag)
 
     @property
-    def pending_changes(self):
+    def pending_changes(self) -> PendingChanges:
         """
         Pending changes provides insight into changes on an engine that are
         pending approval or disapproval. Feature requires SMC >= v6.2.
@@ -1800,7 +1803,7 @@ class Engine(Element):
         )
 
     @property
-    def lbfilters(self):
+    def lbfilters(self) -> list[LBFilter]:
         """
         Load balancing filter list
         :raises UnsupportedEngineFeature: Invalid engine type
@@ -1813,7 +1816,7 @@ class Engine(Element):
         )
 
     @lbfilters.setter
-    def lbfilters(self, lbfilter):
+    def lbfilters(self, lbfilter: Any) -> None:
         """
         Update the lbfilter list for this engine instance.
         Load balancing filter list
@@ -1830,7 +1833,7 @@ class Engine(Element):
             )
 
     @property
-    def lbfilter_useports(self):
+    def lbfilter_useports(self) -> bool:
         """
         Load Balancing Filter use ports
         :raises UnsupportedEngineFeature: Invalid engine type
@@ -1843,7 +1846,7 @@ class Engine(Element):
         )
 
     @lbfilter_useports.setter
-    def lbfilter_useports(self, lbfilter_useports):
+    def lbfilter_useports(self, lbfilter_useports: Any) -> None:
         """
         Update the lbfilter_useports value for this engine instance.
         :param bool useports: the use ports value
@@ -1855,7 +1858,7 @@ class Engine(Element):
                 "Available only for cluster engine"
             )
 
-    def alias_resolving(self):
+    def alias_resolving(self) -> Iterator[Alias]:
         """
         Alias definitions with resolved values as defined on this engine.
         Aliases can be used in rules to simplify multiple object creation
@@ -1876,7 +1879,7 @@ class Engine(Element):
         for alias in self.make_request(resource="alias_resolving"):
             yield Alias._from_engine(alias, alias_list)
 
-    def blacklist(self, src, dst, duration=3600, **kw):
+    def blacklist(self, src: str, dst: str, duration: int = 3600, **kw: Any) -> None:
         """
         Add blacklist entry to engine node by name. For blacklist to work,
         you must also create a rule with action "Apply Blacklist".
@@ -1907,7 +1910,7 @@ class Engine(Element):
             json=json_bl_entry,
         )
 
-    def block_list(self, src, dst, duration=3600, **kw):
+    def block_list(self, src: str, dst: str, duration: int = 3600, **kw: Any) -> None:
         """
         Add block_list entry to engine node by name. For block_list to work,
         you must also create a rule with action "Apply Blocklist".
@@ -1931,7 +1934,7 @@ class Engine(Element):
             json=json_bl_entry,
         )
 
-    def block_list_bulk(self, block_list):
+    def block_list_bulk(self, block_list: Any) -> None:
         """
         Add block_list entries to the engine node in bulk. For block_list to work,
         you must also create a rule with action "Apply Blocklist".
@@ -1946,7 +1949,7 @@ class Engine(Element):
             EngineCommandFailed, method="create", resource="block_list", json=block_list.entries
         )
 
-    def blacklist_bulk(self, block_list):
+    def blacklist_bulk(self, block_list: Any) -> None:
         """
         Add block list entries to the engine node in bulk. For block list to work,
         you must also create a rule with action "Apply Block List".
@@ -1968,7 +1971,7 @@ class Engine(Element):
                           resource=resource,
                           json=block_list.entries)
 
-    def block_list_flush(self):
+    def block_list_flush(self) -> None:
         """
         Flush entire block list for engine
 
@@ -1978,7 +1981,7 @@ class Engine(Element):
         """
         self.make_request(EngineCommandFailed, method="delete", resource="flush_block_list")
 
-    def blacklist_flush(self):
+    def blacklist_flush(self) -> None:
         """
         Flush entire blacklist for engine
 
@@ -1992,7 +1995,7 @@ class Engine(Element):
         else:
             self.make_request(EngineCommandFailed, method="delete", resource="flush_block_list")
 
-    def block_list_show(self, **kw):
+    def block_list_show(self, **kw: Any) -> Iterator[Any]:
         """
         .. versionadded:: 0.5.6
             Requires pip install smc-python-monitoring
@@ -2017,18 +2020,18 @@ class Engine(Element):
             can be returned if they exist. If less than 1000 events are available,
             the call will be blocking until 5 receives has been reached.
         :return: generator of results
-        :rtype: :class:`smc_monitoring.monitors.blocklist.BlocklistEntry`
+        :rtype: :class:`smc_monitoring.monitors.block_list.BlockListQuery`
         """
         try:
-            from smc_monitoring.monitors.blocklist import BlocklistQuery
+            from smc_monitoring.monitors.block_list import BlockListQuery
         except ImportError:
             pass
         else:
-            query = BlocklistQuery(self.name)
+            query = BlockListQuery(self.name)
             for record in query.fetch_as_element(**kw):
                 yield record
 
-    def blacklist_show(self, **kw):
+    def blacklist_show(self, **kw: Any) -> Iterator[Any]:
         """
         .. versionadded:: 0.5.6
             Requires pip install smc-python-monitoring
@@ -2066,19 +2069,19 @@ class Engine(Element):
             if is_api_version_less_than("7.0"):
                 query = BlacklistQuery(self.name)
             else:
-                query = BlocklistQuery(self.name)
+                query = BlockListQuery(self.name)
 
             for record in query.fetch_as_element(**kw):
                 yield record
 
-    def remove_alternative_policies(self):
+    def remove_alternative_policies(self) -> None:
         """
         Remove all alternative policies on engine.
         """
         self.update(href=self.get_relation("remove_alternative_policies"), etag=None)
 
     @property
-    def link_usage_exception_rules(self):
+    def link_usage_exception_rules(self) -> list[LinkUsageExceptionRules]:
         """
         A collection of link_usage_exception_rules
 
@@ -2087,7 +2090,7 @@ class Engine(Element):
         return [LinkUsageExceptionRules(**nc) for nc in self.data.get("link_usage_exception_rules",
                                                                       [])]
 
-    def add_link_usage_exception_rules(self, link_usage_exception_rules):
+    def add_link_usage_exception_rules(self, link_usage_exception_rules: list[LinkUsageExceptionRules]) -> None:
         """
         Add link_usage_exception_rules/s to this engine.
 
@@ -2103,7 +2106,7 @@ class Engine(Element):
             self.data["link_usage_exception_rules"].append(p.data)
         self.update()
 
-    def remove_link_usage_exception_rules(self, link_usage_exception_rules):
+    def remove_link_usage_exception_rules(self, link_usage_exception_rules: LinkUsageExceptionRules) -> bool:
         """
         Remove a link_usage_exception_rules from this engine.
 
@@ -2125,8 +2128,8 @@ class Engine(Element):
 
         return changed
 
-    def query_route(self, source_ref=None, destination_ref=None, source_ip=None,
-                    destination_ip=None):
+    def query_route(self, source_ref: Optional[str] = None, destination_ref: Optional[str] = None,
+                    source_ip: Optional[str] = None, destination_ip: Optional[str] = None) -> list[Routing]:
         """
         Allows querying a route for the specific supported engine Options:
         A. Using Query Parameters:
@@ -2164,7 +2167,7 @@ class Engine(Element):
                                    json=json)
         return [Routing(routing) for entry in result for routing in entry['entry']]
 
-    def add_route(self, gateway=None, network=None, payload=None):
+    def add_route(self, gateway: Optional[str] = None, network: Optional[str] = None, payload: Optional[dict[str, Any]] = None) -> None:
         """
         Add a route to engine. Specify gateway and network.
         If this is the default gateway, use a network address of
@@ -2198,7 +2201,7 @@ class Engine(Element):
             )
 
     @property
-    def policy_route(self):
+    def policy_route(self) -> PolicyRoute:
         """
         Configure policy based routes on the engine.
         ::
@@ -2214,7 +2217,7 @@ class Engine(Element):
         raise UnsupportedEngineFeature("Policy routing is only supported on layer 3 engine types")
 
     @property
-    def routing(self):
+    def routing(self) -> Routing:
         """
         Find all routing nodes within engine::
 
@@ -2233,7 +2236,7 @@ class Engine(Element):
         return Routing(href=self.get_relation("routing"))
 
     @property
-    def routing_monitoring(self):
+    def routing_monitoring(self) -> RouteIterable:
         """
         Return route table for the engine, including
         gateway, networks and type of route (dynamic, static).
@@ -2261,7 +2264,7 @@ class Engine(Element):
         except SMCConnectionError:
             raise EngineCommandFailed("Timed out waiting for routes")
 
-    def get_session_monitoring(self, sesmon_type, full=True):
+    def get_session_monitoring(self, sesmon_type: str, full: bool = True) -> Optional[SessionMonitoringResult]:
         """
         Available for all SMC API Versions but only for SMC Version above 7.1 (7.1 included)
 
@@ -2296,7 +2299,7 @@ class Engine(Element):
             raise EngineCommandFailed(f"Timed out waiting for {sesmon_type}")
 
     @property
-    def antispoofing(self):
+    def antispoofing(self) -> Antispoofing:
         """
         Antispoofing interface information. By default is based on routing
         but can be modified.
@@ -2311,7 +2314,7 @@ class Engine(Element):
         return Antispoofing(href=self.get_relation("antispoofing"))
 
     @property
-    def internal_gateway(self):
+    def internal_gateway(self) -> VPN:
         """
         Engine level VPN gateway information. This is a link from
         the engine to VPN level settings like VPN Client, Enabling/disabling
@@ -2332,7 +2335,7 @@ class Engine(Element):
         return self.vpn
 
     @property
-    def replica_internal_gateway(self):
+    def replica_internal_gateway(self) -> list[ReplicaInternalGateway]:
         """
         Replica Internal Gateway for this engine. This property returns a list
         of ReplicaInternalGateway objects. Replica gateways are linked to internal
@@ -2345,7 +2348,7 @@ class Engine(Element):
         """
         return [ReplicaInternalGateway(**gw) for gw in self.make_request(resource="replica_internal_gateway")]
 
-    def create_replica_internal_gateway(self, linked_gateway, name=None):
+    def create_replica_internal_gateway(self, linked_gateway: Any, name: Optional[str] = None) -> Optional[ReplicaInternalGateway]:
         """
         Create a replica internal gateway on this engine. A replica gateway is linked to
         an internal gateway from another engine and is used in VPN configurations.
@@ -2401,7 +2404,7 @@ class Engine(Element):
         return None
 
     @property
-    def all_vpns(self):
+    def all_vpns(self) -> list[VPN]:
         """
         Engine level all VPN gateway information.
         Example:
@@ -2417,15 +2420,20 @@ class Engine(Element):
                                    resource="internal_gateway")
         return [VPN(self, InternalGateway(**gateway)) for gateway in result]
 
-    def create_internal_gateway(self, name, antivirus=None,
-                                auto_certificate=None, auto_site_content=None,
-                                dhcp_relay=None, end_point=None, firewall=None,
-                                gateway_profile=None,
-                                ssl_vpn_portal_setting=None,
-                                ssl_vpn_proxy=None,
-                                ssl_vpn_tunneling=None, trust_all_cas=None,
-                                trusted_certificate_authorities=None,
-                                vpn_client_mode=None, **kwargs):
+    def create_internal_gateway(self, name: str, antivirus: Optional[Any] = None,
+                                auto_certificate: Optional[Any] = None,
+                                auto_site_content: Optional[Any] = None,
+                                dhcp_relay: Optional[Any] = None,
+                                end_point: Optional[list[Any]] = None,
+                                firewall: Optional[Any] = None,
+                                gateway_profile: Optional[Any] = None,
+                                ssl_vpn_portal_setting: Optional[list[Any]] = None,
+                                ssl_vpn_proxy: Optional[dict[str, Any]] = None,
+                                ssl_vpn_tunneling: Optional[dict[str, Any]] = None,
+                                trust_all_cas: Optional[Any] = None,
+                                trusted_certificate_authorities: Optional[Any] = None,
+                                vpn_client_mode: Optional[str] = None,
+                                **kwargs: Any) -> None:
         """
         Create internal gateway
         Example of creating internal gateway:
@@ -2506,7 +2514,7 @@ class Engine(Element):
         )
 
     @cacheable_resource
-    def vpn(self):
+    def vpn(self) -> VPN:
         """
         VPN configuration for the engine.
 
@@ -2517,7 +2525,7 @@ class Engine(Element):
         return VPN(self)
 
     @property
-    def vpn_endpoint(self):
+    def vpn_endpoint(self) -> Any:
         """
         A VPN endpoint is an address assigned to a layer 3 interface
         that can be enabled to turn on VPN capabilities. As an interface
@@ -2531,7 +2539,7 @@ class Engine(Element):
         return self.vpn.internal_endpoint
 
     @property
-    def vpn_mappings(self):
+    def vpn_mappings(self) -> VPNMappingCollection:
         """
         .. versionadded:: 0.6.0
             Requires SMC version >= 6.3.4
@@ -2548,7 +2556,7 @@ class Engine(Element):
         )
 
     @property
-    def virtual_resource(self):
+    def virtual_resource(self) -> Any:
         """
         Available on a Master Engine only.
 
@@ -2566,7 +2574,7 @@ class Engine(Element):
         return resource
 
     @property
-    def contact_addresses(self):
+    def contact_addresses(self) -> ContactAddressCollection:
         """
         Contact addresses are NAT addresses that are assigned to interfaces.
         These are used when a component needs to communicate with another
@@ -2599,7 +2607,7 @@ class Engine(Element):
         return ContactAddressCollection(self.get_relation("contact_addresses"))
 
     @property
-    def interface_options(self):
+    def interface_options(self) -> InterfaceOptions:
         """
         Interface options specify settings related to setting primary/
         backup management, outgoing, and primary/backup heartbeat
@@ -2617,7 +2625,7 @@ class Engine(Element):
         return InterfaceOptions(self)
 
     @property
-    def interface(self):
+    def interface(self) -> InterfaceCollection:
         """
         Get all interfaces, including non-physical interfaces such
         as tunnel or capture interfaces. These are returned as Interface
@@ -2634,7 +2642,7 @@ class Engine(Element):
         return InterfaceCollection(self)
 
     @property
-    def physical_interface(self):
+    def physical_interface(self) -> PhysicalInterfaceCollection:
         """
         Returns a PhysicalInterface. This property can be used to
         add physical interfaces to the engine. For example::
@@ -2648,7 +2656,7 @@ class Engine(Element):
         return PhysicalInterfaceCollection(self)
 
     @property
-    def virtual_physical_interface(self):
+    def virtual_physical_interface(self) -> VirtualPhysicalInterfaceCollection:
         """Master Engine virtual instance only
 
         A virtual physical interface is for a master engine virtual instance.
@@ -2667,7 +2675,7 @@ class Engine(Element):
         return VirtualPhysicalInterfaceCollection(self)
 
     @property
-    def tunnel_interface(self):
+    def tunnel_interface(self) -> TunnelInterfaceCollection:
         """
         Get only tunnel interfaces for this engine node.
 
@@ -2677,7 +2685,7 @@ class Engine(Element):
         return TunnelInterfaceCollection(self)
 
     @property
-    def vpn_broker_interface(self):
+    def vpn_broker_interface(self) -> VPNBrokerInterfaceCollection:
         """
         Get only vpn broker interfaces for this engine node.
 
@@ -2687,7 +2695,7 @@ class Engine(Element):
         return VPNBrokerInterfaceCollection(self)
 
     @property
-    def loopback_interface(self):
+    def loopback_interface(self) -> LoopbackCollection:
         """
         Retrieve any loopback interfaces for this engine.
         Loopback interfaces are only supported on layer 3 firewall types.
@@ -2707,11 +2715,11 @@ class Engine(Element):
         )
 
     @property
-    def upload_result(self):
+    def upload_result(self) -> Any:
         return self.make_request(UnsupportedEngineFeature, resource="upload_result")
 
     @property
-    def modem_interface(self):
+    def modem_interface(self) -> ModemInterfaceCollection:
         """
         Get only modem interfaces for this engine node.
 
@@ -2722,7 +2730,7 @@ class Engine(Element):
         return ModemInterfaceCollection(self)
 
     @property
-    def adsl_interface(self):
+    def adsl_interface(self) -> Any:
         """
         Get only adsl interfaces for this engine node.
 
@@ -2733,7 +2741,7 @@ class Engine(Element):
         return self.make_request(UnsupportedInterfaceType, resource="adsl_interface")
 
     @property
-    def wireless_interface(self):
+    def wireless_interface(self) -> Any:
         """
         Get only wireless interfaces for this engine node.
 
@@ -2744,7 +2752,7 @@ class Engine(Element):
         return self.make_request(UnsupportedInterfaceType, resource="wireless_interface")
 
     @property
-    def switch_physical_interface(self):
+    def switch_physical_interface(self) -> SwitchInterfaceCollection:
         """
         Get only switch physical interfaces for this engine node.
         This is an iterable property::
@@ -2768,7 +2776,7 @@ class Engine(Element):
         return SwitchInterfaceCollection(self)
 
     @property
-    def lldp_profile(self):
+    def lldp_profile(self) -> Optional[LLDPProfile]:
         """
         It represents a set of attributes used for configuring LLDP(Link Layer Discovery Protocol).
         LLDP information is advertised by devices at a fixed interval in the form of LLDP data units
@@ -2781,7 +2789,7 @@ class Engine(Element):
         return Element.from_href(self.lldp_profile_ref)
 
     @lldp_profile.setter
-    def lldp_profile(self, value):
+    def lldp_profile(self, value: Any) -> None:
         if min_smc_version("6.6"):
             if isinstance(value, LLDPProfile):
                 self.data.update(lldp_profile=value.href)
@@ -2789,7 +2797,7 @@ class Engine(Element):
                 self.data.update(lldp_profile=value)
 
     @property
-    def link_usage_profile(self):
+    def link_usage_profile(self) -> Optional[LinkUsageProfile]:
         """
         Represent link usage profile
         :param value: Link usage profile to assign engine. Can be str href,
@@ -2800,14 +2808,14 @@ class Engine(Element):
         return Element.from_href(self.link_usage_profile_ref)
 
     @link_usage_profile.setter
-    def link_usage_profile(self, value):
+    def link_usage_profile(self, value: Any) -> None:
         if isinstance(value, LinkUsageProfile):
             self.data.update(link_usage_profile_ref=value.href)
         else:
             self.data.update(link_usage_profile_ref=value)
 
     @property
-    def discard_quic_if_cant_inspect(self):
+    def discard_quic_if_cant_inspect(self) -> Optional[bool]:
         """
         Discard or allow QUIC if inspection is impossible
 
@@ -2819,12 +2827,12 @@ class Engine(Element):
             "This engine type does not support discard_quic_if_cant_inspect.")
 
     @discard_quic_if_cant_inspect.setter
-    def discard_quic_if_cant_inspect(self, value):
+    def discard_quic_if_cant_inspect(self, value: Any) -> None:
         if min_smc_version("7.0"):
             self.data["discard_quic_if_cant_inspect"] = value
 
     @property
-    def administrator_authentication_method(self):
+    def administrator_authentication_method(self) -> Optional[str]:
         """
         Authentication method for administrator
 
@@ -2836,7 +2844,7 @@ class Engine(Element):
             "This engine type does not support administrator_authentication_method.")
 
     @property
-    def allow_root_login(self):
+    def allow_root_login(self) -> Optional[str]:
         """
         Administrator Authentication: root password login
         - allow: Allow Root Password Login.
@@ -2851,7 +2859,7 @@ class Engine(Element):
             "This engine type does not support allow_root_login.")
 
     @property
-    def ssh_passwordless_login(self):
+    def ssh_passwordless_login(self) -> Optional[str]:
         """
         Administrator Authentication: SSH Passwordless Logins
         - allow: Allow.
@@ -2871,13 +2879,13 @@ class Engine(Element):
                 and not is_smc_version_less_than("7.1.4"))
 
     @administrator_authentication_method.setter
-    def administrator_authentication_method(self, value):
+    def administrator_authentication_method(self, value: Any) -> None:
         if not self.type.startswith("virtual"):
             if Engine.supports_radius_authentication_settings():
                 self.data["admin_auth_method"] = value
 
     @allow_root_login.setter
-    def allow_root_login(self, value):
+    def allow_root_login(self, value: Any) -> None:
         """
         Administrator Authentication: root password login
         - allow: Allow Root Password Login.
@@ -2889,7 +2897,7 @@ class Engine(Element):
                 self.data["allow_root_login"] = value
 
     @ssh_passwordless_login.setter
-    def ssh_passwordless_login(self, value):
+    def ssh_passwordless_login(self, value: Any) -> None:
         """
         Administrator Authentication: SSH Passwordless Logins
         - allow: Allow.
@@ -2899,7 +2907,7 @@ class Engine(Element):
             if Engine.supports_radius_authentication_settings():
                 self.data["ssh_passwordless_login"] = value
 
-    def add_interface(self, interface, **kw):
+    def add_interface(self, interface: Any, **kw: Any) -> None:
         """
         Add interface is a lower level option to adding interfaces directly
         to the engine. The interface is expected to be an instance of
@@ -2934,12 +2942,12 @@ class Engine(Element):
 
     def refresh(
             self,
-            timeout=3,
-            wait_for_finish=False,
-            preserve_connections=True,
-            generate_snapshot=True,
-            **kw
-    ):
+            timeout: int = 3,
+            wait_for_finish: bool = False,
+            preserve_connections: bool = True,
+            generate_snapshot: bool = True,
+            **kw: Any,
+    ) -> TaskOperationPoller:
         """
         Refresh existing policy on specified device. This is an asynchronous
         call that will return a 'follower' link that can be queried to
@@ -2965,13 +2973,13 @@ class Engine(Element):
 
     def upload(
             self,
-            policy=None,
-            timeout=5,
-            wait_for_finish=False,
-            preserve_connections=True,
-            generate_snapshot=True,
-            **kw
-    ):
+            policy: Optional[str] = None,
+            timeout: int = 5,
+            wait_for_finish: bool = False,
+            preserve_connections: bool = True,
+            generate_snapshot: bool = True,
+            **kw: Any,
+    ) -> TaskOperationPoller:
         """
         Upload policy to engine. This is used when a new policy is required
         for an engine, or this is the first time a policy is pushed to an
@@ -3010,13 +3018,13 @@ class Engine(Element):
 
     def upload_alternative_slot(
             self,
-            alternative_slot=None,
-            policy=None,
-            timeout=5,
-            wait_for_finish=False,
-            generate_snapshot=True,
-            **kw
-    ):
+            alternative_slot: Optional[int] = None,
+            policy: Optional[str] = None,
+            timeout: int = 5,
+            wait_for_finish: bool = False,
+            generate_snapshot: bool = True,
+            **kw: Any,
+    ) -> TaskOperationPoller:
         """
         Upload policy to engine alternative slot. This is used when multiple
         policies are required for an engine.
@@ -3052,7 +3060,7 @@ class Engine(Element):
             **kw
         )
 
-    def generate_snapshot(self, filename="snapshot.zip"):
+    def generate_snapshot(self, filename: str = "snapshot.zip") -> None:
         """
         Generate and retrieve a policy snapshot from the engine
         This is blocking as file is downloaded
@@ -3070,7 +3078,7 @@ class Engine(Element):
             raise EngineCommandFailed("Generate snapshot failed: {}".format(e))
 
     @property
-    def snapshots(self):
+    def snapshots(self) -> Any:
         """
         References to policy based snapshots for this engine, including
         the date the snapshot was made
@@ -3080,10 +3088,10 @@ class Engine(Element):
         """
         return sub_collection(self.get_relation("snapshots", EngineCommandFailed), Snapshot)
 
-    def __unicode__(self):
+    def __unicode__(self) -> str:
         return u"{0}(name={1})".format(lookup_class(self.type).__name__, self.name)
 
-    def ldap_replication(self, enable):
+    def ldap_replication(self, enable: bool) -> None:
         """
         Enable or disable LDAP replication
 
@@ -3098,7 +3106,7 @@ class Engine(Element):
             params={"enable": enable},
         )
 
-    def join_domain(self, user_name, password, engine_name, ad_server_ref):
+    def join_domain(self, user_name: str, password: str, engine_name: str, ad_server_ref: str) -> Any:
         """
         Executes a join to an Active Directory domain command for the current cluster.
 
@@ -3113,7 +3121,7 @@ class Engine(Element):
             raw_result=True
         )
 
-    def unjoin_domain(self, user_name, password):
+    def unjoin_domain(self, user_name: str, password: str) -> Any:
         """
         Executes an unjoin from an Active Directory domain command for the current cluster.
 
@@ -3128,7 +3136,7 @@ class Engine(Element):
             raw_result=True
         )
 
-    def generate_and_sign_user_authentication_certificate(self, subject_alt_name=None, key_length=None):
+    def generate_and_sign_user_authentication_certificate(self, subject_alt_name: Optional[str] = None, key_length: Optional[int] = None) -> Task:
         """
         Generate and internally sign User Authentication certificate.
         :param subject_alt_name: Subject Alternative Name to be included in the certificate.
@@ -3154,21 +3162,21 @@ class Engine(Element):
             wait_for_finish=True
         )
 
-    def delete_user_authentication_certificate(self):
+    def delete_user_authentication_certificate(self) -> None:
         """
         Delete the certificate if any is defined for this component.
         """
         self.make_request(method="delete",
                           resource="web_auth_https_delete_certificate")
 
-    def delete_user_authentication_certificate_request(self):
+    def delete_user_authentication_certificate_request(self) -> None:
         """
         Delete the certificate request if any is defined for this component.
         """
         self.make_request(method="delete",
                           resource="web_auth_https_delete_certificate_request")
 
-    def export_user_authentication_certificate(self, filename=None):
+    def export_user_authentication_certificate(self, filename: Optional[str] = None) -> Optional[bytes]:
         """
          Export the certificate if any is defined for this component.
          """
@@ -3182,7 +3190,7 @@ class Engine(Element):
 
         return result.content
 
-    def generate_user_authentication_certificate_request(self, subject_alt_name=None, key_length=None):
+    def generate_user_authentication_certificate_request(self, subject_alt_name: Optional[str] = None, key_length: Optional[int] = None) -> Any:
         """
         Export the certificate request for the node when working external CA.
         This can return None if the engine type does not have a certificate request.
@@ -3202,7 +3210,7 @@ class Engine(Element):
             json=json
         )
 
-    def export_user_authentication_certificate_request(self, filename=None):
+    def export_user_authentication_certificate_request(self, filename: Optional[str] = None) -> Optional[bytes]:
         """
          Export the certificate request if any is defined for this component.
          """
@@ -3217,7 +3225,7 @@ class Engine(Element):
 
         return result.content
 
-    def user_authentication_import_certificate(self, certificate):
+    def user_authentication_import_certificate(self, certificate: Any) -> None:
         """
         Import a valid certificate. Certificate can be either a file path
         or a string of the certificate. If string certificate, it must include
@@ -3239,14 +3247,14 @@ class Engine(Element):
         )
 
     @property
-    def is_snort_enabled(self):
+    def is_snort_enabled(self) -> bool:
         """
         Return true if snort is enable else false.
         :rtype: bool
         """
         return self.data.get("is_snort_enabled", False)
 
-    def snort_configuration_file_import(self, file_name):
+    def snort_configuration_file_import(self, file_name: str) -> None:
         """
         Allows importing a specified Snort Configuration file for the specified Engine.
         :param str file_name: Name of the snort configuration file(Full Path).
@@ -3269,26 +3277,26 @@ class Engine(Element):
                           raw_result=True,
                           )
 
-    def snort_configuration_file_export(self, file_name):
+    def snort_configuration_file_export(self, file_name: str) -> None:
 
         self.make_request(SnortConfigurationExportError,
                           raw_result=True, resource="snort_configuration_file_export",
                           filename=file_name)
 
-    def snort_configuration_file_delete(self):
+    def snort_configuration_file_delete(self) -> None:
         """
         It will delete the Snort Configuration from a particular engine.
         """
         self.make_request(EngineCommandFailed, method="delete",
                           resource="snort_configuration_file_delete")
 
-    def snort_enable_disable(self):
+    def snort_enable_disable(self) -> None:
         """
         Toggle enable disable state of snort.
         """
         self.update(is_snort_enabled=not self.data.get("is_snort_enabled", False))
 
-    def get_hardware_status(self, subsystems: List[str] = None):
+    def get_hardware_status(self, subsystems: Optional[List[str]] = None) -> dict[str, Any]:
         """
         Returns dict representation hardware status.
         :param str engine_name: The name of engine to get hardware status
@@ -3350,7 +3358,7 @@ class Engine(Element):
         return json_result
 
     @property
-    def ssm_advanced_setting(self):
+    def ssm_advanced_setting(self) -> list[SidewinderProxyAdvancedSettings]:
         """
         Sidewinder Proxy Advanced Settings.
         :rtype: list(SidewinderProxyAdvancedSettings)
@@ -3359,7 +3367,7 @@ class Engine(Element):
                 self.data.get("ssm_advanced_setting", [])]
 
     @property
-    def scan_detection(self):
+    def scan_detection(self) -> ScanDetectionSetting:
         """
         This represents the definition of Scan Detection on a NGFW.
         :rtype: ScanDetectionSetting
@@ -3367,7 +3375,7 @@ class Engine(Element):
         return ScanDetectionSetting(self.data.get("scan_detection"))
 
     @property
-    def static_multicast_route(self):
+    def static_multicast_route(self) -> list[StaticMulticastRoute]:
         """
         Represents Firewall multicast routing entry for Static/IGMP Proxy multicast routing modes.
         :rtype: list(StaticMulticastRoute)
@@ -3376,7 +3384,7 @@ class Engine(Element):
                 self.data.get("static_multicast_route", [])]
 
     @property
-    def web_authentication(self):
+    def web_authentication(self) -> WebAuthentication:
         """
         The Browser-Based User Authentication settings
         :rtype: WebAuthentication
@@ -3384,7 +3392,7 @@ class Engine(Element):
         return WebAuthentication(self.data.get("web_authentication", {}))
 
     @property
-    def nat64_settings(self):
+    def nat64_settings(self) -> Nat64Settings:
         """
         The NAT64 settings
         :rtype: Nat64Settings
@@ -3392,7 +3400,7 @@ class Engine(Element):
         return Nat64Settings(self.data.get("ipv6_transition_mechanism", {}))
 
     @property
-    def saml_settings(self):
+    def saml_settings(self) -> list[SamlSettings]:
         """
         Represents the SAML settings. Either for the user authentication (BBA) or the
         SSL VPN Portal configuration.
@@ -3400,21 +3408,21 @@ class Engine(Element):
         """
         return [SamlSettings(data) for data in self.data.get("saml_settings", [])]
 
-    def configure_saml_settings_for_user_authentication(self, saml_settings_entries):
+    def configure_saml_settings_for_user_authentication(self, saml_settings_entries: Optional[list[Any]]) -> None:
         """
         Configure SAML settings for user authentication (BBA). If saml_settings
         are defined, we enable the SAML for BBA otherwise we disable it.
         """
         self._configure_saml_settings_for(saml_settings_entries, False)
 
-    def configure_saml_settings_for_application_access(self, saml_settings_entries):
+    def configure_saml_settings_for_application_access(self, saml_settings_entries: Optional[list[Any]]) -> None:
         """
         Configure SAML settings for Application Access portal. If saml_settings
         are defined, we enable the SAML for Application Access portal otherwise we disable it.
         """
         self._configure_saml_settings_for(saml_settings_entries, True)
 
-    def _configure_saml_settings_for(self, saml_settings_entries, application_access):
+    def _configure_saml_settings_for(self, saml_settings_entries: Optional[list[Any]], application_access: bool) -> None:
         """
         Configure SAML settings for BBA (user authentication) or Application access portal.
         If saml_settings are defined, we enable the SAML otherwise we disable it.
@@ -3437,9 +3445,11 @@ class Engine(Element):
         self.data["saml_settings"] = new_saml_settings_entries
 
 
-    def save_initial_configuration(self, time_zone, keyboard, enable_ssh=False,
-                             root_password=None, initial_policy_ref=None, install_on_server=False,
-                             export_to_base64=False):
+    def save_initial_configuration(self, time_zone: str, keyboard: str, enable_ssh: bool = False,
+                             root_password: Optional[str] = None,
+                             initial_policy_ref: Optional[str] = None,
+                             install_on_server: bool = False,
+                             export_to_base64: bool = False) -> Any:
         """
         Saves the initial configuration for all nodes of the cluster.
 
@@ -3448,7 +3458,7 @@ class Engine(Element):
         :param bool enable_ssh: Enable SSH on all nodes.
         :param str root_password: Root password to set on all nodes.
         :param str initial_policy_ref: Reference to the initial policy to set on all nodes.
-        :param bool install_on_server: Whether to install on server.
+        :param bool install_on_server: Whether to upload engine config on install server.
         :param bool export_to_base64: Whether to export to base64.
         :return byte array of the zip containing configuration files for all nodes.
         .. note:: This method requires SMC version >= 7.1
@@ -3469,7 +3479,7 @@ class Engine(Element):
         )
 
 class VPNMappingCollection(BaseIterable):
-    def __init__(self, vpns):
+    def __init__(self, vpns: Any) -> None:
         mappings = vpns.get("vpnMappings")
         _mappings = []
         if mappings:
@@ -3490,7 +3500,7 @@ class VPNMapping(namedtuple("VPNMapping", "gateway_ref vpn_ref gateway_nodes_usa
     __slots__ = ()
 
     @property
-    def internal_gateway(self):
+    def internal_gateway(self) -> Any:
         """
         Return the engines internal gateway as element
 
@@ -3499,7 +3509,7 @@ class VPNMapping(namedtuple("VPNMapping", "gateway_ref vpn_ref gateway_nodes_usa
         return Element.from_href(self.gateway_ref)
 
     @property
-    def vpn(self):
+    def vpn(self) -> Any:
         """
         The VPN policy for this engine mapping
 
@@ -3508,7 +3518,7 @@ class VPNMapping(namedtuple("VPNMapping", "gateway_ref vpn_ref gateway_nodes_usa
         return Element.from_href(self.vpn_ref)
 
     @property
-    def is_central_gateway(self):
+    def is_central_gateway(self) -> bool:
         """
         Is this engine a central gateway in the VPN policy
 
@@ -3517,7 +3527,7 @@ class VPNMapping(namedtuple("VPNMapping", "gateway_ref vpn_ref gateway_nodes_usa
         return "central_gateway_node_ref" in self.gateway_nodes_usage
 
     @property
-    def _central_gateway(self):
+    def _central_gateway(self) -> Optional[str]:
         """
         Return the central gateway tree node as href. This can be used
         to simplify removal of the element from the specified VPN.
@@ -3529,7 +3539,7 @@ class VPNMapping(namedtuple("VPNMapping", "gateway_ref vpn_ref gateway_nodes_usa
         return self.gateway_nodes_usage.get("central_gateway_node_ref", None)
 
     @property
-    def is_satellite_gateway(self):
+    def is_satellite_gateway(self) -> bool:
         """
         Is this engine a satellite gateway in the VPN policy
 
@@ -3538,7 +3548,7 @@ class VPNMapping(namedtuple("VPNMapping", "gateway_ref vpn_ref gateway_nodes_usa
         return "satellite_gateway_node_ref" in self.gateway_nodes_usage
 
     @property
-    def _satellite_gateway(self):
+    def _satellite_gateway(self) -> Optional[str]:
         """
         Return the satellite gateway tree node href. This can be used
         to simplify removal of the element from the specified VPN.
@@ -3550,7 +3560,7 @@ class VPNMapping(namedtuple("VPNMapping", "gateway_ref vpn_ref gateway_nodes_usa
         return self.gateway_nodes_usage.get("satellite_gateway_node_ref", None)
 
     @property
-    def is_mobile_gateway(self):
+    def is_mobile_gateway(self) -> bool:
         """
         Is the engine specified as a mobile gateway in the Policy VPN
         configuration
@@ -3560,7 +3570,7 @@ class VPNMapping(namedtuple("VPNMapping", "gateway_ref vpn_ref gateway_nodes_usa
         return "mobile_gateway_node_ref" in self.gateway_nodes_usage
 
     @property
-    def _mobile_gateway(self):
+    def _mobile_gateway(self) -> Optional[str]:
         """
         Return the mobile gateway tree href. This can be used
         to simplify removal of the element from the specified VPN.
@@ -3571,7 +3581,7 @@ class VPNMapping(namedtuple("VPNMapping", "gateway_ref vpn_ref gateway_nodes_usa
         """
         return self.gateway_nodes_usage.get("mobile_gateway_node_ref", None)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str("VPNMapping(vpn={})".format(self.vpn))
 
 
@@ -3582,7 +3592,7 @@ class VPN(object):
     endpoint.
     """
 
-    def __init__(self, engine, internal_gateway=None):
+    def __init__(self, engine: Any, internal_gateway: Optional[InternalGateway] = None) -> None:
         self.engine = engine
         if internal_gateway:
             self.internal_gateway = internal_gateway
@@ -3591,7 +3601,7 @@ class VPN(object):
                                               resource="internal_gateway")
             self.internal_gateway = InternalGateway(**result[0])
 
-    def rename(self, name):
+    def rename(self, name: str) -> None:
         """
         Rename the internal gateway.
 
@@ -3600,7 +3610,7 @@ class VPN(object):
         """
         self.internal_gateway.rename(name)  # Engine update changes this ETag
 
-    def remove(self):
+    def remove(self) -> None:
         """
         Rename the internal gateway.
 
@@ -3610,11 +3620,11 @@ class VPN(object):
         self.internal_gateway.delete()  # Engine update changes this ETag
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self.internal_gateway.name
 
     @property
-    def vpn_client(self):
+    def vpn_client(self) -> InternalGateway:
         """
         VPN Client settings for this engine.
 
@@ -3625,7 +3635,7 @@ class VPN(object):
         return self.internal_gateway
 
     @property
-    def ssl_vpn_portal(self):
+    def ssl_vpn_portal(self) -> InternalGateway:
         """
         SSL VPN Portal settings for this engine.
         Deprecated since SMC >= 7.5.0 use application_access_portal instead
@@ -3637,7 +3647,7 @@ class VPN(object):
         return self.internal_gateway
 
     @property
-    def application_access_portal(self):
+    def application_access_portal(self) -> InternalGateway:
         """
         SSL VPN Portal settings for this engine.
 
@@ -3648,7 +3658,7 @@ class VPN(object):
         return self.internal_gateway
 
     @property
-    def sites(self):
+    def sites(self) -> Any:
         """
         VPN sites configured for this engine. Using sub element
         methods simplify fetching sites of interest::
@@ -3661,7 +3671,9 @@ class VPN(object):
         """
         return create_collection(self.internal_gateway.get_relation("vpn_site"), VPNSite)
 
-    def add_site(self, name, site_elements=None, vpn_references=None, is_automatic=False):
+    def add_site(self, name: str, site_elements: Optional[list[Any]] = None,
+                 vpn_references: Optional[list[dict[str, Any]]] = None,
+                 is_automatic: bool = False) -> VPNSite:
         """
         Add a VPN site with site elements to this engine.
         VPN sites identify the sites with protected networks
@@ -3688,7 +3700,7 @@ class VPN(object):
         return self.sites.create(name, site_elements, vpn_references, is_automatic=is_automatic)
 
     @property
-    def internal_endpoint(self):
+    def internal_endpoint(self) -> Any:
         """
         Internal endpoints to enable VPN for the engine.
 
@@ -3699,7 +3711,7 @@ class VPN(object):
         )
 
     @property
-    def loopback_endpoint(self):
+    def loopback_endpoint(self) -> Any:
         """
         Internal Loopback endpoints to enable VPN for the engine.
 
@@ -3710,7 +3722,7 @@ class VPN(object):
         )
 
     @property
-    def gateway_profile(self):
+    def gateway_profile(self) -> Any:
         """
         Gateway Profile for this VPN. This is only a valid setting
         on layer 3 firewalls.
@@ -3720,7 +3732,7 @@ class VPN(object):
         return Element.from_href(self.internal_gateway.gateway_profile)
 
     @property
-    def gateway_settings(self):
+    def gateway_settings(self) -> Any:
         """
         A gateway settings profile defines VPN specific settings related
         to timers such as negotiation retries (min, max) and mobike
@@ -3736,7 +3748,7 @@ class VPN(object):
         return Element.from_href(self.engine.data.get("gateway_settings_ref"))
 
     @property
-    def gateway_certificate(self):
+    def gateway_certificate(self) -> list[GatewayCertificate]:
         """
         A Gateway Certificate is used by the engine for securing
         communications such as VPN. You can also check the expiration,
@@ -3751,7 +3763,7 @@ class VPN(object):
         ]
 
     @property
-    def gateway_certificate_request(self):
+    def gateway_certificate_request(self) -> list[GatewayCertificateRequest]:
         """
         A Gateway Certificate request is a gateway certificate that need to be signed internally
         or externally using external CA
@@ -3766,14 +3778,14 @@ class VPN(object):
 
     def generate_certificate(
             self,
-            common_name,
-            organization="Forcepoint",
-            public_key_algorithm="rsa",
-            signature_algorithm="rsa_sha_512",
-            key_length=2048,
-            signing_ca=None,
-            certificate=None,
-    ):
+            common_name: str,
+            organization: str = "Forcepoint",
+            public_key_algorithm: str = "rsa",
+            signature_algorithm: str = "rsa_sha_512",
+            key_length: int = 2048,
+            signing_ca: Optional[Any] = None,
+            certificate: Optional[Any] = None,
+    ) -> GatewayCertificate:
         """
         Generate an internal gateway certificate used for VPN on this engine.
         Certificate request should be an instance of VPNCertificate.
@@ -3804,7 +3816,7 @@ class VPN(object):
             )
 
     @property
-    def ssl_vpn_portal_setting(self):
+    def ssl_vpn_portal_setting(self) -> Any:
         """
         SSL VPN Portal settings for this Engine Internal Gateway.
         Deprecated since SMC >= 7.5.0 use application_access_portal_setting instead
@@ -3814,7 +3826,7 @@ class VPN(object):
         return self.internal_gateway.ssl_vpn_portal_setting
 
     @property
-    def application_access_portal_setting(self):
+    def application_access_portal_setting(self) -> Any:
         """
         SSL VPN Portal settings for this Engine Internal Gateway.
 
@@ -3823,7 +3835,7 @@ class VPN(object):
         return self.internal_gateway.application_access_portal_setting
 
     @property
-    def ssl_vpn_proxy(self):
+    def ssl_vpn_proxy(self) -> Any:
         """
         SSL VPN Proxy for SSL VPN PORTAL in Engine Internal Gateway
 
@@ -3832,7 +3844,7 @@ class VPN(object):
         return self.internal_gateway.ssl_vpn_proxy
 
     @property
-    def ssl_vpn_tunneling(self):
+    def ssl_vpn_tunneling(self) -> Any:
         """
         SSL VPN VPN client tunneling setting in Engine Internal Gateway.
 
@@ -3840,7 +3852,7 @@ class VPN(object):
         """
         return self.internal_gateway.ssl_vpn_tunneling
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "VPN(name={})".format(self.name)
 
 
@@ -3887,18 +3899,18 @@ class InternalGateway(SubElement):
 
     typeof = "internal_gateway"
 
-    def rename(self, name):
+    def rename(self, name: str) -> None:
         self._del_cache()  # Engine update changes this ETag
         self.update(name="{} Primary".format(name))
 
-    def remove(self):
+    def remove(self) -> None:
         """
         Remove Internal Gateway from this engine.
         """
         self.delete()
 
     @property
-    def internal_endpoint(self):
+    def internal_endpoint(self) -> Any:
         """
         Internal endpoints to enable VPN for the engine.
 
@@ -3907,7 +3919,7 @@ class InternalGateway(SubElement):
         return sub_collection(self.get_relation("internal_endpoint"), InternalEndpoint)
 
     @property
-    def vpn_site(self):
+    def vpn_site(self) -> Any:
         """
         A VPN site defines a collection of IP's or networks that
         identify address space that is defined on the other end of
@@ -3918,7 +3930,7 @@ class InternalGateway(SubElement):
         return create_collection(self.get_relation("vpn_site"), VPNSite)
 
     @property
-    def dhcp_client_config(self):
+    def dhcp_client_config(self) -> DHCPClientConfiguration:
         """
         The DHCP relay settings
         :rtype: DHCPClientConfiguration
@@ -3926,7 +3938,7 @@ class InternalGateway(SubElement):
         return DHCPClientConfiguration(self.data.get("dhcp_relay", {}))
 
     @property
-    def ssl_vpn_portal_setting(self):
+    def ssl_vpn_portal_setting(self) -> Any:
         """
         SSL VPN Portal settings for this engine.
         Deprecated since SMC >= 7.5.0 use application_access_portal_setting instead
@@ -3936,7 +3948,7 @@ class InternalGateway(SubElement):
         return self.data.get("ssl_vpn_portal_setting")
 
     @property
-    def application_access_portal_setting(self):
+    def application_access_portal_setting(self) -> Any:
         """
         SSL VPN Portal settings for this engine.
 
@@ -3945,7 +3957,7 @@ class InternalGateway(SubElement):
         return self.data.get("application_access_portal_setting")
 
     @property
-    def ssl_vpn_proxy(self):
+    def ssl_vpn_proxy(self) -> Any:
         """
         SSL VPN proxy settings for this engine.
 
@@ -3954,7 +3966,7 @@ class InternalGateway(SubElement):
         return self.data.get("ssl_vpn_proxy")
 
     @property
-    def ssl_vpn_tunneling(self):
+    def ssl_vpn_tunneling(self) -> Any:
         """
         SSL VPN tunneling settings for this engine.
 
@@ -4008,14 +4020,14 @@ class InternalEndpoint(SubElement):
     """
 
     @property
-    def name(self):
+    def name(self) -> Optional[str]:
         """
         Get the name from deducted name
         """
         return self.data.get("deducted_name")
 
     @property
-    def interface_id(self):
+    def interface_id(self) -> Any:
         """
         Interface ID for this VPN endpoint
 
@@ -4024,7 +4036,7 @@ class InternalEndpoint(SubElement):
         return self.physical_interface.interface_id
 
     @property
-    def physical_interface(self):
+    def physical_interface(self) -> PhysicalInterface:
         """
         Physical interface for this endpoint.
 
@@ -4057,7 +4069,7 @@ class ReplicaInternalGateway(SubElement):
     typeof = "replica_internal_gateway"
 
     @property
-    def name(self):
+    def name(self) -> str:
         """
         Get the name of the replica internal gateway.
         Returns 'name' if provided, otherwise falls back to 'display_name'.
@@ -4073,7 +4085,7 @@ class ReplicaInternalGateway(SubElement):
         """
         return self.data.get("name") or self.data.get("display_name", "")
 
-    def rename(self, name):
+    def rename(self, name: str) -> None:
         """
         Rename this replica internal gateway.
 
@@ -4083,7 +4095,7 @@ class ReplicaInternalGateway(SubElement):
         self._del_cache()  # Engine update changes this ETag
         self.update(name=name)
 
-    def remove(self):
+    def remove(self) -> None:
         """
         Remove this Replica Internal Gateway from the engine.
 
@@ -4092,7 +4104,7 @@ class ReplicaInternalGateway(SubElement):
         self.delete()
 
     @property
-    def linked_gateway(self):
+    def linked_gateway(self) -> Any:
         """
         The original internal gateway that this replica is linked to.
         This gateway exists on a different engine.
@@ -4103,7 +4115,7 @@ class ReplicaInternalGateway(SubElement):
         return Element.from_href(self.data.get("linked_gateway_ref"))
 
     @property
-    def replica_internal_endpoint(self):
+    def replica_internal_endpoint(self) -> Any:
         """
         Replica internal endpoints associated with this replica gateway.
 
@@ -4113,7 +4125,8 @@ class ReplicaInternalGateway(SubElement):
             self.get_relation("replica_internal_endpoint"), ReplicaInternalEndpoint
         )
 
-    def create_replica_endpoint(self, linked_endpoint, interface_ip_address):
+    def create_replica_endpoint(self, linked_endpoint: Any,
+                                interface_ip_address: str) -> Optional[ReplicaInternalEndpoint]:
         """
         Create a replica internal endpoint on this replica gateway.
 
@@ -4190,7 +4203,7 @@ class ReplicaInternalEndpoint(SubElement):
     typeof = "replica_internal_endpoint"
 
     @property
-    def name(self):
+    def name(self) -> Optional[str]:
         """
         Get the name from deducted name or name field.
 
@@ -4200,7 +4213,7 @@ class ReplicaInternalEndpoint(SubElement):
         return self.data.get("deducted_name") or self.data.get("name")
 
     @property
-    def interface_ip_address(self):
+    def interface_ip_address(self) -> Optional[str]:
         """
         IP address of the interface for this replica endpoint.
 
@@ -4210,7 +4223,7 @@ class ReplicaInternalEndpoint(SubElement):
         return self.data.get("interface_ip_address")
 
     @property
-    def linked_endpoint(self):
+    def linked_endpoint(self) -> Any:
         """
         The original internal endpoint that this replica is linked to.
         This endpoint exists on a different engine's internal gateway.
@@ -4221,7 +4234,7 @@ class ReplicaInternalEndpoint(SubElement):
         return Element.from_href(self.data.get("linked_endpoint_ref"))
 
     @property
-    def linked_endpoint_ref(self):
+    def linked_endpoint_ref(self) -> Optional[str]:
         """
         Reference (href) to the original internal endpoint.
 
@@ -4258,13 +4271,13 @@ class VirtualResource(SubElement):
 
     def create(
             self,
-            name,
-            vfw_id,
-            domain="Shared Domain",
-            show_master_nic=False,
-            connection_limit=0,
-            comment=None,
-    ):
+            name: str,
+            vfw_id: int,
+            domain: str = "Shared Domain",
+            show_master_nic: bool = False,
+            connection_limit: int = 0,
+            comment: Optional[str] = None,
+    ) -> str:
         """
         Create a new virtual resource. Called through engine
         reference::
@@ -4294,7 +4307,7 @@ class VirtualResource(SubElement):
         return ElementCreator(self.__class__, json=json, href=self.href)
 
     @property
-    def allocated_domain_ref(self):
+    def allocated_domain_ref(self) -> Any:
         """
         Domain that this virtual engine is allocated in. 'Shared Domain' is
         is the default if no domain is specified.
@@ -4311,7 +4324,7 @@ class VirtualResource(SubElement):
         """
         return Element.from_href(self.data.get("allocated_domain_ref"))
 
-    def set_admin_domain(self, admin_domain):
+    def set_admin_domain(self, admin_domain: Any) -> None:
         """
         Virtual Resources can be members of an Admin Domain to provide
         delegated administration features. Assign an admin domain to
@@ -4324,7 +4337,7 @@ class VirtualResource(SubElement):
         self.data["allocated_domain_ref"] = admin_domain
 
     @property
-    def vfw_id(self):
+    def vfw_id(self) -> Optional[int]:
         """
         Read-Only virtual engine identifier. This is unique per virtual engine
         and is set when the virtual resource is created.
@@ -4340,17 +4353,18 @@ class LBFilter(NestedDict):
     This represents the Load Balancing Filter.
     """
 
-    def __init__(self, action, ip_descriptor, replace_ip,  nodeid, ignore_other=False,
-                 nat_enforce=False, use_ipsec=False, use_ports=False):
+    def __init__(self, action: str, ip_descriptor: str, replace_ip: str, nodeid: int,
+                 ignore_other: bool = False, nat_enforce: bool = False,
+                 use_ipsec: bool = False, use_ports: bool = False) -> None:
         data = {"action": action, "ignore_other": ignore_other, "ip_descriptor": ip_descriptor,
                 "nat_enforce": nat_enforce, "nodeid": nodeid, "replace_ip": replace_ip,
                 "use_ipsec": use_ipsec, "use_ports": use_ports}
         super(LBFilter, self).__init__(data=data)
 
     @classmethod
-    def create(cls, nodeid, ip_descriptor, replace_ip,
-               action="replace", ignore_other=False, nat_enforce=False,
-               use_ipsec=False, use_ports=False):
+    def create(cls, nodeid: int, ip_descriptor: str, replace_ip: str,
+               action: str = "replace", ignore_other: bool = False, nat_enforce: bool = False,
+               use_ipsec: bool = False, use_ports: bool = False) -> LBFilter:
         """
         Create a LB Filter.
 
@@ -4374,7 +4388,7 @@ class LBFilter(NestedDict):
                         use_ipsec=use_ipsec, use_ports=use_ports)
 
     @property
-    def action(self):
+    def action(self) -> str:
         """
         Action for the filter.
         possible values are: none, replace, node, select_none, replace_offset
@@ -4383,11 +4397,11 @@ class LBFilter(NestedDict):
         return self.get("action")
 
     @action.setter
-    def action(self, value):
+    def action(self, value: str) -> None:
         self.update(action=value)
 
     @property
-    def ip_descriptor(self):
+    def ip_descriptor(self) -> str:
         """
         Represents the IPNetwork or the IPAddressRange
 
@@ -4396,11 +4410,11 @@ class LBFilter(NestedDict):
         return self.get("ip_descriptor")
 
     @ip_descriptor.setter
-    def ip_descriptor(self, value):
+    def ip_descriptor(self, value: str) -> None:
         self.update(ip_descriptor=value)
 
     @property
-    def replace_ip(self):
+    def replace_ip(self) -> str:
         """
         Address in case of replace action.
 
@@ -4409,11 +4423,11 @@ class LBFilter(NestedDict):
         return self.get("replace_ip")
 
     @replace_ip.setter
-    def replace_ip(self, value):
+    def replace_ip(self, value: str) -> None:
         self.update(replace_ip=value)
 
     @property
-    def use_ipsec(self):
+    def use_ipsec(self) -> bool:
         """
         Tells the engine that this entry has to be handled with
         special care because part of VPN
@@ -4423,11 +4437,11 @@ class LBFilter(NestedDict):
         return self.get("use_ipsec")
 
     @use_ipsec.setter
-    def use_ipsec(self, value):
+    def use_ipsec(self, value: bool) -> None:
         self.update(use_ipsec=value)
 
     @property
-    def use_ports(self):
+    def use_ports(self) -> bool:
         """
         Defines whether to use port numbers
         when calculating the hash value for the packet.
@@ -4437,11 +4451,11 @@ class LBFilter(NestedDict):
         return self.get("use_ports")
 
     @use_ports.setter
-    def use_ports(self, value):
+    def use_ports(self, value: bool) -> None:
         self.update(use_ports=value)
 
     @property
-    def nat_enforce(self):
+    def nat_enforce(self) -> bool:
         """
         Tells NAT to enforce translated packet headers
         to the same hash value to the matching packet.
@@ -4451,11 +4465,11 @@ class LBFilter(NestedDict):
         return self.get("nat_enforce")
 
     @nat_enforce.setter
-    def nat_enforce(self, value):
+    def nat_enforce(self, value: bool) -> None:
         self.update(nat_enforce=value)
 
     @property
-    def ignore_other(self):
+    def ignore_other(self) -> bool:
         """
         Tell that other entries might not be concerned.
 
@@ -4464,7 +4478,7 @@ class LBFilter(NestedDict):
         return self.get("ignore_other")
 
     @ignore_other.setter
-    def ignore_other(self, value):
+    def ignore_other(self, value: bool) -> None:
         self.update(ignore_other=value)
 
 
@@ -4488,11 +4502,11 @@ class IdleTimeout(NestedDict):
                                "ipsec_established": 72
                                }
 
-    def __init__(self, engine):
+    def __init__(self, engine: Engine) -> None:
         ars = {"connection_timeout": engine.data.get("connection_timeout", {})}
         super(IdleTimeout, self).__init__(data=ars)
 
-    def add(self, name, timeout=None):
+    def add(self, name: str, timeout: Optional[int] = None) -> None:
         """
         Add a timeout setting for the new protocol.
         :param str name: name of the protocol.
@@ -4505,7 +4519,7 @@ class IdleTimeout(NestedDict):
         else:
             raise ("Invalid protocol found : {}".format(name))
 
-    def remove(self, name):
+    def remove(self, name: str) -> None:
         """
         Remove the timeout setting for specific protocols on the engine.
         :param str name: namr of the protocol to be removed.
@@ -4515,7 +4529,7 @@ class IdleTimeout(NestedDict):
                 self.data['connection_timeout'].remove(protocol)
                 break
 
-    def _contains(self, name):
+    def _contains(self, name: str) -> bool:
         """
         Check if specific protocol settings are present in the engine.
         :param str name: name of protocol.
@@ -4531,33 +4545,33 @@ class LocalLogStorageSettings(NestedDict):
     Local Log Storage Settings for not virtual engines.
     """
 
-    def __init__(self, engine):
+    def __init__(self, engine: Engine) -> None:
         ars = engine.data.get("local_log_storage", {})
         super(LocalLogStorageSettings, self).__init__(data=ars)
 
     @property
-    def lls_guaranteed_free_percent(self):
+    def lls_guaranteed_free_percent(self) -> Optional[int]:
         """
         Minimum amount of spool space that must be left available for other uses in percentage
         """
         return self.data.get("lls_guaranteed_free_percent")
 
     @property
-    def lls_guaranteed_free_size_in_mb(self):
+    def lls_guaranteed_free_size_in_mb(self) -> Optional[int]:
         """
         Minimum amount of spool space that must be left available for other uses in MegaBytes
         """
         return self.data.get("lls_guaranteed_free_size_in_mb")
 
     @property
-    def lls_max_time(self):
+    def lls_max_time(self) -> Optional[int]:
         """
         The maximum amount of hours before the stored logs are deleted.
         """
         return self.data.get("lls_max_time")
 
     @property
-    def local_log_storage_activated(self):
+    def local_log_storage_activated(self) -> Optional[bool]:
         """
         Activate the Local Log Storage feature. At least one of the Guaranteed free disk partition
         values must be set up.
@@ -4589,11 +4603,11 @@ class HAForSingleEngine(object):
 
     connection_sync_group = ElementRef("connection_sync_group")
 
-    def __init__(self, data=None):
+    def __init__(self, data: Optional[Any] = None) -> None:
         self.data = data if data else ElementCache()
 
     @property
-    def ha_backup_unit_mode(self):
+    def ha_backup_unit_mode(self) -> Optional[str]:
         """
         Get high availability backup unit mode for this engine
 
@@ -4602,7 +4616,7 @@ class HAForSingleEngine(object):
         return self.data.get("ha_backup_unit_mode")
 
     @property
-    def connection_sync_mode(self):
+    def connection_sync_mode(self) -> Optional[str]:
         """
         Get connection synchronization for external high availability mode for this engine
 
@@ -4611,7 +4625,7 @@ class HAForSingleEngine(object):
         return self.data.get("connection_sync_mode")
 
     @property
-    def pos(self):
+    def pos(self) -> Optional[str]:
         """
         proof of serial for hugh availability.
         Applicable when HA backup unit mode is enabled.
@@ -4621,7 +4635,7 @@ class HAForSingleEngine(object):
         return self.data.get("ha_pos_for_backup_unit")
 
     @property
-    def sync_interface(self):
+    def sync_interface(self) -> Optional[int]:
         """
         ID of the interface for unicast state
         Applicable when HA mode is connection_sync.
@@ -4630,7 +4644,7 @@ class HAForSingleEngine(object):
         """
         return self.data.get("ha_connection_sync_interface")
 
-    def disable_ha_backup_unit(self):
+    def disable_ha_backup_unit(self) -> None:
         """
         Disable HA backup unit mode on this engine.
 
@@ -4638,7 +4652,7 @@ class HAForSingleEngine(object):
         """
         self.data.update(ha_backup_unit_mode='disabled')
 
-    def disable_connection_sync(self):
+    def disable_connection_sync(self) -> None:
         """
         Disable connection synchronization for external high availability on this engine.
 
@@ -4646,7 +4660,7 @@ class HAForSingleEngine(object):
         """
         self.data.update(connection_sync_mode='disabled')
 
-    def set_ha_backup_unit(self, pos=None):
+    def set_ha_backup_unit(self, pos: Optional[str] = None) -> None:
         """
         Enable high availability backup unit on this engine.
         Disable connection synchronization for external high availability.
@@ -4657,7 +4671,8 @@ class HAForSingleEngine(object):
         self.data.update(ha_backup_unit_mode='enabled', ha_pos_for_backup_unit=pos,
                          connection_sync_mode='disabled')
 
-    def set_connection_sync(self, connection_sync_group, ha_connection_sync_interface):
+    def set_connection_sync(self, connection_sync_group: Any,
+                            ha_connection_sync_interface: Any) -> None:
         """
         Enable connection synchronization for external high availability on this engine.
         Disable high availability backup unit.
@@ -4685,11 +4700,12 @@ class SidewinderProxyAdvancedSettings(NestedDict):
     """
     types = ("SHARED", "HTTP", "SSH", "TCP", "UDP")
 
-    def __init__(self, data):
+    def __init__(self, data: Any) -> None:
         super(SidewinderProxyAdvancedSettings, self).__init__(data=data)
 
     @classmethod
-    def create(cls, sidewinder_type=None, attribute=None, value=None):
+    def create(cls, sidewinder_type: Optional[str] = None, attribute: Optional[str] = None,
+               value: Optional[str] = None) -> SidewinderProxyAdvancedSettings:
         """
         :param str sidewinder_type: The allowed Sidewinder Types:
                 1. SHARED - Shared setting - will set the value for all proxies.
@@ -4720,17 +4736,18 @@ class ScanDetectionSetting(NestedDict):
     the threshold, an alert is generated.
     """
 
-    def __init__(self, data):
+    def __init__(self, data: Any) -> None:
         super(ScanDetectionSetting, self).__init__(data=data)
 
     @classmethod
-    def create(cls, alert_ref=None, severity=1, log_level="stored",
-               scan_detection_type="default off", scan_detection_icmp_events=220,
-               scan_detection_icmp_timewindow=1, scan_detection_icmp_unit="minute",
-               scan_detection_tcp_events=220, scan_detection_tcp_timewindow=1,
-               scan_detection_tcp_unit="minute",
-               scan_detection_udp_events=220, scan_detection_udp_timewindow=1,
-               scan_detection_udp_unit="minute"):
+    def create(cls, alert_ref: Optional[Any] = None, severity: int = 1,
+               log_level: str = "stored",
+               scan_detection_type: str = "default off", scan_detection_icmp_events: int = 220,
+               scan_detection_icmp_timewindow: int = 1, scan_detection_icmp_unit: str = "minute",
+               scan_detection_tcp_events: int = 220, scan_detection_tcp_timewindow: int = 1,
+               scan_detection_tcp_unit: str = "minute",
+               scan_detection_udp_events: int = 220, scan_detection_udp_timewindow: int = 1,
+               scan_detection_udp_unit: str = "minute") -> ScanDetectionSetting:
         """
         :param alert_ref: If you selected Alert as the Log Level, enter the Alert.
             Required if Alert chosen.
@@ -4803,12 +4820,13 @@ class StaticMulticastRoute(NestedDict):
     Represents Firewall multicast routing entry for Static/IGMP Proxy multicast routing modes.
     """
 
-    def __init__(self, data):
+    def __init__(self, data: Any) -> None:
         super(StaticMulticastRoute, self).__init__(data=data)
 
     @classmethod
-    def create(cls, source_ip=None, source_interface=None, dest_ip=None,
-               dest_interface=None):
+    def create(cls, source_ip: Optional[str] = None, source_interface: Optional[str] = None,
+               dest_ip: Optional[str] = None,
+               dest_interface: Optional[list[str]] = None) -> StaticMulticastRoute:
         """
         :param source_ip: The Source IP Address.`
         :param source_interface: The Source Interface given by its ID.
@@ -4831,14 +4849,16 @@ class WebAuthentication(NestedDict):
     The Browser-Based User Authentication settings
     """
 
-    def __init__(self, data):
+    def __init__(self, data: Any) -> None:
         super(WebAuthentication, self).__init__(data=data)
 
     @classmethod
-    def create(cls, all_interfaces=True, authentication_idle_timeout=3600,
-               authentication_timeout=3600, enabled_interface=None, enforce_https=False,
-               http_port=None, https_port=None, keep_alive_rate=30, key_length=0, page_ref=None,
-               session_handling=False, use_cert_bba=False, tls_profile=None):
+    def create(cls, all_interfaces: bool = True, authentication_idle_timeout: int = 3600,
+               authentication_timeout: int = 3600, enabled_interface: Optional[list[Any]] = None,
+               enforce_https: bool = False, http_port: Optional[int] = None,
+               https_port: Optional[int] = None, keep_alive_rate: int = 30, key_length: int = 0,
+               page_ref: Optional[Any] = None, session_handling: bool = False,
+               use_cert_bba: bool = False, tls_profile: Optional[Any] = None) -> WebAuthentication:
         """
         :param bool all_interfaces: Flag to tell if we restrict listening interfaces. or if listen
             on all interfaces. Ignored if HTTP or HTTPS are not enabled
@@ -4909,14 +4929,15 @@ class Nat64Settings(NestedDict):
     any faults in the way the networks in the path work.
     """
 
-    def __init__(self, data):
+    def __init__(self, data: Any) -> None:
         super(Nat64Settings, self).__init__(data=data)
 
     @classmethod
-    def create(cls, clat_local_ipv6_prefix_ip, clat_local_ipv6_prefix_ref,
-               clat_remote_ipv6_prefix_ip, clat_remote_ipv6_prefix_ref, nat64_local_pools_ref,
-               nat64_ipv6_prefix_ip, nat64_ipv6_prefix_ref, nat64_mapping,
-               siit_eam_ipv6_pool_ip, siit_eam_ipv6_pool_ref, siit_eam_mapping, mode="none"):
+    def create(cls, clat_local_ipv6_prefix_ip: str, clat_local_ipv6_prefix_ref: Any,
+               clat_remote_ipv6_prefix_ip: str, clat_remote_ipv6_prefix_ref: Any,
+               nat64_local_pools_ref: Any, nat64_ipv6_prefix_ip: str, nat64_ipv6_prefix_ref: Any,
+               nat64_mapping: list[Any], siit_eam_ipv6_pool_ip: str, siit_eam_ipv6_pool_ref: Any,
+               siit_eam_mapping: list[Any], mode: str = "none") -> Nat64Settings:
         """
         :param str clat_local_ipv6_prefix_ip: For 464XLAT CLAT mode, the local
         IPv6 prefix address.
@@ -4985,7 +5006,7 @@ class Nat64Settings(NestedDict):
         return cls(json)
 
     @property
-    def clat_local_ipv6_prefix_ip(self):
+    def clat_local_ipv6_prefix_ip(self) -> Optional[str]:
         """
         For 464XLAT CLAT mode, the local
         IPv6 prefix address.
@@ -4994,7 +5015,7 @@ class Nat64Settings(NestedDict):
         return self.data.get("clat_local_ipv6_prefix_ip")
 
     @property
-    def clat_local_ipv6_prefix_ref(self):
+    def clat_local_ipv6_prefix_ref(self) -> Any:
         """
         For 464XLAT CLAT mode, the local
         IPv6 prefix element.
@@ -5003,7 +5024,7 @@ class Nat64Settings(NestedDict):
         return Element.from_href(self.data.get("clat_local_ipv6_prefix_ref"))
 
     @property
-    def clat_remote_ipv6_prefix_ip(self):
+    def clat_remote_ipv6_prefix_ip(self) -> Optional[str]:
         """
         For 464XLAT CLAT mode, the remote
         IPv6 prefix address.
@@ -5012,7 +5033,7 @@ class Nat64Settings(NestedDict):
         return self.data.get("clat_remote_ipv6_prefix_ip")
 
     @property
-    def clat_remote_ipv6_prefix_ref(self):
+    def clat_remote_ipv6_prefix_ref(self) -> Any:
         """
         For 464XLAT CLAT mode, the remote
         IPv6 prefix element.
@@ -5021,7 +5042,7 @@ class Nat64Settings(NestedDict):
         return Element.from_href(self.data.get("clat_remote_ipv6_prefix_ref"))
 
     @property
-    def nat64_local_pools_ref(self):
+    def nat64_local_pools_ref(self) -> list[Any]:
         """
         For NAT64 mode, the Networks for
         local IPv4 pools.
@@ -5031,7 +5052,7 @@ class Nat64Settings(NestedDict):
         return [Element.from_href(e) for e in self.data.get("nat64_local_pools_ref")]
 
     @property
-    def nat64_ipv6_prefix_ip(self):
+    def nat64_ipv6_prefix_ip(self) -> Optional[str]:
         """
         For NAT64 mode, the IPv6 prefix address.
         :rtype: str
@@ -5039,7 +5060,7 @@ class Nat64Settings(NestedDict):
         return self.data.get("nat64_ipv6_prefix_ip")
 
     @property
-    def nat64_ipv6_prefix_ref(self):
+    def nat64_ipv6_prefix_ref(self) -> Any:
         """
         For NAT64 mode, the IPv6 prefix element.
         :rtype: Network
@@ -5047,7 +5068,7 @@ class Nat64Settings(NestedDict):
         return Element.from_href(self.data.get("nat64_ipv6_prefix_ref"))
 
     @property
-    def siit_eam_ipv6_pool_ip(self):
+    def siit_eam_ipv6_pool_ip(self) -> Optional[str]:
         """
         For SIIT EAM mode, the default IPv6 pool address.
         :rtype: str
@@ -5055,7 +5076,7 @@ class Nat64Settings(NestedDict):
         return self.data.get("siit_eam_ipv6_pool_ip")
 
     @property
-    def siit_eam_ipv6_pool_ref(self):
+    def siit_eam_ipv6_pool_ref(self) -> Any:
         """
         For SIIT EAM mode, the default IPv6 pool element.
         :rtype: Network
@@ -5063,7 +5084,7 @@ class Nat64Settings(NestedDict):
         return Element.from_href(self.data.get("siit_eam_ipv6_pool_ref"))
 
     @property
-    def mode(self):
+    def mode(self) -> Optional[str]:
         """
         the mode:
           * nat64
@@ -5074,7 +5095,7 @@ class Nat64Settings(NestedDict):
         return self.data.get("mode")
 
     @property
-    def nat64_mapping(self):
+    def nat64_mapping(self) -> list[Nat64Mapping]:
         """
         For NAT64 mode, the list of static mappings.
         :return: list of Nat64Mapping or empty if not defined.
@@ -5083,7 +5104,7 @@ class Nat64Settings(NestedDict):
                 self.data.get("nat64_mapping", [])]
 
     @property
-    def siit_eam_mapping(self):
+    def siit_eam_mapping(self) -> list[SiitMapping]:
         """
         For SIIT EAM mode, the list of mappings.
         :return: list of SiitMapping or empty if not defined.
@@ -5096,12 +5117,13 @@ class Nat64Mapping(NestedDict):
     """
     The NAT 64 mapping
     """
-    def __init__(self, data):
+    def __init__(self, data: Any) -> None:
         super(Nat64Mapping, self).__init__(data=data)
 
     @classmethod
-    def create(cls, nat64_mapping_ipv6_address, nat64_mapping_ipv6_port, nat64_mapping_protocol_ref,
-               nat64_mapping_ipv4_address, nat64_mapping_ipv4_port, rank, comment):
+    def create(cls, nat64_mapping_ipv6_address: str, nat64_mapping_ipv6_port: int,
+               nat64_mapping_protocol_ref: Any, nat64_mapping_ipv4_address: str,
+               nat64_mapping_ipv4_port: int, rank: int, comment: str) -> Nat64Mapping:
         """
         :param str nat64_mapping_ipv6_address: the IPv6 address.
         :param int nat64_mapping_ipv6_port: the port for IPv6 part.
@@ -5125,7 +5147,7 @@ class Nat64Mapping(NestedDict):
         return cls(data)
 
     @property
-    def nat64_mapping_ipv6_address(self):
+    def nat64_mapping_ipv6_address(self) -> Optional[str]:
         """
         the IPv6 address.
         :rtype: str
@@ -5133,7 +5155,7 @@ class Nat64Mapping(NestedDict):
         return self.data.get("nat64_mapping_ipv6_address")
 
     @property
-    def nat64_mapping_ipv6_port(self):
+    def nat64_mapping_ipv6_port(self) -> int:
         """
         the port for IPv6 part.
         :rtype: int
@@ -5141,7 +5163,7 @@ class Nat64Mapping(NestedDict):
         return int(self.data.get("nat64_mapping_ipv6_port"))
 
     @property
-    def nat64_mapping_protocol_ref(self):
+    def nat64_mapping_protocol_ref(self) -> Any:
         """
         the Protocol, as a referenced ServiceIP element.
         :rtype: int
@@ -5149,7 +5171,7 @@ class Nat64Mapping(NestedDict):
         return Element.from_href(self.data.get("nat64_mapping_protocol_ref"))
 
     @property
-    def nat64_mapping_ipv4_address(self):
+    def nat64_mapping_ipv4_address(self) -> Optional[str]:
         """
         the IPv4 address.
         :rtype: str
@@ -5157,7 +5179,7 @@ class Nat64Mapping(NestedDict):
         return self.data.get("nat64_mapping_ipv4_address")
 
     @property
-    def nat64_mapping_ipv4_port(self):
+    def nat64_mapping_ipv4_port(self) -> int:
         """
         the port for IPv4 part.
         :rtype: int
@@ -5165,7 +5187,7 @@ class Nat64Mapping(NestedDict):
         return int(self.data.get("nat64_mapping_ipv4_port"))
 
     @property
-    def rank(self):
+    def rank(self) -> int:
         """
         the rank for ordering mappings.
         :rtype: int
@@ -5173,7 +5195,7 @@ class Nat64Mapping(NestedDict):
         return int(self.data.get("rank"))
 
     @property
-    def comment(self):
+    def comment(self) -> Optional[str]:
         """
         the comment.
         :rtype: str
@@ -5186,12 +5208,12 @@ class SiitMapping(NestedDict):
     The mapping for SIIT EAM mode.
     """
 
-    def __init__(self, data):
+    def __init__(self, data: Any) -> None:
         super(SiitMapping, self).__init__(data=data)
 
     @classmethod
-    def create(cls, siit_eam_mapping_ipv6_prefix, siit_eam_mapping_ipv4_network,
-               rank, comment):
+    def create(cls, siit_eam_mapping_ipv6_prefix: str, siit_eam_mapping_ipv4_network: str,
+               rank: int, comment: str) -> SiitMapping:
         """
         :param str siit_eam_mapping_ipv6_prefix: the IPv6 prefix.
         :param str siit_eam_mapping_ipv4_network: the IPv4 network.
@@ -5209,7 +5231,7 @@ class SiitMapping(NestedDict):
         return cls(data)
 
     @property
-    def siit_eam_mapping_ipv6_prefix(self):
+    def siit_eam_mapping_ipv6_prefix(self) -> Optional[str]:
         """
         the IPv6 prefix.
         :rtype: str
@@ -5217,7 +5239,7 @@ class SiitMapping(NestedDict):
         return self.data.get("siit_eam_mapping_ipv6_prefix")
 
     @property
-    def siit_eam_mapping_ipv4_network(self):
+    def siit_eam_mapping_ipv4_network(self) -> Optional[str]:
         """
         the IPv4 network.
         :rtype: str
@@ -5225,7 +5247,7 @@ class SiitMapping(NestedDict):
         return self.data.get("siit_eam_mapping_ipv4_network")
 
     @property
-    def rank(self):
+    def rank(self) -> int:
         """
         the rank for ordering mappings.
         :rtype: int
@@ -5233,7 +5255,7 @@ class SiitMapping(NestedDict):
         return int(self.data.get("rank"))
 
     @property
-    def comment(self):
+    def comment(self) -> Optional[str]:
         """
         the comment.
         :rtype: str
@@ -5248,14 +5270,17 @@ class DHCPClientConfiguration(NestedDict):
     goes from Direct to Relay mode.
     """
 
-    def __init__(self, data):
+    def __init__(self, data: Any) -> None:
         super(DHCPClientConfiguration, self).__init__(data=data)
 
     @classmethod
-    def create(cls, dhcp_client_mode: int = None, restricted_address_enabled: bool = False,
-               restricted_address_ranges: str = None, dhcp_client_interfaces: list[str] = None,
-               dhcp_servers: list[DHCPServer] = None, proxy_arg_enabled: bool = False,
-               proxy_arp_address_ranges: str = False, dhcp_add_info: int = None):
+    def create(cls, dhcp_client_mode: Optional[int] = None,
+               restricted_address_enabled: bool = False,
+               restricted_address_ranges: Optional[str] = None,
+               dhcp_client_interfaces: Optional[list[str]] = None,
+               dhcp_servers: Optional[list[DHCPServer]] = None, proxy_arg_enabled: bool = False,
+               proxy_arp_address_ranges: Optional[str] = None,
+               dhcp_add_info: Optional[int] = None) -> DHCPClientConfiguration:
         """
         :param int dhcp_client_mode: the DHCP Mode. Accepted values:
          - 0: Disabled

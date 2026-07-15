@@ -48,6 +48,8 @@ Example rule deletion::
         if rule.name == 'mynewrule':
             rule.delete()
 """
+from __future__ import annotations
+from typing import Any, Optional, Union, Iterator
 from smc.base.model import ElementCreator, LoadElement
 from smc.api.exceptions import (
     CreatePolicyFailed,
@@ -69,7 +71,7 @@ class FirewallRule(object):
     """
 
     @property
-    def fw_ipv4_access_rules(self):
+    def fw_ipv4_access_rules(self) -> Any:
         """
         IPv4 rule entry point
 
@@ -78,7 +80,7 @@ class FirewallRule(object):
         return rule_collection(self.get_relation("fw_ipv4_access_rules"), IPv4Rule)
 
     @property
-    def fw_ipv4_nat_rules(self):
+    def fw_ipv4_nat_rules(self) -> Any:
         """
         IPv4NAT Rule entry point
 
@@ -87,7 +89,7 @@ class FirewallRule(object):
         return rule_collection(self.get_relation("fw_ipv4_nat_rules"), IPv4NATRule)
 
     @property
-    def fw_ipv6_access_rules(self):
+    def fw_ipv6_access_rules(self) -> Any:
         """
         IPv6 Rule entry point
 
@@ -96,7 +98,7 @@ class FirewallRule(object):
         return rule_collection(self.get_relation("fw_ipv6_access_rules"), IPv6Rule)
 
     @property
-    def fw_ipv6_nat_rules(self):
+    def fw_ipv6_nat_rules(self) -> Any:
         """
         IPv6NAT Rule entry point
 
@@ -127,7 +129,7 @@ class FirewallPolicy(FirewallRule, Policy):
     typeof = "fw_policy"
 
     @classmethod
-    def create(cls, name, template="Firewall Inspection Template"):
+    def create(cls, name: str, template: Union[str, "FirewallTemplatePolicy", None] = "Firewall Inspection Template") -> "FirewallPolicy":
         """
         Create Firewall Policy. Template policy is required for the
         policy. The template parameter should be the name of the
@@ -165,7 +167,7 @@ class FirewallPolicy(FirewallRule, Policy):
         except CreateElementFailed as err:
             raise CreatePolicyFailed(err)
 
-    def update(self, cautious_update=True, **kwargs):
+    def update(self, cautious_update: bool = True, **kwargs: Any) -> Any:  # type: ignore[override]
         """
         Update Firewall Policy. By default this will load the etag from the API.
         This is to handle cases where a subelement has changed the etag of the
@@ -205,7 +207,7 @@ class FirewallSubPolicy(Policy):
     typeof = "sub_ipv4_fw_policy"
 
     @classmethod
-    def create(cls, name):
+    def create(cls, name: str) -> "FirewallSubPolicy":
         """
         Create a sub policy. Only name is required. Other settings are
         inherited from the parent firewall policy (template, inspection
@@ -218,7 +220,7 @@ class FirewallSubPolicy(Policy):
         return ElementCreator(cls, json={"name": name})
 
     @property
-    def fw_ipv4_access_rules(self):
+    def fw_ipv4_access_rules(self) -> Any:
         """
         IPv4 rule entry point
 
@@ -231,7 +233,7 @@ class FirewallIPv6SubPolicy(FirewallSubPolicy):
     typeof = "sub_ipv6_fw_policy"
 
     @property
-    def fw_ipv6_access_rules(self):
+    def fw_ipv6_access_rules(self) -> Any:
         """
         IPv6 rule entry point
 
@@ -259,5 +261,5 @@ class FirewallTemplatePolicy(FirewallPolicy):
 
     typeof = "fw_template_policy"
 
-    def upload(self):
+    def upload(self) -> None:  # type: ignore[override]
         pass  # Not supported on the template

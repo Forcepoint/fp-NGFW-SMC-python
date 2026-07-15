@@ -65,6 +65,10 @@ Then create the multilink specifying the multilink members::
 
 .. seealso:: :class:`~Multilink`
 """
+from __future__ import annotations
+
+from typing import Any, Optional, Union, Iterator
+
 from smc.base.model import Element, ElementCreator, ElementCache, ElementRef, ElementList
 from smc.base.structs import NestedDict
 from smc.vpn.elements import ConnectionType
@@ -104,23 +108,23 @@ class StaticNetlink(Element):
     @classmethod
     def create(
         cls,
-        name,
-        gateway,
-        network,
-        connection_type=None,
-        input_speed=None,
-        output_speed=None,
-        domain_server_address=None,
-        provider_name=None,
-        probe_address=None,
-        standby_mode_period=3600,
-        standby_mode_timeout=30,
-        active_mode_period=5,
-        active_mode_timeout=1,
-        ipv4_outbound=None,
-        ipv6_outbound=None,
-        comment=None
-    ):
+        name: str,
+        gateway: Any,
+        network: Any,
+        connection_type: Optional[Any] = None,
+        input_speed: Optional[int] = None,
+        output_speed: Optional[int] = None,
+        domain_server_address: Optional[list] = None,
+        provider_name: Optional[str] = None,
+        probe_address: Optional[list] = None,
+        standby_mode_period: int = 3600,
+        standby_mode_timeout: int = 30,
+        active_mode_period: int = 5,
+        active_mode_timeout: int = 1,
+        ipv4_outbound: Optional[str] = None,
+        ipv6_outbound: Optional[str] = None,
+        comment: Optional[str] = None,
+    ) -> StaticNetlink:
         """
         Create a new StaticNetlink to be used as a traffic handler.
 
@@ -202,7 +206,7 @@ class StaticNetlink(Element):
         return ElementCreator(cls, json)
 
     @classmethod
-    def update_or_create(cls, with_status=False, **kwargs):
+    def update_or_create(cls, with_status: bool = False, **kwargs: Any) -> Any:
         """
         Update or create static netlink. DNS entry differences are not
         resolved, instead any entries provided will be the final state
@@ -230,7 +234,7 @@ class StaticNetlink(Element):
         return element
 
     @property
-    def domain_server_address(self):
+    def domain_server_address(self) -> Any:
         """
         Configured DNS servers for this netlink
 
@@ -241,7 +245,7 @@ class StaticNetlink(Element):
         return RankedDNSAddress(self.data.get("domain_server_address"))
 
     @property
-    def networks(self):
+    def networks(self) -> Any:
         return self.network
 
 
@@ -272,19 +276,19 @@ class DynamicNetlink(Element):
     @classmethod
     def create(
         cls,
-        name,
-        connection_type=None,
-        input_speed=None,
-        learn_dns_automatically=True,
-        output_speed=None,
-        provider_name=None,
-        probe_address=None,
-        standby_mode_period=3600,
-        standby_mode_timeout=30,
-        active_mode_period=5,
-        active_mode_timeout=1,
-        comment=None,
-    ):
+        name: str,
+        connection_type: Optional[Any] = None,
+        input_speed: Optional[int] = None,
+        learn_dns_automatically: bool = True,
+        output_speed: Optional[int] = None,
+        provider_name: Optional[str] = None,
+        probe_address: Optional[list] = None,
+        standby_mode_period: int = 3600,
+        standby_mode_timeout: int = 30,
+        active_mode_period: int = 5,
+        active_mode_timeout: int = 1,
+        comment: Optional[str] = None,
+    ) -> DynamicNetlink:
         """
         Create a Dynamic Netlink.
 
@@ -390,8 +394,14 @@ class Multilink(Element):
 
     @classmethod
     def create(
-        cls, name, multilink_members, multilink_method="rtt", retries=2, timeout=3600, comment=None
-    ):
+        cls,
+        name: str,
+        multilink_members: list,
+        multilink_method: str = "rtt",
+        retries: int = 2,
+        timeout: int = 3600,
+        comment: Optional[str] = None,
+    ) -> Multilink:
         """
         Create a new multilink configuration. Multilink requires at least
         one netlink for operation, although 2 or more are recommeneded.
@@ -422,7 +432,7 @@ class Multilink(Element):
         return ElementCreator(cls, json)
 
     @classmethod
-    def create_with_netlinks(cls, name, netlinks, **kwargs):
+    def create_with_netlinks(cls, name: str, netlinks: list, **kwargs: Any) -> Multilink:
         """
         Create a multilink with a list of StaticNetlinks. To properly create
         the multilink using this method, pass a list of netlinks with the
@@ -473,7 +483,7 @@ class Multilink(Element):
         return cls.create(name, multilink_members, **kwargs)
 
     @classmethod
-    def update_or_create(cls, with_status=False, **kwargs):
+    def update_or_create(cls, with_status: bool = False, **kwargs: Any) -> Any:
         element, updated, created = super(Multilink, cls).update_or_create(
             with_status=True, defer_update=True, **kwargs
         )
@@ -490,7 +500,7 @@ class Multilink(Element):
         return element
 
     @property
-    def members(self):
+    def members(self) -> list[Any]:
         """
         Multilink members associated with this multilink. This provides a
         a reference to the existing netlinks and their member settings.
@@ -516,10 +526,10 @@ class MultilinkMember(object):
     network = ElementRef("network_ref")
     netlink = ElementRef("netlink_ref")
 
-    def __init__(self, kwargs):
+    def __init__(self, kwargs: Any) -> None:
         self.data = ElementCache(kwargs)
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         return all(
             [
                 self.ip_range == other.ip_range,
@@ -529,10 +539,10 @@ class MultilinkMember(object):
             ]
         )
 
-    def __ne__(self, other):
+    def __ne__(self, other: Any) -> bool:
         return not self == other
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(
             (
                 self.ip_range,
@@ -543,7 +553,7 @@ class MultilinkMember(object):
         )
 
     @property
-    def ip_range(self):
+    def ip_range(self) -> Optional[str]:
         """
         Specifies the IP address range for dynamic source address
         translation (NAT) for the internal source IP addresses on the
@@ -554,12 +564,12 @@ class MultilinkMember(object):
         return self.data.get("ip_range")
 
     @ip_range.setter
-    def ip_range(self, value):
+    def ip_range(self, value: str) -> None:
         if "-" in value:
             self.data.update(ip_range=value)
 
     @property
-    def netlink_role(self):
+    def netlink_role(self) -> Optional[str]:
         """
         Shows whether the Netlink is active or standby.
         Active - traffic is routed through the NetLink according to the
@@ -572,12 +582,17 @@ class MultilinkMember(object):
         return self.data.get("netlink_role")
 
     @netlink_role.setter
-    def netlink_role(self, value):
+    def netlink_role(self, value: str) -> None:
         if value in ("standby", "active"):
             self.data.update(netlink_role=value)
 
     @classmethod
-    def create(cls, netlink, ip_range=None, netlink_role="active"):
+    def create(
+        cls,
+        netlink: Any,
+        ip_range: Optional[str] = None,
+        netlink_role: str = "active",
+    ) -> MultilinkMember:
         """
         Create a multilink member. Multilink members are added to an
         Outbound Multilink configuration and define the ip range, static
@@ -603,7 +618,7 @@ class MultilinkMember(object):
 
         return cls(member_def)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "MultilinkMember(netlink={},netlink_role={},ip_range={})".format(
             self.netlink, self.netlink_role, self.ip_range
         )
@@ -616,7 +631,7 @@ class LinkType(Element):
     typeof = "link_type"
 
     @classmethod
-    def create(cls, name, comment=None):
+    def create(cls, name: str, comment: Optional[str] = None) -> LinkType:
         """
         Create a new Link Type.
 
@@ -637,12 +652,18 @@ class IpNetLinkWeight(NestedDict):
     the Server Pool are defined as properties of the Server Pool element.
     """
 
-    def __init__(self, data):
+    def __init__(self, data: Any) -> None:
         super(IpNetLinkWeight, self).__init__(data=data)
 
     @classmethod
-    def create(cls, arp_generate=True, ipaddress=None, netlink=None, network=None,
-               status=True):
+    def create(
+        cls,
+        arp_generate: bool = True,
+        ipaddress: Optional[str] = None,
+        netlink: Optional[Any] = None,
+        network: Optional[Any] = None,
+        status: bool = True,
+    ) -> IpNetLinkWeight:
         """
         :param bool arp_generate: Automatically generate a proxy ARP for the NATed address in the
             selected Network. Otherwise, must be defined in  the ARP entry manually in the Firewall
@@ -652,7 +673,7 @@ class IpNetLinkWeight(NestedDict):
             the service that the server(s) in the Server Pool offer. Required
         :param StaticNetlink netlink: NetLink to use. To configure load sharing for the servers
             but no traffic balancing between NetLinks, select Not Specified (netlink/0). Required
-        :param Network network: Network element that is used for the Server Pool’s external
+        :param Network network: Network element that is used for the Server Pool's external
             NATed address. Required
         :param bool status: Weight of this Net Link in the pool. Set the weight to false to disable
             the net link. Not Required, Default is true.
@@ -672,7 +693,7 @@ class IpNetLinkWeight(NestedDict):
         return cls(json)
 
     @property
-    def arp_generate(self):
+    def arp_generate(self) -> Optional[bool]:
         """
         Automatically generate a proxy ARP for the NATed address in the selected Network.
         :rtype: bool
@@ -680,7 +701,7 @@ class IpNetLinkWeight(NestedDict):
         return self.data.get("arp_generate")
 
     @property
-    def ipaddress(self):
+    def ipaddress(self) -> Optional[str]:
         """
         External NATed destination IP Address for the Server Pool
         :rtype: str
@@ -688,7 +709,7 @@ class IpNetLinkWeight(NestedDict):
         return self.data.get("ipaddress")
 
     @property
-    def netlink_ref(self):
+    def netlink_ref(self) -> Any:
         """
         NetLink to use.
         :rtype: StaticNetlink
@@ -696,7 +717,7 @@ class IpNetLinkWeight(NestedDict):
         return Element.from_href(self.data.get("netlink_ref"))
 
     @property
-    def weight(self):
+    def weight(self) -> Optional[int]:
         """
         Weight of this Net Link in the pool.
         :rtype: int
@@ -704,9 +725,9 @@ class IpNetLinkWeight(NestedDict):
         return self.data.get("weight")
 
     @property
-    def network_ref(self):
+    def network_ref(self) -> list[Any]:
         """
-        Network element that is used for the Server Pool’s external NATed address
+        Network element that is used for the Server Pool's external NATed address
         :rtype: list(Network)
         """
         return [Element.from_href(network) for network in self.data.get("network_ref")]
@@ -715,14 +736,18 @@ class IpNetLinkWeight(NestedDict):
 class ServerPoolMember(NestedDict):
     """
     Host element for the internal IP address of each member of the Server Pool. The Firewall uses
-    these addresses to select which server handles which traffic that arrives to the Server Pool’s
+    these addresses to select which server handles which traffic that arrives to the Server Pool's
     external address. The Server Pool can have any number of members. You can also create a
     one-server Server Pool to enable DDNS updates for a single server when ISP links go down if the
     server does not need the other Server Pool features.
     """
 
     @classmethod
-    def create(cls, member_rank=None, member=None):
+    def create(
+        cls,
+        member_rank: Optional[int] = None,
+        member: Optional[Any] = None,
+    ) -> ServerPoolMember:
         """
         :param int member_rank: Order of the network element in the list: -1 means no order.
             Not Required
@@ -748,10 +773,23 @@ class ServerPool(Element):
     typeof = "server_pool"
 
     @classmethod
-    def create(cls, name=None, ip_netlink_weight=None, members_list=None, monitoring_frequency=10,
-               monitoring_mode="ping", monitoring_port=0, server_allocation="host",
-               monitoring_request=None, monitoring_response=None, monitoring_url=None,
-               monitoring_host=None, dns_server=None, domain_name=None, comment=None):
+    def create(
+        cls,
+        name: Optional[str] = None,
+        ip_netlink_weight: Optional[list] = None,
+        members_list: Optional[list] = None,
+        monitoring_frequency: int = 10,
+        monitoring_mode: str = "ping",
+        monitoring_port: int = 0,
+        server_allocation: str = "host",
+        monitoring_request: Optional[str] = None,
+        monitoring_response: Optional[str] = None,
+        monitoring_url: Optional[str] = None,
+        monitoring_host: Optional[str] = None,
+        dns_server: Optional[Any] = None,
+        domain_name: Optional[str] = None,
+        comment: Optional[str] = None,
+    ) -> ServerPool:
         """
 
         :param str name: The name of server pool.
@@ -823,7 +861,7 @@ class ServerPool(Element):
         return ElementCreator(cls, json)
 
     @property
-    def ip_netlink_weight(self):
+    def ip_netlink_weight(self) -> list[Any]:
         """
         The address of the Server Pool
         :rtype: list(IpNetLinkWeight)

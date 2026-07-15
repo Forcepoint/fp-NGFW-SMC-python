@@ -69,7 +69,7 @@ def main():
         # do initial contact
         logging.info("do initial contact")
         for node in cluster.nodes:
-            node.initial_contact()
+            node.initial_contact(root_password="T3mpP&d8x)T")
 
         # wait for node status online
         logging.info("Wait for nodes to be READY")

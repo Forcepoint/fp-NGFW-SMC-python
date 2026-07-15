@@ -12,6 +12,10 @@
 """
 Configuration Loader
 """
+from __future__ import annotations
+
+from typing import Any, Optional, Union, Iterator
+
 import os
 import io
 import json
@@ -23,7 +27,7 @@ except ImportError:
     import ConfigParser as configparser  # @UnusedImport
 
 
-def load_from_environ():
+def load_from_environ() -> dict:
     """
     Load the SMC URL, API KEY and optional SSL certificate from
     the environment.
@@ -98,7 +102,7 @@ def load_from_environ():
     return transform_login(config_dict)
 
 
-def load_from_file(alt_filepath=None):
+def load_from_file(alt_filepath: Optional[str] = None) -> dict:
     """Attempt to read the SMC configuration from a
     dot(.) file in the users home directory. The order in
     which credentials are parsed is:
@@ -207,7 +211,7 @@ def load_from_file(alt_filepath=None):
     return transform_login(config_dict)
 
 
-def transform_login(config):
+def transform_login(config: dict) -> dict:
     """
     Parse login data as dict. Called from load_from_file and
     also can be used when collecting information from other

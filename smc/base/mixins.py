@@ -9,6 +9,9 @@
 #  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #  License for the specific language governing permissions and limitations
 #  under the License.
+from __future__ import annotations
+
+from typing import Any, Optional, Union, Iterator
 
 from smc.api.exceptions import ActionCommandFailed, ResourceNotFound
 from smc.api.common import SMCRequest
@@ -29,7 +32,7 @@ class RequestAction(object):
     :param bool raw_result: Return the raw SMCResult
     """
 
-    def make_request(self, *exception, **kwargs):
+    def make_request(self, *exception: Any, **kwargs: Any) -> Any:
         raw_result = kwargs.pop("raw_result", False)
         method = kwargs.pop("method", "read")
         ex = exception[0] if exception else ActionCommandFailed
@@ -64,10 +67,10 @@ class UnicodeMixin(object):
 
     if sys.version_info > (3, 0):
 
-        def __str__(x):
+        def __str__(x: Any) -> str:
             return x.__unicode__()
 
     else:
 
-        def __str__(x):
+        def __str__(x: Any) -> str:
             return unicode(x).encode("utf-8")

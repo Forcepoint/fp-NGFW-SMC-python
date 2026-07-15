@@ -12,6 +12,9 @@
 """
 Module storing entry points for a session
 """
+from __future__ import annotations
+
+from typing import Any, Optional, Union, Iterator
 
 import collections
 from smc.api.exceptions import UnsupportedEntryPoint
@@ -22,20 +25,20 @@ EntryPoint.__new__.__defaults__ = (None,) * len(EntryPoint._fields)  # Version 5
 
 
 class Resource(object):
-    def __init__(self, entry_point_list):
+    def __init__(self, entry_point_list: Any) -> None:
         self._entry_points = entry_point_list
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Any]:
         for entry in self._entry_points:
             yield EntryPoint(**entry)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._entry_points)
 
-    def clear(self):
+    def clear(self) -> None:
         self._entry_points[:] = []
 
-    def all(self):
+    def all(self) -> Iterator[Any]:
         """
         Return all resources
 
@@ -44,7 +47,7 @@ class Resource(object):
         for resource in self:
             yield resource
 
-    def all_by_name(self):
+    def all_by_name(self) -> Iterator[str]:
         """
         Return all resources by rel name
 
@@ -53,7 +56,7 @@ class Resource(object):
         for resource in self:
             yield resource.rel
 
-    def get(self, rel):
+    def get(self, rel: str) -> str:
         """
         Get the resource by rel name
 

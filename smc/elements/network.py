@@ -12,7 +12,10 @@
 """
 Module representing network elements used within the SMC
 """
+from __future__ import annotations
+
 import copy
+from typing import Any, Optional, Union
 
 from smc.base.model import Element, ElementCreator
 from smc.api.exceptions import (
@@ -58,8 +61,11 @@ class Host(Element, IPv6Node):
     typeof = "host"
 
     @classmethod
-    def create(cls, name, address=None, ipv6_address=None, secondary=None,
-               third_party_monitoring=None, tools_profile_ref=None, comment=None):
+    def create(cls, name: str, address: Optional[str] = None,
+               ipv6_address: Optional[str] = None, secondary: Optional[list[str]] = None,
+               third_party_monitoring: Optional[Any] = None,
+               tools_profile_ref: Optional[Any] = None,
+               comment: Optional[str] = None) -> Host:
         """
         Create the host element
 
@@ -112,7 +118,7 @@ class AddressRange(Element):
     typeof = "address_range"
 
     @classmethod
-    def create(cls, name, ip_range, comment=None):
+    def create(cls, name: str, ip_range: str, comment: Optional[str] = None) -> AddressRange:
         """
         Create an AddressRange element
 
@@ -128,8 +134,8 @@ class AddressRange(Element):
         return ElementCreator(cls, json)
 
     @classmethod
-    def any(cls):
-        return Element.from_href(fetch_entry_point("address_range")+'/0')
+    def any(cls) -> Optional[AddressRange]:
+        return Element.from_href(fetch_entry_point("address_range")+'/0')  # type: ignore[return-value]
 
 
 class Router(Element, IPv6Node):
@@ -159,8 +165,11 @@ class Router(Element, IPv6Node):
     typeof = "router"
 
     @classmethod
-    def create(cls, name, address=None, ipv6_address=None, secondary=None,
-               third_party_monitoring=None, tools_profile_ref=None, comment=None):
+    def create(cls, name: str, address: Optional[str] = None,
+               ipv6_address: Optional[str] = None, secondary: Optional[list[str]] = None,
+               third_party_monitoring: Optional[Any] = None,
+               tools_profile_ref: Optional[Any] = None,
+               comment: Optional[str] = None) -> Router:
         """
         Create the router element
 
@@ -224,8 +233,10 @@ class Network(Element):
     typeof = "network"
 
     @classmethod
-    def create(cls, name, ipv4_network=None, ipv6_network=None, broadcast=True, location_ref=None,
-               comment=None):
+    def create(cls, name: str, ipv4_network: Optional[str] = None,
+               ipv6_network: Optional[str] = None, broadcast: bool = True,
+               location_ref: Optional[Any] = None,
+               comment: Optional[str] = None) -> Network:
         """
         Create the network element
 
@@ -272,7 +283,8 @@ class DomainName(Element):
     typeof = "domain_name"
 
     @classmethod
-    def create(cls, name, domain_name_entry=None, comment=None):
+    def create(cls, name: str, domain_name_entry: Optional[list[str]] = None,
+               comment: Optional[str] = None) -> DomainName:
         """
         Create domain name element
 
@@ -289,7 +301,7 @@ class DomainName(Element):
         return ElementCreator(cls, json)
 
     @property
-    def domain_name_entry(self):
+    def domain_name_entry(self) -> Optional[list[str]]:
         """
         The additional domain names.
         :rtype: list(str)
@@ -322,7 +334,7 @@ class Expression(Element):
     typeof = "expression"
 
     @staticmethod
-    def build_sub_expression(name, ne_ref=None, operator="union"):
+    def build_sub_expression(name: str, ne_ref: Optional[list[str]] = None, operator: str = "union") -> dict[str, Any]:
         """
         Static method to build and return the proper json for a sub-expression.
         A sub-expression would be the grouping of network elements used as a
@@ -340,7 +352,9 @@ class Expression(Element):
         return json
 
     @classmethod
-    def create(cls, name, ne_ref=None, operator="exclusion", sub_expression=None, comment=None):
+    def create(cls, name: str, ne_ref: Optional[list[str]] = None, operator: str = "exclusion",
+               sub_expression: Optional[dict[str, Any]] = None,
+               comment: Optional[str] = None) -> Expression:
         """
         Create the expression
 
@@ -372,14 +386,14 @@ class ApplicationPort(NestedDict):
     """
     def __init__(
             self,
-            port_from,
-            port_to,
-            protocol_ref,
-            tls,
-            mode="regular",
-            min_version=None,
-            max_version=None
-    ):
+            port_from: int,
+            port_to: int,
+            protocol_ref: str,
+            tls: str,
+            mode: str = "regular",
+            min_version: Optional[Any] = None,
+            max_version: Optional[Any] = None,
+    ) -> None:
         dc = dict(
             port_from=port_from,
             port_to=port_to,
@@ -397,7 +411,7 @@ class ApplicationPort(NestedDict):
         self.data["from"] = self.data.pop("port_from")
         self.data["to"] = self.data.pop("port_to")
 
-    def __str__(self):
+    def __str__(self) -> str:
         result = ""
         result += "port_from = {}; ".format(self.port_from)
         result += "port_to = {}; ".format(self.port_to)
@@ -409,7 +423,7 @@ class ApplicationPort(NestedDict):
         return result
 
     @property
-    def port_from(self):
+    def port_from(self) -> Optional[int]:
         """
         The inspected min port.
         It is applicable for protocols that use ports: TCP, UDP and SCTP.
@@ -418,7 +432,7 @@ class ApplicationPort(NestedDict):
         return self.get("from")
 
     @property
-    def port_to(self):
+    def port_to(self) -> Optional[int]:
         """
         The inspected max port.
         It is applicable for protocols that use ports: TCP, UDP and SCTP.
@@ -427,7 +441,7 @@ class ApplicationPort(NestedDict):
         return self.get("to")
 
     @property
-    def protocol_ref(self):
+    def protocol_ref(self) -> Optional[str]:
         """
         The application protocol for this port setting.
         :rtype: str
@@ -435,7 +449,7 @@ class ApplicationPort(NestedDict):
         return self.get("protocol_ref")
 
     @property
-    def tls(self):
+    def tls(self) -> Optional[str]:
         """
         The Application port TLS setting:
         ***no***: it is forbidden to identify the traffic with the TLS match.
@@ -447,7 +461,7 @@ class ApplicationPort(NestedDict):
         return self.get("tls")
 
     @property
-    def mode(self):
+    def mode(self) -> Optional[str]:
         """
         The Application port mode:
         ***regular***: normal mode
@@ -458,7 +472,7 @@ class ApplicationPort(NestedDict):
         return self.get("mode")
 
     @property
-    def min_version(self):
+    def min_version(self) -> Optional[Any]:
         """
         Minimum version of engine that supports the port.
         If not defined, the port applies to the same versions as the parent element
@@ -467,7 +481,7 @@ class ApplicationPort(NestedDict):
         return self.get("min_version")
 
     @property
-    def max_version(self):
+    def max_version(self) -> Optional[Any]:
         """
         Maximum version of engine that supports the port.
         If not defined, the port applies to the same versions as the parent element
@@ -497,11 +511,9 @@ class URLListApplication(Element):
     typeof = "url_list_application"
 
     @classmethod
-    def create(cls,
-               name,
-               url_entry,
-               application_ports=None,
-               comment=None):
+    def create(cls, name: str, url_entry: list[str],
+               application_ports: Optional[list[ApplicationPort]] = None,
+               comment: Optional[str] = None) -> URLListApplication:
         """
         Create the custom URL list
 
@@ -523,7 +535,7 @@ class URLListApplication(Element):
         return ElementCreator(cls, json)
 
     @property
-    def application_port(self):
+    def application_port(self) -> list[ApplicationPort]:
         """
         A collection of ApplicationPort
 
@@ -541,7 +553,7 @@ class URLListApplication(Element):
         return to_return
 
     @application_port.setter
-    def application_port(self, application_port_list):
+    def application_port(self, application_port_list: list[ApplicationPort]) -> None:
         """
         set application port list
 
@@ -552,7 +564,7 @@ class URLListApplication(Element):
         for app in application_port_list:
             self.data["application_port"].append(app.data)
 
-    def add_application_port(self, application_ports):
+    def add_application_port(self, application_ports: list[ApplicationPort]) -> None:
         """
         Add application_ports to this url list application.
 
@@ -569,7 +581,7 @@ class URLListApplication(Element):
         self.update()
 
     @property
-    def url_entry(self):
+    def url_entry(self) -> Optional[list[str]]:
         """
         URL list
         :rtype: list(str)
@@ -577,7 +589,7 @@ class URLListApplication(Element):
         return self.data.get("url_entry")
 
     @url_entry.setter
-    def url_entry(self, list_url):
+    def url_entry(self, list_url: list[str]) -> None:
         """
         set URL list
         :param list_url: url list to add
@@ -633,7 +645,7 @@ class IPList(Element):
 
     typeof = "ip_list"
 
-    def download(self, filename=None, as_type="zip"):
+    def download(self, filename: Optional[str] = None, as_type: str = "zip") -> Optional[Any]:
         """
         Download the IPList. List format can be either zip, text or
         json. For large lists, it is recommended to use zip encoding.
@@ -667,7 +679,7 @@ class IPList(Element):
 
             return result.json if as_type == "json" else result.content
 
-    def upload(self, filename=None, json=None, as_type="zip"):
+    def upload(self, filename: Optional[str] = None, json: Optional[Any] = None, as_type: str = "zip") -> None:
         """
         Upload an IPList to the SMC. The contents of the upload
         are not incremental to what is in the existing IPList.
@@ -704,7 +716,8 @@ class IPList(Element):
         )
 
     @classmethod
-    def update_or_create(cls, append_lists=True, with_status=False, **kwargs):
+    def update_or_create(cls, append_lists: bool = True, with_status: bool = False,
+                         **kwargs: Any) -> Union[IPList, tuple[IPList, bool, bool]]:
         """
         Update or create an IPList.
 
@@ -740,7 +753,7 @@ class IPList(Element):
         return element
 
     @property
-    def iplist(self):
+    def iplist(self) -> list[str]:
         """
         Return a list representation of this IPList. This is not
         a recommended function if the list is extremely large.
@@ -752,7 +765,8 @@ class IPList(Element):
         return self.download(as_type="json").get("ip", [])
 
     @classmethod
-    def create(cls, name, iplist=None, comment=None):
+    def create(cls, name: str, iplist: Optional[list[str]] = None,
+               comment: Optional[str] = None) -> IPList:
         """
         Create an IP List. It is also possible to add entries by supplying
         a list of IPs/networks, although this is optional. You can also
@@ -795,7 +809,7 @@ class Zone(Element):
     typeof = "interface_zone"
 
     @classmethod
-    def create(cls, name, comment=None):
+    def create(cls, name: str, comment: Optional[str] = None) -> Zone:
         """
         Create the zone element
 
@@ -863,7 +877,9 @@ class Alias(Element):
     typeof = "alias"
 
     @classmethod
-    def create(cls, name, comment=None, default_values=None, alias_values=None):
+    def create(cls, name: str, comment: Optional[str] = None,
+               default_values: Optional[list[Any]] = None,
+               alias_values: Optional[dict[Any, list[Any]]] = None) -> Alias:
         """
         Create an alias.
 
@@ -888,7 +904,7 @@ class Alias(Element):
                               json=alias_json_content)
 
     @classmethod
-    def __convert_default_values(cls, default_values=None):
+    def __convert_default_values(cls, default_values: Optional[list[Any]] = None) -> Optional[list[Any]]:
         parsed_default_values = None
         if default_values:
             parsed_default_values = element_resolver(default_values) if default_values else []
@@ -896,7 +912,7 @@ class Alias(Element):
         return parsed_default_values
 
     @classmethod
-    def __convert_alias_values(cls, alias_values=None):
+    def __convert_alias_values(cls, alias_values: Optional[dict[Any, list[Any]]] = None) -> Optional[list[dict[str, Any]]]:
         parsed_alias_values = None
         if alias_values:
             parsed_alias_values = []
@@ -908,13 +924,12 @@ class Alias(Element):
         return parsed_alias_values
 
     @classmethod
-    def update_or_create(cls,
-                         name,
-                         engine=None,
-                         translation_values=None,
-                         with_status=False,
-                         default_values=None,
-                         alias_values=None):
+    def update_or_create(cls, name: str, engine: Optional[Any] = None,
+                         translation_values: Optional[list[Any]] = None,
+                         with_status: bool = False,
+                         default_values: Optional[list[Any]] = None,
+                         alias_values: Optional[dict[Any, list[Any]]] = None,
+                         ) -> Union[Alias, tuple[Alias, bool, bool]]:
         """
         Update or create an Alias and it's mappings.
 
@@ -981,7 +996,7 @@ class Alias(Element):
         return alias
 
     @classmethod
-    def _from_engine(cls, data, alias_list):
+    def _from_engine(cls, data: dict[str, Any], alias_list: list[Any]) -> Optional[Alias]:
         """
         Return an alias for the engine. The data is dict provided
         when calling engine.alias_resolving(). The alias list is
@@ -998,7 +1013,7 @@ class Alias(Element):
                 _alias.typeof = alias._meta.type
                 return _alias
 
-    def resolve(self, engine):
+    def resolve(self, engine: str) -> Optional[list[Any]]:
         """
         Resolve this Alias to a specific value. Specify the
         engine by name to find it's value.
@@ -1017,7 +1032,7 @@ class Alias(Element):
                 ElementNotFound, href=self.get_relation("resolve"), params={"for": engine}
             ).get("resolved_value")
 
-    def full_resolve(self, engine):
+    def full_resolve(self, engine: str) -> dict[str, Any]:
         """
         Fully resolve this Alias to a specific value (both translated_element and resolved_value).
         Specify the engine by name to find it's value.

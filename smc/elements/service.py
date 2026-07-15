@@ -21,6 +21,9 @@ eligible to have a protocol agent attached.
 .. seealso:: :py:mod:`smc.elements.protocols`
 
 """
+from __future__ import annotations
+from typing import Any, Optional, Union, Iterator
+
 from smc.base.model import Element, ElementCreator
 from smc.base.structs import NestedDict
 from smc.elements.protocols import ProtocolAgentMixin
@@ -52,14 +55,14 @@ class TCPService(ProtocolAgentMixin, Element):
     @classmethod
     def create(
         cls,
-        name,
-        min_dst_port,
-        max_dst_port=None,
-        min_src_port=None,
-        max_src_port=None,
-        protocol_agent=None,
-        comment=None,
-    ):
+        name: str,
+        min_dst_port: int,
+        max_dst_port: Optional[int] = None,
+        min_src_port: Optional[int] = None,
+        max_src_port: Optional[int] = None,
+        protocol_agent: Optional[Any] = None,
+        comment: Optional[str] = None,
+    ) -> "TCPService":
         """
         Create the TCP service
 
@@ -112,14 +115,14 @@ class UDPService(ProtocolAgentMixin, Element):
     @classmethod
     def create(
         cls,
-        name,
-        min_dst_port,
-        max_dst_port=None,
-        min_src_port=None,
-        max_src_port=None,
-        protocol_agent=None,
-        comment=None,
-    ):
+        name: str,
+        min_dst_port: int,
+        max_dst_port: Optional[int] = None,
+        min_src_port: Optional[int] = None,
+        max_src_port: Optional[int] = None,
+        protocol_agent: Optional[Any] = None,
+        comment: Optional[str] = None,
+    ) -> "UDPService":
         """
         Create the UDP Service
 
@@ -168,7 +171,13 @@ class IPService(ProtocolAgentMixin, Element):
     typeof = "ip_service"
 
     @classmethod
-    def create(cls, name, protocol_number, protocol_agent=None, comment=None):
+    def create(
+        cls,
+        name: str,
+        protocol_number: int,
+        protocol_agent: Optional[Any] = None,
+        comment: Optional[str] = None,
+    ) -> "IPService":
         """
         Create the IP Service
 
@@ -191,7 +200,7 @@ class IPService(ProtocolAgentMixin, Element):
         return ElementCreator(cls, json)
 
     @property
-    def protocol_number(self):
+    def protocol_number(self) -> int:
         """
         Protocol number for this IP Service
 
@@ -221,8 +230,15 @@ class EthernetService(Element):
     typeof = "ethernet_service"
 
     @classmethod
-    def create(cls, name, frame_type="eth2", value1=None, value2=None, protocol_agent_ref=None,
-               comment=None):
+    def create(
+        cls,
+        name: str,
+        frame_type: str = "eth2",
+        value1: Optional[str] = None,
+        value2: Optional[str] = None,
+        protocol_agent_ref: Optional[Any] = None,
+        comment: Optional[str] = None,
+    ) -> "EthernetService":
         """
         Create an ethernet service
 
@@ -249,27 +265,27 @@ class EthernetService(Element):
         return ElementCreator(cls, json)
 
     @property
-    def value1(self):
+    def value1(self) -> Optional[str]:
         if "value1" in self.data:
             return hex(int(self.data.get("value1")))
 
     @value1.setter
-    def value1(self, value):
+    def value1(self, value: str) -> None:
         if "value1" in self.data:
             self.data["value1"] = int(value, 16)
 
     @property
-    def value2(self):
+    def value2(self) -> Optional[str]:
         if "value2" in self.data:
             return hex(int(self.data.get("value2")))
 
     @value2.setter
-    def value2(self, value):
+    def value2(self, value: str) -> None:
         if "value2" in self.data:
             self.data["value2"] = int(value, 16)
 
     @property
-    def protocol_agent_ref(self):
+    def protocol_agent_ref(self) -> Any:
         """
         The possible Protocol linked to this service.
         :rtype: ProtocolAgent
@@ -285,7 +301,14 @@ class RPCService(Element):
     typeof = "rpc_service"
 
     @classmethod
-    def create(cls, name, program_number=None, transport="udp", rpc_version=None, comment=None):
+    def create(
+        cls,
+        name: str,
+        program_number: Optional[str] = None,
+        transport: str = "udp",
+        rpc_version: Optional[str] = None,
+        comment: Optional[str] = None,
+    ) -> "RPCService":
         """
         This represents a SUN-RPC service.
         :param str name: name of rpc service.
@@ -305,7 +328,7 @@ class RPCService(Element):
         return ElementCreator(cls, json)
 
     @property
-    def rpc_version(self):
+    def rpc_version(self) -> Optional[str]:
         """
         The remote program version number
         :rtype str
@@ -313,7 +336,7 @@ class RPCService(Element):
         return self.data.get("rpc_version")
 
     @property
-    def transport(self):
+    def transport(self) -> Optional[str]:
         """
         The transport type.
         :rtype str
@@ -321,7 +344,7 @@ class RPCService(Element):
         return self.data.get("transport")
 
     @property
-    def program_number(self):
+    def program_number(self) -> Optional[str]:
         """
         The programe number.
         :rtype str
@@ -335,7 +358,7 @@ class ICMPServiceMixin:
     """
 
     @property
-    def icmp_type(self):
+    def icmp_type(self) -> Optional[Any]:
         """
         The ICMP type number.
         :rtype int
@@ -343,7 +366,7 @@ class ICMPServiceMixin:
         return self.data.get("icmp_type")
 
     @property
-    def icmp_code(self):
+    def icmp_code(self) -> Optional[Any]:
         """
         The ICMP code number.
         :rtype int
@@ -372,7 +395,13 @@ class ICMPService(Element, ICMPServiceMixin):
     typeof = "icmp_service"
 
     @classmethod
-    def create(cls, name, icmp_type, icmp_code=None, comment=None):
+    def create(
+        cls,
+        name: str,
+        icmp_type: int,
+        icmp_code: Optional[int] = None,
+        comment: Optional[str] = None,
+    ) -> "ICMPService":
         """
         Create the ICMP service element
 
@@ -410,7 +439,13 @@ class ICMPIPv6Service(Element, ICMPServiceMixin):
     typeof = "icmp_ipv6_service"
 
     @classmethod
-    def create(cls, name, icmp_type, icmp_code=None, comment=None):
+    def create(
+        cls,
+        name: str,
+        icmp_type: int,
+        icmp_code: Optional[int] = None,
+        comment: Optional[str] = None,
+    ) -> "ICMPIPv6Service":
         """
         Create the ICMPIPv6 service element
 
@@ -454,7 +489,12 @@ class IntegratedUisIgnoreValue(NestedDict):
     """
 
     @classmethod
-    def create(cls, iuis_ignore_user=None, iuis_ignore_ip=None, ne_ref=None):
+    def create(
+        cls,
+        iuis_ignore_user: Optional[str] = None,
+        iuis_ignore_ip: Optional[str] = None,
+        ne_ref: Optional[Any] = None,
+    ) -> "IntegratedUisIgnoreValue":
         """
         :param str iuis_ignore_user: The ignore username.  Omit for 'Any'.
         :param str iuis_ignore_ip: The ignore ip address, subnet or range.  Omit for 'Any'.
@@ -480,8 +520,15 @@ class IntegratedUserIdService(Element):
     typeof = "integrated_uis"
 
     @classmethod
-    def create(cls, name, iuis_domain=None, iuis_ignore=None, iuis_initial_query_time=None,
-               iuis_polling_interval=None, comment=None):
+    def create(
+        cls,
+        name: str,
+        iuis_domain: Optional[Any] = None,
+        iuis_ignore: Optional[list] = None,
+        iuis_initial_query_time: Optional[int] = None,
+        iuis_polling_interval: Optional[int] = None,
+        comment: Optional[str] = None,
+    ) -> "IntegratedUserIdService":
         """
         Create the IntegratedUserIdService service.
 
@@ -505,7 +552,7 @@ class IntegratedUserIdService(Element):
         return ElementCreator(cls, json)
 
     @property
-    def iuis_initial_query_time(self):
+    def iuis_initial_query_time(self) -> Optional[int]:
         """
         The initial query time in seconds.
         :rtype: int
@@ -513,7 +560,7 @@ class IntegratedUserIdService(Element):
         return self.data.get("iuis_initial_query_time")
 
     @property
-    def iuis_polling_interval(self):
+    def iuis_polling_interval(self) -> Optional[int]:
         """
         The polling interval in seconds.
         :rtype: int
@@ -521,7 +568,7 @@ class IntegratedUserIdService(Element):
         return self.data.get("iuis_polling_interval")
 
     @property
-    def iuis_ignore(self):
+    def iuis_ignore(self) -> list[Any]:
         """
         The list of ignore entries.
         :rtype: list(IntegratedUisIgnoreValue)
@@ -529,7 +576,7 @@ class IntegratedUserIdService(Element):
         return [IntegratedUisIgnoreValue(value) for value in self.data.get("iuis_ignore")]
 
     @property
-    def iuis_domain(self):
+    def iuis_domain(self) -> Any:
         """
         The active directory domain object.
         :rtype: ExternalLdapUserDomain

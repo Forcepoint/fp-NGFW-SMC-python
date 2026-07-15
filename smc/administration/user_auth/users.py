@@ -82,6 +82,10 @@ users and groups to delete a user named 'testuser'::
     [InternalUserGroup(name=Mobile VPN users), InternalUserGroup(name=testgroup)]
 
 """
+from __future__ import annotations
+
+from typing import Any, Optional, Union, Iterator
+
 from smc.base.model import Element, ElementCreator, UserElement, ElementList, ElementRef
 from smc.base.structs import BaseIterable
 from smc.base.util import element_resolver, datetime_to_ms
@@ -113,22 +117,22 @@ class ExternalLdapUserEntriesCollection(BaseIterable):
         ExternalLdapUserGroup(name=All Members)
     """
 
-    def __init__(self, external_ldap_user_group):
+    def __init__(self, external_ldap_user_group: Any) -> None:
 
         self.external_ldap_user_group = external_ldap_user_group
         item = self.list_all()
         super(ExternalLdapUserEntriesCollection, self).__init__(item)
 
-    def list_all(self):
+    def list_all(self) -> list[Any]:
         """
         Browse all External Ldap User Group.
         """
-        all_entries = []
+        all_entries: list[Any] = []
         for user_or_group in self.external_ldap_user_group.browse():
             self._browse_all(user_or_group, all_entries)
         return all_entries
 
-    def _browse_all(self, user_entry: UserElement, all_entries):
+    def _browse_all(self, user_entry: UserElement, all_entries: list[Any]) -> None:
         """
         Browse all External Ldap User element and return collectively.
         :rtype: list(ExternalLdapUserGroup, ExternalLdapUser)
@@ -145,7 +149,7 @@ class Browseable(object):
     domains to fetch user accounts.
     """
 
-    def browse(self):
+    def browse(self) -> list[Any]:
         """
         Browse the elements nested below this Domain or Group.
         Results could be internal users or groups.
@@ -187,15 +191,15 @@ class ExternalLdapUserDomain(Browseable, Element):
     @classmethod
     def create(
             cls,
-            name,
-            ldap_server,
-            isdefault=False,
-            auth_method=None,
-            comment=None,
-            browse_ldap_automatically=True,
-            engine_can_connect=True,
-            additional_username_suffix=None
-    ):
+            name: str,
+            ldap_server: Any,
+            isdefault: bool = False,
+            auth_method: Optional[Any] = None,
+            comment: Optional[str] = None,
+            browse_ldap_automatically: bool = True,
+            engine_can_connect: bool = True,
+            additional_username_suffix: Optional[list[Any]] = None,
+    ) -> "ExternalLdapUserDomain":
         """
         Create an External LDAP user domain. These are used as containers for
         retrieving user and groups from the configured LDAP server/s. If you
@@ -245,14 +249,14 @@ class ExternalLdapUserDomain(Browseable, Element):
         )
 
     @property
-    def external_ldap_user_entries(self):
+    def external_ldap_user_entries(self) -> "ExternalLdapUserEntriesCollection":
         """
         Retrieving list of an external LDAP group or user.
         :rtype: ExternalLdapUserEntriesCollection.
         """
         return ExternalLdapUserEntriesCollection(self)
 
-    def invalidate_cache(self):
+    def invalidate_cache(self) -> Any:
         """
         Invalidates the cache of the External LDAP user domain.
         """
@@ -298,8 +302,8 @@ class LdapUser(UserElement):
 
     @classmethod
     def create(
-            cls, ldap_domain: Browseable, dn: str, **kwargs
-    ):
+            cls, ldap_domain: Browseable, dn: str, **kwargs: Any
+    ) -> "LdapUser":
         """
         Create an LDAP user for an LDAP server that is not browsed.
         You can also provide additional kwargs documented in the example below.
@@ -333,8 +337,8 @@ class LdapUserGroup(Browseable, UserElement):
 
     @classmethod
     def create(
-            cls, ldap_domain: Browseable, dn: str, **kwargs
-    ):
+            cls, ldap_domain: Browseable, dn: str, **kwargs: Any
+    ) -> "LdapUserGroup":
         """
         Create an LDAP user group for an LDAP server that is not browsed.
         You can also provide additional kwargs documented in the example below.
@@ -368,8 +372,8 @@ class LdapLessUser(UserElement):
 
     @classmethod
     def create(
-            cls, ldap_domain: Browseable, name: str, **kwargs
-    ):
+            cls, ldap_domain: Browseable, name: str, **kwargs: Any
+    ) -> "LdapLessUser":
         """
         Create an LDAP user for a domain where
         SMC and engine don't connect to the external LDAP server.
@@ -404,8 +408,8 @@ class LdapLessUserGroup(Browseable, UserElement):
 
     @classmethod
     def create(
-            cls, ldap_domain: Browseable, name: str, **kwargs
-    ):
+            cls, ldap_domain: Browseable, name: str, **kwargs: Any
+    ) -> "LdapLessUserGroup":
         """
         Create an LDAP user group for for a domain where
         SMC and engine don't connect to the external LDAP server.
@@ -449,9 +453,16 @@ class InternalUser(UserElement):
 
     @classmethod
     def create(
-            cls, name, user_group=None, activation_date=None, expiration_date=None,
-            authentication_method=[], password=None, pre_shared_key=None, comment=None,
-    ):
+            cls,
+            name: str,
+            user_group: Optional[Any] = None,
+            activation_date: Optional[Any] = None,
+            expiration_date: Optional[Any] = None,
+            authentication_method: list[Any] = [],
+            password: Optional[str] = None,
+            pre_shared_key: Optional[str] = None,
+            comment: Optional[str] = None,
+    ) -> "InternalUser":
         """
         Create an internal user.
         Add a user example::
@@ -495,7 +506,7 @@ class InternalUser(UserElement):
         return ElementCreator(cls, json)
 
     @property
-    def user_group(self):
+    def user_group(self) -> list[Any]:
         """
         InternalUserGroup associated with internal user.
         :rtype: list
@@ -503,7 +514,7 @@ class InternalUser(UserElement):
         return [Element.from_href(group) for group in self.data.get("user_group")]
 
     @property
-    def authentication_method(self):
+    def authentication_method(self) -> list[Any]:
         """
         List of authentication method for specific internal user.
         :rtype: list
@@ -530,7 +541,12 @@ class InternalUserGroup(Browseable, UserElement):
     typeof = "internal_user_group"
 
     @classmethod
-    def create(cls, name, member=None, comment=None):
+    def create(
+        cls,
+        name: str,
+        member: Optional[Any] = None,
+        comment: Optional[str] = None,
+    ) -> "InternalUserGroup":
         """
         Create an internal user group. An internal group will always be attached
         to the default (and only) InternalUserDomain within the SMC.
@@ -557,7 +573,7 @@ class InternalUserGroup(Browseable, UserElement):
         return ElementCreator(cls, json)
 
     @property
-    def members(self):
+    def members(self) -> list[Any]:
         """
         Members of the InternalUserGroup. Members will be a list elements of
         type InternalUser or InternalGroup.

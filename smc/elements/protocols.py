@@ -93,6 +93,10 @@ You can unset a ProxyServer by setting the proxy_server field to None and updati
     service.update()
 
 """
+from __future__ import annotations
+
+from typing import Any, Optional, Union, Iterator
+
 from smc.base.model import Element, SubElement, ElementCache
 from smc.base.decorators import cached_property
 from smc.compat import is_api_version_less_than_or_equal
@@ -109,7 +113,7 @@ class ProtocolAgentMixin(object):
     """
 
     @property
-    def protocol_agent(self):
+    def protocol_agent(self) -> Optional[Any]:
         """Protocol Agent for this service
 
         :return: Return the protocol agent or None if this service does not
@@ -120,7 +124,7 @@ class ProtocolAgentMixin(object):
             return Element.from_href(self.protocol_agent_ref)
 
     @property
-    def protocol_agent_values(self):
+    def protocol_agent_values(self) -> Any:
         """
         Protocol agent values are protocol specific settings configurable
         on a service when a protocol agent is assigned to that service.
@@ -133,7 +137,7 @@ class ProtocolAgentMixin(object):
             return ProtocolAgentValues(self.protocol_agent, self.paValues)
         return []
 
-    def update_protocol_agent(self, protocol_agent):
+    def update_protocol_agent(self, protocol_agent: Any) -> None:
         """
         Update this service to use the specified protocol agent.
         After adding the protocol agent to the service you must call
@@ -158,7 +162,7 @@ class ProtocolAgent(Element):
 
     typeof = "protocol"
 
-    def _get_param_values(self, name):
+    def _get_param_values(self, name: str) -> Optional[dict]:
         """
         Return the parameter by name as stored on the protocol
         agent payload. This loads the data from the local cache
@@ -173,7 +177,7 @@ class ProtocolAgent(Element):
                     return values
 
     @cached_property
-    def parameters(self):
+    def parameters(self) -> list[Any]:
         """
         Protocol agent parameters are settings specific to the protocol agent
         type. Each protocol agent will have parameter settings that are
@@ -214,7 +218,7 @@ class ProtocolParameterValue(object):
     """
 
     @cached_property
-    def protocol_parameter(self):
+    def protocol_parameter(self) -> Optional[Any]:
         """
         The protocol parameter defined from the base protocol agent. This is a
         read-only element that provides some additional context to the parameter
@@ -227,7 +231,7 @@ class ProtocolParameterValue(object):
                 return parameter
 
     @property
-    def description(self):
+    def description(self) -> str:
         """
         Description of this protocol parameter. The description is what will
         be displayed on the service properties under the Protocol Parameters
@@ -238,7 +242,7 @@ class ProtocolParameterValue(object):
         return getattr(self.protocol_parameter, "description", "")
 
     @property
-    def name(self):
+    def name(self) -> str:
         """
         Name of this protocol setting
 
@@ -247,7 +251,7 @@ class ProtocolParameterValue(object):
         return getattr(self.protocol_parameter, "name", "")
 
     @property
-    def type(self):
+    def type(self) -> str:
         """
         The type of this parameter. Can be string value, integer value, etc.
         The type is returned as a string representation.
@@ -257,7 +261,7 @@ class ProtocolParameterValue(object):
         return getattr(self.protocol_parameter, "type", "")
 
     @property
-    def value(self):
+    def value(self) -> Any:
         """
         The value for this given protocol parameter. The return type is defined
         by the `type` of parameter
@@ -267,7 +271,7 @@ class ProtocolParameterValue(object):
         """
         return self.protocol_agent_values.get("value")
 
-    def _update(self, **kwargs):
+    def _update(self, **kwargs: Any) -> bool:
         """
         Update the mutable field `value`.
 
@@ -278,7 +282,7 @@ class ProtocolParameterValue(object):
             return True
         return False
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "%s(name=%s,description=%s,value=%s)" % (
             self.__class__.__name__,
             self.name,
@@ -299,11 +303,11 @@ class ProxyServiceValue(ProtocolParameterValue):
     """
 
     @property
-    def _inspected_service_ref(self):
+    def _inspected_service_ref(self) -> Optional[str]:
         return self.protocol_agent_values.get("inspected_service_ref")
 
     @property
-    def proxy_server(self):
+    def proxy_server(self) -> Optional[Any]:
         """
         The ProxyServer element referenced in this protocol parameter, if any.
 
@@ -320,7 +324,7 @@ class ProxyServiceValue(ProtocolParameterValue):
         else:
             return Element.from_href(self.protocol_agent_values.get("proxy_server_ref"))
 
-    def _update(self, **kwargs):
+    def _update(self, **kwargs: Any) -> bool:
         """
         Internal method to update the parameter dict stored in attribute
         protocol_agent_values. Allows masking of real attribute names to
@@ -353,7 +357,7 @@ class ProxyServiceValue(ProtocolParameterValue):
                     updated = True
         return updated
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "%s(name=%s,description=%s,proxy_server=%s)" % (
             self.__class__.__name__,
             self.name,
@@ -374,11 +378,11 @@ class TlsInspectionPolicyValue(ProtocolParameterValue):
     """
 
     @property
-    def _tls_inspection_policy_ref(self):
+    def _tls_inspection_policy_ref(self) -> Optional[str]:
         return self.protocol_agent_values.get("tls_inspection_policy_ref")
 
     @property
-    def tls_policy(self):
+    def tls_policy(self) -> Optional[Any]:
         """
         The HTTPSInspectionExceptions element referenced in this protocol
         agent parameter. Will be None if one is not assigned.
@@ -390,7 +394,7 @@ class TlsInspectionPolicyValue(ProtocolParameterValue):
         if self._tls_inspection_policy_ref:
             return Element.from_href(self._tls_inspection_policy_ref)
 
-    def _update(self, **kwargs):
+    def _update(self, **kwargs: Any) -> bool:
         if "tls_policy" in kwargs:
             tls_policy = kwargs.get("tls_policy")
             if not tls_policy and self._tls_inspection_policy_ref:
@@ -401,7 +405,7 @@ class TlsInspectionPolicyValue(ProtocolParameterValue):
                 return True
         return False
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "%s(name=%s,description=%s,tls_policy=%s)" % (
             self.__class__.__name__,
             self.name,
@@ -449,7 +453,7 @@ class ProtocolAgentValues(BaseIterable):
         "tls_inspection_policy_value": TlsInspectionPolicyValue,
     }
 
-    def __init__(self, protocol_agent, values):
+    def __init__(self, protocol_agent: Any, values: Any) -> None:
         items = []
         for parameter_value in values:
             for value_type, val in parameter_value.items():
@@ -462,7 +466,7 @@ class ProtocolAgentValues(BaseIterable):
                 )
         super(ProtocolAgentValues, self).__init__(items)
 
-    def update(self, name, **kwargs):
+    def update(self, name: str, **kwargs: Any) -> bool:  # type: ignore[override]
         """
         Update protocol agent parameters based on the parameter name.
         Provide the relevant keyword pairs based on the parameter type.
@@ -507,7 +511,7 @@ class ProtocolAgentValues(BaseIterable):
                 return value._update(**kwargs)
         return False
 
-    def get(self, parameter_name):
+    def get(self, parameter_name: str) -> Optional[Any]:
         """
         Get the parameter by it's name. This is a convenience for fetching.
         For example, fetch the proxy server (redir_cis) parameter from a

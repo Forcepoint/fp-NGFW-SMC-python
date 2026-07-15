@@ -52,6 +52,9 @@ an LDAP domain called 'myldapdomain'.
 .. seealso:: :class:`smc.administration.user_auth.users`
 
 """
+from __future__ import annotations
+
+from typing import Any, Optional, Union, Iterator
 
 from smc.administration.certificates import tls
 from smc.base.model import ElementCreator, Element, ElementRef, ElementList
@@ -74,7 +77,7 @@ class AuthenticationMethod(Element):
     typeof = "authentication_service"
 
     @property
-    def method_type(self):
+    def method_type(self) -> Optional[str]:
         """
         Return Authentication Method Type
         :rtype: str
@@ -82,7 +85,7 @@ class AuthenticationMethod(Element):
         return self.data.get('type')
 
     @property
-    def authentication_servers(self):
+    def authentication_servers(self) -> list[Any]:
         """
         Return Authentication Servers
         :rtype: array of dict of auth_server_ref/rank
@@ -92,16 +95,16 @@ class AuthenticationMethod(Element):
     @classmethod
     def create_saml(
             cls,
-            name,
-            idp_metadata_url,
-            service_provider_id=None,
-            name_id_policy_format=None,
-            username_attribute=None,
-            tls_profile=None,
-            tls_credentials=None,
-            group_attr_names=None,
-            **kwargs
-    ):
+            name: str,
+            idp_metadata_url: str,
+            service_provider_id: Optional[str] = None,
+            name_id_policy_format: Optional[str] = None,
+            username_attribute: Optional[str] = None,
+            tls_profile: Optional[Any] = None,
+            tls_credentials: Optional[Any] = None,
+            group_attr_names: Optional[list[Any]] = None,
+            **kwargs: Any
+    ) -> AuthenticationMethod:
         """
         Create SAML authentication method using basic settings. You can also provide additional
         kwargs documented in the class description::
@@ -153,7 +156,7 @@ class AuthenticationMethod(Element):
         return ElementCreator(cls, json)
 
     @property
-    def saml_metadata_url(self):
+    def saml_metadata_url(self) -> Optional[str]:
         """
         Return SAML Metadata URL
         :rtype: str or None
@@ -161,14 +164,14 @@ class AuthenticationMethod(Element):
         return self.data.get('saml_metadata_file')
 
     @saml_metadata_url.setter
-    def saml_metadata_url(self, saml_metadata_file):
+    def saml_metadata_url(self, saml_metadata_file: Any) -> None:
         """
         Update SAML Metadata URL
         """
         self.data['saml_metadata_file'] = saml_metadata_file
 
     @property
-    def saml_service_provider_id(self):
+    def saml_service_provider_id(self) -> Optional[str]:
         """
         Return SAML Service Provider Identifier
         :rtype: str or None
@@ -180,7 +183,7 @@ class AuthenticationMethod(Element):
         return self.data.get('saml_service_provider_id')
 
     @saml_service_provider_id.setter
-    def saml_service_provider_id(self, saml_service_provider_id):
+    def saml_service_provider_id(self, saml_service_provider_id: Any) -> None:
         """
         Update SAML Service Provider Identifier
         """
@@ -191,7 +194,7 @@ class AuthenticationMethod(Element):
         self.data['saml_service_provider_id'] = saml_service_provider_id
 
     @property
-    def saml_name_id_policy_format(self):
+    def saml_name_id_policy_format(self) -> Optional[str]:
         """
         Return SAML NameID Policy Format
         :rtype: str or None
@@ -203,7 +206,7 @@ class AuthenticationMethod(Element):
         return self.data.get('saml_name_id_policy_format')
 
     @saml_name_id_policy_format.setter
-    def saml_name_id_policy_format(self, saml_name_id_policy_format):
+    def saml_name_id_policy_format(self, saml_name_id_policy_format: Any) -> None:
         """
         Update SAML NameID Policy Format
         """
@@ -214,7 +217,7 @@ class AuthenticationMethod(Element):
         self.data['saml_name_id_policy_format'] = saml_name_id_policy_format
 
     @property
-    def saml_group_attr_names(self):
+    def saml_group_attr_names(self) -> Optional[list[Any]]:
         """
         LDAP Group Attribute Names
         :rtype: list(str)
@@ -226,7 +229,7 @@ class AuthenticationMethod(Element):
         return self.data.get('saml_group_attr_name')
 
     @saml_group_attr_names.setter
-    def saml_group_attr_names(self, saml_group_attr_names):
+    def saml_group_attr_names(self, saml_group_attr_names: Any) -> None:
         """
         Update LDAP Group Attribute Names
         """
@@ -239,14 +242,14 @@ class AuthenticationMethod(Element):
     @classmethod
     def create_openid(
             cls,
-            name,
-            discovery_url,
-            client_id,
-            client_secret,
-            username_attribute=None,
-            trusted_ca=None,
-            **kwargs
-    ):
+            name: str,
+            discovery_url: str,
+            client_id: str,
+            client_secret: str,
+            username_attribute: Optional[str] = None,
+            trusted_ca: Optional[Any] = None,
+            **kwargs: Any
+    ) -> AuthenticationMethod:
         """
         Create OpenID authentication method using basic settings. You can also provide additional
         kwargs documented in the class description::
@@ -285,7 +288,7 @@ class AuthenticationMethod(Element):
         return ElementCreator(cls, json)
 
     @property
-    def open_id_url(self):
+    def open_id_url(self) -> Optional[str]:
         """
         Return OpenID URL
         :rtype: str or None
@@ -293,14 +296,14 @@ class AuthenticationMethod(Element):
         return self.data.get('open_id_url')
 
     @open_id_url.setter
-    def open_id_url(self, open_id_url):
+    def open_id_url(self, open_id_url: Any) -> None:
         """
         Update OpenID URL
         """
         self.data['open_id_url'] = open_id_url
 
     @property
-    def open_id_client_id(self):
+    def open_id_client_id(self) -> Optional[str]:
         """
         Return OpenID Client Identifier
         :rtype: str or None
@@ -308,14 +311,14 @@ class AuthenticationMethod(Element):
         return self.data.get('open_id_client_id')
 
     @open_id_client_id.setter
-    def open_id_client_id(self, open_id_client_id):
+    def open_id_client_id(self, open_id_client_id: Any) -> None:
         """
         Update OpenID Client Identifier
         """
         self.data['open_id_client_id'] = open_id_client_id
 
     @property
-    def open_id_user_attribute(self):
+    def open_id_user_attribute(self) -> Optional[str]:
         """
         Return OpenID User Attribute Name
         :rtype: str or None
@@ -323,7 +326,7 @@ class AuthenticationMethod(Element):
         return self.data.get('open_id_user_attribute')
 
     @open_id_user_attribute.setter
-    def open_id_user_attribute(self, open_id_user_attribute):
+    def open_id_user_attribute(self, open_id_user_attribute: Any) -> None:
         """
         Update OpenID User Attribute Name
         """
@@ -332,12 +335,12 @@ class AuthenticationMethod(Element):
     @classmethod
     def create_tacacs_or_radius(
             cls,
-            name,
-            authentication_server=None,
-            type="tacacs",
-            comment=None,
-            **kwargs
-    ):
+            name: str,
+            authentication_server: Optional[list[Any]] = None,
+            type: str = "tacacs",
+            comment: Optional[str] = None,
+            **kwargs: Any
+    ) -> AuthenticationMethod:
         """
         Create Tacacs+/Radius authentication method using basic settings. You can also provide
         additional kwargs documented in the class description::
@@ -389,19 +392,19 @@ class DomainController(NestedDict):
         example 28800 is 8 hours
     """
 
-    def __init__(self, user, ipaddress, password, **kw):
+    def __init__(self, user: str, ipaddress: str, password: str, **kw: Any) -> None:
         dc = dict(user=user, ipaddress=ipaddress, password=password, **kw)
         super(DomainController, self).__init__(data=dc)
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         if isinstance(other, DomainController):
             return other.user == self.user and other.ipaddress == self.ipaddress
         return False
 
-    def __ne__(self, other):
+    def __ne__(self, other: Any) -> bool:
         return not self == other
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "DomainController(ipaddress={})".format(self.ipaddress)
 
 
@@ -433,41 +436,41 @@ class ActiveLdapServerMixin(Element, MultiContactServer):
     @classmethod
     def create(
             cls,
-            name,
-            address,
-            base_dn,
-            bind_user_id=None,
-            bind_password=None,
-            port=389,
-            protocol="ldap",
-            tls_profile=None,
-            tls_identity=None,
-            domain_controller=[],
-            supported_method=None,
-            timeout=10,
-            max_search_result=0,
-            page_size=0,
-            internet_auth_service_enabled=False,
-            email=None,
-            client_cert_based_user_search=None,
-            display_name_attr_name=None,
-            frame_ip_attr_name=None,
-            group_member_attr=None,
-            job_title_attr_name=None,
-            mobile_attr_name=None,
-            office_location_attr_name=None,
-            photo_attr_name=None,
-            short_user_id_attr=None,
-            user_id_attr=None,
-            user_principal_name=None,
-            long_user_id_attr=None,
-            secondary=None,
-            location_ref=None,
-            tools_profile_ref=None,
-            third_party_monitoring=None,
-            comment=None,
-            **kwargs
-    ):
+            name: str,
+            address: str,
+            base_dn: str,
+            bind_user_id: Optional[str] = None,
+            bind_password: Optional[str] = None,
+            port: int = 389,
+            protocol: str = "ldap",
+            tls_profile: Optional[Any] = None,
+            tls_identity: Optional[str] = None,
+            domain_controller: list[Any] = [],
+            supported_method: Optional[list[Any]] = None,
+            timeout: int = 10,
+            max_search_result: int = 0,
+            page_size: int = 0,
+            internet_auth_service_enabled: bool = False,
+            email: Optional[str] = None,
+            client_cert_based_user_search: Optional[str] = None,
+            display_name_attr_name: Optional[str] = None,
+            frame_ip_attr_name: Optional[str] = None,
+            group_member_attr: Optional[str] = None,
+            job_title_attr_name: Optional[str] = None,
+            mobile_attr_name: Optional[str] = None,
+            office_location_attr_name: Optional[str] = None,
+            photo_attr_name: Optional[str] = None,
+            short_user_id_attr: Optional[str] = None,
+            user_id_attr: Optional[str] = None,
+            user_principal_name: Optional[str] = None,
+            long_user_id_attr: Optional[str] = None,
+            secondary: Optional[list[str]] = None,
+            location_ref: Optional[Any] = None,
+            tools_profile_ref: Optional[Any] = None,
+            third_party_monitoring: Optional[Any] = None,
+            comment: Optional[str] = None,
+            **kwargs: Any
+    ) -> Any:
         """
         :param str name: name of AD/Ldap element for display
         :param str address: address of AD/Ldap server
@@ -494,7 +497,7 @@ class ActiveLdapServerMixin(Element, MultiContactServer):
         :param bool internet_auth_service_enabled: whether to attach an NPS service to this
             AD controller (default: False). If setting to true, provide kwargs values for
             auth_ipaddress, auth_port and shared_secret
-        :param str email: The name of the attribute for storing the users’ e-mail address. This
+        :param str email: The name of the attribute for storing the users' e-mail address. This
             attribute is primarily used for linked Authentication Server Users. It can also be used
             to identify users by their e-mail address in certificate authentication.
         :param str client_cert_based_user_search: Text input field that specifies LDAP query filter
@@ -515,11 +518,11 @@ class ActiveLdapServerMixin(Element, MultiContactServer):
         :param str mobile_attr_name: The attribute storing the users mobile (default: mobile)
         :param str office_location_attr_name: The name of the attribute for storing the user's
                 office location. (default: physicalDeliveryOfficeName)
-        :param str photo_attr_name: The name of the attribute for storing the users’ photo.
+        :param str photo_attr_name: The name of the attribute for storing the users' photo.
         :param str user_id_attr: The name that the server uses for the UserID Attribute
             (default: sAMAccountName) (SMC < 7.4.0)
         :param str short_user_id_attr: same (SMC >= 7.4.0)
-        :param str user_principal_name: The name of the attribute for storing the users’ UPN
+        :param str user_principal_name: The name of the attribute for storing the users' UPN
             (User Principal Name).
         :param str long_user_id_attr: same (SMC >= 7.4.0)
         :param list(str) secondary: If the device has additional IP addresses, you can enter them
@@ -527,7 +530,7 @@ class ActiveLdapServerMixin(Element, MultiContactServer):
             IP addresses are valid in policies and in routing and antispoofing. You can add several
             IPv4 and IPv6 addresses (one by one)
         :param Location location_ref: Location of the server.
-        :param DeviceToolsProfile tools_profile_ref: Allows you to add commands to the element’s
+        :param DeviceToolsProfile tools_profile_ref: Allows you to add commands to the element's
             right-click menu. Not Required.
         :param ThirdPartyMonitoring third_party_monitoring: The optional Third Party Monitoring.
         :param str comment: optional comment.
@@ -598,7 +601,7 @@ class ActiveLdapServerMixin(Element, MultiContactServer):
         json.update(kwargs)
         return ElementCreator(cls, json)
 
-    def check_connectivity(self):
+    def check_connectivity(self) -> bool:
         """
         Return a status for this active directory controller
 
@@ -607,14 +610,14 @@ class ActiveLdapServerMixin(Element, MultiContactServer):
         """
         return self.make_request(href=self.get_relation("check_connectivity")) is None
 
-    def invalidate_cache(self):
+    def invalidate_cache(self) -> Any:
         """
         Invalidates the cache of the LDAP server.
         """
         return self.make_request(method="create", href=self.get_relation("invalidate_cache"))
 
     @property
-    def port(self):
+    def port(self) -> Optional[int]:
         """
         LDAP bind port, (default: 389)
         :rtype: int
@@ -622,7 +625,7 @@ class ActiveLdapServerMixin(Element, MultiContactServer):
         return self.data.get("port")
 
     @property
-    def timeout(self):
+    def timeout(self) -> Optional[int]:
         """
         Enter the time (in seconds) that components wait for the server to reply.
         :rtype: int
@@ -630,7 +633,7 @@ class ActiveLdapServerMixin(Element, MultiContactServer):
         return self.data.get("timeout")
 
     @property
-    def base_dn(self):
+    def base_dn(self) -> Optional[str]:
         """
         Base DN for which to retrieve users, format is 'dc=domain,dc=com'
         :rtype: str
@@ -638,7 +641,7 @@ class ActiveLdapServerMixin(Element, MultiContactServer):
         return self.data.get("base_dn")
 
     @property
-    def bind_user_id(self):
+    def bind_user_id(self) -> Optional[str]:
         """
         bind user ID credentials, fully qualified. Format is
             'cn=admin,cn=users,dc=domain,dc=com'. If not provided, anonymous bind is used
@@ -647,7 +650,7 @@ class ActiveLdapServerMixin(Element, MultiContactServer):
         return self.data.get("bind_user_id")
 
     @property
-    def bind_password(self):
+    def bind_password(self) -> Optional[str]:
         """
         Distinguished password of the User ID that the Firewalls and Management Servers use to
             connect to the server.
@@ -656,7 +659,7 @@ class ActiveLdapServerMixin(Element, MultiContactServer):
         return self.data.get("bind_password")
 
     @property
-    def protocol(self):
+    def protocol(self) -> Optional[str]:
         """
         Which LDAP protocol to use, options 'ldap/ldaps/ldap_tls'. If ldaps or ldap_tls is used,
             you must provide a tls_profile element (default: ldap)
@@ -664,7 +667,7 @@ class ActiveLdapServerMixin(Element, MultiContactServer):
         return self.data.get("protocol")
 
     @property
-    def user_id_attr(self):
+    def user_id_attr(self) -> Optional[str]:
         """
         The name that the server uses for the UserID Attribute (default: sAMAccountName)
         :rtype: str
@@ -672,7 +675,7 @@ class ActiveLdapServerMixin(Element, MultiContactServer):
         return self.data.get("user_id_attr")
 
     @property
-    def short_user_id_attr(self):
+    def short_user_id_attr(self) -> Optional[str]:
         """
         The name that the server uses for the short user id Attribute (default: sAMAccountName)
         :rtype: str
@@ -680,7 +683,7 @@ class ActiveLdapServerMixin(Element, MultiContactServer):
         return self.data.get("short_user_id_attr")
 
     @property
-    def long_user_id_attr(self):
+    def long_user_id_attr(self) -> Optional[str]:
         """
         The name that the server uses for the long user id Attribute (default: userPrincipalName)
         :rtype: str
@@ -688,7 +691,7 @@ class ActiveLdapServerMixin(Element, MultiContactServer):
         return self.data.get("long_user_id_attr")
 
     @property
-    def group_member_attr(self):
+    def group_member_attr(self) -> Optional[str]:
         """
         The attribute storing group membership details (default: member)
         :rtype: str
@@ -696,7 +699,7 @@ class ActiveLdapServerMixin(Element, MultiContactServer):
         return self.data.get("group_member_attr")
 
     @property
-    def display_name_attr_name(self):
+    def display_name_attr_name(self) -> Optional[str]:
         """
         The name that the server uses for the Display Name
         :rtype: str
@@ -704,31 +707,31 @@ class ActiveLdapServerMixin(Element, MultiContactServer):
         return self.data.get("display_name_attr_name")
 
     @property
-    def photo_attr_name(self):
+    def photo_attr_name(self) -> Optional[str]:
         """
-        The name of the attribute for storing the users’ photo.
+        The name of the attribute for storing the users' photo.
         :rtype: str
         """
         return self.data.get("photo_attr_name")
 
     @property
-    def email(self):
+    def email(self) -> Optional[str]:
         """
-        The name of the attribute for storing the users’ e-mail address.
+        The name of the attribute for storing the users' e-mail address.
         :rtype: str
         """
         return self.data.get("email")
 
     @property
-    def user_principal_name(self):
+    def user_principal_name(self) -> Optional[str]:
         """
-        The name of the attribute for storing the users’ UPN (User Principal Name).
+        The name of the attribute for storing the users' UPN (User Principal Name).
         :rtype: str
         """
         return self.data.get("user_principal_name")
 
     @property
-    def mobile_attr_name(self):
+    def mobile_attr_name(self) -> Optional[str]:
         """
         The attribute storing the users mobile (default: mobile)
         :rtype: str
@@ -736,7 +739,7 @@ class ActiveLdapServerMixin(Element, MultiContactServer):
         return self.data.get("mobile_attr_name")
 
     @property
-    def job_title_attr_name(self):
+    def job_title_attr_name(self) -> Optional[str]:
         """
         The attribute storing users job title (default: title)
         :rtype: str
@@ -744,7 +747,7 @@ class ActiveLdapServerMixin(Element, MultiContactServer):
         return self.data.get("job_title_attr_name")
 
     @property
-    def office_location_attr_name(self):
+    def office_location_attr_name(self) -> Optional[str]:
         """
         The name of the attribute for storing the user's office location.
             (default: physicalDeliveryOfficeName)
@@ -753,7 +756,7 @@ class ActiveLdapServerMixin(Element, MultiContactServer):
         return self.data.get("office_location_attr_name")
 
     @property
-    def frame_ip_attr_name(self):
+    def frame_ip_attr_name(self) -> Optional[str]:
         """
         The attribute storing the users IP address when user is authenticated via RADIUS
             (default: msRADIUSFramedIPAddress)
@@ -762,7 +765,7 @@ class ActiveLdapServerMixin(Element, MultiContactServer):
         return self.data.get("frame_ip_attr_name")
 
     @property
-    def supported_method(self):
+    def supported_method(self) -> list[Any]:
         """
         Authentication services allowed for this resource
         :rtype: AuthenticationMethod
@@ -771,7 +774,7 @@ class ActiveLdapServerMixin(Element, MultiContactServer):
                 self.data.get("supported_method")]
 
     @property
-    def tls_profile_ref(self):
+    def tls_profile_ref(self) -> Optional[Element]:
         """
         Represents a TLS Profile Contains common parameters for establishing TLS based connections.
         :rtype TLSProfile
@@ -779,7 +782,7 @@ class ActiveLdapServerMixin(Element, MultiContactServer):
         return Element.from_href(self.data.get("tls_profile_ref"))
 
     @property
-    def tls_identity(self):
+    def tls_identity(self) -> Optional[str]:
         """
         Check server identity when establishing TLS connection
         :rtype: str
@@ -787,7 +790,7 @@ class ActiveLdapServerMixin(Element, MultiContactServer):
         return self.data.get("tls_identity")
 
     @property
-    def group_object_class(self):
+    def group_object_class(self) -> Optional[list[Any]]:
         """
         The group LDAP object classes.
         :rtype: list(str)
@@ -795,7 +798,7 @@ class ActiveLdapServerMixin(Element, MultiContactServer):
         return self.data.get("group_object_class")
 
     @property
-    def user_object_class(self):
+    def user_object_class(self) -> Optional[list[Any]]:
         """
         LDAP classes used for user identification (default:
         ['inetOrgPerson','organizationalPerson', 'person', 'sguser'])
@@ -849,7 +852,7 @@ class ActiveDirectoryServer(ContactAddressMixin, ActiveLdapServerMixin):
     typeof = "active_directory_server"
 
     @classmethod
-    def update_or_create(cls, with_status=False, **kwargs):
+    def update_or_create(cls, with_status: bool = False, **kwargs: Any) -> Any:
         """
         Update or create active directory configuration.
 
@@ -878,7 +881,7 @@ class ActiveDirectoryServer(ContactAddressMixin, ActiveLdapServerMixin):
         return element
 
     @property
-    def auth_ipaddress(self):
+    def auth_ipaddress(self) -> Optional[str]:
         """
         Ip Address od internet authentication service.
         :rtype: str
@@ -886,7 +889,7 @@ class ActiveDirectoryServer(ContactAddressMixin, ActiveLdapServerMixin):
         return self.data.get("auth_ipaddress")
 
     @property
-    def internet_auth_service_enabled(self):
+    def internet_auth_service_enabled(self) -> Optional[bool]:
         """
         whether to attach an NPS service to this AD controller (default: False). If setting to true,
             provide kwargs values for auth_ipaddress, auth_port and shared_secret
@@ -895,7 +898,7 @@ class ActiveDirectoryServer(ContactAddressMixin, ActiveLdapServerMixin):
         return self.data.get("internet_auth_service_enabled")
 
     @property
-    def retries(self):
+    def retries(self) -> Optional[int]:
         """
         Specify the number of times Firewalls try to connect to the RADIUS or TACACS+ authentication
         server if the connection fails. Required.
@@ -904,7 +907,7 @@ class ActiveDirectoryServer(ContactAddressMixin, ActiveLdapServerMixin):
         return self.data.get("retries")
 
     @property
-    def auth_port(self):
+    def auth_port(self) -> Optional[int]:
         """
         Auth Port number on which authentication service is running.
         :rtype: int
@@ -912,7 +915,7 @@ class ActiveDirectoryServer(ContactAddressMixin, ActiveLdapServerMixin):
         return self.data.get("auth_port")
 
     @property
-    def domain_controller(self):
+    def domain_controller(self) -> list[Any]:
         """
         List of optional domain controllers specified for this AD resource.
         When adding domain controllers through update_or_create, only domain
@@ -927,8 +930,8 @@ class LDAPServer(ContactAddressMixin, ActiveLdapServerMixin):
     """
     This represents a LDAP Server.The LDAP Server element can be used to configure access to any
     LDAP server as a user database for the Firewalls and/or the Management Server. The LDAP Server
-    element’s settings include an account that the Management Server and Firewall engines use to
-    connect to query the directory. The user account must exist in the LDAP Server’s user database.
+    element's settings include an account that the Management Server and Firewall engines use to
+    connect to query the directory. The user account must exist in the LDAP Server's user database.
     Make sure the account you use has the privileges to manage other user accounts. There are also
     values for some attributes that the Management Server and Firewall engines look for in the
     directory. We recommend that you do not use special characters or accented letters in the
@@ -963,5 +966,5 @@ class LDAPServer(ContactAddressMixin, ActiveLdapServerMixin):
     typeof = "ldap_server"
 
     @property
-    def auth_attribute(self):
+    def auth_attribute(self) -> Optional[str]:
         return self.data.get("auth_attribute")

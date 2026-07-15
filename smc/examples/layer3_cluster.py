@@ -351,7 +351,7 @@ def main():
 
         # Create initial configuration for each node
         for node in engine.nodes:
-            result = node.initial_contact(enable_ssh=True, filename=node.name + ".cfg")
+            result = node.initial_contact(enable_ssh=True, root_password="T3mpP&d8x)T", filename=node.name + ".cfg")
             if result:
                 logging.info(f"Successfully wrote initial configuration for node: {node.name}, "
                              f"to file: {node.name}" + ".cfg")

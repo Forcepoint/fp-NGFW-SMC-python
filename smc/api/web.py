@@ -16,6 +16,10 @@ SSL certificates are not verified to the CA authority, need to implement for
 urllib3:
 https://urllib3.readthedocs.io/en/latest/user-guide.html#ssl
 """
+from __future__ import annotations
+
+from typing import Any, Optional, Union, Iterator
+
 import json
 import os.path
 import collections
@@ -28,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 
 class CacheEncoder(json.JSONEncoder):
-    def default(self, o):
+    def default(self, o: Any) -> Any:
         try:
             return o.data
         except AttributeError:
@@ -43,7 +47,7 @@ OPTIONS = "OPTIONS"
 PATCH = "PATCH"
 
 
-def send_request(user_session, method, request):
+def send_request(user_session: Any, method: str, request: Any) -> Any:
     """
     Send request to SMC
 
@@ -186,6 +190,12 @@ def send_request(user_session, method, request):
         except SMCOperationFailure as error:
             if error.code in (401,):
                 user_session.refresh()
+                # Seek file handles back to start before retry
+                if hasattr(request, 'files') and request.files:
+                    logger.info("Uploading file again...")
+                    for file_obj in request.files.values():
+                        if hasattr(file_obj, 'seek'):
+                            file_obj.seek(0)
                 return send_request(user_session, method, request)
             raise error
         except requests.exceptions.RequestException as e:
@@ -199,7 +209,7 @@ def send_request(user_session, method, request):
         raise SMCConnectionError("No session found. Please login to continue")
 
 
-def file_download(user_session, request):
+def file_download(user_session: Any, request: Any) -> Any:
     """
     Called when GET request specifies a filename to retrieve.
 
@@ -234,7 +244,7 @@ def file_download(user_session, request):
         raise SMCOperationFailure(response)
 
 
-def file_upload(user_session, method, request):
+def file_upload(user_session: Any, method: str, request: Any) -> Any:
     """
     Perform a file upload PUT/POST to SMC. Request should have the
     files attribute set which will be an open handle to the
@@ -249,8 +259,17 @@ def file_upload(user_session, method, request):
     logger.debug("Upload: %s", vars(request))
     http_command = getattr(user_session.session, method.lower())
 
+    # Only pass Authorization — NOT Content-Type (conflicts with multipart boundary)
+    upload_headers = {}
+    if user_session._token:
+        upload_headers["Authorization"] = user_session._token
     try:
-        response = http_command(request.href, params=request.params, files=request.files)
+        response = http_command(
+            request.href,
+            params=request.params,
+            files=request.files,
+            headers=upload_headers,  # ← this is the fix
+        )
     except AttributeError:
         raise TypeError("File specified in request was not readable: %s" % request.files)
     else:
@@ -278,7 +297,7 @@ class SMCResult(object):
     :ivar dict json: element full json
     """
 
-    def __init__(self, respobj=None, msg=None, user_session=None):
+    def __init__(self, respobj: Any = None, msg: Optional[str] = None, user_session: Any = None) -> None:
         self.etag = None
         self.href = None
         self.content = None
@@ -289,7 +308,7 @@ class SMCResult(object):
         self.domain = getattr(user_session, "domain", None)
         self.json = self._unpack_response(respobj)  # list or dict
 
-    def _unpack_response(self, response):
+    def _unpack_response(self, response: Any) -> Any:
         if response:
             self.code = response.status_code
             self.href = response.headers.get("location")
@@ -318,14 +337,14 @@ class SMCResult(object):
             elif "application/zip" in content_type:
                 self.content = response.content
 
-    def __str__(self):
+    def __str__(self) -> str:
         sb = []
         for key in self.__dict__:
             sb.append("{key}='{value}'".format(key=key, value=self.__dict__[key]))
         return ", ".join(sb)
 
 
-def debug(response):
+def debug(response: Any) -> None:
     logger.debug("Request method: %s", response.request.method)
     logger.debug("Request URL: %s", response.url)
     logger.debug("Request headers:")

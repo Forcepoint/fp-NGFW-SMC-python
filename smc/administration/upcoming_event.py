@@ -12,6 +12,9 @@
 """
 Module representing read-only upcoming events in SMC
 """
+from __future__ import annotations
+from typing import Any, Optional, Union, Iterator
+
 from smc.base.model import Element
 
 
@@ -20,18 +23,18 @@ class UpcomingEvents(object):
     List of all upcoming events for this Management Server.
     """
 
-    def __init__(self, upcoming_events):
+    def __init__(self, upcoming_events: Any) -> None:
         self.upcoming_events = []
         for event in upcoming_events["events"]:
             self.upcoming_events.append(UpcomingEvent(event))
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Any]:
         return iter(self.upcoming_events)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.upcoming_events)
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int) -> Any:
         return self.upcoming_events[index]
 
 
@@ -48,11 +51,11 @@ class UpcomingEvent(object):
 
     typeof = "upcoming_event"
 
-    def __init__(self, data):
+    def __init__(self, data: Any) -> None:
         self.data = data
 
     @property
-    def event_date(self):
+    def event_date(self) -> Optional[Any]:
         """
         The upcoming event date: either the date when the event will occur
         or the upcoming event creation date.
@@ -62,7 +65,7 @@ class UpcomingEvent(object):
         return self.data.get("event_date")
 
     @property
-    def info(self):
+    def info(self) -> Optional[str]:
         """
         Possible more info for the upcoming event.
 
@@ -71,7 +74,7 @@ class UpcomingEvent(object):
         return self.data.get("info")
 
     @property
-    def impacted_element(self):
+    def impacted_element(self) -> Any:
         """
         The direct impacted element for this upcoming event.
 
@@ -80,7 +83,7 @@ class UpcomingEvent(object):
         return Element.from_href(self.data.get("impacted_element"))
 
     @property
-    def situation(self):
+    def situation(self) -> Any:
         """
         The upcoming event situation which describes the context of the event.
 
@@ -89,7 +92,7 @@ class UpcomingEvent(object):
         return Element.from_href(self.data.get("situation"))
 
     @property
-    def impacted_resources(self):
+    def impacted_resources(self) -> list[Any]:
         """
         The optional impacted resources for this upcoming event.
 
@@ -97,12 +100,12 @@ class UpcomingEvent(object):
         """
         return [Element.from_href(resource) for resource in self.data.get("impacted_resources", [])]
 
-    def __getattr__(self, key):
+    def __getattr__(self, key: str) -> Any:
         if "typeof" not in key and key in self.data:
             return self.data[key]
         raise AttributeError("%r object has no attribute %r" % (self.__class__, key))
 
-    def __str__(self):
+    def __str__(self) -> str:
         sb = []
         sb.append("date='{}'".format(self.event_date))
         sb.append("impacted element='{}'".format(self.impacted_element))
@@ -119,18 +122,18 @@ class UpcomingEventsPolicy(object):
     Note: to be able to update it, you need to be superuser.
     """
 
-    def __init__(self, upcoming_event_policy):
+    def __init__(self, upcoming_event_policy: Any) -> None:
         self.upcoming_event_policy = []
         for event in upcoming_event_policy["entries"]:
             self.upcoming_event_policy.append(UpcomingEventsPolicyEntry(event))
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Any]:
         return iter(self.upcoming_event_policy)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.upcoming_event_policy)
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int) -> Any:
         return self.upcoming_event_policy[index]
 
 
@@ -142,11 +145,11 @@ class UpcomingEventsPolicyEntry(object):
 
     typeof = "upcoming_event_policy_entry"
 
-    def __init__(self, data):
+    def __init__(self, data: Any) -> None:
         self.data = data
 
     @property
-    def situation(self):
+    def situation(self) -> Any:
         """
         The linked upcoming situation.
 
@@ -155,11 +158,11 @@ class UpcomingEventsPolicyEntry(object):
         return Element.from_href(self.data.get("situation"))
 
     @situation.setter
-    def situation(self, situation):
+    def situation(self, situation: Any) -> None:
         self.data.update(situation=situation)
 
     @property
-    def threshold_in_days(self):
+    def threshold_in_days(self) -> Optional[Any]:
         """
         The global threshold in days for the upcoming event.
         If the situation is confirmed, the event will be raised during this amount of time.
@@ -167,11 +170,11 @@ class UpcomingEventsPolicyEntry(object):
         return self.data.get("threshold_in_days")
 
     @threshold_in_days.setter
-    def threshold_in_days(self, threshold):
+    def threshold_in_days(self, threshold: Any) -> None:
         self.data.update(threshold_in_days=threshold)
 
     @property
-    def enabled(self):
+    def enabled(self) -> Optional[Any]:
         """
         Flag to determinate if this situation must be considered as upcoming event.
         This flag will be global for the whole SMC.
@@ -179,15 +182,15 @@ class UpcomingEventsPolicyEntry(object):
         return self.data.get("enabled")
 
     @enabled.setter
-    def enabled(self, enabled):
+    def enabled(self, enabled: Any) -> None:
         self.data.update(enabled=enabled)
 
-    def __getattr__(self, key):
+    def __getattr__(self, key: str) -> Any:
         if "typeof" not in key and key in self.data:
             return self.data[key]
         raise AttributeError("%r object has no attribute %r" % (self.__class__, key))
 
-    def __str__(self):
+    def __str__(self) -> str:
         sb = []
         sb.append("situation='{}'".format(self.situation))
         sb.append("threshold_in_days='{}'".format(self.threshold_in_days))
@@ -204,11 +207,11 @@ class UpcomingEventIgnoreSettings(object):
 
     typeof = "upcoming_event_ignore_settings"
 
-    def __init__(self, data):
+    def __init__(self, data: Any) -> None:
         self.data = data
 
     @property
-    def entries(self):
+    def entries(self) -> list[Any]:
         """
         The list of inspection situation to filter.
 
@@ -217,15 +220,15 @@ class UpcomingEventIgnoreSettings(object):
         return [Element.from_href(situation) for situation in self.data.get("entries")]
 
     @entries.setter
-    def entries(self, value):
+    def entries(self, value: Any) -> None:
         self.data.update(entries=value)
 
-    def __getattr__(self, key):
+    def __getattr__(self, key: str) -> Any:
         if "typeof" not in key and key in self.data:
             return self.data[key]
         raise AttributeError("%r object has no attribute %r" % (self.__class__, key))
 
-    def __str__(self):
+    def __str__(self) -> str:
         sb = []
         for entry in self.entries:
             sb.append("situation='{}'".format(entry))

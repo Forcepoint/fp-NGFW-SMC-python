@@ -12,6 +12,8 @@
 """
 Session module for tracking existing connection state to SMC
 """
+from __future__ import annotations
+from typing import Any, Optional, Union, Iterator
 import copy
 import json
 import logging
@@ -90,7 +92,7 @@ class SessionManager(object):
 
     _session_hook = None
 
-    def __init__(self, sessions=None):
+    def __init__(self, sessions: Optional[list] = None) -> None:
         self._sessions = collections.OrderedDict()
         sessions = sessions or []
         for session in sessions:
@@ -99,7 +101,7 @@ class SessionManager(object):
         # of threading local
 
     @classmethod
-    def create(cls, sessions=None):
+    def create(cls, sessions: Optional[list] = None) -> "SessionManager":
         """
         A session manager will be mounted to the SMCRequest class through
         this classmethod. If there is already an existing SessionManager,
@@ -115,7 +117,7 @@ class SessionManager(object):
         manager.mount()
         return manager
 
-    def mount(self):
+    def mount(self) -> None:
         """
         Mount this session manager on the request class, making this
         the global manager for processing requests
@@ -124,7 +126,7 @@ class SessionManager(object):
         """
         setattr(SMCRequest, "_session_manager", self)
 
-    def register_hook(self, hook):
+    def register_hook(self, hook: Any) -> None:
         """
         Add a hook that specifies how to retrieve the session from the
         session manager. A hook must be a callable that takes one argument
@@ -148,7 +150,7 @@ class SessionManager(object):
         if callable(hook):
             self._session_hook = hook
 
-    def __contains__(self, session):
+    def __contains__(self, session: Any) -> bool:
         """
         A session is considered to exist if the current user attached to
         the session matches. In SMC, an administrative account must be
@@ -159,7 +161,7 @@ class SessionManager(object):
         return session in self.sessions
 
     @property
-    def sessions(self):
+    def sessions(self) -> list[Any]:
         """
         All available sessions in this session manager
 
@@ -167,7 +169,7 @@ class SessionManager(object):
         """
         return list(self._sessions.values())
 
-    def get_default_session(self):
+    def get_default_session(self) -> "Session":
         """
         The default session is nothing more than the first session added
         into the session handler pool. This will likely change in the future
@@ -180,7 +182,7 @@ class SessionManager(object):
             return self.get_session(next(iter(self._sessions)))
         return self.get_session()
 
-    def get_session(self, user=None):
+    def get_session(self, user: Optional[str] = None) -> "Session":
         """
         Retrieve the session based on user, or return and empty session.
         Note that an empty session is not inserted into the Session Manager
@@ -196,17 +198,17 @@ class SessionManager(object):
     #         raise SessionNotFound('Session specified by name: %s does not currently '
     #             'exist.' % user)
 
-    def close_all(self):
+    def close_all(self) -> None:
         for admin_session in list(self._sessions.keys()):
             self._sessions[admin_session].logout()
         self._sessions.clear()
 
-    def _get_session_key(self, session):
+    def _get_session_key(self, session: Any) -> Optional[str]:
         for name, _session in self._sessions.items():
             if _session == session:
                 return name
 
-    def _register(self, session):
+    def _register(self, session: Any) -> Any:
         """
         Register a session
         """
@@ -216,7 +218,7 @@ class SessionManager(object):
             self._sessions[smc.session_name] = session
         return smc.session_name
 
-    def _deregister(self, session):
+    def _deregister(self, session: Any) -> None:
         """
         Deregister a session.
         """
@@ -226,7 +228,7 @@ class SessionManager(object):
 
 class SSLAdapter(HTTPAdapter):
 
-    def init_poolmanager(self, connections, maxsize, block=False):
+    def init_poolmanager(self, connections: int, maxsize: int, block: bool = False) -> None:
         """
         :param maxsize:
         Number of connections to save that can be reused. More than 1 is useful
@@ -246,7 +248,7 @@ class SSLAdapter(HTTPAdapter):
             block=block,
             timeout=720,
             socket_options=[(SOL_SOCKET, SO_KEEPALIVE, 1)],
-            ssl_version=ssl.PROTOCOL_TLSv1_2)
+            ssl_minimum_version=ssl.TLSVersion.TLSv1_2)
 
 
 class Session(object):
@@ -265,7 +267,7 @@ class Session(object):
     # SMC-46756 makes max_pool configurable
     DEFAULT_POOL_MAXSIZE = requests.adapters.DEFAULT_POOLSIZE
 
-    def __init__(self, manager=None):
+    def __init__(self, manager: Optional[Any] = None) -> None:
         self._params = {}  # Retrieved from login
         self._session = None  # requests.Session
 
@@ -289,7 +291,7 @@ class Session(object):
         smc.session_name = None
 
     @property
-    def manager(self):
+    def manager(self) -> "SessionManager":
         """
         Return the session manager for this session
 
@@ -304,7 +306,7 @@ class Session(object):
         return manager
 
     @property
-    def is_active(self):
+    def is_active(self) -> bool:
         """
         Is this session active. Active means there is a stored session ID for
         the SMC using the current account. This does not specify whether the
@@ -316,7 +318,7 @@ class Session(object):
         return self._session is not None and "JSESSIONID" in self._session.cookies
 
     @property
-    def _extra_args(self):
+    def _extra_args(self) -> dict:
         """
         Extra args are collected from login and used if provided. These are
         generally not needed but may be used to enable visibility of beta
@@ -325,7 +327,7 @@ class Session(object):
         return self._params.get("kwargs", {})
 
     @property
-    def entry_points(self):
+    def entry_points(self) -> Any:
         """
         Entry points that are bound to this session. Entry points are exposed
         by the SMC API and provide links to top level resources
@@ -339,7 +341,7 @@ class Session(object):
         return self._resource
 
     @property
-    def api_version(self):
+    def api_version(self) -> Optional[str]:
         """
         Current API Version
 
@@ -348,11 +350,11 @@ class Session(object):
         return self._params.get("api_version")
 
     @property
-    def session(self):
+    def session(self) -> Any:
         return self._session
 
     @property
-    def sock(self):
+    def sock(self) -> Any:
         """
         get a secure socket from the pool if one is available
         else get a new connection
@@ -366,7 +368,7 @@ class Session(object):
         return self._connection.sock
 
     @property
-    def session_id(self):
+    def session_id(self) -> Optional[str]:
         """
         The session ID in header type format. Can be inserted into a
         connection if necessary using::
@@ -382,12 +384,12 @@ class Session(object):
         )
 
     @property
-    def credential(self):
+    def credential(self) -> "Credential":
         # Login credentials
         return Credential(**{k: self._params.get(k) for k in ("api_key", "login", "pwd")})
 
     @property
-    def url(self):
+    def url(self) -> str:
         """
         The fully qualified SMC URL in use, includes the port number
 
@@ -396,12 +398,12 @@ class Session(object):
         return self._params.get("url", "")
 
     @property
-    def web_socket_url(self):
+    def web_socket_url(self) -> str:
         socket_proto = "wss" if self.is_ssl else "ws"
         return "{}://{}/{}".format(socket_proto, self.url.split("://")[-1], self.api_version)
 
     @property
-    def is_ssl(self):
+    def is_ssl(self) -> bool:
         """
         Is this an SSL connection
 
@@ -410,7 +412,7 @@ class Session(object):
         return self.url.startswith("https") if self.session else False
 
     @property
-    def timeout(self):
+    def timeout(self) -> int:
         """
         Session timeout in seconds
 
@@ -419,7 +421,7 @@ class Session(object):
         return self._params.get("timeout", 30)
 
     @property
-    def domain(self):
+    def domain(self) -> str:
         """
         Logged in SMC domain
 
@@ -428,7 +430,7 @@ class Session(object):
         return "Shared Domain" if not self._params.get("domain") else self._params.get("domain")
 
     @property
-    def name(self):
+    def name(self) -> Any:
         """
         Return the administrator name for this session. Can be None if
         the session has not yet been established.
@@ -455,7 +457,7 @@ class Session(object):
         return hash(self)
 
     @cached_property
-    def current_user(self):
+    def current_user(self) -> Any:
         """
         .. versionadded:: 0.6.0
             Requires SMC version >= 6.4
@@ -470,19 +472,19 @@ class Session(object):
 
     def login(
         self,
-        url=None,
-        api_key=None,
-        login=None,
-        pwd=None,
-        api_version=None,
-        timeout=None,
-        verify=True,
-        alt_filepath=None,
-        domain=None,
-        pool_maxsize=None,
-        max_retry=None,
-        **kwargs
-    ):
+        url: Optional[str] = None,
+        api_key: Optional[str] = None,
+        login: Optional[str] = None,
+        pwd: Optional[str] = None,
+        api_version: Optional[str] = None,
+        timeout: Optional[int] = None,
+        verify: Union[bool, str] = True,
+        alt_filepath: Optional[str] = None,
+        domain: Optional[str] = None,
+        pool_maxsize: Optional[int] = None,
+        max_retry: Optional[int] = None,
+        **kwargs: Any,
+    ) -> Optional[str]:
         """
         Login to SMC API and retrieve a valid session.
         Sessions use a pool connection manager to provide dynamic scalability
@@ -636,10 +638,10 @@ class Session(object):
         )
         return self.manager._register(self)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "Session(name=%s,domain=%s)" % (self.name, self.domain)
 
-    def _build_auth_request(self, verify=False, **kwargs):
+    def _build_auth_request(self, verify: Union[bool, str] = False, **kwargs: Any) -> dict:
         """
         Build the authentication request to SMC
         """
@@ -671,7 +673,7 @@ class Session(object):
 
         return request
 
-    def _get_session(self, request):
+    def _get_session(self, request: dict) -> Any:
         """
         Authenticate the request dict
 
@@ -712,7 +714,7 @@ class Session(object):
         self._token = response.headers.get("Authorization")
         return _session
 
-    def logout(self):
+    def logout(self) -> None:
         """
         Logout session from SMC
 
@@ -754,7 +756,7 @@ class Session(object):
 
         logger.debug("Call counters: %s" % counters)
 
-    def refresh(self):
+    def refresh(self) -> None:
         """
         Refresh session on 401. This is called automatically if your existing
         session times out and resends the operation/s which returned the
@@ -776,7 +778,7 @@ class Session(object):
                 return
         raise SMCConnectionError("Session expired and attempted refresh failed.")
 
-    def switch_domain(self, domain):
+    def switch_domain(self, domain: str) -> None:
         """
         Switch from one domain to another. You can call session.login() with
         a domain key value to log directly into the domain of choice or alternatively
@@ -803,7 +805,7 @@ class Session(object):
             params.update(domain=domain)
             self.login(**params)
 
-    def set_retry_on_busy(self, total=5, backoff_factor=0.1, status_forcelist=None, **kwargs):
+    def set_retry_on_busy(self, total: int = 5, backoff_factor: float = 0.1, status_forcelist: Optional[list] = None, **kwargs: Any) -> None:
         """
         Mount a custom retry object on the current session that allows service level
         retries when the SMC might reply with a Service Unavailable (503) message.
@@ -835,7 +837,7 @@ class Session(object):
                 self.session.mount(proto_str, HTTPAdapter(max_retries=retry))
             logger.debug("Mounting retry object to HTTP session: %s" % retry)
 
-    def copy(self):
+    def copy(self) -> dict:
         # Copy the relevant parameters to make another session login
         # using the existing information
         params = copy.copy(self._params)
@@ -843,7 +845,7 @@ class Session(object):
         params.update(**kwargs)
         return params
 
-    def _get_log_schema(self):
+    def _get_log_schema(self) -> Optional[dict]:
         """
         Get the log schema for this SMC version.
 
@@ -871,22 +873,22 @@ class Credential(object):
 
     CredentialMap = {"lms_login": ("login", "pwd"), "login": ("api_key",)}
 
-    def __init__(self, api_key=None, login=None, pwd=None):
+    def __init__(self, api_key: Optional[str] = None, login: Optional[str] = None, pwd: Optional[str] = None) -> None:
         self._api_key = api_key
         self._login = login
         self._pwd = pwd
 
     @property
-    def provider_name(self):
+    def provider_name(self) -> str:
         return "login" if self._api_key else "lms_login"
 
-    def get_provider_entry_point(self, url, api_version):
+    def get_provider_entry_point(self, url: str, api_version: str) -> str:
         return "{url}/{api_version}/{provider_name}".format(
             url=url, api_version=api_version, provider_name=self.provider_name
         )
 
     @property
-    def has_credentials(self):
+    def has_credentials(self) -> bool:
         """
         Does this session have valid credentials
 
@@ -900,7 +902,7 @@ class Credential(object):
         )
 
 
-def load_entry_points(self):
+def load_entry_points(self: Any) -> None:
     try:
         r = self.session.get(
             "{url}/{api_version}/api".format(url=self.url, api_version=self.api_version)
@@ -922,7 +924,7 @@ def load_entry_points(self):
         raise SMCConnectionError(e)
 
 
-def available_api_versions(base_url, timeout=10, verify=True):
+def available_api_versions(base_url: str, timeout: int = 10, verify: Union[bool, str] = True) -> list:
     """
     Get all available API versions for this SMC
 
@@ -948,7 +950,7 @@ def available_api_versions(base_url, timeout=10, verify=True):
         raise SMCConnectionError(e)
 
 
-def get_api_version(base_url, api_version=None, timeout=10, verify=True):
+def get_api_version(base_url: str, api_version: Optional[str] = None, timeout: int = 10, verify: Union[bool, str] = True) -> str:
     """
     Get the API version specified or resolve the lowest version
 
