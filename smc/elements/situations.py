@@ -105,7 +105,9 @@ to match within a Text File Stream::
     >>>
 
 """
-from typing import Dict
+from __future__ import annotations
+
+from typing import Any, Dict, Iterator, Optional, Union
 
 from smc.api.common import SMCRequest, fetch_entry_point
 from smc.api.exceptions import CreateElementFailed, ElementNotFound
@@ -122,7 +124,7 @@ from smc.elements.other import SituationTag
 SEVERITY = {10: "critical", 7: "high", 4: "low", 1: "information"}
 
 
-def _severity_by_name(name):
+def _severity_by_name(name: str) -> int:
     """
     Return the severity integer value by it's name. If not found,
     return 'information'.
@@ -135,7 +137,7 @@ def _severity_by_name(name):
     return 1
 
 
-def _retrieve_parameter_from_name(situation_context, parameter_name):
+def _retrieve_parameter_from_name(situation_context: Any, parameter_name: str) -> Optional[str]:
     """
     return the uri for the parameter name for given situation context
     """
@@ -156,7 +158,7 @@ class SituationParameter(SubElement):
     """
 
     @property
-    def type(self):
+    def type(self) -> Optional[str]:
         """
         The type of this situation parameter in textual format. For
         example, integer, regexp, etc.
@@ -166,7 +168,7 @@ class SituationParameter(SubElement):
         return self.data.get("type")
 
     @property
-    def display_name(self):
+    def display_name(self) -> Optional[str]:
         """
         The display name as shown in the SMC
 
@@ -175,7 +177,7 @@ class SituationParameter(SubElement):
         return self.data.get("display_name")
 
     @property
-    def order(self):
+    def order(self) -> int:
         """
         The order placement for this parameter. This is only relevant when
         there are multiple parameters in an inspection context definition.
@@ -232,7 +234,7 @@ class SituationContext(Element):
     """
 
     @property
-    def description(self):
+    def description(self) -> str:
         """
         Description for this context
 
@@ -241,7 +243,7 @@ class SituationContext(Element):
         return self.data.get("description", "")
 
     @property
-    def situation_parameters(self):
+    def situation_parameters(self) -> Iterator[Any]:
         """
         Situation parameters defining detection logic for the context.
         This will return a list of SituationParameter indicating how
@@ -281,7 +283,7 @@ class CorrelationSituationContext(SituationContext):
     typeof = "correlation_situation_context"
 
     @property
-    def situation_parameters(self):
+    def situation_parameters(self) -> Any:
         return self.data.data.get("situation_parameters")
 
 
@@ -295,7 +297,7 @@ class Situation(Element):
     situation_context = ElementRef("situation_context_ref")
 
     @property
-    def severity(self):
+    def severity(self) -> Optional[str]:
         """
         The severity of this inspection situation, critical, high,
         low, information
@@ -305,7 +307,7 @@ class Situation(Element):
         return SEVERITY.get(self.data.get("severity"))
 
     @property
-    def description(self):
+    def description(self) -> str:
         """
         The description for this situation
 
@@ -314,7 +316,7 @@ class Situation(Element):
         return self.data.get("description", "")
 
     @property
-    def attacker(self):
+    def attacker(self) -> Optional[str]:
         """
         How the Attacker is determined when the Situation matches. This
         information is used for blacklisting and in log entries and may
@@ -325,7 +327,7 @@ class Situation(Element):
         return self.data.get("attacker")
 
     @property
-    def target(self):
+    def target(self) -> Optional[str]:
         """
         How the Target is determined when the Situation matches. This
         information is used for blacklisting and in log entries and may
@@ -336,7 +338,7 @@ class Situation(Element):
         return self.data.get("target")
 
     @property
-    def parameter_values(self):
+    def parameter_values(self) -> Iterator[Any]:
         """
         Parameter values for this inspection situation. This correlate to
         the the situation_context.
@@ -364,15 +366,15 @@ class InspectionSituation(Situation):
     @classmethod
     def create(
             cls,
-            name,
-            situation_context,
-            attacker=None,
-            target=None,
-            severity="information",
-            situation_type=None,
-            description=None,
-            comment=None,
-    ):
+            name: str,
+            situation_context: Any,
+            attacker: Optional[str] = None,
+            target: Optional[str] = None,
+            severity: str = "information",
+            situation_type: Optional[Any] = None,
+            description: Optional[str] = None,
+            comment: Optional[str] = None,
+    ) -> "InspectionSituation":
         """
         Create an inspection situation.
 
@@ -415,7 +417,7 @@ class InspectionSituation(Situation):
                 "version 6.5 and above.".format(str(e))
             )
 
-    def create_regular_expression(self, regexp):
+    def create_regular_expression(self, regexp: str) -> Any:
         """
         Create a regular expression for this inspection situation
         context. The inspection situation must be using an inspection
@@ -435,16 +437,16 @@ class InspectionSituation(Situation):
             "The situation does not support a regular " "expression as a context value."
         )
 
-    def add_parameter_value(self, resource, **value):
+    def add_parameter_value(self, resource: str, **value: Any) -> Any:
         return self.make_request(
             CreateElementFailed, method="create", resource=resource, json=value
         )
 
-    def find_vulnerabilities(self):
+    def find_vulnerabilities(self) -> None:
         pass  # Not yet implemented
 
     @property
-    def vulnerability_references(self):
+    def vulnerability_references(self) -> list[Any]:
         """
         If this inspection situation has associated CVE, OSVDB, BID,
         etc references, this will return those reference IDs
@@ -488,7 +490,7 @@ class SubTLSMatchSituation(Situation):
     typeof = "sub_tls_match_situation"
 
     @classmethod
-    def create(cls, name, context):
+    def create(cls, name: str, context: Any) -> "SubTLSMatchSituation":
         """
         Create the sub tls match situation
         Used by TLSMatchSituation
@@ -523,13 +525,15 @@ class TLSMatchSituation(Situation):
     typeof = "tls_match_situation"
 
     @classmethod
-    def create(cls,
-               name,
-               matching_domains=None,
-               match_certificate_validation="succeed_tls_validation",
-               validation_failed_matches=None,
-               deny_decrypting=False,
-               comment=None):
+    def create(
+        cls,
+        name: str,
+        matching_domains: Optional[list[str]] = None,
+        match_certificate_validation: str = "succeed_tls_validation",
+        validation_failed_matches: Optional[list[str]] = None,
+        deny_decrypting: bool = False,
+        comment: Optional[str] = None,
+    ) -> "TLSMatchSituation":
         """
         Create TLS Match
 

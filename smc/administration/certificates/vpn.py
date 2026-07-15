@@ -14,6 +14,8 @@ VPN Certificates are used by NGFW to identify the engines for VPN clients
 and other VPN related connections. Each gateway certificate is signed by
 a VPN CA and uses the default internal CA by default.
 """
+from __future__ import annotations
+from typing import Any, Optional, Union, Iterator
 from smc.base.model import Element, ElementCreator, SubElement, ElementRef
 from smc.administration.certificates.tls_common import ImportExportCertificate
 from smc.api.exceptions import CertificateError, SMCOperationFailure, CertificateImportError
@@ -36,7 +38,7 @@ class VPNCertificateCA(ImportExportCertificate, Element):
     typeof = "vpn_certificate_authority"
 
     @classmethod
-    def create(cls, name, certificate, **kw):
+    def create(cls, name: str, certificate: str, **kw: Any) -> VPNCertificateCA:
         """
         Create a new external VPN CA for signing internal gateway
         certificates.
@@ -69,14 +71,14 @@ class GatewayCertificate(SubElement):
 
     @staticmethod
     def _create(
-            self,
-            common_name,
-            organization,
-            public_key_algorithm="rsa",
-            signature_algorithm="rsa_sha_512",
-            key_length=2048,
-            signing_ca=None,
-    ):
+            self: Any,
+            common_name: str,
+            organization: str,
+            public_key_algorithm: str = "rsa",
+            signature_algorithm: str = "rsa_sha_512",
+            key_length: int = 2048,
+            signing_ca: Optional[Any] = None,
+    ) -> Any:
         """
         Internal method called as a reference from the engine.vpn
         node
@@ -103,10 +105,10 @@ class GatewayCertificate(SubElement):
 
     @staticmethod
     def _create_from_cert(
-            self,
-            certificate,
-            signing_ca=None,
-    ):
+            self: Any,
+            certificate: str,
+            signing_ca: Optional[Any] = None,
+    ) -> Any:
         """
         Internal method called as a reference from the engine.vpn
         node using certificate directly
@@ -127,7 +129,7 @@ class GatewayCertificate(SubElement):
         )
 
     @property
-    def valid_from(self):
+    def valid_from(self) -> Optional[str]:
         """
         The date of gateway certificate valid from.
         :return: Date of valid from gateway certificate
@@ -136,10 +138,10 @@ class GatewayCertificate(SubElement):
         return self.data.valid_from
 
     @property
-    def certificate(self):
+    def certificate(self) -> Any:
         return self.certificate_base64
 
-    def renew(self):
+    def renew(self) -> Any:
         """
         Call renew link from gateway certificate
         :return: message, detail, status or nothing
@@ -148,7 +150,7 @@ class GatewayCertificate(SubElement):
         return self.make_request(SMCOperationFailure, resource="renew")
 
     @property
-    def public_key_algorithm(self):
+    def public_key_algorithm(self) -> Optional[str]:
         """
         The Public Key Algorithm.Can be one of the following:
         * dsa
@@ -160,7 +162,7 @@ class GatewayCertificate(SubElement):
         return self.data.public_key_algorithm
 
     @property
-    def signature_algorithm(self):
+    def signature_algorithm(self) -> Optional[str]:
         """
         The Signature Algorithm.Can be one of the following:
         * dsa_sha_1
@@ -181,7 +183,7 @@ class GatewayCertificate(SubElement):
         return self.data.signature_algorithm
 
     @property
-    def subject_alt_name(self):
+    def subject_alt_name(self) -> list[Any]:
         """
         Subject alt name
         :return: list of subject_alt_name
@@ -190,7 +192,7 @@ class GatewayCertificate(SubElement):
         return self.data.subject_alt_name
 
     @property
-    def expiration(self):
+    def expiration(self) -> Optional[str]:
         """
         Gateway certificate expiration date
         :return: certificate expiration date
@@ -198,7 +200,7 @@ class GatewayCertificate(SubElement):
         """
         return self.expiration_date
 
-    def export_certificate(self, filename=None):
+    def export_certificate(self, filename: Optional[str] = None) -> Any:
         export_result = ImportExportCertificate.export_certificate(self, filename)
         return export_result
 
@@ -214,19 +216,19 @@ class GatewayCertificateRequest(SubElement):
     typeof = "gateway_certificate_request"
 
     @property
-    def comment(self):
+    def comment(self) -> Optional[str]:
         return self.data.comment
 
     @property
-    def key_length(self):
+    def key_length(self) -> Optional[int]:
         return self.data.key_length
 
     @property
-    def request(self):
+    def request(self) -> Any:
         return self.certificate_base64
 
     @property
-    def signature_algorithm(self):
+    def signature_algorithm(self) -> Optional[str]:
         """
         The Signature Algorithm.Can be one of the following:
         * dsa_sha_1
@@ -247,7 +249,7 @@ class GatewayCertificateRequest(SubElement):
         return self.data.signature_algorithm
 
     @property
-    def public_key_algorithm(self):
+    def public_key_algorithm(self) -> Optional[str]:
         """
         The Public Key Algorithm.Can be one of the following:
         * dsa
@@ -258,11 +260,11 @@ class GatewayCertificateRequest(SubElement):
         """
         return self.data.public_key_algorithm
 
-    def export_certificate_request(self, filename=None):
+    def export_certificate_request(self, filename: Optional[str] = None) -> Any:
         export_result = ImportExportCertificate.export_certificate(self, filename)
         return export_result
 
-    def import_certificate_request(self, certificate):
+    def import_certificate_request(self, certificate: str) -> None:
         self.make_request(
             CertificateImportError,
             method="create",
@@ -272,7 +274,7 @@ class GatewayCertificateRequest(SubElement):
             }
         )
 
-    def self_sign(self):
+    def self_sign(self) -> Any:
         """
         Self sign the certificate in 'request' state.
         :raises ActionCommandFailed: failed to sign with reason

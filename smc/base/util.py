@@ -12,6 +12,10 @@
 """
 Utility functions used in different areas of smc-python
 """
+from __future__ import annotations
+
+from typing import Any, Optional, Union, Iterator
+
 import time
 import base64
 import datetime
@@ -19,7 +23,7 @@ import smc.compat as compat
 import smc.api.exceptions
 
 
-def datetime_to_ms(dt):
+def datetime_to_ms(dt: Any) -> int:
     """
     Convert an unaware datetime object to milliseconds. This will
     be a UTC time. The SMC stores all times in UTC and will do the
@@ -36,7 +40,7 @@ def datetime_to_ms(dt):
     return int(time.mktime(dt.timetuple()) * 1000)
 
 
-def datetime_from_ms(ms):
+def datetime_from_ms(ms: Any) -> Any:
     """
     Convenience to return datetime from milliseconds. Return in
     UTC time.
@@ -52,7 +56,7 @@ def datetime_from_ms(ms):
         return ms
 
 
-def millis_to_utc(millis):
+def millis_to_utc(millis: int) -> Any:
     """
     Given milliseconds, convert to datetime object in UTC. This will
     also use the systems local timezone when displaying.
@@ -64,7 +68,7 @@ def millis_to_utc(millis):
     return datetime.datetime(1970, 1, 1) + datetime.timedelta(milliseconds=millis)
 
 
-def save_to_file(filename, content):
+def save_to_file(filename: str, content: str) -> None:
     """
     Save content to file. Used by node initial contact but
     can be used anywhere.
@@ -81,7 +85,7 @@ def save_to_file(filename, content):
         text_file.write("{}".format(content))
 
 
-def element_resolver(elements, do_raise=True):
+def element_resolver(elements: Any, do_raise: bool = True) -> Any:
     """
     Element resolver takes either a single class instance
     or a list of elements to resolve the href. It does
@@ -116,7 +120,7 @@ def element_resolver(elements, do_raise=True):
             raise
 
 
-def element_default(clazz, default_name, exact_match=False):
+def element_default(clazz: Any, default_name: str, exact_match: bool = False) -> Optional[str]:
     """
     Some element defaults are provided by SMC. Where they are not provided,
     supply a simple mechanism to retrieve the default first match by
@@ -132,7 +136,7 @@ def element_default(clazz, default_name, exact_match=False):
     )
 
 
-def merge_dicts(dict1, dict2, append_lists=False):
+def merge_dicts(dict1: dict, dict2: dict, append_lists: bool = False) -> None:
     """
     Merge the second dict into the first
     Not intended to merge list of dicts.
@@ -159,7 +163,7 @@ def merge_dicts(dict1, dict2, append_lists=False):
             dict1[key] = dict2[key]  # Overwrite list or scalar
 
 
-def is_subdict(small, big):
+def is_subdict(small: dict, big: dict) -> bool:
     """
     Check if one dict is a subset of another with matching keys and values.
     Used for 'flat' dictionary comparisons such as in comparing interface
@@ -172,7 +176,7 @@ def is_subdict(small, big):
     return dict(big, **small) == big
 
 
-def unicode_to_bytes(s, encoding="utf-8", errors="replace"):
+def unicode_to_bytes(s: Any, encoding: str = "utf-8", errors: str = "replace") -> Any:
     """
     Helper to convert unicode strings to bytes for data that needs to be
     written to on output stream (i.e. terminal)
@@ -186,7 +190,7 @@ def unicode_to_bytes(s, encoding="utf-8", errors="replace"):
     return s if isinstance(s, str) else s.encode(encoding, errors)
 
 
-def b64encode(source):
+def b64encode(source: Any) -> str:
     """
     Base64 encoding for python 2 and 3
 
@@ -197,7 +201,7 @@ def b64encode(source):
     return base64.b64encode(source).decode("utf-8")
 
 
-def bytes_to_unicode(s, encoding="utf-8", errors="replace"):
+def bytes_to_unicode(s: Any, encoding: str = "utf-8", errors: str = "replace") -> str:
     """
     Helper to convert byte string to unicode string for user based input
 
@@ -211,7 +215,7 @@ def bytes_to_unicode(s, encoding="utf-8", errors="replace"):
     return s if isinstance(s, unicode) else s.decode(encoding, errors)
 
 
-def import_submodules(package, recursive=True):
+def import_submodules(package: Any, recursive: bool = True) -> dict[str, Any]:
     """
     Import all submodules of a module, recursively,
     including subpackages.
@@ -236,7 +240,7 @@ def import_submodules(package, recursive=True):
     return results
 
 
-def extract_self(link_list):
+def extract_self(link_list: list) -> Optional[str]:
     for keys in link_list:
         if keys.get("rel") == "self":
             return keys.get("href")

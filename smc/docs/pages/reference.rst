@@ -1778,6 +1778,14 @@ VPNBrokerConfigFile
 	:members:
 	:show-inheritance:
 
+SSL VPN Portal
+++++++++++++++
+Deprecated since SMC >= 7.5.0, replaced by ApplicationAccessPortal.
+
+.. automodule:: smc.vpn.ssl_vpn_portal
+   :members:
+   :show-inheritance:
+
 Collections Reference
 ---------------------
 

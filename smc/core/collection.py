@@ -108,6 +108,8 @@ booleans indicating the operations performed::
     u'changed today'
 
 """
+from __future__ import annotations
+from typing import Any, Optional, Union, Iterator
 from smc.core.interfaces import (
     TunnelInterface,
     InterfaceEditor,
@@ -126,7 +128,7 @@ from smc.api.exceptions import UnsupportedInterfaceType, InterfaceNotFound
 from smc.compat import get_best_version, is_api_version_less_than_or_equal, min_smc_version
 
 
-def get_all_loopbacks(engine):
+def get_all_loopbacks(engine: Any) -> list:
     """
     Get all loopback interfaces for a given engine
     """
@@ -165,12 +167,12 @@ class LoopbackCollection(BaseIterable):
 
     """
 
-    def __init__(self, engine):
+    def __init__(self, engine: Any) -> None:
         self._engine = engine
         loopbacks = get_all_loopbacks(engine)
         super(LoopbackCollection, self).__init__(loopbacks)
 
-    def get(self, address):
+    def get(self, address: str) -> Any:
         """
         Get a loopback address by it's address. Find all loopback addresses
         by iterating at either the node level or the engine::
@@ -186,7 +188,7 @@ class LoopbackCollection(BaseIterable):
             return loopback
         raise InterfaceNotFound("Loopback address specified was not found")
 
-    def __getattr__(self, key):
+    def __getattr__(self, key: str) -> Any:
         # Dispatch to instance methods but only for adding interfaces.
         # Makes this work: engine.loopback_interface.add
         if key.startswith("add_"):
@@ -252,14 +254,14 @@ class InterfaceCollection(BaseIterable):
         types based on the interface context.
     """
 
-    def __init__(self, engine, rel="interfaces"):
+    def __init__(self, engine: Any, rel: str = "interfaces") -> None:
         self._engine = engine
         self._rel = rel
         self.href = engine.get_relation(rel, UnsupportedInterfaceType)
         # Pass the interface iterator to the top level iterator
         super(InterfaceCollection, self).__init__(InterfaceEditor(engine))
 
-    def get(self, interface_id):
+    def get(self, interface_id: Any) -> Any:
         """
         Get the interface by id, if known. The interface is retrieved from
         the top level Physical or Tunnel Interface. If the interface is an
@@ -286,7 +288,7 @@ class InterfaceCollection(BaseIterable):
         """
         return self.items.get(interface_id)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Any]:
         for interface in super(InterfaceCollection, self).__iter__():
             if self._rel != "interfaces":
                 if interface.typeof == self._rel:
@@ -294,16 +296,68 @@ class InterfaceCollection(BaseIterable):
             else:
                 yield interface
 
-    def __len__(self):
+    def __len__(self) -> int:
         return sum(1 for _ in self)
 
-    def __contains__(self, interface_id):
+    def __contains__(self, interface_id: Any) -> bool:
         try:
             return self.get(interface_id)
         except InterfaceNotFound:
             return False
 
-    def update_or_create(self, interface):
+    def remove(self, interface_id: Any) -> None:
+        """
+        Remove an interface by its logical interface ID.
+
+        Example::
+
+            engine.interface.remove(5)
+            engine.modem_interface.remove(5)
+
+        :param str,int interface_id: logical interface ID to remove
+        :raises InterfaceNotFound: if interface_id does not exist on this engine
+        """
+        self.get(interface_id).delete()
+
+    def update(self, interface_id: Any, interface: Optional[Any] = None, **kwargs: Any) -> Any:
+        """
+        Update an interface by its logical interface ID.
+
+        Two modes of operation:
+
+        - **kwargs only** — update top-level attributes (comment, mtu, …) on the
+          existing interface object in place.
+        - **interface=** — deep merge: for each sub-interface (identified by nodeid
+          or CVI) present in the provided object, update its attributes if it already
+          exists, or insert it if it does not. This is effectively an update/insert on
+          sub-interfaces, not a replacement of the whole interface.
+
+        Example - update top-level attributes::
+
+            engine.interface.update(10, comment="new comment", mtu=1400)
+
+        Example - update IP address via interface object (update/insert on sub-interfaces)::
+
+            new_iface = Layer3PhysicalInterface(interface_id=10, address="10.20.20.2", ...)
+            engine.interface.update(10, interface=new_iface)
+
+        This method is available on all InterfaceCollection subclasses
+        (tunnel_interface, modem_interface, physical_interface, etc.).
+
+        :param str,int interface_id: logical interface ID to update
+        :param Interface interface: optional interface object for deep merge/update/insert
+        :param kwargs: top-level attributes to update
+        :raises InterfaceNotFound: if interface_id does not exist on this engine
+        :raises UpdateElementFailed: failure to save changes
+        :return: updated interface
+        """
+        iface = self.get(interface_id)
+        if interface is not None:
+            result, _ = iface.update_interface(interface)
+            return result
+        return iface.update(**kwargs)
+
+    def update_or_create(self, interface: Any) -> tuple:
         """
         Collections class update or create method that can be used as a
         shortcut to updating or creating an interface. The interface must
@@ -332,7 +386,7 @@ class InterfaceCollection(BaseIterable):
 
         return interface, modified, created
 
-    def add_layer3_vlan_interface(self, *args, **kwargs):
+    def add_layer3_vlan_interface(self, *args: Any, **kwargs: Any) -> Any:
         """
         Add a Layer 3 VLAN interface. Optionally specify an address and network if
         assigning an IP to the VLAN. This method will also assign an IP address to
@@ -377,16 +431,16 @@ class InterfaceCollection(BaseIterable):
 
     def _add_layer3_vlan_interface_65(
             self,
-            interface_id,
-            vlan_id,
-            address=None,
-            network_value=None,
-            virtual_mapping=None,
-            virtual_resource_name=None,
-            zone_ref=None,
-            comment=None,
-            **kw
-    ):
+            interface_id: Any,
+            vlan_id: Any,
+            address: Optional[str] = None,
+            network_value: Optional[str] = None,
+            virtual_mapping: Optional[Any] = None,
+            virtual_resource_name: Optional[str] = None,
+            zone_ref: Optional[str] = None,
+            comment: Optional[str] = None,
+            **kw: Any,
+    ) -> Any:
 
         interfaces = {
             "nodes": [{"address": address, "network_value": network_value}]
@@ -423,16 +477,16 @@ class InterfaceCollection(BaseIterable):
 
     def _add_layer3_vlan_interface_66(
             self,
-            interface_id,
-            vlan_id,
-            address=None,
-            network_value=None,
-            virtual_mapping=None,
-            virtual_resource_name=None,
-            zone_ref=None,
-            comment=None,
-            **kw
-    ):
+            interface_id: Any,
+            vlan_id: Any,
+            address: Optional[str] = None,
+            network_value: Optional[str] = None,
+            virtual_mapping: Optional[Any] = None,
+            virtual_resource_name: Optional[str] = None,
+            zone_ref: Optional[str] = None,
+            comment: Optional[str] = None,
+            **kw: Any,
+    ) -> Any:
 
         if virtual_mapping is not None:
             virtual_resource_settings = [
@@ -505,15 +559,15 @@ class SwitchInterfaceCollection(InterfaceCollection):
             ...
     """
 
-    def __init__(self, engine):
+    def __init__(self, engine: Any) -> None:
         if is_api_version_less_than_or_equal("6.7"):
             super(SwitchInterfaceCollection, self).__init__(engine, "switch_physical_interface")
         else:
             super(SwitchInterfaceCollection, self).__init__(engine, "switch_interface")
 
     def add_switch_interface(
-        self, interface_id, appliance_switch_module="110", comment=None, **kwargs
-    ):
+        self, interface_id: Any, appliance_switch_module: str = "110", comment: Optional[str] = None, **kwargs: Any
+    ) -> None:
         """
         In case of Switch Physical/Port Group interfaces, the interface ID must
         be prefixed by 'SWP\\_'. For example, for switch ID 1 and Port Group ID 1.2
@@ -550,8 +604,8 @@ class SwitchInterfaceCollection(InterfaceCollection):
         self._engine.add_interface(interface, **kwargs)
 
     def add_port_group_interface(
-        self, interface_id, port_group_id, interface_ports, interfaces=None, zone_ref=None
-    ):
+        self, interface_id: str, port_group_id: int, interface_ports: list, interfaces: Optional[list] = None, zone_ref: Optional[str] = None
+    ) -> None:
         """
         Add a port group to an existing switch physical interface. If the switch
         port should have an address assigned, use the following format::
@@ -604,8 +658,8 @@ class SwitchInterfaceCollection(InterfaceCollection):
         switch.update_interface(SwitchPhysicalInterface(**interface))
 
     def add_port_group_interface_n120(
-        self, interface_id, port_interfaces, interfaces=None, zone_ref=None
-    ):
+        self, interface_id: str, port_interfaces: list, interfaces: Optional[list] = None, zone_ref: Optional[str] = None
+    ) -> None:
         """
         Add a port group to an existing switch physical interface for N120 appliance type having
         soft switch pint interface as port interfaces. (SSID Soft-Switch Interfaces must be either
@@ -651,8 +705,8 @@ class SwitchInterfaceCollection(InterfaceCollection):
         switch.update_interface(SwitchPhysicalInterface(**interface))
 
     def add_port_group_interface_n130(
-        self, interface_id, port_interfaces, interfaces=None, zone_ref=None
-    ):
+        self, interface_id: str, port_interfaces: list, interfaces: Optional[list] = None, zone_ref: Optional[str] = None
+    ) -> None:
         """
         Add a port group to an existing switch physical interface for N130 appliance type having
         soft switch pint interface as port interfaces. (SSID Soft-Switch Interfaces must be either
@@ -704,19 +758,19 @@ class TunnelInterfaceCollection(InterfaceCollection):
     interfaces and helper methods to shortcut the creation of an interface.
     """
 
-    def __init__(self, engine):
+    def __init__(self, engine: Any) -> None:
         super(TunnelInterfaceCollection, self).__init__(engine, "tunnel_interface")
 
     def add_cluster_virtual_interface(
         self,
-        interface_id,
-        cluster_virtual=None,
-        network_value=None,
-        nodes=None,
-        zone_ref=None,
-        comment=None,
-        **kw
-    ):
+        interface_id: Any,
+        cluster_virtual: Optional[str] = None,
+        network_value: Optional[str] = None,
+        nodes: Optional[list] = None,
+        zone_ref: Optional[str] = None,
+        comment: Optional[str] = None,
+        **kw: Any,
+    ) -> None:
         """
         Add a tunnel interface on a clustered engine. For tunnel interfaces
         on a cluster, you can specify a CVI only, NDI interfaces, or both.
@@ -771,9 +825,9 @@ class TunnelInterfaceCollection(InterfaceCollection):
         self._engine.add_interface(tunnel_interface, **kw)
 
     def add_layer3_interface(
-        self, interface_id, address=None, network_value=None, zone_ref=None, comment=None,
-            route_replies_back_mode=False, **kw
-    ):
+        self, interface_id: Any, address: Optional[str] = None, network_value: Optional[str] = None, zone_ref: Optional[str] = None, comment: Optional[str] = None,
+            route_replies_back_mode: bool = False, **kw: Any
+    ) -> None:
         """
         Creates a tunnel interface with sub-type single_node_interface. This is
         to be used for single layer 3 firewall instances.
@@ -812,23 +866,23 @@ class VPNBrokerInterfaceCollection(InterfaceCollection):
     creation of an interface.
     """
 
-    def __init__(self, engine):
+    def __init__(self, engine: Any) -> None:
         super(VPNBrokerInterfaceCollection, self).__init__(engine, "vpn_broker_interface")
 
     def add_layer3_interface(
         self,
-        interface_id,
-        address=None,
-        network_value=None,
-        zone_ref=None,
-        comment=None,
-        vpn_broker_domain_ref=None,
-        mac_address_postfix=None,
-        retrieve_routes=None,
-        adjust_antispoofing=None,
-        shared_secret=None,
-        **kw
-    ):
+        interface_id: Any,
+        address: Optional[str] = None,
+        network_value: Optional[str] = None,
+        zone_ref: Optional[str] = None,
+        comment: Optional[str] = None,
+        vpn_broker_domain_ref: Optional[str] = None,
+        mac_address_postfix: Optional[str] = None,
+        retrieve_routes: Optional[Any] = None,
+        adjust_antispoofing: Optional[Any] = None,
+        shared_secret: Optional[str] = None,
+        **kw: Any,
+    ) -> Any:
         """Creates a vpn broker interface with sub-type
         single_node_interface. This is to be used for single layer 3
         firewall instances.
@@ -857,19 +911,19 @@ class VPNBrokerInterfaceCollection(InterfaceCollection):
 
     def add_cluster_virtual_interface(
         self,
-        interface_id,
-        cluster_virtual=None,
-        vpn_broker_domain_ref=None,
-        mac_address_postfix=None,
-        shared_secret=None,
-        network_value=None,
-        nodes=None,
-        zone_ref=None,
-        comment=None,
-        retrieve_routes=None,
-        adjust_antispoofing=None,
-        **kw
-    ):
+        interface_id: Any,
+        cluster_virtual: Optional[str] = None,
+        vpn_broker_domain_ref: Optional[str] = None,
+        mac_address_postfix: Optional[str] = None,
+        shared_secret: Optional[str] = None,
+        network_value: Optional[str] = None,
+        nodes: Optional[list] = None,
+        zone_ref: Optional[str] = None,
+        comment: Optional[str] = None,
+        retrieve_routes: Optional[Any] = None,
+        adjust_antispoofing: Optional[Any] = None,
+        **kw: Any,
+    ) -> None:
         """
         Add a VPN Broker interface on a clustered engine. For VPN Broker interfaces
         on a cluster, you can specify a CVI only, NDI interfaces, or both.
@@ -927,16 +981,16 @@ class ModemInterfaceCollection(InterfaceCollection):
     creation of an interface.
     """
 
-    def __init__(self, engine):
+    def __init__(self, engine: Any) -> None:
         super(ModemInterfaceCollection, self).__init__(engine, "modem_interface")
 
     def add_layer3_interface(
             self,
-            interface_id,
-            apn, interfaces=[], pin_code=None, zone_ref=None, mtu=None,
-            qos_mode=None, qos_limit=None, qos_policy_ref=None, auth_method=None,
-            username=None, password=None, **kw
-    ):
+            interface_id: Any,
+            apn: str, interfaces: list = [], pin_code: Optional[str] = None, zone_ref: Optional[str] = None, mtu: Optional[int] = None,
+            qos_mode: Optional[str] = None, qos_limit: Optional[Any] = None, qos_policy_ref: Optional[str] = None, auth_method: Optional[str] = None,
+            username: Optional[str] = None, password: Optional[str] = None, **kw: Any
+    ) -> Any:
         """Creates a modem interface with sub-type
         apn interface and (0, 1, 2) single_node_interface entries. This is to be used for single layer 3
         firewall instances.
@@ -965,10 +1019,10 @@ class PhysicalInterfaceCollection(InterfaceCollection):
     interfaces and helper methods to shortcut the creation of an interface.
     """
 
-    def __init__(self, engine):
+    def __init__(self, engine: Any) -> None:
         super(PhysicalInterfaceCollection, self).__init__(engine, "physical_interface")
 
-    def add(self, *args, **kwargs):
+    def add(self, *args: Any, **kwargs: Any) -> Any:
         """
         Add single physical interface with interface_id. Use other methods
         to fully add an interface configuration based on engine type.
@@ -988,13 +1042,13 @@ class PhysicalInterfaceCollection(InterfaceCollection):
 
     def _add_65(
         self,
-        interface_id,
-        virtual_mapping=None,
-        virtual_resource_name=None,
-        virtual_engine_vlan_ok=None,
-        zone_ref=None,
-        comment=None,
-    ):
+        interface_id: Any,
+        virtual_mapping: Optional[Any] = None,
+        virtual_resource_name: Optional[str] = None,
+        virtual_engine_vlan_ok: Optional[Any] = None,
+        zone_ref: Optional[str] = None,
+        comment: Optional[str] = None,
+    ) -> Any:
         interface = Layer3PhysicalInterface(
             engine=self._engine,
             interface_id=interface_id,
@@ -1009,14 +1063,14 @@ class PhysicalInterfaceCollection(InterfaceCollection):
 
     def _add_66(
         self,
-        interface_id,
-        virtual_mapping=None,
-        virtual_resource_name=None,
-        virtual_engine_vlan_ok=None,
-        zone_ref=None,
-        comment=None,
-        lldp_mode=None,
-    ):
+        interface_id: Any,
+        virtual_mapping: Optional[Any] = None,
+        virtual_resource_name: Optional[str] = None,
+        virtual_engine_vlan_ok: Optional[Any] = None,
+        zone_ref: Optional[str] = None,
+        comment: Optional[str] = None,
+        lldp_mode: Optional[str] = None,
+    ) -> Any:
         if virtual_mapping is not None:
             virtual_resource_settings = [
                 {"virtual_resource_name": virtual_resource_name, "virtual_mapping": virtual_mapping}
@@ -1038,12 +1092,12 @@ class PhysicalInterfaceCollection(InterfaceCollection):
 
     def add_capture_interface(
         self,
-        interface_id,
-        logical_interface_ref,
-        inspect_unspecified_vlans=True,
-        zone_ref=None,
-        comment=None,
-    ):
+        interface_id: Any,
+        logical_interface_ref: Any,
+        inspect_unspecified_vlans: bool = True,
+        zone_ref: Optional[str] = None,
+        comment: Optional[str] = None,
+    ) -> Any:
         """
         Add a capture interface. Capture interfaces are supported on
         Layer 2 engine and IPS engines.
@@ -1073,9 +1127,9 @@ class PhysicalInterfaceCollection(InterfaceCollection):
         return self._engine.add_interface(interface)
 
     def add_layer3_interface(
-            self, interface_id, address, network_value, zone_ref=None, comment=None, lldp_mode=None,
-            relayed_by_dhcp=None, **kw
-    ):
+            self, interface_id: Any, address: str, network_value: str, zone_ref: Optional[str] = None, comment: Optional[str] = None, lldp_mode: Optional[str] = None,
+            relayed_by_dhcp: Optional[Any] = None, **kw: Any
+    ) -> Any:
         """
         Add a layer 3 interface on a non-clustered engine.
         For Layer 2 engine and IPS engines, this interface type represents
@@ -1126,14 +1180,16 @@ class PhysicalInterfaceCollection(InterfaceCollection):
 
     def add_layer3_shared_virtual_interface(
         self,
-        interface_id,
-        mac_address_prefix,
-        vlan_id=None,
-        virtual_resource_settings=None,
-        zone_ref=None,
-        comment=None,
-        **kw
-    ):
+        interface_id: Any,
+        mac_address_prefix: str,
+        vlan_id: Optional[Any] = None,
+        virtual_resource_settings: Optional[list] = None,
+        zone_ref: Optional[str] = None,
+        lldp_mode: Optional[str] = None,
+        native_vlan_id: Optional[Any] = None,
+        comment: Optional[str] = None,
+        **kw: Any,
+    ) -> Any:
         """
         .. versionadded:: 0.7.0
             Requires SMC >= 6.6.0
@@ -1171,6 +1227,8 @@ class PhysicalInterfaceCollection(InterfaceCollection):
         :param list virtual_resource_settings: list of virtual resources by name
             to add to shared interface
         :param str zone_ref: zone reference, can be name, href or Zone
+        :param str lldp_mode: disabled, receive_only, send_and_receive, send_only
+        :param str native_vlan_id optional Native VLAN ID for the interface
         :param str comment: optional comment
         """
         interfaces = {
@@ -1188,6 +1246,12 @@ class PhysicalInterfaceCollection(InterfaceCollection):
             "mac_prefix": mac_address_prefix,
             "comment": comment
         }
+
+        if min_smc_version("6.6") and lldp_mode is not None:
+            _interface.update(lldp_mode=lldp_mode)
+        if min_smc_version("7.5") and native_vlan_id is not None:
+            _interface.update(native_vlan_id=native_vlan_id)
+
         try:
             interface = self._engine.interface.get(interface_id)
             interface._add_interface(**_interface)
@@ -1198,17 +1262,17 @@ class PhysicalInterfaceCollection(InterfaceCollection):
 
     def add_layer3_cluster_interface(
         self,
-        interface_id,
-        cluster_virtual=None,
-        network_value=None,
-        macaddress=None,
-        nodes=None,
-        cvi_mode="packetdispatch",
-        zone_ref=None,
-        comment=None,
-        lldp_mode=None,
-        **kw
-    ):
+        interface_id: Any,
+        cluster_virtual: Optional[str] = None,
+        network_value: Optional[str] = None,
+        macaddress: Optional[str] = None,
+        nodes: Optional[list] = None,
+        cvi_mode: str = "packetdispatch",
+        zone_ref: Optional[str] = None,
+        comment: Optional[str] = None,
+        lldp_mode: Optional[str] = None,
+        **kw: Any,
+    ) -> Any:
         """
         Add cluster virtual interface. A "CVI" interface is used as a VIP
         address for clustered engines. Providing 'nodes' will create the
@@ -1286,17 +1350,17 @@ class PhysicalInterfaceCollection(InterfaceCollection):
 
     def add_layer3_vlan_cluster_interface(
         self,
-        interface_id,
-        vlan_id,
-        nodes=None,
-        cluster_virtual=None,
-        network_value=None,
-        macaddress=None,
-        cvi_mode="packetdispatch",
-        zone_ref=None,
-        comment=None,
-        **kw
-    ):
+        interface_id: Any,
+        vlan_id: Any,
+        nodes: Optional[list] = None,
+        cluster_virtual: Optional[str] = None,
+        network_value: Optional[str] = None,
+        macaddress: Optional[str] = None,
+        cvi_mode: str = "packetdispatch",
+        zone_ref: Optional[str] = None,
+        comment: Optional[str] = None,
+        **kw: Any,
+    ) -> Any:
         """
         Add IP addresses to VLANs on a firewall cluster. The minimum params
         required are ``interface_id`` and ``vlan_id``.
@@ -1370,17 +1434,17 @@ class PhysicalInterfaceCollection(InterfaceCollection):
 
     def add_inline_interface(
         self,
-        interface_id,
-        second_interface_id,
-        logical_interface_ref=None,
-        vlan_id=None,
-        second_vlan_id=None,
-        zone_ref=None,
-        second_zone_ref=None,
-        failure_mode="normal",
-        comment=None,
-        **kw
-    ):
+        interface_id: Any,
+        second_interface_id: Any,
+        logical_interface_ref: Optional[Any] = None,
+        vlan_id: Optional[Any] = None,
+        second_vlan_id: Optional[Any] = None,
+        zone_ref: Optional[str] = None,
+        second_zone_ref: Optional[str] = None,
+        failure_mode: str = "normal",
+        comment: Optional[str] = None,
+        **kw: Any,
+    ) -> Any:
         """
         Add an inline interface pair. This method is only for IPS or L2FW engine
         types.
@@ -1432,15 +1496,15 @@ class PhysicalInterfaceCollection(InterfaceCollection):
 
     def add_inline_ips_interface(
         self,
-        interface_id,
-        second_interface_id,
-        logical_interface_ref=None,
-        vlan_id=None,
-        failure_mode="normal",
-        zone_ref=None,
-        second_zone_ref=None,
-        comment=None,
-    ):
+        interface_id: Any,
+        second_interface_id: Any,
+        logical_interface_ref: Optional[Any] = None,
+        vlan_id: Optional[Any] = None,
+        failure_mode: str = "normal",
+        zone_ref: Optional[str] = None,
+        second_zone_ref: Optional[str] = None,
+        comment: Optional[str] = None,
+    ) -> Any:
         """
         .. versionadded:: 0.5.6
             Using an inline interface on a layer 3 engine requires SMC and engine
@@ -1491,14 +1555,14 @@ class PhysicalInterfaceCollection(InterfaceCollection):
 
     def add_inline_l2fw_interface(
         self,
-        interface_id,
-        second_interface_id,
-        logical_interface_ref=None,
-        vlan_id=None,
-        zone_ref=None,
-        second_zone_ref=None,
-        comment=None,
-    ):
+        interface_id: Any,
+        second_interface_id: Any,
+        logical_interface_ref: Optional[Any] = None,
+        vlan_id: Optional[Any] = None,
+        zone_ref: Optional[str] = None,
+        second_zone_ref: Optional[str] = None,
+        comment: Optional[str] = None,
+    ) -> Any:
         """
         .. versionadded:: 0.5.6
             Requires NGFW engine >=6.3 and layer 3 engine or cluster
@@ -1544,8 +1608,8 @@ class PhysicalInterfaceCollection(InterfaceCollection):
         return self.add_inline_interface(**_interface)
 
     def add_dhcp_interface(
-            self, interface_id, dynamic_index, zone_ref=None, vlan_id=None, comment=None,
-            pppoe_settings=None, ipv6=False, **kw):
+            self, interface_id: Any, dynamic_index: int, zone_ref: Optional[str] = None, vlan_id: Optional[Any] = None, comment: Optional[str] = None,
+            pppoe_settings: Optional[dict] = None, ipv6: bool = False, **kw: Any) -> Any:
         """
         Add a DHCP interface on a single engine
         :param int interface_id: interface id
@@ -1605,8 +1669,8 @@ class PhysicalInterfaceCollection(InterfaceCollection):
             return self._engine.add_interface(interface)
 
     def add_cluster_interface_on_master_engine(
-        self, interface_id, macaddress, nodes, zone_ref=None, vlan_id=None, comment=None
-    ):
+        self, interface_id: Any, macaddress: str, nodes: list, zone_ref: Optional[str] = None, vlan_id: Optional[Any] = None, comment: Optional[str] = None
+    ) -> None:
         """
         Add a cluster address specific to a master engine. Master engine
         clusters will not use "CVI" interfaces like normal layer 3 clusters,
@@ -1651,14 +1715,14 @@ class VirtualPhysicalInterfaceCollection(InterfaceCollection):
     interfaces and helper methods to shortcut the creation of an interface.
     """
 
-    def __init__(self, engine):
+    def __init__(self, engine: Any) -> None:
         super(VirtualPhysicalInterfaceCollection, self).__init__(
             engine, "virtual_physical_interface"
         )
 
     def add_layer3_interface(
-        self, interface_id, address, network_value, zone_ref=None, comment=None, **kw
-    ):
+        self, interface_id: Any, address: str, network_value: str, zone_ref: Optional[str] = None, comment: Optional[str] = None, **kw: Any
+    ) -> Any:
         """
         Add a layer 3 interface on a virtual engine.
 
@@ -1692,8 +1756,8 @@ class VirtualPhysicalInterfaceCollection(InterfaceCollection):
             return self._engine.add_interface(interface, **kw)
 
     def add_tunnel_interface(
-        self, interface_id, address, network_value, zone_ref=None, comment=None
-    ):
+        self, interface_id: Any, address: str, network_value: str, zone_ref: Optional[str] = None, comment: Optional[str] = None
+    ) -> None:
         """
         Creates a tunnel interface for a virtual engine.
 

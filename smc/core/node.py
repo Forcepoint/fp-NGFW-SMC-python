@@ -25,6 +25,9 @@ For example, to load an engine and run node level commands::
         ...
         ...
 """
+from __future__ import annotations
+
+from typing import Any, Optional, Union, Iterator
 import collections
 import logging
 import time
@@ -57,14 +60,14 @@ class Node(SubElement):
     """
 
     @property
-    def type(self):
+    def type(self) -> Optional[str]:
         """
         Node type
         """
         return self._meta.type
 
     @property
-    def version(self):
+    def version(self) -> Optional[str]:
         """
         Engine version. If the node is not yet initialized, this
         will return None.
@@ -73,7 +76,7 @@ class Node(SubElement):
         """
         return self.data.get("engine_version")
 
-    def rename(self, name):
+    def rename(self, name: str) -> None:
         """
         Rename this node
 
@@ -82,22 +85,22 @@ class Node(SubElement):
         self.update(name="{} node {}".format(name, self.nodeid))
 
     @property
-    def nodeid(self):
+    def nodeid(self) -> Optional[int]:
         """
         ID of this node
         """
         return self.data.get("nodeid")
 
-    def update(self, *args, **kw):
+    def update(self, *args: Any, **kw: Any) -> Any:  # type: ignore[override]
         # Delete cache from engine reference
         super(Node, self).update(*args, **kw)
         self._engine._del_cache()
 
     @classmethod
-    def _create(cls, name, node_type, nodeid=1,
-                loopback_ndi=None,
-                external_pki_certificate_settings=None,
-                disable=False, comment=None):
+    def _create(cls, name: str, node_type: str, nodeid: int = 1,
+                loopback_ndi: Optional[list] = None,
+                external_pki_certificate_settings: Optional[Any] = None,
+                disable: bool = False, comment: Optional[str] = None) -> dict:
         """
         Create the node/s for the engine. This isn't called directly,
         instead it is used when engine.create() is called
@@ -139,7 +142,7 @@ class Node(SubElement):
         return node
 
     @property
-    def loopback_interface(self):
+    def loopback_interface(self) -> Iterator[Any]:
         """
         Loopback interfaces for this node. This will return
         empty if the engine is not a layer 3 firewall type::
@@ -158,7 +161,7 @@ class Node(SubElement):
         for lb in self.data.get("loopback_node_dedicated_interface", []):
             yield LoopbackInterface(lb, self._engine)
 
-    def fetch_license(self, **kwargs):
+    def fetch_license(self, **kwargs: Any) -> None:
         """
         Fetch the node level license
 
@@ -168,7 +171,7 @@ class Node(SubElement):
         params = {**kwargs}
         self.make_request(LicenseError, method="create", resource="fetch", params=params)
 
-    def bind_license(self, license_item_id=None, **kwargs):
+    def bind_license(self, license_item_id: Optional[str] = None, **kwargs: Any) -> None:
         """
         Auto bind license, uses dynamic if POS is not found
 
@@ -182,7 +185,7 @@ class Node(SubElement):
             logging.debug("Add a delay to avoid issue with upload if done just after bind for passive node")
             time.sleep(5)
 
-    def unbind_license(self, **kwargs):
+    def unbind_license(self, **kwargs: Any) -> None:
         """
         Unbind a bound license on this node.
 
@@ -192,7 +195,7 @@ class Node(SubElement):
         params = {**kwargs}
         self.make_request(LicenseError, method="create", resource="unbind", params=params)
 
-    def cancel_unbind_license(self, **kwargs):
+    def cancel_unbind_license(self, **kwargs: Any) -> None:
         """
         Cancel unbind for license
 
@@ -204,13 +207,14 @@ class Node(SubElement):
 
     def initial_contact(
             self,
-            enable_ssh=True,
-            time_zone=None,
-            keyboard=None,
-            install_on_server=None,
-            filename=None,
-            as_base64=False,
-    ):
+            enable_ssh: bool = True,
+            time_zone: Optional[str] = None,
+            keyboard: Optional[str] = None,
+            root_password: Optional[str] = None,
+            install_on_server: Optional[bool] = None,
+            filename: Optional[str] = None,
+            as_base64: bool = False,
+    ) -> Optional[str]:
         """
         Allows to save the initial contact for for the specified node
 
@@ -249,6 +253,7 @@ class Node(SubElement):
             "German"->"i386/qwertz/de-latin1-nodeadkeys"
             "Hungarian"->"i386/qwertz/hu"
             "Slovene"->"i386/qwertz/slovene"
+        :param str root_password: root password for the current engine
         :param bool install_on_server: optional flag to know if the generated
             configuration needs to be installed on SMC Install server
             (POS is needed)
@@ -265,6 +270,7 @@ class Node(SubElement):
             raw_result=True,
             resource="initial_contact",
             params={"enable_ssh": enable_ssh, "time_zone": time_zone, "keyboard": keyboard,
+                    "root_password": root_password,
                     "install_on_server": install_on_server, "export_to_base64": as_base64},
         )
 
@@ -279,7 +285,7 @@ class Node(SubElement):
                     )
         return result.content
 
-    def dynamic_element_update(self, update_file_path):
+    def dynamic_element_update(self, update_file_path: str) -> Any:
         """"""
         with open(update_file_path, "rb") as update_file:
             return self.make_request(
@@ -291,7 +297,7 @@ class Node(SubElement):
             )
 
     @property
-    def interface_status(self):
+    def interface_status(self) -> Any:
         """
         Obtain the interface status for this node. This will return an
         iterable that provides information about the existing interfaces.
@@ -323,7 +329,7 @@ class Node(SubElement):
         return InterfaceStatus(result.get("interface_statuses", []))
 
     @property
-    def hardware_status(self):
+    def hardware_status(self) -> Any:
         """
         Obtain hardware statistics for various areas of this node.
 
@@ -336,7 +342,7 @@ class Node(SubElement):
         return HardwareStatus(result.get("hardware_statuses", []))
 
     @property
-    def health(self):
+    def health(self) -> ApplianceStatus:
         """
         Basic status for individual node. Specific information such as node
         name dynamic package version, configuration status, platform and
@@ -347,7 +353,7 @@ class Node(SubElement):
         appliance_status = self.make_request(NodeCommandFailed, resource="status")
         return ApplianceStatus(appliance_status)
 
-    def appliance_info(self):
+    def appliance_info(self) -> Any:
         """
         .. versionadded:: 0.5.7
             Requires SMC version >= 6.3
@@ -364,13 +370,13 @@ class Node(SubElement):
         else:
             raise NodeCommandFailed("Appliance information is not available on this engine")
 
-    def update_proof_of_serial(self, proof_of_serial):
+    def update_proof_of_serial(self, proof_of_serial: str) -> None:
         """
         Update the proof_of_serial if the node is not CONFIGURED or INSTALLED.
         """
         self.data["appliance_info"]["proof_of_serial"] = proof_of_serial
 
-    def status(self):
+    def status(self) -> ApplianceStatus:
         """
         Basic status for individual node. Specific information such as node
         name dynamic package version, configuration status, platform and
@@ -382,7 +388,7 @@ class Node(SubElement):
 
         return ApplianceStatus(result)
 
-    def go_online(self, comment=None):
+    def go_online(self, comment: Optional[str] = None) -> Any:
         """
         Executes a Go-Online operation on the specified node
         typically done when the node has already been forced offline
@@ -397,7 +403,7 @@ class Node(SubElement):
             params={"comment": comment}, raw_result=True
         )
 
-    def go_offline(self, comment=None):
+    def go_offline(self, comment: Optional[str] = None) -> Any:
         """
         Executes a Go-Offline operation on the specified node
 
@@ -410,7 +416,7 @@ class Node(SubElement):
             params={"comment": comment}, raw_result=True
         )
 
-    def go_standby(self, comment=None):
+    def go_standby(self, comment: Optional[str] = None) -> Any:
         """
         Executes a Go-Standby operation on the specified node.
         To get the status of the current node/s, run :func:`status`
@@ -424,7 +430,7 @@ class Node(SubElement):
             params={"comment": comment}, raw_result=True
         )
 
-    def lock_online(self, comment=None):
+    def lock_online(self, comment: Optional[str] = None) -> Any:
         """
         Executes a Lock-Online operation on the specified node
 
@@ -437,7 +443,7 @@ class Node(SubElement):
             params={"comment": comment}, raw_result=True
         )
 
-    def lock_offline(self, comment=None):
+    def lock_offline(self, comment: Optional[str] = None) -> Any:
         """
         Executes a Lock-Offline operation on the specified node
         Bring back online by running :func:`go_online`.
@@ -451,7 +457,7 @@ class Node(SubElement):
             params={"comment": comment}, raw_result=True
         )
 
-    def reset_user_db(self, comment=None):
+    def reset_user_db(self, comment: Optional[str] = None) -> None:
         """
         Executes a Send Reset LDAP User DB Request operation on this
         node.
@@ -467,7 +473,7 @@ class Node(SubElement):
             params={"comment": comment},
         )
 
-    def debug(self, filter_enabled=False):
+    def debug(self, filter_enabled: bool = False) -> Debug:
         """
         View all debug settings for this node. This will return a
         debug object. View the debug object repr to identify settings
@@ -486,7 +492,7 @@ class Node(SubElement):
         result = self.make_request(NodeCommandFailed, resource="diagnostic", params=params)
         return Debug(result.get("diagnostics"))
 
-    def set_debug(self, debug):
+    def set_debug(self, debug: Debug) -> None:
         """
         Set the debug settings for this node. This should be a modified
         :class:`~Debug` instance. This will take effect immediately on
@@ -502,7 +508,7 @@ class Node(SubElement):
             NodeCommandFailed, method="create", resource="send_diagnostic", json=debug.serialize()
         )
 
-    def reboot(self, comment=None):
+    def reboot(self, comment: Optional[str] = None) -> None:
         """
         Send reboot command to this node.
 
@@ -514,7 +520,7 @@ class Node(SubElement):
             NodeCommandFailed, method="update", resource="reboot", params={"comment": comment}
         )
 
-    def power_off(self):
+    def power_off(self) -> None:
         """
         .. versionadded:: 0.5.6
             Requires engine version >=6.3
@@ -526,7 +532,7 @@ class Node(SubElement):
         """
         self.make_request(NodeCommandFailed, method="update", resource="power_off")
 
-    def reset_to_factory(self):
+    def reset_to_factory(self) -> None:
         """
         .. versionadded:: 0.5.6
             Requires engine version >=6.3
@@ -538,7 +544,7 @@ class Node(SubElement):
         """
         self.make_request(NodeCommandFailed, method="update", resource="reset_to_factory")
 
-    def sginfo(self, include_core_files=False, include_slapcat_output=False, filename="sginfo.gz"):
+    def sginfo(self, include_core_files: bool = False, include_slapcat_output: bool = False, filename: str = "sginfo.gz") -> Any:
         """
         Get the SG Info of the specified node. Optionally provide
         a filename, otherwise default to 'sginfo.gz'. Once you run
@@ -561,7 +567,7 @@ class Node(SubElement):
 
         return result.content
 
-    def ssh(self, enable=True, comment=None):
+    def ssh(self, enable: bool = True, comment: Optional[str] = None) -> None:
         """
         Enable or disable SSH
 
@@ -577,7 +583,7 @@ class Node(SubElement):
             params={"enable": enable, "comment": comment},
         )
 
-    def change_ssh_pwd(self, pwd, comment=None):
+    def change_ssh_pwd(self, pwd: str, comment: Optional[str] = None) -> None:
         """
         Executes a change SSH password operation on the specified node
 
@@ -594,7 +600,7 @@ class Node(SubElement):
             json={"value": pwd},
         )
 
-    def time_sync(self):
+    def time_sync(self) -> None:
         """
         Send a time sync command to this node.
 
@@ -603,7 +609,7 @@ class Node(SubElement):
         """
         self.make_request(NodeCommandFailed, method="update", resource="time_sync")
 
-    def certificate_info(self):
+    def certificate_info(self) -> Any:
         """
         Get the certificate info of this node. This can return None if the
         engine type does not directly have a certificate, like a virtual engine
@@ -613,7 +619,7 @@ class Node(SubElement):
         """
         return self.make_request(resource="certificate_info")
 
-    def pki_certificate_settings(self):
+    def pki_certificate_settings(self) -> Optional[Any]:
         """
         Get the certificate info of this node when working with External PKI.
         This can return None if the engine type does not directly have a certificate,
@@ -626,7 +632,7 @@ class Node(SubElement):
         if "external_pki_certificate_settings" in self.data:
             return PkiCertificateSettings(self)
 
-    def pki_export_certificate_request(self, filename=None):
+    def pki_export_certificate_request(self, filename: Optional[str] = None) -> Optional[str]:
         """
         Export the certificate request for the node when working with an External PKI.
         This can return None if the engine type does not have a certificate request.
@@ -644,7 +650,7 @@ class Node(SubElement):
 
         return result.content
 
-    def pki_import_certificate(self, certificate):
+    def pki_import_certificate(self, certificate: str) -> None:
         """
         Import a valid certificate. Certificate can be either a file path
         or a string of the certificate. If string certificate, it must include
@@ -665,7 +671,7 @@ class Node(SubElement):
             },
         )
 
-    def pki_renew_certificate(self):
+    def pki_renew_certificate(self) -> None:
         """
         Start renewal process on component when using external PKI mode.
         It generates new private key and prepares a new certificate request.
@@ -676,7 +682,7 @@ class Node(SubElement):
             resource="pki_start_certificate_renewal",
         )
 
-    def pki_certificate_info(self):
+    def pki_certificate_info(self) -> Any:
         """
         Get the certificate info of this component when working with External PKI.
         This can return None if the component does not directly have a certificate,
@@ -690,7 +696,7 @@ class Node(SubElement):
         )
         return PkiCertificateInfo(result)
 
-    def pki_delete_certificate_request(self):
+    def pki_delete_certificate_request(self) -> None:
         """
         Delete the certificate request if any is defined for this component.
         """
@@ -712,45 +718,45 @@ class ApplianceStatus(NestedDict):
         added master_node since SMC version >= 6.10 API6.10, 6.9, 6.8
     """
 
-    def __init__(self, data):
+    def __init__(self, data: Any) -> None:
         super(ApplianceStatus, self).__init__(data=data)
 
-    def __str__(self):
+    def __str__(self) -> str:
         str = ""
         for key in self:
             str += "{} = {}; ".format(key, self[key])
         return str
 
     @property
-    def dyn_up(self):
+    def dyn_up(self) -> Optional[str]:
         """
         :return: str dyn_up: Dynamic update package version
         """
         return self.get("dyn_up")
 
     @property
-    def name(self):
+    def name(self) -> Optional[str]:
         """
         :return: str name: Name of engine
         """
         return self.get("name")
 
     @property
-    def platform(self):
+    def platform(self) -> Optional[str]:
         """
         :return: str platform: Underlying platform, x86, etc
         """
         return self.get("platform")
 
     @property
-    def version(self):
+    def version(self) -> Optional[str]:
         """
         :return: str version: Version of software installed
         """
         return self.get("version")
 
     @property
-    def configuration_status(self):
+    def configuration_status(self) -> Optional[str]:
         """
         Valid values:
             * Initial (no initial configuration file is yet generated)
@@ -763,7 +769,7 @@ class ApplianceStatus(NestedDict):
         return self.get("configuration_status")
 
     @property
-    def status(self):
+    def status(self) -> Optional[str]:
         """
         str status:
 
@@ -777,7 +783,7 @@ class ApplianceStatus(NestedDict):
         return self.get("status")
 
     @property
-    def state(self):
+    def state(self) -> Optional[str]:
         """
         Valid values:
             INITIAL/READY/ERROR/SERVER_ERROR/NO_STATUS/TIMEOUT/
@@ -787,14 +793,14 @@ class ApplianceStatus(NestedDict):
         return self.get("state")
 
     @property
-    def installed_policy(self):
+    def installed_policy(self) -> Optional[str]:
         """
         :return: str installed_policy: Installed policy by name
         """
         return self.get("installed_policy")
 
     @property
-    def master_node(self):
+    def master_node(self) -> Optional[Any]:
         """
         The master engine node for a virtual engine
 
@@ -864,14 +870,14 @@ class InterfaceStatus(SerializedIterable):
     :ivar str status: Status of interface, Up, Down, etc.
     """
 
-    def __init__(self, status):
+    def __init__(self, status: Any) -> None:
         if is_smc_version_less_than("7.4"):
             data = status.get("interface_status")
         else:
             data = status.get("interface_statuses")
         super(InterfaceStatus, self).__init__(data, InternalInterfaceStatus)
 
-    def get(self, interface_id):
+    def get(self, interface_id: int) -> Any:
         """
         Get a specific interface by the interface id
 
@@ -881,7 +887,7 @@ class InterfaceStatus(SerializedIterable):
         return super(InterfaceStatus, self).get(interface_id=interface_id)
 
 
-def item_status_6_6(item):
+def item_status_6_6(item: Any) -> Iterator[Any]:
     for items in item.items:
         statuses = items.get("statuses")
         if statuses:
@@ -889,7 +895,7 @@ def item_status_6_6(item):
                 yield Status_6_6(**status)
 
 
-def item_status_6_7(item):
+def item_status_6_7(item: Any) -> Iterator[Any]:
     for items in item.items:
         statuses = items.get("statuses")
         item_status = items.get("status")
@@ -965,24 +971,24 @@ class HardwareStatus(SerializedIterable):
 
     """
 
-    def __init__66(self, status):
+    def __init__66(self, status: Any) -> None:
         data = status.get("hardware_statuses")
         super(HardwareStatus, self).__init__(data, label_6_6)
 
-    def __init__67(self, status):
+    def __init__67(self, status: Any) -> None:
         data = status.get("hardware_statuses")
         super(HardwareStatus, self).__init__(data, label_6_7)
 
-    def __init__(cls, *args, **kwargs):
+    def __init__(cls, *args: Any, **kwargs: Any) -> None:
         versioned_method = get_best_version(("6.6", cls.__init__66), ("6.7", cls.__init__67))
         versioned_method(*args, **kwargs)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         items = [item.name for item in self]
         return "%s(%s)" % (self.__class__.__name__, ",".join(items))
 
     @property
-    def logging_subsystem(cls, *args, **kwargs):
+    def logging_subsystem(cls, *args: Any, **kwargs: Any) -> Any:
         """
         A collection of logging subsystem statuses
 
@@ -993,20 +999,20 @@ class HardwareStatus(SerializedIterable):
         )
         return versioned_method(*args, **kwargs)
 
-    def _logging_subsystem_6_6(self):
+    def _logging_subsystem_6_6(self) -> Iterator[Any]:
         for item in self:
             if item.name.startswith("Logging"):
                 for s in item_status_6_6(item):
                     yield s
 
-    def _logging_subsystem_6_7(self):
+    def _logging_subsystem_6_7(self) -> Iterator[Any]:
         for item in self:
             if item.name.startswith("Logging"):
                 for s in item_status_6_7(item):
                     yield s
 
     @property
-    def sandbox_subsystem(cls, *args, **kwargs):
+    def sandbox_subsystem(cls, *args: Any, **kwargs: Any) -> Any:
         """
         A collection of sandbox subsystem statuses
 
@@ -1017,20 +1023,20 @@ class HardwareStatus(SerializedIterable):
         )
         return versioned_method(*args, **kwargs)
 
-    def _sandbox_subsystem_6_6(self):
+    def _sandbox_subsystem_6_6(self) -> Iterator[Any]:
         for item in self:
             if item.name.startswith("Sandbox"):
                 for s in item_status_6_6(item):
                     yield s
 
-    def _sandbox_subsystem_6_7(self):
+    def _sandbox_subsystem_6_7(self) -> Iterator[Any]:
         for item in self:
             if item.name.startswith("Sandbox"):
                 for s in item_status_6_7(item):
                     yield s
 
     @property
-    def filesystem(cls, *args, **kwargs):
+    def filesystem(cls, *args: Any, **kwargs: Any) -> Any:
         """
         A collection of filesystem related statuses
 
@@ -1041,20 +1047,20 @@ class HardwareStatus(SerializedIterable):
         )
         return versioned_method(*args, **kwargs)
 
-    def _filesystem_6_6(self):
+    def _filesystem_6_6(self) -> Iterator[Any]:
         for item in self:
             if item.name.startswith("File System"):
                 for s in item_status_6_6(item):
                     yield s
 
-    def _filesystem_6_7(self):
+    def _filesystem_6_7(self) -> Iterator[Any]:
         for item in self:
             if item.name.startswith("File System"):
                 for s in item_status_6_7(item):
                     yield s
 
     @property
-    def cloud_sync(cls):
+    def cloud_sync(cls) -> Optional[Iterator[Any]]:
         """
         A collection of Connection Synchronisation related statuses
 
@@ -1063,14 +1069,14 @@ class HardwareStatus(SerializedIterable):
         if not is_smc_version_less_than("7.2"):
             return cls._cloud_sync()
 
-    def _cloud_sync(self):
+    def _cloud_sync(self) -> Iterator[Any]:
         for item in self:
             if item.name.startswith("Connection Synchronization"):
                 for s in item_status_6_7(item):
                     yield s
 
     @property
-    def single_ip_ha(cls):
+    def single_ip_ha(cls) -> Optional[Iterator[Any]]:
         """
         A collection of Single IP High Availability related statuses
 
@@ -1079,7 +1085,7 @@ class HardwareStatus(SerializedIterable):
         if not is_smc_version_less_than("7.2"):
             return cls._single_ip_ha()
 
-    def _single_ip_ha(self):
+    def _single_ip_ha(self) -> Iterator[Any]:
         for item in self:
             if item.name.startswith("Single IP HA"):
                 for s in item_status_6_7(item):
@@ -1121,7 +1127,7 @@ class Debug(object):
 
     _attr_map = {}
 
-    def __init__(self, diag):
+    def __init__(self, diag: Any) -> None:
         for diagnostic in diag:
             setting = diagnostic.get("diagnostic")
             name = setting.get("name")
@@ -1129,16 +1135,16 @@ class Debug(object):
             setattr(self, escaped_key, setting.get("enabled"))
             self._attr_map[escaped_key] = name
 
-    def __setattr__(self, key, value):
+    def __setattr__(self, key: str, value: Any) -> None:
         if not isinstance(value, bool):
             raise ValueError("Attributes can only be True or False.")
         super(Debug, self).__setattr__(key, value)
 
-    def serialize(self):
+    def serialize(self) -> dict:
         debug = [{"enabled": v, "name": self._attr_map.get(k)} for k, v in self.__dict__.items()]
         return {"diagnostics": [{"diagnostic": item} for item in debug]}
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         keys = sorted(self.__dict__)
         items = ("{}={!r}".format(k, self.__dict__[k]) for k in keys)
         return "{}({})".format(type(self).__name__, ", ".join(items))

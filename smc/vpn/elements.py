@@ -59,6 +59,9 @@ the external gateway::
 
 """
 
+from __future__ import annotations
+
+from typing import Any, Optional, Union, Iterator
 from smc.api.exceptions import ElementNotFound
 from smc.base.model import SubElement, Element, ElementRef, ElementCreator
 from smc.base.collection import create_collection
@@ -85,16 +88,18 @@ class GatewaySettings(Element):
     @classmethod
     def create(
             cls,
-            name,
-            negotiation_expiration=200000,
-            negotiation_retry_timer=500,
-            negotiation_retry_max_number=32,
-            negotiation_retry_timer_max=7000,
-            certificate_cache_crl_validity=90000,
-            mobike_after_sa_update=False,
-            mobike_before_sa_update=False,
-            mobike_no_rrc=True,
-    ):
+            name: str,
+            negotiation_expiration: int = 200000,
+            negotiation_retry_timer: int = 500,
+            negotiation_retry_max_number: int = 32,
+            negotiation_retry_timer_max: int = 7000,
+            certificate_cache_crl_validity: int = 90000,
+            mobike_after_sa_update: bool = False,
+            mobike_before_sa_update: bool = False,
+            mobike_no_rrc: bool = True,
+            dpd_interval: Optional[int] = None,
+            dpd_timeout: Optional[int] = None,
+    ) -> GatewaySettings:
         """
         Create a new gateway setting profile.
 
@@ -110,6 +115,10 @@ class GatewaySettings(Element):
             set for Mobike Policy
         :param boolean mobike_no_rrc: Whether the No RRC flag is set for
             Mobike Policy
+        :param int dpd_interval: Dead Peer Detection interval in seconds.
+            If None, the engine default is used.
+        :param int dpd_timeout: Dead Peer Detection timeout in seconds.
+            If None, the engine default is used.
         :raises CreateElementFailed: failed creating profile
         :return: instance with meta
         :rtype: GatewaySettings
@@ -125,8 +134,36 @@ class GatewaySettings(Element):
             "mobike_before_sa_update": mobike_before_sa_update,
             "mobike_no_rrc": mobike_no_rrc,
         }
+        if dpd_interval is not None:
+            json["dpd_interval"] = dpd_interval
+        if dpd_timeout is not None:
+            json["dpd_timeout"] = dpd_timeout
 
+        supported_parameter_check(
+            ["dpd_interval", "dpd_timeout"],
+            json,
+            "7.5",
+            "dpd_interval and dpd_timeout are only supported on SMC >= 7.5",
+        )
         return ElementCreator(cls, json)
+
+    @property
+    def dpd_interval(self) -> Optional[int]:
+        """
+        Dead Peer Detection interval in seconds.
+
+        :rtype: int or None
+        """
+        return self.data.get("dpd_interval")
+
+    @property
+    def dpd_timeout(self) -> Optional[int]:
+        """
+        Dead Peer Detection timeout in seconds.
+
+        :rtype: int or None
+        """
+        return self.data.get("dpd_timeout")
 
 
 class GatewayProfile(Element):
@@ -140,7 +177,7 @@ class GatewayProfile(Element):
     typeof = "gateway_profile"
 
     @classmethod
-    def create(cls, name, capabilities=None, comment=None):
+    def create(cls, name: str, capabilities: Optional[dict] = None, comment: Optional[str] = None) -> GatewayProfile:
         """
         Create new GatewayProfile
         :param str name: name of the gateway profile.
@@ -224,7 +261,7 @@ class GatewayProfile(Element):
         return ElementCreator(cls, json=json)
 
     @property
-    def capabilities(self):
+    def capabilities(self) -> dict:
         """
         Capabilities are all boolean values that specify features or cryptography features to enable
         or disable on this gateway profile.To update or change these values, you can use the built
@@ -257,7 +294,7 @@ class ExternalGateway(Element):
     gateway_profile = ElementRef("gateway_profile")
 
     @classmethod
-    def create(cls, name, trust_all_cas=True, gateway_profile=None, **kwargs):
+    def create(cls, name: str, trust_all_cas: bool = True, gateway_profile: Any = None, **kwargs: Any) -> ExternalGateway:
         """
         Create new External Gateway
 
@@ -282,8 +319,8 @@ class ExternalGateway(Element):
 
     @classmethod
     def update_or_create(
-            cls, name, external_endpoint=None, vpn_site=None, trust_all_cas=True, with_status=False
-    ):
+            cls, name: str, external_endpoint: Optional[list] = None, vpn_site: Optional[list] = None, trust_all_cas: bool = True, with_status: bool = False
+    ) -> Any:
         """
         Update or create an ExternalGateway. The ``external_endpoint`` and
         ``vpn_site`` parameters are expected to be a list of dicts with key/value
@@ -353,7 +390,7 @@ class ExternalGateway(Element):
         return extgw
 
     @property
-    def vpn_site(self):
+    def vpn_site(self) -> Any:
         """
         A VPN site defines a collection of IP's or networks that
         identify address space that is defined on the other end of
@@ -364,7 +401,7 @@ class ExternalGateway(Element):
         return create_collection(self.get_relation("vpn_site"), VPNSite)
 
     @property
-    def external_endpoint(self):
+    def external_endpoint(self) -> Any:
         """
         An External Endpoint is the IP based definition for the destination
         VPN peers. There may be multiple per External Gateway.  Add a new
@@ -380,7 +417,7 @@ class ExternalGateway(Element):
         return create_collection(self.get_relation("external_endpoint"), ExternalEndpoint)
 
     @property
-    def trust_all_cas(self):
+    def trust_all_cas(self) -> Optional[bool]:
         """
         Gateway setting identifying whether all CA's specified in the
         profile are supported or only specific ones.
@@ -397,14 +434,14 @@ class ElementContactAddress(SerializedIterable):
     but any single contact address can have only one address associated.
     """
 
-    def __init__(self, smcresult, subelement):
+    def __init__(self, smcresult: Any, subelement: Any) -> None:
         self._subelement = subelement  # Original element
         self._etag = smcresult.etag
         super(ElementContactAddress, self).__init__(
             smcresult.json.get("contact_addresses", []), ContactAddress
         )
 
-    def create(self, location_ref, address, dynamic=False, overwrite_existing=False):
+    def create(self, location_ref: Any, address: str, dynamic: bool = False, overwrite_existing: bool = False) -> Any:
         """
         Create a contact address for the given element. Address is always
         a required field. If the contact address should be dynamic, then
@@ -441,7 +478,7 @@ class ElementContactAddress(SerializedIterable):
             json={"contact_addresses": json},
         )
 
-    def delete(self, location_name=None):
+    def delete(self, location_name: Optional[str] = None) -> Any:
         """
         Delete a contact address by it's location name. Every ElementContactAddress
         has a one to one relationship between a location and an address. If the
@@ -491,18 +528,18 @@ class ExternalEndpoint(SubElement):
 
     def create(
             self,
-            name,
-            address=None,
-            enabled=True,
-            ipsec_vpn=True,
-            nat_t=False,
-            force_nat_t=False,
-            dynamic=False,
-            ike_phase1_id_type=None,
-            ike_phase1_id_value=None,
-            connection_type_ref=None,
-            **kw
-    ):
+            name: str,
+            address: Optional[str] = None,
+            enabled: bool = True,
+            ipsec_vpn: bool = True,
+            nat_t: bool = False,
+            force_nat_t: bool = False,
+            dynamic: bool = False,
+            ike_phase1_id_type: Optional[int] = None,
+            ike_phase1_id_value: Optional[str] = None,
+            connection_type_ref: Any = None,
+            **kw: Any
+    ) -> ExternalEndpoint:
         """
         Create an test_external endpoint. Define common settings for that
         specify the address, enabled, nat_t, name, etc. You can also omit
@@ -555,7 +592,7 @@ class ExternalEndpoint(SubElement):
         return ElementCreator(self.__class__, href=self.href, json=json)
 
     @classmethod
-    def update_or_create(cls, external_gateway, name, with_status=False, **kw):
+    def update_or_create(cls, external_gateway: Any, name: str, with_status: bool = False, **kw: Any) -> Any:
         """
         Update or create external endpoints for the specified external gateway.
         An ExternalEndpoint is considered unique based on the IP address for the
@@ -606,7 +643,7 @@ class ExternalEndpoint(SubElement):
         return external_endpoint
 
     @property
-    def force_nat_t(self):
+    def force_nat_t(self) -> Optional[bool]:
         """
         Whether force_nat_t is enabled on this endpoint.
 
@@ -615,7 +652,7 @@ class ExternalEndpoint(SubElement):
         return self.data.get("force_nat_t")
 
     @property
-    def enabled(self):
+    def enabled(self) -> Optional[bool]:
         """
         Whether this endpoint is enabled.
 
@@ -623,7 +660,7 @@ class ExternalEndpoint(SubElement):
         """
         return self.data.get("enabled")
 
-    def enable_disable(self):
+    def enable_disable(self) -> None:
         """
         Enable or disable this endpoint. If enabled, it will be disabled
         and vice versa.
@@ -632,7 +669,7 @@ class ExternalEndpoint(SubElement):
         """
         self.update(enabled=True) if not self.enabled else self.update(enabled=False)
 
-    def enable_disable_force_nat_t(self):
+    def enable_disable_force_nat_t(self) -> None:
         """
         Enable or disable NAT-T on this endpoint. If enabled, it will be
         disabled and vice versa.
@@ -642,7 +679,7 @@ class ExternalEndpoint(SubElement):
         self.update(force_nat_t=True) if not self.force_nat_t else self.update(force_nat_t=False)
 
     @property
-    def contact_addresses(self):
+    def contact_addresses(self) -> ElementContactAddress:
         """
         Contact Addresses are a mutable collection of contact addresses
         assigned to a supported element.
@@ -654,7 +691,7 @@ class ExternalEndpoint(SubElement):
         )
 
     @property
-    def connection_type_ref(self):
+    def connection_type_ref(self) -> Any:
         """
         The reference to the connection type for this external endpoint. A
         connection type specifies how the endpoint will behave in an active,
@@ -694,7 +731,7 @@ class VPNSite(SubElement):
     typeof = "vpn_site"
     gateway = ElementRef("gateway")
 
-    def create(self, name, site_element, vpn_references=None, is_automatic=False):
+    def create(self, name: str, site_element: list, vpn_references: Optional[list] = None, is_automatic: bool = False) -> str:
         """
         Create a VPN site for an internal or external gateway
 
@@ -715,8 +752,8 @@ class VPNSite(SubElement):
         return ElementCreator(self.__class__, href=self.href, json=json)
 
     @classmethod
-    def update_or_create(cls, external_gateway, name, site_element=None, with_status=False,
-                         vpn_references=None, is_automatic=False):
+    def update_or_create(cls, external_gateway: Any, name: str, site_element: Optional[list] = None, with_status: bool = False,
+                         vpn_references: Optional[list] = None, is_automatic: bool = False) -> Any:
         """
         Update or create a VPN Site elements or modify an existing VPN
         site based on value of provided site_element list. The resultant
@@ -759,14 +796,14 @@ class VPNSite(SubElement):
         return vpn_site
 
     @property
-    def name(self):
+    def name(self) -> Optional[str]:
         name = super(VPNSite, self).name
         if not name:
             return self.data.get("name")
         return name
 
     @property
-    def site_element(self):
+    def site_element(self) -> list[Any]:
         """
         Site elements for this VPN Site.
 
@@ -776,7 +813,7 @@ class VPNSite(SubElement):
         return [Element.from_href(element) for element in self.data.get("site_element")]
 
     @property
-    def vpn_references(self):
+    def vpn_references(self) -> list[Any]:
         """
         Set of associations Site-VPN
         :rtype: list
@@ -784,14 +821,14 @@ class VPNSite(SubElement):
         return self.data.get("vpn_references", [])
 
     @property
-    def is_automatic(self):
+    def is_automatic(self) -> Optional[bool]:
         """
         Is this an automatic Site. If so you cannot set VPN references.
         :rtype: bool
         """
         return self.data.get("automatic")
 
-    def add_site_element(self, element):
+    def add_site_element(self, element: Any) -> None:
         """
         Add a site element or list of elements to this VPN.
 
@@ -817,13 +854,13 @@ class VPNProfile(Element):
     typeof = "vpn_profile"
 
     @classmethod
-    def create(cls, name, capabilities=None, cn_authentication_for_mobile_vpn=False,
-               disable_anti_replay=False, disable_path_discovery=False,
-               hybrid_authentication_for_mobile_vpn=False, keep_alive=False,
-               preshared_key_for_mobile_vpn=False, sa_life_time=86400,
-               sa_to_any_network_allowed=False, trust_all_cas=True,
-               trusted_certificate_authority=[], tunnel_life_time_kbytes=0,
-               tunnel_life_time_seconds=28800, comment=None, **kw):
+    def create(cls, name: str, capabilities: Optional[dict] = None, cn_authentication_for_mobile_vpn: bool = False,
+               disable_anti_replay: bool = False, disable_path_discovery: bool = False,
+               hybrid_authentication_for_mobile_vpn: bool = False, keep_alive: bool = False,
+               preshared_key_for_mobile_vpn: bool = False, sa_life_time: int = 86400,
+               sa_to_any_network_allowed: bool = False, trust_all_cas: bool = True,
+               trusted_certificate_authority: list = [], tunnel_life_time_kbytes: int = 0,
+               tunnel_life_time_seconds: int = 28800, comment: Optional[str] = None, **kw: Any) -> VPNProfile:
         """
         Create a VPN Profile. There are a variety of kwargs that can
         be and also retrieved about a VPN Profile. Keyword parameters
@@ -892,7 +929,7 @@ class VPNProfile(Element):
         return ElementCreator(cls, json=kw)
 
     @property
-    def capabilities(self):
+    def capabilities(self) -> dict:
         """
         Capabilities are all boolean values that specify features or
         cryptography features to enable or disable on this VPN profile.
@@ -908,51 +945,51 @@ class VPNProfile(Element):
         return self.data.get("capabilities", {})
 
     @property
-    def cn_authentication_for_mobile_vpn(self):
+    def cn_authentication_for_mobile_vpn(self) -> Optional[bool]:
         return self.data.get("cn_authentication_for_mobile_vpn")
 
     @property
-    def disable_anti_replay(self):
+    def disable_anti_replay(self) -> Optional[bool]:
         return self.data.get("disable_anti_replay")
 
     @property
-    def disable_path_discovery(self):
+    def disable_path_discovery(self) -> Optional[bool]:
         return self.data.get("disable_path_discovery")
 
     @property
-    def hybrid_authentication_for_mobile_vpn(self):
+    def hybrid_authentication_for_mobile_vpn(self) -> Optional[bool]:
         return self.data.get("hybrid_authentication_for_mobile_vpn")
 
     @property
-    def keep_alive(self):
+    def keep_alive(self) -> Optional[bool]:
         return self.data.get("keep_alive")
 
     @property
-    def preshared_key_authentication_for_mobile_vpn(self):
+    def preshared_key_authentication_for_mobile_vpn(self) -> Optional[bool]:
         return self.data.get("preshared_key_authentication_for_mobile_vpn")
 
     @property
-    def sa_life_time(self):
+    def sa_life_time(self) -> Optional[int]:
         return self.data.get("sa_life_time")
 
     @property
-    def sa_to_any_network_allowed(self):
+    def sa_to_any_network_allowed(self) -> Optional[bool]:
         return self.data.get("sa_to_any_network_allowed")
 
     @property
-    def trust_all_cas(self):
+    def trust_all_cas(self) -> Any:
         return self.data.get("trust_all_cas", [])
 
     @property
-    def tunnel_life_time_kbytes(self):
+    def tunnel_life_time_kbytes(self) -> Optional[int]:
         return self.data.get("tunnel_life_time_kbytes")
 
     @property
-    def tunnel_life_time_seconds(self):
+    def tunnel_life_time_seconds(self) -> Optional[int]:
         return self.data.get("tunnel_life_time_seconds")
 
     @property
-    def trusted_certificate_authority(self):
+    def trusted_certificate_authority(self) -> Optional[list[Any]]:
         return self.data.get("trusted_certificate_authority")
 
 
@@ -964,7 +1001,7 @@ class VPNBrokerDomain(Element):
     typeof = "vpn_broker_domain"
 
     @classmethod
-    def create(cls, name, mac_address_prefix, file_ref, comment=None, **kw):
+    def create(cls, name: str, mac_address_prefix: str, file_ref: Any, comment: Optional[str] = None, **kw: Any) -> VPNBrokerDomain:
         """Create a VPN broker domain.
 
             VPNBrokerDomain.create(
@@ -997,7 +1034,7 @@ class VPNBrokerConfigFile(Element):
     typeof = "broker_config_file"
 
     @classmethod
-    def create(cls, name, comment=None, **kw):
+    def create(cls, name: str, comment: Optional[str] = None, **kw: Any) -> VPNBrokerConfigFile:
         """
         Create a VPN broker config file
 
@@ -1027,7 +1064,7 @@ class ConnectionType(Element):
     typeof = "connection_type"
 
     @classmethod
-    def create(cls, name, mode="active", connectivity_group=1, link_type_ref=None, comment=None):
+    def create(cls, name: str, mode: str = "active", connectivity_group: int = 1, link_type_ref: Optional[str] = None, comment: Optional[str] = None) -> ConnectionType:
         """
         Create a connection type for an VPN endpoint.
         ::
@@ -1057,18 +1094,18 @@ class ConnectionType(Element):
             json=json,
         )
 
-    def mode(self):
+    def mode(self) -> Optional[str]:
         return self.data.get("mode")
 
-    def connectivity_group(self):
+    def connectivity_group(self) -> Optional[int]:
         return self.data.get("connectivity_group")
 
-    def link_type_ref(self):
+    def link_type_ref(self) -> Optional[str]:
         return self.data.get("link_type_ref", None)
 
 
 class LinkUsagePreference(object):
-    def __init__(self, preference, qos_class):
+    def __init__(self, preference: Any, qos_class: Any) -> None:
         self.preference = preference
         self.qos_class = qos_class.href
 
@@ -1084,22 +1121,22 @@ class LinkUsageFEC(object):
     :rtype: LinkUsageFEC
     """
 
-    def __init__(self, link_fec_threshold, link_fec_percent, link_fec_qos, link_fec_type):
+    def __init__(self, link_fec_threshold: Any, link_fec_percent: Any, link_fec_qos: Any, link_fec_type: Any) -> None:
         self.link_fec_threshold = link_fec_threshold
         self.link_fec_percent = link_fec_percent
         self.link_fec_qos = link_fec_qos
         self.link_fec_type = link_fec_type
 
-    def link_fec_threshold(self):
+    def link_fec_threshold(self) -> Any:
         return self.link_fec_threshold
 
-    def link_fec_percent(self):
+    def link_fec_percent(self) -> Any:
         return self.link_fec_percent
 
-    def link_fec_qos(self):
+    def link_fec_qos(self) -> Any:
         return self.link_fec_qos
 
-    def link_fec_type(self):
+    def link_fec_type(self) -> Any:
         return self.link_fec_type
 
 
@@ -1111,19 +1148,19 @@ class LinkUsageDUP(object):
     :rtype: LinkUsageDUP
     """
 
-    def __init__(self, link_dup_qos, link_dup_type):
+    def __init__(self, link_dup_qos: Any, link_dup_type: Any) -> None:
         self.link_dup_qos = link_dup_qos
         self.link_dup_type = link_dup_type
 
-    def link_dup_qos(self):
+    def link_dup_qos(self) -> Any:
         return self.link_dup_qos
 
-    def link_dup_type(self):
+    def link_dup_type(self) -> Any:
         return self.link_dup_type
 
 
 class LinkUsageException(object):
-    def __init__(self, link_type, link_usage_preference):
+    def __init__(self, link_type: Any, link_usage_preference: Any) -> None:
         self.data = {"link_type": link_type.href, "link_usage_preference": link_usage_preference}
         link_usage_preferences_json = []
         for lup in link_usage_preference:
@@ -1133,10 +1170,10 @@ class LinkUsageException(object):
             })
         self.data["link_usage_preference"] = link_usage_preferences_json
 
-    def link_type(self):
+    def link_type(self) -> Any:
         return self.data.link_type
 
-    def link_usage_preference(self):
+    def link_usage_preference(self) -> Any:
         return self.data.link_usage_preference
 
 
@@ -1144,8 +1181,8 @@ class LinkUsageProfile(Element):
     typeof = "link_usage_profile"
 
     @classmethod
-    def create(cls, name, default_link_balancing_preference=0, link_usage_exception=None,
-               link_usage_fec=None, link_usage_dup=None):
+    def create(cls, name: str, default_link_balancing_preference: int = 0, link_usage_exception: Optional[list] = None,
+               link_usage_fec: Any = None, link_usage_dup: Any = None) -> LinkUsageProfile:
         """
         Create a LinkUsageProfile.
         :param str name: name of Link usage profile
@@ -1194,7 +1231,7 @@ class LinkUsageProfile(Element):
         return ElementCreator(cls, link_usage_profile_json)
 
     @property
-    def default_link_balancing_preference(self):
+    def default_link_balancing_preference(self) -> Optional[int]:
         """
         default link balancing preference 0 to 4
         equal balancing to best link
@@ -1202,7 +1239,7 @@ class LinkUsageProfile(Element):
         return self.data.get("default_link_balancing_preference")
 
     @property
-    def link_usage_exception(self):
+    def link_usage_exception(self) -> Optional[list[Any]]:
         """
         List of exceptions
         """
@@ -1215,14 +1252,14 @@ class PPK(Element):
     @classmethod
     def create(
             cls,
-            name,
-            primary_ppk_id,
-            primary_ppk_secret,
-            secondary_ppk_id=None,
-            secondary_ppk_secret=None,
-            comment=None,
-            **kw
-    ):
+            name: str,
+            primary_ppk_id: int,
+            primary_ppk_secret: str,
+            secondary_ppk_id: Optional[int] = None,
+            secondary_ppk_secret: Optional[str] = None,
+            comment: Optional[str] = None,
+            **kw: Any
+    ) -> PPK:
         """
         Create a PPK element. A PPK is a Post Quantum pre-shared key used for VPN configurations
         using IKEv2.
@@ -1253,35 +1290,35 @@ class PPK(Element):
         return ElementCreator(cls, json=kw)
 
     @property
-    def primary_ppk_id(self):
+    def primary_ppk_id(self) -> Optional[int]:
         return self._primary_ppk_id
 
     @primary_ppk_id.setter
-    def primary_ppk_id(self, value):
+    def primary_ppk_id(self, value: Any) -> None:
         self._primary_ppk_id = value
 
     @property
-    def primary_ppk_secret(self):
+    def primary_ppk_secret(self) -> Optional[str]:
         return self._primary_ppk_secret
 
     @primary_ppk_secret.setter
-    def primary_ppk_secret(self, value):
+    def primary_ppk_secret(self, value: Any) -> None:
         self._primary_ppk_secret = value
 
     @property
-    def secondary_ppk_id(self):
+    def secondary_ppk_id(self) -> Optional[int]:
         return self._secondary_ppk_id
 
     @secondary_ppk_id.setter
-    def secondary_ppk_id(self, value):
+    def secondary_ppk_id(self, value: Any) -> None:
         self._secondary_ppk_id = value
 
     @property
-    def secondary_ppk_secret(self):
+    def secondary_ppk_secret(self) -> Optional[str]:
         return self._secondary_ppk_secret
 
     @secondary_ppk_secret.setter
-    def secondary_ppk_secret(self, value):
+    def secondary_ppk_secret(self, value: Any) -> None:
         self._secondary_ppk_secret = value
 
 
@@ -1301,11 +1338,11 @@ class InternalPPK(Element):
     """
     typeof = "internal_ppk"
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         super(InternalPPK, self).__init__(**kwargs)
 
     @property
-    def name(self):
+    def name(self) -> str:
         """
         The name of the Internal PPK element. This is a read-only property.
         :rtype: str
@@ -1313,7 +1350,7 @@ class InternalPPK(Element):
         return self.data.data['name']
 
     @property
-    def primary_ppk_id(self):
+    def primary_ppk_id(self) -> int:
         """
         The primary PPK ID. This is a read-only property.
         :rtype: int
@@ -1321,14 +1358,14 @@ class InternalPPK(Element):
         return self.data.data['primary_ppk_id']
 
     @property
-    def secondary_ppk_id(self):
+    def secondary_ppk_id(self) -> Optional[int]:
         """
         The secondary PPK ID. This is a read-only property.
         :rtype: int
         """
         return self.data.data.get('secondary_ppk_id')
 
-    def generate_secondary(self):
+    def generate_secondary(self) -> Any:
         """
         Generates a secondary PPK ID and secret for the internal PPK element.
         This method is used to create a secondary PPK for redundancy or backup purposes.
@@ -1339,7 +1376,7 @@ class InternalPPK(Element):
             method="update"
         )
 
-    def swap(self):
+    def swap(self) -> Any:
         """:
         Swap the primary and secondary PPK IDs and secrets for the internal PPK element.
         This method is used to change the active PPK for redundancy or backup purposes.

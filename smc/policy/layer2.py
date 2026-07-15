@@ -59,6 +59,10 @@ Example rule deletion::
         if rule.name == 'myrule':
             print rule.delete()
 """
+from __future__ import annotations
+
+from typing import Any, Optional, Union, Iterator
+
 from smc.base.model import ElementCreator
 from smc.api.exceptions import (
     ElementNotFound,
@@ -79,7 +83,7 @@ class Layer2Rule(object):
     """
 
     @property
-    def layer2_ipv4_access_rules(self):
+    def layer2_ipv4_access_rules(self) -> Any:
         """
         Layer2 Firewall access rule
 
@@ -88,7 +92,7 @@ class Layer2Rule(object):
         return rule_collection(self.get_relation("layer2_ipv4_access_rules"), IPv4Layer2Rule)
 
     @property
-    def layer2_ipv6_access_rules(self):
+    def layer2_ipv6_access_rules(self) -> Any:
         """
         Layer 2 IPv6 access rule
 
@@ -97,7 +101,7 @@ class Layer2Rule(object):
         return rule_collection(self.get_relation("layer2_ipv6_access_rules"), IPv6Layer2Rule)
 
     @property
-    def layer2_ethernet_rules(self):
+    def layer2_ethernet_rules(self) -> Any:
         """
         Layer 2 Ethernet access rule
 
@@ -125,7 +129,7 @@ class Layer2Policy(Layer2Rule, Policy):
     typeof = "layer2_policy"
 
     @classmethod
-    def create(cls, name, template="Layer 2 Firewall Inspection Template"):
+    def create(cls, name: str, template: Optional[str] = "Layer 2 Firewall Inspection Template") -> Layer2Policy:
         """
         Create Layer 2 Firewall Policy. Template policy is required for
         the policy. The template parameter should be the name of the
@@ -186,5 +190,5 @@ class Layer2TemplatePolicy(Layer2Policy):
 
     typeof = "layer2_template_policy"
 
-    def upload(self):
+    def upload(self) -> None:
         pass  # Not supported on the template

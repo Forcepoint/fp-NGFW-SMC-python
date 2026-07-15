@@ -9,6 +9,10 @@
 #  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #  License for the specific language governing permissions and limitations
 #  under the License.
+from __future__ import annotations
+
+from typing import Any, Optional, Union, Iterator
+
 from smc.api.exceptions import CreateRuleFailed, MissingRequiredInput, ElementNotFound
 from smc.base.util import element_resolver
 from smc.policy.policy import Policy
@@ -32,21 +36,21 @@ class FileFilteringRule(RuleCommon, Rule, SubElement):
 
     def create(
             self,
-            name,
-            sources=None,
-            destinations=None,
-            action="allow",
-            log_options=None,
-            connection_tracking=None,
-            is_disabled=False,
-            situations=None,
-            add_pos=None,
-            after=None,
-            before=None,
-            comment=None,
-            validate=True,
-            **kw
-    ):
+            name: str,
+            sources: Optional[Any] = None,
+            destinations: Optional[Any] = None,
+            action: Union[str, Any] = "allow",
+            log_options: Optional[Any] = None,
+            connection_tracking: Optional[Any] = None,
+            is_disabled: bool = False,
+            situations: Optional[Any] = None,
+            add_pos: Optional[int] = None,
+            after: Optional[str] = None,
+            before: Optional[str] = None,
+            comment: Optional[str] = None,
+            validate: bool = True,
+            **kw: Any
+    ) -> FileFilteringRule:
         """
         Create a file filtering rule.
 
@@ -127,7 +131,7 @@ class FileFilteringRule(RuleCommon, Rule, SubElement):
         )
 
     @property
-    def situations(self):
+    def situations(self) -> Any:
         """
         Situations for this rule
 
@@ -135,7 +139,7 @@ class FileFilteringRule(RuleCommon, Rule, SubElement):
         """
         return SituationMatchPart(self)
 
-    def get_action(self):
+    def get_action(self) -> FileFilteringRuleAction:
         """
         Return action instance.
         rtype: FileFilteringRuleAction
@@ -155,7 +159,7 @@ class FileFilteringPolicy(Policy):
     typeof = "file_filtering_policy"
 
     @classmethod
-    def create(cls, name, comment=None):
+    def create(cls, name: str, comment: Optional[str] = None) -> FileFilteringPolicy:
         """
         Create the custom File Filtering Policy
         :param str name: name of File Filtering Policy
@@ -168,7 +172,7 @@ class FileFilteringPolicy(Policy):
         return ElementCreator(cls, json)
 
     @property
-    def file_filtering_rules(self):
+    def file_filtering_rules(self) -> Any:
         """
         File filtering rules for this policy.
 

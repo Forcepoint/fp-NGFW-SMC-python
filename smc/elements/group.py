@@ -14,6 +14,10 @@ Groups that are used for element types, such as TCPServiceGroup,
 Group (generic), etc. All group types inherit from GroupMixin which
 allow for modifications of existing groups and their members.
 """
+from __future__ import annotations
+
+from typing import Any, Optional, Union, Iterator
+
 from smc.api.exceptions import ElementNotFound
 from smc.base.model import Element, ElementCreator
 from smc.base.util import element_resolver
@@ -27,7 +31,13 @@ class GroupMixin(object):
     """
 
     @classmethod
-    def update_or_create(cls, append_lists=True, with_status=False, remove_members=False, **kwargs):
+    def update_or_create(
+        cls,
+        append_lists: bool = True,
+        with_status: bool = False,
+        remove_members: bool = False,
+        **kwargs: Any,
+    ) -> Any:
         """
         Update or create group entries. If the group exists, the members
         will be updated. Set append_lists=True to add new members to
@@ -57,7 +67,13 @@ class GroupMixin(object):
             return element, was_modified, was_created
         return element
 
-    def update_members(self, members, append_lists=False, remove_members=False, **kwargs):
+    def update_members(
+        self,
+        members: Any,
+        append_lists: bool = False,
+        remove_members: bool = False,
+        **kwargs: Any,
+    ) -> bool:
         """
         Update group members with member list. Set append=True
         to append to existing members, or append=False to overwrite.
@@ -92,7 +108,7 @@ class GroupMixin(object):
 
         return False
 
-    def obtain_members(self):
+    def obtain_members(self) -> list[Any]:
         """
         Obtain all group members from this group
 
@@ -101,7 +117,7 @@ class GroupMixin(object):
         """
         return [Element.from_href(member) for member in self.data.get("element", [])]
 
-    def empty_members(self):
+    def empty_members(self) -> None:
         """
         Empty members from group
 
@@ -110,7 +126,7 @@ class GroupMixin(object):
         self.update(element=[])
 
     @property
-    def members(self):
+    def members(self) -> list[Any]:
         """
         Return members in raw href format. If you want to obtain a
         resolved list of elements as instance of Element, call
@@ -144,7 +160,13 @@ class Group(GroupMixin, Element):
     typeof = "group"
 
     @classmethod
-    def create(cls, name, members=None, comment=None, is_monitored=False):
+    def create(
+        cls,
+        name: str,
+        members: Optional[Any] = None,
+        comment: Optional[str] = None,
+        is_monitored: bool = False,
+    ) -> "Group":
         """
         Create the group
 
@@ -184,7 +206,12 @@ class ConnectionSynchronizationGroup(Element):
     typeof = "connection_sync_group"
 
     @classmethod
-    def create(cls, name, comment=None, is_monitored=False):
+    def create(
+        cls,
+        name: str,
+        comment: Optional[str] = None,
+        is_monitored: bool = False,
+    ) -> Optional["ConnectionSynchronizationGroup"]:
         """
         Create the group
 
@@ -201,7 +228,7 @@ class ConnectionSynchronizationGroup(Element):
 
             return ElementCreator(cls, json)
 
-    def obtain_members(self):
+    def obtain_members(self) -> list[Any]:
         """
         Obtain all group members from this group
 
@@ -211,7 +238,7 @@ class ConnectionSynchronizationGroup(Element):
         return [Element.from_href(member) for member in self.data.get("element", [])]
 
     @property
-    def members(self):
+    def members(self) -> list[Any]:
         """
         Return members in raw href format. If you want to obtain a
         resolved list of elements as instance of Element, call
@@ -244,7 +271,12 @@ class ServiceGroup(GroupMixin, Element):
     typeof = "service_group"
 
     @classmethod
-    def create(cls, name, members=None, comment=None):
+    def create(
+        cls,
+        name: str,
+        members: Optional[Any] = None,
+        comment: Optional[str] = None,
+    ) -> "ServiceGroup":
         """
         Create the TCP/UDP Service group element
 
@@ -280,7 +312,12 @@ class TCPServiceGroup(GroupMixin, Element):
     typeof = "tcp_service_group"
 
     @classmethod
-    def create(cls, name, members=None, comment=None):
+    def create(
+        cls,
+        name: str,
+        members: Optional[Any] = None,
+        comment: Optional[str] = None,
+    ) -> "TCPServiceGroup":
         """
         Create the TCP Service group
 
@@ -317,7 +354,12 @@ class UDPServiceGroup(GroupMixin, Element):
     typeof = "udp_service_group"
 
     @classmethod
-    def create(cls, name, members=None, comment=None):
+    def create(
+        cls,
+        name: str,
+        members: Optional[Any] = None,
+        comment: Optional[str] = None,
+    ) -> "UDPServiceGroup":
         """
         Create the UDP Service group
 
@@ -348,7 +390,12 @@ class IPServiceGroup(GroupMixin, Element):
     typeof = "ip_service_group"
 
     @classmethod
-    def create(cls, name, members=None, comment=None):
+    def create(
+        cls,
+        name: str,
+        members: Optional[Any] = None,
+        comment: Optional[str] = None,
+    ) -> "IPServiceGroup":
         """
         Create the IP Service group element
 
@@ -379,7 +426,12 @@ class ICMPServiceGroup(GroupMixin, Element):
     typeof = "icmp_service_group"
 
     @classmethod
-    def create(cls, name, members=None, comment=None):
+    def create(
+        cls,
+        name: str,
+        members: Optional[Any] = None,
+        comment: Optional[str] = None,
+    ) -> "ICMPServiceGroup":
         """
         Create the IP Service group element
 
@@ -418,7 +470,12 @@ class EthernetServiceGroup(GroupMixin, Element):
     typeof = "ethernet_service_group"
 
     @classmethod
-    def create(cls, name, members=None, comment=None):
+    def create(
+        cls,
+        name: str,
+        members: Optional[Any] = None,
+        comment: Optional[str] = None,
+    ) -> "EthernetServiceGroup":
         """
         Create the Ethernet Service Group
 
@@ -442,7 +499,12 @@ class RpcServiceGroup(GroupMixin, Element):
     typeof = "rpc_service_group"
 
     @classmethod
-    def create(cls, name, members=None, comment=None):
+    def create(
+        cls,
+        name: str,
+        members: Optional[Any] = None,
+        comment: Optional[str] = None,
+    ) -> "RpcServiceGroup":
         """
         Create the SUN-RPC Service Group element.
 

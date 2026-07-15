@@ -13,6 +13,9 @@
 """
 A session monitoring result contains all the values for the requested session monitoring.
 """
+from __future__ import annotations
+
+from typing import Any, Optional, Union, Iterator
 
 
 class EngineSessionMonitoringType:
@@ -36,7 +39,7 @@ class SessionMonitoringResult:
     is_all : true if all existing value has been retrieved
     result : all entries
     """
-    def __init__(self, sesmon_type, sesmon_entry):
+    def __init__(self, sesmon_type: str, sesmon_entry: dict) -> None:
         self.sesmon_type = sesmon_type
         for k in sesmon_entry:
             if k == "is_all":

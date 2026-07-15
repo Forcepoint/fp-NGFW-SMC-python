@@ -12,6 +12,8 @@
 """
 Common structures
 """
+from __future__ import annotations
+from typing import Any, Optional, Union, Iterator
 import collections
 """
 be more tolerant for abc in older collections / older python 2.7
@@ -59,10 +61,10 @@ class BaseIterable(object):
         another class with an __iter__ method also to chain iterators.
     """
 
-    def __init__(self, items):
+    def __init__(self, items: Any) -> None:
         self.items = items
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: Any) -> Any:
         if not isinstance(index, (int, slice)):
             raise TypeError("Invalid index specified. Must be int or slice.")
         if isinstance(index, slice):
@@ -70,7 +72,7 @@ class BaseIterable(object):
         else:
             return self.items[index]
 
-    def get(self, *args, **kwargs):
+    def get(self, *args: Any, **kwargs: Any) -> Any:
         """
         Get an element from the iterable by an arg or kwarg.
         Args can be a single positional argument that is an index
@@ -101,21 +103,21 @@ class BaseIterable(object):
                     "arg or kwarg to fetch an element from the collection."
                 )
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Any]:
         return iter(self.items)
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return bool(self.items)
 
     __nonzero__ = __bool__
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.items)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "%s(items: %s)" % (self.__class__.__name__, len(self))
 
-    def count(self):
+    def count(self) -> int:
         """
         Return the number of entries
 
@@ -123,7 +125,7 @@ class BaseIterable(object):
         """
         return len(self)
 
-    def all(self):
+    def all(self) -> list[Any]:
         """
         Return the iterable as a list
         """
@@ -141,7 +143,7 @@ class SerializedIterable(BaseIterable):
     :param model: optional class to serialize each iteration.
     """
 
-    def __init__(self, items, model):
+    def __init__(self, items: Any, model: Any) -> None:
         items = [model(**r) for r in items]
         super(SerializedIterable, self).__init__(items)
 
@@ -153,26 +155,26 @@ class NestedDict(collectionsAbc.MutableMapping):
     stored in the data dict by overridding getattr.
     """
 
-    def __init__(self, data=None, **kwargs):
+    def __init__(self, data: Optional[dict] = None, **kwargs: Any) -> None:
         self.data = data if data else {}
         self.update(self.data, **kwargs)
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: Any, value: Any) -> None:
         self.data[key] = value
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: Any) -> Any:
         return self.data[key]
 
-    def __delitem__(self, key):
+    def __delitem__(self, key: Any) -> None:
         del self.data[key]
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Any]:
         return iter(self.data)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.data)
 
-    def __getattr__(self, key):
+    def __getattr__(self, key: str) -> Any:
         if key in self:
             return self[key]
         raise AttributeError("%r object has no attribute %r" % (self.__class__, key))

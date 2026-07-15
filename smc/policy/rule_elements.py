@@ -10,6 +10,10 @@
 #  License for the specific language governing permissions and limitations
 #  under the License.
 
+from __future__ import annotations
+
+from typing import Any, Optional, Union
+
 from smc.base.model import Element, ElementCreator
 from smc.base.structs import NestedDict
 from smc.api.exceptions import ElementNotFound, InvalidRuleValue, InvalidLogSeverity
@@ -25,7 +29,7 @@ class RuleElement(object):
     """
 
     @property
-    def is_any(self):
+    def is_any(self) -> bool:
         """
         Is the field set to any
 
@@ -33,14 +37,14 @@ class RuleElement(object):
         """
         return self["any"] if "any" in self else False
 
-    def set_any(self):
+    def set_any(self) -> None:
         """
         Set field to any
         """
         self.clear()
         self.update({"any": True})
 
-    def unset_any(self):
+    def unset_any(self) -> None:
         """
         UnSet field to any
         """
@@ -48,7 +52,7 @@ class RuleElement(object):
         self.update({"any": False})
 
     @property
-    def is_none(self):
+    def is_none(self) -> bool:
         """
         Is the field set to none
 
@@ -56,14 +60,14 @@ class RuleElement(object):
         """
         return "none" in self
 
-    def set_none(self):
+    def set_none(self) -> None:
         """
         Set field to none
         """
         self.clear()
         self.update({"none": True})
 
-    def add(self, data):
+    def add(self, data: Any) -> None:
         """
         Add a single entry to field.
 
@@ -95,7 +99,7 @@ class RuleElement(object):
         except ElementNotFound:
             pass
 
-    def add_many(self, data):
+    def add_many(self, data: list[Any]) -> None:
         """
         Add multiple entries to field. Entries should be list format.
         Entries can be of types relavant to the field type. For example,
@@ -125,7 +129,7 @@ class RuleElement(object):
         data = element_resolver(data, do_raise=False)
         self.data[self.typeof] = data
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         if isinstance(self, type(other)):
             if self.is_none or self.is_any:
                 if self.is_none and other.is_none or self.is_any and other.is_any:
@@ -137,10 +141,10 @@ class RuleElement(object):
                 return True
         return False
 
-    def __ne__(self, other):
+    def __ne__(self, other: Any) -> bool:
         return not self.__eq__(other)
 
-    def __str__(self):
+    def __str__(self) -> str:
         # fields to display
         fields_to_display = ("is_none", 'is_any')
         str = ""
@@ -152,7 +156,7 @@ class RuleElement(object):
                 str += "{} = {}; ".format(key, element)
         return str
 
-    def update_field(self, elements):
+    def update_field(self, elements: Any) -> bool:
         """
         Update the field with a list of provided values but only if the values
         are different. Return a boolean indicating whether a change was made
@@ -187,7 +191,7 @@ class RuleElement(object):
 
         return changed
 
-    def all_as_href(self):
+    def all_as_href(self) -> list[str]:
         """
         Return all elements without resolving to :class:`smc.elements.network`
         or :class:`smc.elements.service`. Just raw representation as href.
@@ -199,7 +203,7 @@ class RuleElement(object):
             return [element for element in self.get(self.typeof)]
         return []
 
-    def all(self):
+    def all(self) -> list[Any]:
         """
         Return all destinations for this rule. Elements returned
         are of the object type for the given element for further
@@ -225,16 +229,16 @@ class Destination(RuleElement, NestedDict):
 
     typeof = "dst"
 
-    def __init__(self, rule=None):
+    def __init__(self, rule: Any = None) -> None:
         dests = dict(none=True) if not rule else rule.data.get("destinations")
         self.rule = rule
         super(Destination, self).__init__(data=dests)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "ANY={}, NONE={}, DESTINATIONS={}".format(self.is_any, self.is_none, self.dst)
 
     @property
-    def dst(self):
+    def dst(self) -> Optional[list[Any]]:
         """
         All elements corresponding to the matching criteria (if not any or none).
 
@@ -245,7 +249,7 @@ class Destination(RuleElement, NestedDict):
             if elements is not None else None
 
     @dst.setter
-    def dst(self, value):
+    def dst(self, value: Any) -> None:
         self.update(dst=value)
 
 
@@ -256,16 +260,16 @@ class Source(RuleElement, NestedDict):
 
     typeof = "src"
 
-    def __init__(self, rule=None):
+    def __init__(self, rule: Any = None) -> None:
         sources = dict(none=True) if not rule else rule.data.get("sources")
         self.rule = rule
         super(Source, self).__init__(data=sources)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "ANY={}, NONE={}, SOURCES={}".format(self.is_any, self.is_none, self.src)
 
     @property
-    def src(self):
+    def src(self) -> Optional[list[Any]]:
         """
         All elements corresponding to the matching criteria (if not any or none).
 
@@ -276,7 +280,7 @@ class Source(RuleElement, NestedDict):
             if elements is not None else None
 
     @src.setter
-    def src(self, value):
+    def src(self, value: Any) -> None:
         self.update(src=value)
 
 
@@ -287,16 +291,16 @@ class Service(RuleElement, NestedDict):
 
     typeof = "service"
 
-    def __init__(self, rule=None):
+    def __init__(self, rule: Any = None) -> None:
         services = dict(none=True) if not rule else rule.data.get("services")
         self.rule = rule
         super(Service, self).__init__(data=services)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "ANY={}, NONE={}, SERVICES={}".format(self.is_any, self.is_none, self.service)
 
     @property
-    def service(self):
+    def service(self) -> Optional[list[Any]]:
         """
         All elements corresponding to the matching criteria (if not any or none).
 
@@ -307,7 +311,7 @@ class Service(RuleElement, NestedDict):
             if elements is not None else None
 
     @service.setter
-    def service(self, value):
+    def service(self, value: Any) -> None:
         self.update(service=value)
 
 
@@ -316,7 +320,7 @@ class ActionMixin(NestedDict):
     This represents the common actions associated with the rule.
     """
 
-    def __init__(self, rule=None):
+    def __init__(self, rule: Any = None) -> None:
         if rule is None:
             if is_api_version_less_than_or_equal("6.5"):
                 action = dict(action="allow")
@@ -330,7 +334,7 @@ class ActionMixin(NestedDict):
         super(ActionMixin, self).__init__(data=action)
 
     @property
-    def action(self):
+    def action(self) -> Any:
         """
         Action set for this rule
         Since SMC 6.6 actions have to be in list
@@ -342,7 +346,7 @@ class ActionMixin(NestedDict):
         return self.get("action")
 
     @action.setter
-    def action(self, value):
+    def action(self, value: Any) -> None:
         if not is_api_version_less_than("7.0"):
             if isinstance(value, str) and value == "blacklist":
                 value = "block_list"
@@ -352,7 +356,7 @@ class ActionMixin(NestedDict):
         self.update(action=value)
 
     @property
-    def connection_tracking_options(self):
+    def connection_tracking_options(self) -> ConnectionTracking:
         """
         Enables connection tracking.
         The firewall allows or discards packets according to the selected Connection
@@ -372,7 +376,7 @@ class Action(ActionMixin):
     """
 
     @property
-    def decrypting(self):
+    def decrypting(self) -> Optional[bool]:
         """
         .. versionadded:: 0.6.0
             Requires SMC version >= 6.3.3
@@ -385,11 +389,11 @@ class Action(ActionMixin):
         return self.get("decrypting")
 
     @decrypting.setter
-    def decrypting(self, value):
+    def decrypting(self, value: Any) -> None:
         self.update(decrypting=value)
 
     @property
-    def deep_inspection(self):
+    def deep_inspection(self) -> Optional[bool]:
         """
         Selects traffic that matches this rule for checking against the Inspection
         Policy referenced by this policy. Traffic is inspected as the Protocol that
@@ -401,11 +405,11 @@ class Action(ActionMixin):
         return self.get("deep_inspection")
 
     @deep_inspection.setter
-    def deep_inspection(self, value):
+    def deep_inspection(self, value: Any) -> None:
         self.update(deep_inspection=value)
 
     @property
-    def network_application_latency_monitoring(self):
+    def network_application_latency_monitoring(self) -> Any:
         """
         Enable or Disable the Application Health Monitoring for the matching Traffic
 
@@ -416,13 +420,13 @@ class Action(ActionMixin):
         return self.get("network_application_latency_monitoring")
 
     @network_application_latency_monitoring.setter
-    def network_application_latency_monitoring(self, value):
+    def network_application_latency_monitoring(self, value: Any) -> None:
         # Added condition to fix SMC-46648
         if not is_smc_version_less_than("7.0"):
             self.update(network_application_latency_monitoring=value)
 
     @property
-    def forced_next_hop_ip(self):
+    def forced_next_hop_ip(self) -> Optional[str]:
         """
         If action includes forced_next_hop, specify the forced next hop IP address.
 
@@ -431,12 +435,12 @@ class Action(ActionMixin):
         return self.get("forced_next_hop_ip")
 
     @forced_next_hop_ip.setter
-    def forced_next_hop_ip(self, value):
+    def forced_next_hop_ip(self, value: Any) -> None:
         if not is_smc_version_less_than("7.1"):
             self.update(forced_next_hop_ip=value)
 
     @property
-    def forced_next_hop_element(self):
+    def forced_next_hop_element(self) -> Optional[Any]:
         """
         If action includes forced_next_hop, specify the forced next hop element.
 
@@ -446,12 +450,12 @@ class Action(ActionMixin):
             return Element.from_href(self.get("forced_next_hop_element"))
 
     @forced_next_hop_element.setter
-    def forced_next_hop_element(self, value):
+    def forced_next_hop_element(self, value: Any) -> None:
         if not is_smc_version_less_than("7.1"):
             self.update(forced_next_hop_element=element_resolver(value))
 
     @property
-    def file_filtering(self):
+    def file_filtering(self) -> Optional[bool]:
         """
         (IPv4 Only) Inspects matching traffic against the File Filtering policy.
         Selecting this option should also activates the Deep Inspection option.
@@ -463,11 +467,11 @@ class Action(ActionMixin):
         return self.get("file_filtering")
 
     @file_filtering.setter
-    def file_filtering(self, value):
+    def file_filtering(self, value: Any) -> None:
         self.update(file_filtering=value)
 
     @property
-    def dos_protection(self):
+    def dos_protection(self) -> Optional[bool]:
         """
         Enable or disable DOS protection mode
 
@@ -477,11 +481,11 @@ class Action(ActionMixin):
         return self.get("dos_protection")
 
     @dos_protection.setter
-    def dos_protection(self, value):
+    def dos_protection(self, value: Any) -> None:
         self.update(dos_protection=value)
 
     @property
-    def antispam(self):
+    def antispam(self) -> Optional[bool]:
         """
         Enable or disable anti-spam
 
@@ -491,11 +495,11 @@ class Action(ActionMixin):
         return self.get("antispam")
 
     @antispam.setter
-    def antispam(self, value):
+    def antispam(self, value: Any) -> None:
         self.update(antispam=value)
 
     @property
-    def scan_detection(self):
+    def scan_detection(self) -> Optional[str]:
         """
         Enable or disable Scan Detection for traffic that matches the
         rule. This overrides the option set in the Engine properties.
@@ -512,20 +516,20 @@ class Action(ActionMixin):
         return self.get("scan_detection")
 
     @scan_detection.setter
-    def scan_detection(self, value):
+    def scan_detection(self, value: str) -> None:
         if value in ("on", "off", "undefined"):
             self.update(scan_detection=value)
 
     @property
-    def snort(self):
+    def snort(self) -> Any:
         return self.get("snort")
 
     @snort.setter
-    def snort(self, value):
+    def snort(self, value: Any) -> None:
         self.update(snort=value)
 
     @property
-    def sub_policy(self):
+    def sub_policy(self) -> Optional[Any]:
         """
         Sub policy is used when ``action=jump``.
 
@@ -535,11 +539,11 @@ class Action(ActionMixin):
             return Element.from_href(self.get("sub_policy"))
 
     @sub_policy.setter
-    def sub_policy(self, value):
+    def sub_policy(self, value: Any) -> None:
         self.update(sub_policy=element_resolver(value))
 
     @property
-    def explicit_proxy_sub_policy(self):
+    def explicit_proxy_sub_policy(self) -> Optional[Any]:
         """
         Explicit Proxy Sub policy is used when ``action=explicit_proxy_jump``.
 
@@ -549,11 +553,11 @@ class Action(ActionMixin):
             return Element.from_href(self.get("explicit_proxy_sub_policy"))
 
     @explicit_proxy_sub_policy.setter
-    def explicit_proxy_sub_policy(self, value):
+    def explicit_proxy_sub_policy(self, value: Any) -> None:
         self.update(explicit_proxy_sub_policy=element_resolver(value))
 
     @property
-    def valid_block_lister(self):
+    def valid_block_lister(self) -> Optional[list[Any]]:
         """
         Used when ``action=block_list``.
         If specified with block_list action, you want to restrict
@@ -570,11 +574,11 @@ class Action(ActionMixin):
             return [Element.from_href(element) for element in self.data.get("valid_block_lister")]
 
     @valid_block_lister.setter
-    def valid_block_lister(self, values):
+    def valid_block_lister(self, values: Any) -> None:
         self.update(valid_block_lister=values)
 
     @property
-    def valid_blacklister(self):
+    def valid_blacklister(self) -> Optional[list[Any]]:
         """
         Used when ``action=blacklist``.
         If specified with blacklist action, you want to restrict
@@ -591,21 +595,21 @@ class Action(ActionMixin):
             return [Element.from_href(element) for element in self.data.get("valid_blacklister")]
 
     @valid_blacklister.setter
-    def valid_blacklister(self, values):
+    def valid_blacklister(self, values: Any) -> None:
         if is_api_version_less_than("7.0"):
             self.update(valid_blacklister=values)
         else:
             self.update(valid_block_lister=values)
 
     @property
-    def user_response(self):
+    def user_response(self) -> Any:
         """
         Read-only user response setting
         """
         return Element.from_href(self.get("user_response"))
 
     @user_response.setter
-    def user_response(self, user_response):
+    def user_response(self, user_response: Any) -> None:
         """
         Set user response.
         :param UserResponse user_response: It defines additional notification actions for rule
@@ -615,7 +619,7 @@ class Action(ActionMixin):
         self.update(user_response=element_resolver(user_response))
 
     @property
-    def vpn(self):
+    def vpn(self) -> Optional[Any]:
         """
         Return vpn reference. Only used if 'enforce_vpn', 'apply_vpn',
         or 'forward_vpn' is the action type.
@@ -627,11 +631,11 @@ class Action(ActionMixin):
             return Element.from_href(self.get("vpn"))
 
     @vpn.setter
-    def vpn(self, value):
+    def vpn(self, value: Any) -> None:
         self.update(vpn=element_resolver(value))
 
     @property
-    def mobile_vpn(self):
+    def mobile_vpn(self) -> Optional[bool]:
         """
         Mobile VPN only applies to engines that support VPN and that
         have the action of 'enforce_vpn', 'apply_vpn' or 'forward_vpn'
@@ -643,7 +647,7 @@ class Action(ActionMixin):
         return self.get("mobile_vpn")
 
     @mobile_vpn.setter
-    def mobile_vpn(self, value):
+    def mobile_vpn(self, value: Any) -> None:
         self.update(mobile_vpn=value)
 
 
@@ -663,7 +667,7 @@ class ConnectionTracking(NestedDict):
             rule.save()
     """
 
-    def __init__(self, rule=None):
+    def __init__(self, rule: Any = None) -> None:
         if rule is None:
             ct = dict(mss_enforced=False, mss_enforced_max=0, mss_enforced_min=0, timeout=-1)
         else:
@@ -671,7 +675,7 @@ class ConnectionTracking(NestedDict):
         super(ConnectionTracking, self).__init__(data=ct)
 
     @property
-    def mss_enforced(self):
+    def mss_enforced(self) -> Optional[bool]:
         """
         Is MSS enforced
 
@@ -681,11 +685,11 @@ class ConnectionTracking(NestedDict):
         return self.get("mss_enforced")
 
     @mss_enforced.setter
-    def mss_enforced(self, value):
+    def mss_enforced(self, value: bool) -> None:
         self.update(mss_enforced=value)
 
     @property
-    def mss_enforced_min_max(self):
+    def mss_enforced_min_max(self) -> tuple[Optional[int], Optional[int]]:
         """
         Allows entering the Minimum and Maximum value for the MSS in bytes.
         Headers are not included in the MSS value; MSS concerns only the
@@ -698,14 +702,14 @@ class ConnectionTracking(NestedDict):
         return (self.get("mss_enforced_min"), self.get("mss_enforced_max"))
 
     @mss_enforced_min_max.setter
-    def mss_enforced_min_max(self, value):
+    def mss_enforced_min_max(self, value: tuple[int, int]) -> None:
         if isinstance(value, tuple):
             minimum, maximum = value
             self.update(mss_enforced_min=minimum)
             self.update(mss_enforced_max=maximum)
 
     @property
-    def state(self):
+    def state(self) -> Optional[str]:
         """
         Connection tracking mode. See documentation for
         more info.
@@ -716,11 +720,11 @@ class ConnectionTracking(NestedDict):
         return self.get("state")
 
     @state.setter
-    def state(self, value):
+    def state(self, value: str) -> None:
         self.update(state=value)
 
     @property
-    def timeout(self):
+    def timeout(self) -> Optional[int]:
         """
         The timeout (in seconds) after which inactive connections are closed.
         This timeout only concerns idle connections. Connections are not cut
@@ -732,7 +736,7 @@ class ConnectionTracking(NestedDict):
         return self.get("timeout")
 
     @timeout.setter
-    def timeout(self, value):
+    def timeout(self, value: int) -> None:
         """
         Set the idle timeout for connections in seconds
 
@@ -741,7 +745,7 @@ class ConnectionTracking(NestedDict):
         self.update(timeout=value)
 
     @property
-    def sync_connections(self):
+    def sync_connections(self) -> Optional[bool]:
         """
         Are sync connections enabled for this engine. If
         None, then this is set to inherit from a continue
@@ -752,7 +756,7 @@ class ConnectionTracking(NestedDict):
         return self.get("sync_connections")
 
     @sync_connections.setter
-    def sync_connections(self, value):
+    def sync_connections(self, value: Any) -> None:
         self.update(sync_connections=value)
 
 
@@ -773,7 +777,7 @@ class LogOptions(NestedDict):
                 rule.save()
     """
 
-    def __init__(self, rule=None):
+    def __init__(self, rule: Any = None) -> None:
         if rule is None:
             logopts = dict(
                 log_accounting_info_mode=False,
@@ -788,7 +792,7 @@ class LogOptions(NestedDict):
         super(LogOptions, self).__init__(data=logopts)
 
     @property
-    def application_logging(self):
+    def application_logging(self) -> Optional[str]:
         """
         Stores information about Application use. You can log application
         use even if you do not use Applications for access control.
@@ -799,12 +803,12 @@ class LogOptions(NestedDict):
         return self.get("application_logging")
 
     @application_logging.setter
-    def application_logging(self, value):
+    def application_logging(self, value: str) -> None:
         if value in ("off", "default", "enforced"):
             self.update(application_logging=value)
 
     @property
-    def url_category_logging(self):
+    def url_category_logging(self) -> Optional[str]:
         """
         Stores information about URL categories use.
 
@@ -814,12 +818,12 @@ class LogOptions(NestedDict):
         return self.get("url_category_logging")
 
     @url_category_logging.setter
-    def url_category_logging(self, value):
+    def url_category_logging(self, value: str) -> None:
         if value in ("off", "default", "enforced"):
             self.update(url_category_logging=value)
 
     @property
-    def endpoint_executable_logging(self):
+    def endpoint_executable_logging(self) -> Optional[str]:
         """
         Stores information about EndPoint Executable use. You can log
         EndPoint Executable use even if you do not use EndPoint Executables
@@ -831,12 +835,12 @@ class LogOptions(NestedDict):
         return self.get("eia_executable_logging")
 
     @endpoint_executable_logging.setter
-    def endpoint_executable_logging(self, value):
+    def endpoint_executable_logging(self, value: str) -> None:
         if value in ("off", "default", "enforced"):
             self.update(eia_executable_logging=value)
 
     @property
-    def log_accounting_info_mode(self):
+    def log_accounting_info_mode(self) -> Optional[bool]:
         """
         Both connection opening and closing are logged and information
         on the volume of traffic is collected. This option is not
@@ -851,11 +855,11 @@ class LogOptions(NestedDict):
         return self.get("log_accounting_info_mode")
 
     @log_accounting_info_mode.setter
-    def log_accounting_info_mode(self, value):
+    def log_accounting_info_mode(self, value: bool) -> None:
         self.update(log_accounting_info_mode=value)
 
     @property
-    def log_closing_mode(self):
+    def log_closing_mode(self) -> Optional[bool]:
         """
         Specifying False means no log entries are created when
         connections are closed. True will mean both connection
@@ -868,11 +872,11 @@ class LogOptions(NestedDict):
         return self.get("log_closing_mode")
 
     @log_closing_mode.setter
-    def log_closing_mode(self, value):
+    def log_closing_mode(self, value: bool) -> None:
         self.update(log_closing_mode=value)
 
     @property
-    def log_level(self):
+    def log_level(self) -> Optional[str]:
         """
         Configure per rule logging. It is recommended to configure an
         Any/Any/Any/Continue rule in position 1 if global logging is
@@ -884,14 +888,14 @@ class LogOptions(NestedDict):
         return self.get("log_level")
 
     @log_level.setter
-    def log_level(self, value):
+    def log_level(self, value: str) -> None:
         if value in ("none", "stored", "transient", "essential", "alert"):
             self.update(log_level=value)
         if not self.log_accounting_info_mode:
             self.log_accounting_info_mode = True
 
     @property
-    def qos_class(self):
+    def qos_class(self) -> Optional[Any]:
         """
         Matching QoS Classes.
         The QoS Rules are linked to different types of traffic using the QoS
@@ -920,7 +924,7 @@ class LogOptions(NestedDict):
         return qos_class
 
     @qos_class.setter
-    def qos_class(self, value):
+    def qos_class(self, value: Any) -> None:
         qos_class = None
         if value:
             qos_class = element_resolver(value)
@@ -928,7 +932,7 @@ class LogOptions(NestedDict):
         self.update(qos_class=qos_class)
 
     @property
-    def log_payload_excerpt(self):
+    def log_payload_excerpt(self) -> Optional[bool]:
         """
         Stores an excerpt of the packet that matched. The maximum recorded
         excerpt size is 4 KB. This allows quick viewing of the payload in
@@ -940,11 +944,11 @@ class LogOptions(NestedDict):
         return self.get("log_payload_excerpt")
 
     @log_payload_excerpt.setter
-    def log_payload_excerpt(self, value):
+    def log_payload_excerpt(self, value: bool) -> None:
         self.update(log_payload_excerpt=value)
 
     @property
-    def log_alert(self):
+    def log_alert(self) -> Optional[Any]:
         """
         If Log Level is set to Alert, specifies the Alert that is sent. Specifying
         different Alerts for different types of rules allows more fine-grained
@@ -960,7 +964,7 @@ class LogOptions(NestedDict):
         return log_alert
 
     @log_alert.setter
-    def log_alert(self, value):
+    def log_alert(self, value: Any) -> None:
         alert = None
         if value:
             alert = element_resolver(value)
@@ -968,7 +972,7 @@ class LogOptions(NestedDict):
         self.update(log_alert=alert)
 
     @property
-    def log_compression(self):
+    def log_compression(self) -> Optional[str]:
         """
         Stores information about Compress Logs.
 
@@ -978,12 +982,12 @@ class LogOptions(NestedDict):
         return self.get("log_compression")
 
     @log_compression.setter
-    def log_compression(self, value):
+    def log_compression(self, value: str) -> None:
         if value in ("off", "only_access", "also_inspection"):
             self.update(log_compression=value)
 
     @property
-    def log_compression_max_burst_size(self):
+    def log_compression_max_burst_size(self) -> Optional[int]:
         """
         If Compress Logs is selected, the max burst size.
 
@@ -992,11 +996,11 @@ class LogOptions(NestedDict):
         return self.get("log_compression_max_burst_size")
 
     @log_compression_max_burst_size.setter
-    def log_compression_max_burst_size(self, value):
+    def log_compression_max_burst_size(self, value: int) -> None:
         self.update(log_compression_max_burst_size=value)
 
     @property
-    def log_compression_max_log_rate(self):
+    def log_compression_max_log_rate(self) -> Optional[int]:
         """
         If Compress Logs is selected, the max log rate.
 
@@ -1005,11 +1009,11 @@ class LogOptions(NestedDict):
         return self.get("log_compression_max_log_rate")
 
     @log_compression_max_log_rate.setter
-    def log_compression_max_log_rate(self, value):
+    def log_compression_max_log_rate(self, value: int) -> None:
         self.update(log_compression_max_log_rate=value)
 
     @property
-    def log_payload_record(self):
+    def log_payload_record(self) -> Optional[bool]:
         """
         Records the traffic up to the limit that is set in the Record
         Length field.
@@ -1020,11 +1024,11 @@ class LogOptions(NestedDict):
         return self.get("log_payload_record")
 
     @log_payload_record.setter
-    def log_payload_record(self, value):
+    def log_payload_record(self, value: bool) -> None:
         self.update(log_payload_record=value)
 
     @property
-    def log_severity(self):
+    def log_severity(self) -> Optional[int]:
         """
         Read only log severity level
         :return: int
@@ -1032,7 +1036,7 @@ class LogOptions(NestedDict):
         return self.get("log_severity")
 
     @log_severity.setter
-    def log_severity(self, value):
+    def log_severity(self, value: int) -> None:
         """
         If Log Level is set to Alert, allows you to override the severity defined
         in the Alert element.
@@ -1048,7 +1052,7 @@ class LogOptions(NestedDict):
         self.update(log_severity=value)
 
     @property
-    def user_logging(self):
+    def user_logging(self) -> Optional[str]:
         """
         Stores information about Users when they are used as the Source
         or Destination of an Access rule.
@@ -1063,11 +1067,11 @@ class LogOptions(NestedDict):
         return self.get("user_logging")
 
     @user_logging.setter
-    def user_logging(self, value):
+    def user_logging(self, value: str) -> None:
         if value in ("off", "default", "enforced"):
             self.update(user_logging=value)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "{}(log_accounting_info_mode={}, log_closing_mode={}, log_level={}," \
                " log_payload_excerpt={}, log_payload_record={}, log_severity= {})"\
             .format(self.__class__.__name__,
@@ -1089,14 +1093,14 @@ class SourceVpn(NestedDict):
     A sub part of Firewall Access Rule used for matching the source VPN.
     """
 
-    def __init__(self, rule=None):
+    def __init__(self, rule: Any = None) -> None:
         if rule is None:
             match_vpn_options = dict(match_type="no_vpn", match_vpns=[])
         else:
             match_vpn_options = rule.data.get("match_vpn_options", {})
         super(SourceVpn, self).__init__(data=match_vpn_options)
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         if isinstance(other, SourceVpn):
             if self.match_type != other.match_type:
                 return False
@@ -1106,16 +1110,16 @@ class SourceVpn(NestedDict):
             return True
         return False
 
-    def __ne__(self, other):
+    def __ne__(self, other: Any) -> bool:
         return not self.__eq__(other)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "{}(match_type={} match_vpns={})".format(
             self.__class__.__name__, self.match_type, self.match_vpns
         )
 
     @property
-    def match_vpns(self):
+    def match_vpns(self) -> Optional[list[Any]]:
         """
         The possible list of match vpns in case of normal match.
 
@@ -1125,11 +1129,11 @@ class SourceVpn(NestedDict):
         return [Element.from_href(vpn) for vpn in vpns] if vpns is not None else None
 
     @match_vpns.setter
-    def match_vpns(self, value):
+    def match_vpns(self, value: Any) -> None:
         self.update(match_vpns=value)
 
     @property
-    def match_type(self):
+    def match_type(self) -> Optional[str]:
         """
         Matches traffic based on the source VPN:
         normal: the rule only matches traffic from the specified VPNs.
@@ -1141,7 +1145,7 @@ class SourceVpn(NestedDict):
         return self.get("match_type")
 
     @match_type.setter
-    def match_type(self, value):
+    def match_type(self, value: str) -> None:
         if value in self.type_list:
             self.update(match_type=value)
         else:
@@ -1158,14 +1162,14 @@ class AuthenticationOptions(NestedDict):
     whether a user requires identification to match.
     """
 
-    def __init__(self, rule=None):
+    def __init__(self, rule: Any = None) -> None:
         if rule is None:
             auth = dict(methods=[], require_auth=False, users=[])
         else:
             auth = rule.data.get("authentication_options", {})
         super(AuthenticationOptions, self).__init__(data=auth)
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         if isinstance(other, AuthenticationOptions):
             if self.require_auth != other.require_auth:
                 return False
@@ -1175,11 +1179,11 @@ class AuthenticationOptions(NestedDict):
             return True
         return False
 
-    def __ne__(self, other):
+    def __ne__(self, other: Any) -> bool:
         return not self.__eq__(other)
 
     @property
-    def methods(self):
+    def methods(self) -> list[Any]:
         """
         Read only authentication methods enabled
 
@@ -1188,7 +1192,7 @@ class AuthenticationOptions(NestedDict):
         return [Element.from_href(method) for method in self.get("methods")]
 
     @property
-    def require_auth(self):
+    def require_auth(self) -> Optional[bool]:
         """
         Ready only authentication required
 
@@ -1197,7 +1201,7 @@ class AuthenticationOptions(NestedDict):
         return self.get("require_auth")
 
     @property
-    def timeout(self):
+    def timeout(self) -> Optional[int]:
         """
         Timeout between authentications
 
@@ -1206,7 +1210,7 @@ class AuthenticationOptions(NestedDict):
         return self.get("timeout")
 
     @property
-    def users(self):
+    def users(self) -> list[Any]:
         """
         List of users required to authenticate
 
@@ -1223,18 +1227,18 @@ class TimeRange(object):
     will be disabled automatically.
     """
 
-    def __init__(self, data):
+    def __init__(self, data: Any) -> None:
         self.data = data
 
     @property
-    def day_ranges(self):
+    def day_ranges(self) -> None:
         """
         Not Yet Implemented
         """
         pass
 
     @property
-    def month_range_start(self):
+    def month_range_start(self) -> Optional[str]:
         """
         Starting month for rule validity. Use this with month_range_end.
 
@@ -1243,11 +1247,11 @@ class TimeRange(object):
         return self.data.get("month_range_start")
 
     @month_range_start.setter
-    def month_range_start(self, value):
+    def month_range_start(self, value: str) -> None:
         self.data["month_range_start"] = value
 
     @property
-    def month_range_end(self):
+    def month_range_end(self) -> Optional[str]:
         """
         Set month end range. Use this with month_range_start.
 
@@ -1256,7 +1260,7 @@ class TimeRange(object):
         return self.data.get("month_range_end")
 
     @month_range_end.setter
-    def month_range_end(self, value):
+    def month_range_end(self, value: str) -> None:
         self.data["month_range_end"] = value
 
 
@@ -1308,15 +1312,15 @@ class MatchExpression(Element):
     @classmethod
     def create(
         cls,
-        name,
-        user=None,
-        network_element=None,
-        domain_name=None,
-        zone=None,
-        executable=None,
-        service=None,
-        service_ports="any",
-    ):
+        name: str,
+        user: Optional[Any] = None,
+        network_element: Optional[Any] = None,
+        domain_name: Optional[Any] = None,
+        zone: Optional[Any] = None,
+        executable: Optional[Any] = None,
+        service: Optional[Any] = None,
+        service_ports: Any = "any",
+    ) -> MatchExpression:
         """
         Create a match expression
 
@@ -1357,7 +1361,7 @@ class MatchExpression(Element):
 
         return ElementCreator(cls, json)
 
-    def values(self):
+    def values(self) -> list[Any]:
         return [Element.from_href(ref) for ref in self.data.get("ref")]
 
 
@@ -1368,16 +1372,16 @@ class SituationMatchPart(RuleElement, NestedDict):
 
     typeof = "situation"
 
-    def __init__(self, rule=None):
+    def __init__(self, rule: Any = None) -> None:
         situations = dict(none=True) if not rule else rule.data.get("situations")
         self.rule = rule
         super(SituationMatchPart, self).__init__(data=situations)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "ANY={}, NONE={}, SITUATIONS={}".format(self.is_any, self.is_none, self.situations)
 
     @property
-    def situation(self):
+    def situation(self) -> Optional[list[Any]]:
         """
         All elements corresponding to the matching criteria (if not any or none).
 
@@ -1388,14 +1392,14 @@ class SituationMatchPart(RuleElement, NestedDict):
             if elements is not None else None
 
     @situation.setter
-    def situation(self, value):
+    def situation(self, value: Any) -> None:
         self.update(situation=value)
 
 
 class FileFilteringRuleAction(ActionMixin):
 
     @property
-    def rematch_archive_content(self):
+    def rematch_archive_content(self) -> Optional[bool]:
         """
         Is Rematch Archive Content enabled?
         :rtype: bool
@@ -1403,11 +1407,11 @@ class FileFilteringRuleAction(ActionMixin):
         return self.get("rematch_archive_content")
 
     @rematch_archive_content.setter
-    def rematch_archive_content(self, value):
+    def rematch_archive_content(self, value: bool) -> None:
         self.update(rematch_archive_content=value)
 
     @property
-    def file_reputation(self):
+    def file_reputation(self) -> Optional[bool]:
         """
         Is File Reputation enabled?
         :rtype: bool
@@ -1415,11 +1419,11 @@ class FileFilteringRuleAction(ActionMixin):
         return self.get("file_reputation")
 
     @file_reputation.setter
-    def file_reputation(self, value):
+    def file_reputation(self, value: bool) -> None:
         self.update(file_reputation=value)
 
     @property
-    def antivirus(self):
+    def antivirus(self) -> Optional[bool]:
         """
         Is Anti-Malware enabled?
         :rtype: bool
@@ -1427,11 +1431,11 @@ class FileFilteringRuleAction(ActionMixin):
         return self.get("antivirus")
 
     @antivirus.setter
-    def antivirus(self, value):
+    def antivirus(self, value: bool) -> None:
         self.update(antivirus=value)
 
     @property
-    def sandbox(self):
+    def sandbox(self) -> Optional[bool]:
         """
         Is Sandbox enabled?
         :rtype: bool
@@ -1439,11 +1443,11 @@ class FileFilteringRuleAction(ActionMixin):
         return self.get("sandbox")
 
     @sandbox.setter
-    def sandbox(self, value):
+    def sandbox(self, value: bool) -> None:
         self.update(sandbox=value)
 
     @property
-    def sandbox_delay_file_transfer(self):
+    def sandbox_delay_file_transfer(self) -> Optional[bool]:
         """
         Is Sandbox Delay enabled?
         Delay file transfer until the analysis results are received
@@ -1452,11 +1456,11 @@ class FileFilteringRuleAction(ActionMixin):
         return self.get("sandbox_delay_file_transfer")
 
     @sandbox_delay_file_transfer.setter
-    def sandbox_delay_file_transfer(self, value):
+    def sandbox_delay_file_transfer(self, value: bool) -> None:
         self.update(sandbox_delay_file_transfer=value)
 
     @property
-    def sandbox_allow_level(self):
+    def sandbox_allow_level(self) -> Optional[str]:
         """
         Sandbox allow level.
         :rtype: str
@@ -1465,11 +1469,11 @@ class FileFilteringRuleAction(ActionMixin):
         return self.get("sandbox_allow_level")
 
     @sandbox_allow_level.setter
-    def sandbox_allow_level(self, value):
+    def sandbox_allow_level(self, value: str) -> None:
         self.update(sandbox_allow_level=value)
 
     @property
-    def file_reputation_allow_level(self):
+    def file_reputation_allow_level(self) -> Optional[str]:
         """
         File reputation allow level.
         :rtype: str
@@ -1477,11 +1481,11 @@ class FileFilteringRuleAction(ActionMixin):
         return self.get("file_reputation_allow_level")
 
     @file_reputation_allow_level.setter
-    def file_reputation_allow_level(self, value):
+    def file_reputation_allow_level(self, value: str) -> None:
         self.update(file_reputation_allow_level=value)
 
     @property
-    def file_reputation_discard_level(self):
+    def file_reputation_discard_level(self) -> Optional[str]:
         """
         File reputation discard level.
         :rtype: str
@@ -1489,11 +1493,11 @@ class FileFilteringRuleAction(ActionMixin):
         return self.get("file_reputation_discard_level")
 
     @file_reputation_discard_level.setter
-    def file_reputation_discard_level(self, value):
+    def file_reputation_discard_level(self, value: str) -> None:
         self.update(file_reputation_discard_level=value)
 
     @property
-    def spooling_level(self):
+    def spooling_level(self) -> Optional[str]:
         """
         Spooling level.
         :rtype: str
@@ -1501,11 +1505,11 @@ class FileFilteringRuleAction(ActionMixin):
         return self.get("spooling_level")
 
     @spooling_level.setter
-    def spooling_level(self, value):
+    def spooling_level(self, value: str) -> None:
         self.update(spooling_level=value)
 
     @property
-    def dirty_log_level(self):
+    def dirty_log_level(self) -> Optional[str]:
         """
         Dirty log level.
         :rtype: str
@@ -1513,11 +1517,11 @@ class FileFilteringRuleAction(ActionMixin):
         return self.get("dirty_log_level")
 
     @dirty_log_level.setter
-    def dirty_log_level(self, value):
+    def dirty_log_level(self, value: str) -> None:
         self.update(dirty_log_level=value)
 
     @property
-    def default_behavior(self):
+    def default_behavior(self) -> Optional[str]:
         """
         Default behavior.
         :rtype: str
@@ -1525,11 +1529,11 @@ class FileFilteringRuleAction(ActionMixin):
         return self.get("default_behavior")
 
     @default_behavior.setter
-    def default_behavior(self, value):
+    def default_behavior(self, value: str) -> None:
         self.update(default_behavior=value)
 
     @property
-    def icap_dlp_scan_enabled(self):
+    def icap_dlp_scan_enabled(self) -> Optional[bool]:
         """
         Is ICAP DLP Scan enabled?
         :rtype: bool
@@ -1537,11 +1541,11 @@ class FileFilteringRuleAction(ActionMixin):
         return self.get("icap_dlp_scan_enabled")
 
     @icap_dlp_scan_enabled.setter
-    def icap_dlp_scan_enabled(self, value):
+    def icap_dlp_scan_enabled(self, value: bool) -> None:
         self.update(icap_dlp_scan_enabled=value)
 
     @property
-    def icap_dlp_service_fail_action(self):
+    def icap_dlp_service_fail_action(self) -> Optional[str]:
         """
         ICAP DLP Scan service fail action.
         :rtype: str
@@ -1549,11 +1553,11 @@ class FileFilteringRuleAction(ActionMixin):
         return self.get("icap_dlp_service_fail_action")
 
     @icap_dlp_service_fail_action.setter
-    def icap_dlp_service_fail_action(self, value):
+    def icap_dlp_service_fail_action(self, value: str) -> None:
         self.update(icap_dlp_service_fail_action=value)
 
     @property
-    def icap_dlp_file_size_exceeded_action(self):
+    def icap_dlp_file_size_exceeded_action(self) -> Optional[str]:
         """
         ICAP DLP file size exceeded action.
         :rtype: str
@@ -1561,11 +1565,11 @@ class FileFilteringRuleAction(ActionMixin):
         return self.get("icap_dlp_file_size_exceeded_action")
 
     @icap_dlp_file_size_exceeded_action.setter
-    def icap_dlp_file_size_exceeded_action(self, value):
+    def icap_dlp_file_size_exceeded_action(self, value: str) -> None:
         self.update(icap_dlp_file_size_exceeded_action=value)
 
     @property
-    def icap_dlp_max_file_size(self):
+    def icap_dlp_max_file_size(self) -> Optional[int]:
         """
         ICAP DLP max file size.
         :rtype: int
@@ -1573,5 +1577,5 @@ class FileFilteringRuleAction(ActionMixin):
         return self.get("icap_dlp_max_file_size")
 
     @icap_dlp_max_file_size.setter
-    def icap_dlp_max_file_size(self, value):
+    def icap_dlp_max_file_size(self, value: int) -> None:
         self.update(icap_dlp_max_file_size=value)

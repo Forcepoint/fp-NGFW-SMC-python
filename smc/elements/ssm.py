@@ -16,6 +16,10 @@ The different sidewinder elements in this module that can be configured are SSM
 Logging Profiles, SSH Profiles, SSH Known Hosts, and SSH Known Hosts Lists.
 
 """
+from __future__ import annotations
+
+from typing import Any, Optional, Union, Iterator
+
 from smc.api.exceptions import ImportKeyError
 from smc.base.model import Element, ElementCreator
 from smc.base.structs import NestedDict
@@ -28,7 +32,7 @@ class SidewinderLoggingProfileSettings(NestedDict):
     """
 
     @classmethod
-    def create(cls, element=None, enable=None, interval=None, threshold=None):
+    def create(cls, element: Any = None, enable: Any = None, interval: Any = None, threshold: Any = None) -> SidewinderLoggingProfileSettings:
         """
         :param element: This associate either situation|category element.
         :param str enable: Enable value.
@@ -55,7 +59,7 @@ class SidewinderLoggingProfile(Element):
     typeof = "sidewinder_logging_profile"
 
     @classmethod
-    def create(cls, name, sidewinder_logging_profile_setting=[]):
+    def create(cls, name: str, sidewinder_logging_profile_setting: list = []) -> SidewinderLoggingProfile:
         """
         Create Sidewinder Logging Profile.
         :param str name: Name of the  Sidewinder Logging Profile.
@@ -69,7 +73,7 @@ class SidewinderLoggingProfile(Element):
         return ElementCreator(cls, json)
 
     @property
-    def sidewinder_logging_profile_setting(self):
+    def sidewinder_logging_profile_setting(self) -> list:
         """
         Sidewinder Logging Profile Settings.
         :rtype: list(SidewinderLoggingProfileSettings)
@@ -116,12 +120,12 @@ class SSHProfile(Element):
     @classmethod
     def create(
         cls,
-        name,
-        cipher,
-        kex,
-        mac,
-        comment=None
-    ):
+        name: str,
+        cipher: str,
+        kex: str,
+        mac: str,
+        comment: Optional[str] = None
+    ) -> SSHProfile:
         """
         Create the SSH Profile
 
@@ -181,14 +185,14 @@ class SSHKnownHosts(Element):
     @classmethod
     def create(
         cls,
-        name,
-        host_key,
-        sshkey_type,
-        ipaddress=None,
-        ipv6_address=None,
-        port=22,
-        comment=None
-    ):
+        name: str,
+        host_key: str,
+        sshkey_type: str,
+        ipaddress: Optional[str] = None,
+        ipv6_address: Optional[str] = None,
+        port: int = 22,
+        comment: Optional[str] = None
+    ) -> SSHKnownHosts:
 
         """
         Create the SSH Known Host
@@ -222,7 +226,7 @@ class SSHKnownHosts(Element):
 
         return ElementCreator(cls, json)
 
-    def import_key(self, ssh_public_key_file):
+    def import_key(self, ssh_public_key_file: str) -> None:
         """
         Allows importing a specified public key for the specified Known Host.
         :param str ssh_public_key_file: ssh public key file path.
@@ -235,7 +239,7 @@ class SSHKnownHosts(Element):
                 headers={"content-type": "multipart/form-data"},
                 files={"public_key": ssh_key})
 
-    def retrieve_key(self, value):
+    def retrieve_key(self, value: str) -> None:
         """
         Allows retrieving of the public key for the specified Known Host from a particular engine.
         The values could be:
@@ -280,10 +284,10 @@ class SSHKnownHostsLists(Element):
     @classmethod
     def create(
         cls,
-        name,
-        known_host=[],
-        comment=None
-    ):
+        name: str,
+        known_host: list = [],
+        comment: Optional[str] = None
+    ) -> SSHKnownHostsLists:
 
         """
         Create the SSH Known Host List

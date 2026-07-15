@@ -10,6 +10,10 @@
 #  License for the specific language governing permissions and limitations
 #  under the License.
 
+from __future__ import annotations
+
+from typing import Any, Optional, TYPE_CHECKING
+
 from smc.core.interfaces import (
     ClusterPhysicalInterface,
     TunnelInterface,
@@ -23,6 +27,17 @@ from smc.api.exceptions import CreateEngineFailed, CreateElementFailed, ElementN
 from smc.base.model import ElementCreator
 from smc.compat import min_smc_version
 from smc.elements.servers import SamlSettings  # noqa
+
+if TYPE_CHECKING:
+    from smc.core.engine import (
+        SidewinderProxyAdvancedSettings,
+        ScanDetectionSetting,
+        StaticMulticastRoute,
+        WebAuthentication,
+    )
+    from smc.core.general import NTPSettings
+    from smc.core.lldp import LLDPProfile
+    from smc.vpn.elements import LinkUsageProfile
 
 
 class Layer3Firewall(Engine):
@@ -51,42 +66,42 @@ class Layer3Firewall(Engine):
     @classmethod
     def create_bulk(
         cls,
-        name,
-        interfaces=None,
-        primary_mgt=None,
-        backup_mgt=None,
-        auth_request=None,
-        log_server_ref=None,
-        domain_server_address=None,
-        nodes=1,
-        nodes_definition=None,
-        node_type="firewall_node",
-        location_ref=None,
-        default_nat='automatic',
-        enable_antivirus=False,
-        enable_gti=False,
-        sidewinder_proxy_enabled=False,
-        known_host_lists=[],
-        enable_ospf=False,
-        ospf_profile=None,
-        comment=None,
-        snmp=None,
-        ntp_settings=None,
-        timezone=None,
-        extra_opts=None,
-        engine_type=None,
-        lldp_profile=None,
-        link_usage_profile=None,
-        quic_enabled=True,
-        discard_quic_if_cant_inspect=True,
-        ssm_advanced_setting=None,
-        scan_detection=None,
-        static_multicast_route=None,
-        pim_settings=None,
-        web_authentication=None,
-        nat64_settings=None,
-        **kw
-    ):
+        name: str,
+        interfaces: Optional[list[dict[str, Any]]] = None,
+        primary_mgt: Optional[int] = None,
+        backup_mgt: Optional[int] = None,
+        auth_request: Optional[int] = None,
+        log_server_ref: Optional[str] = None,
+        domain_server_address: Optional[list[str]] = None,
+        nodes: int = 1,
+        nodes_definition: Optional[list[dict[str, Any]]] = None,
+        node_type: str = "firewall_node",
+        location_ref: Optional[str] = None,
+        default_nat: str = "automatic",
+        enable_antivirus: bool = False,
+        enable_gti: bool = False,
+        sidewinder_proxy_enabled: bool = False,
+        known_host_lists: list[str] = [],
+        enable_ospf: bool = False,
+        ospf_profile: Optional[str] = None,
+        comment: Optional[str] = None,
+        snmp: Optional[dict[str, Any]] = None,
+        ntp_settings: Optional[NTPSettings] = None,
+        timezone: Optional[str] = None,
+        extra_opts: Optional[dict[str, Any]] = None,
+        engine_type: Optional[type[Layer3Firewall]] = None,
+        lldp_profile: Optional[LLDPProfile] = None,
+        link_usage_profile: Optional[LinkUsageProfile] = None,
+        quic_enabled: bool = True,
+        discard_quic_if_cant_inspect: bool = True,
+        ssm_advanced_setting: Optional[list[SidewinderProxyAdvancedSettings]] = None,
+        scan_detection: Optional[ScanDetectionSetting] = None,
+        static_multicast_route: Optional[list[StaticMulticastRoute]] = None,
+        pim_settings: Optional[dict[str, Any]] = None,
+        web_authentication: Optional[WebAuthentication] = None,
+        nat64_settings: Optional[dict[str, Any]] = None,
+        **kw: Any,
+    ) -> Layer3Firewall:
         """
         Create a Layer 3 Firewall providing all of the interface configuration.
         This method provides a way to fully create the engine and all interfaces
@@ -268,40 +283,40 @@ class Layer3Firewall(Engine):
     @classmethod
     def create(
         cls,
-        name,
-        mgmt_ip,
-        mgmt_network,
-        mgmt_interface=0,
-        log_server_ref=None,
-        default_nat='automatic',
-        reverse_connection=False,
-        domain_server_address=None,
-        zone_ref=None,
-        enable_antivirus=False,
-        enable_gti=False,
-        location_ref=None,
-        enable_ospf=False,
-        sidewinder_proxy_enabled=False,
-        known_host_lists=[],
-        ospf_profile=None,
-        snmp=None,
-        ntp_settings=None,
-        timezone=None,
-        comment=None,
-        extra_opts=None,
-        engine_type=None,
-        node_type="firewall_node",
-        lldp_profile=None,
-        link_usage_profile=None,
-        quic_enabled=True,
-        discard_quic_if_cant_inspect=True,
-        node_definition=None,
-        ssm_advanced_setting=None,
-        scan_detection=None,
-        static_multicast_route=None,
-        web_authentication=None,
-        **kw
-    ):
+        name: str,
+        mgmt_ip: str,
+        mgmt_network: str,
+        mgmt_interface: int = 0,
+        log_server_ref: Optional[str] = None,
+        default_nat: str = "automatic",
+        reverse_connection: bool = False,
+        domain_server_address: Optional[list[str]] = None,
+        zone_ref: Optional[str] = None,
+        enable_antivirus: bool = False,
+        enable_gti: bool = False,
+        location_ref: Optional[str] = None,
+        enable_ospf: bool = False,
+        sidewinder_proxy_enabled: bool = False,
+        known_host_lists: list[str] = [],
+        ospf_profile: Optional[str] = None,
+        snmp: Optional[dict[str, Any]] = None,
+        ntp_settings: Optional[NTPSettings] = None,
+        timezone: Optional[str] = None,
+        comment: Optional[str] = None,
+        extra_opts: Optional[dict[str, Any]] = None,
+        engine_type: Optional[type[Layer3Firewall]] = None,
+        node_type: str = "firewall_node",
+        lldp_profile: Optional[LLDPProfile] = None,
+        link_usage_profile: Optional[LinkUsageProfile] = None,
+        quic_enabled: bool = True,
+        discard_quic_if_cant_inspect: bool = True,
+        node_definition: Optional[dict[str, Any]] = None,
+        ssm_advanced_setting: Optional[list[SidewinderProxyAdvancedSettings]] = None,
+        scan_detection: Optional[ScanDetectionSetting] = None,
+        static_multicast_route: Optional[list[StaticMulticastRoute]] = None,
+        web_authentication: Optional[WebAuthentication] = None,
+        **kw: Any,
+    ) -> Layer3Firewall:
         """
         Create a single layer 3 firewall with management interface and DNS.
         Provide the `interfaces` keyword argument if adding multiple additional interfaces.
@@ -422,34 +437,34 @@ class Layer3Firewall(Engine):
     @classmethod
     def create_dynamic(
         cls,
-        name,
-        interface_id,
-        dynamic_index=1,
-        reverse_connection=True,
-        automatic_default_route=True,
-        domain_server_address=None,
-        loopback_ndi="127.0.0.1",
-        location_ref=None,
-        log_server_ref=None,
-        zone_ref=None,
-        enable_gti=False,
-        enable_antivirus=False,
-        sidewinder_proxy_enabled=False,
-        known_host_lists=[],
-        default_nat='automatic',
-        comment=None,
-        extra_opts=None,
-        engine_type=None,
-        node_type="firewall_node",
-        lldp_profile=None,
-        link_usage_profile=None,
-        quic_enabled=True,
-        discard_quic_if_cant_inspect=True,
-        node_definition=None,
-        ssm_advanced_setting=None,
-        web_authentication=None,
-        **kw
-    ):
+        name: str,
+        interface_id: int,
+        dynamic_index: int = 1,
+        reverse_connection: bool = True,
+        automatic_default_route: bool = True,
+        domain_server_address: Optional[list[str]] = None,
+        loopback_ndi: str = "127.0.0.1",
+        location_ref: Optional[str] = None,
+        log_server_ref: Optional[str] = None,
+        zone_ref: Optional[str] = None,
+        enable_gti: bool = False,
+        enable_antivirus: bool = False,
+        sidewinder_proxy_enabled: bool = False,
+        known_host_lists: list[str] = [],
+        default_nat: str = "automatic",
+        comment: Optional[str] = None,
+        extra_opts: Optional[dict[str, Any]] = None,
+        engine_type: Optional[type[Layer3Firewall]] = None,
+        node_type: str = "firewall_node",
+        lldp_profile: Optional[LLDPProfile] = None,
+        link_usage_profile: Optional[LinkUsageProfile] = None,
+        quic_enabled: bool = True,
+        discard_quic_if_cant_inspect: bool = True,
+        node_definition: Optional[dict[str, Any]] = None,
+        ssm_advanced_setting: Optional[list[SidewinderProxyAdvancedSettings]] = None,
+        web_authentication: Optional[WebAuthentication] = None,
+        **kw: Any,
+    ) -> Layer3Firewall:
         """
         Create a single layer 3 firewall with only a single DHCP interface. Useful
         when creating virtualized engine's such as in Microsoft Azure.
@@ -536,7 +551,7 @@ class Layer3Firewall(Engine):
         )
 
     @property
-    def quic_enabled(self):
+    def quic_enabled(self) -> Optional[bool]:
         """
         include QUIC ports for web traffic
 
@@ -545,12 +560,12 @@ class Layer3Firewall(Engine):
         return self.data.get("quic_enabled")
 
     @quic_enabled.setter
-    def quic_enabled(self, value):
+    def quic_enabled(self, value: Any) -> None:
         if min_smc_version("7.0"):
             self.data["quic_enabled"] = value
 
     @property
-    def ha_settings(self):
+    def ha_settings(self) -> Optional[HAForSingleEngine]:
         """
         HA settings for the engine
 
@@ -575,25 +590,25 @@ class CloudSGSingleFW(Layer3Firewall):
     @classmethod
     def create_dynamic(
         cls,
-        name,
-        interface_id,
-        dynamic_index=1,
-        reverse_connection=True,
-        automatic_default_route=True,
-        domain_server_address=None,
-        loopback_ndi="127.0.0.1",
-        location_ref=None,
-        log_server_ref=None,
-        zone_ref=None,
-        enable_gti=False,
-        enable_antivirus=False,
-        sidewinder_proxy_enabled=False,
-        known_host_lists=[],
-        default_nat='automatic',
-        comment=None,
-        extra_opts=None,
-        **kw
-    ):
+        name: str,
+        interface_id: int,
+        dynamic_index: int = 1,
+        reverse_connection: bool = True,
+        automatic_default_route: bool = True,
+        domain_server_address: Optional[list[str]] = None,
+        loopback_ndi: str = "127.0.0.1",
+        location_ref: Optional[str] = None,
+        log_server_ref: Optional[str] = None,
+        zone_ref: Optional[str] = None,
+        enable_gti: bool = False,
+        enable_antivirus: bool = False,
+        sidewinder_proxy_enabled: bool = False,
+        known_host_lists: list[str] = [],
+        default_nat: str = "automatic",
+        comment: Optional[str] = None,
+        extra_opts: Optional[dict[str, Any]] = None,
+        **kw: Any,
+    ) -> CloudSGSingleFW:
         return Layer3Firewall.create_dynamic(
             name,
             interface_id,
@@ -620,29 +635,29 @@ class CloudSGSingleFW(Layer3Firewall):
     @classmethod
     def create(
         cls,
-        name,
-        mgmt_ip,
-        mgmt_network,
-        mgmt_interface=0,
-        log_server_ref=None,
-        default_nat='automatic',
-        reverse_connection=False,
-        domain_server_address=None,
-        zone_ref=None,
-        enable_antivirus=False,
-        enable_gti=False,
-        location_ref=None,
-        enable_ospf=False,
-        sidewinder_proxy_enabled=False,
-        known_host_lists=[],
-        ospf_profile=None,
-        snmp=None,
-        comment=None,
-        extra_opts=None,
-        engine_type=None,
-        node_type="firewall_node",
-        **kw
-    ):
+        name: str,
+        mgmt_ip: str,
+        mgmt_network: str,
+        mgmt_interface: int = 0,
+        log_server_ref: Optional[str] = None,
+        default_nat: str = "automatic",
+        reverse_connection: bool = False,
+        domain_server_address: Optional[list[str]] = None,
+        zone_ref: Optional[str] = None,
+        enable_antivirus: bool = False,
+        enable_gti: bool = False,
+        location_ref: Optional[str] = None,
+        enable_ospf: bool = False,
+        sidewinder_proxy_enabled: bool = False,
+        known_host_lists: list[str] = [],
+        ospf_profile: Optional[str] = None,
+        snmp: Optional[dict[str, Any]] = None,
+        comment: Optional[str] = None,
+        extra_opts: Optional[dict[str, Any]] = None,
+        engine_type: Optional[type[CloudSGSingleFW]] = None,
+        node_type: str = "firewall_node",
+        **kw: Any,
+    ) -> CloudSGSingleFW:
         raise Exception(
             "create method not supported by " + str(cls) + " use create_dynamic instead !"
         )
@@ -663,25 +678,25 @@ class Layer2Firewall(Engine):
     @classmethod
     def create(
         cls,
-        name,
-        mgmt_ip,
-        mgmt_network,
-        mgmt_interface=0,
-        inline_interface="1-2",
-        logical_interface="default_eth",
-        log_server_ref=None,
-        domain_server_address=None,
-        zone_ref=None,
-        enable_antivirus=False,
-        enable_gti=False,
-        comment=None,
-        extra_opts=None,
-        lldp_profile=None,
-        discard_quic_if_cant_inspect=True,
-        node_definition=None,
-        scan_detection=None,
-        **kw
-    ):
+        name: str,
+        mgmt_ip: str,
+        mgmt_network: str,
+        mgmt_interface: int = 0,
+        inline_interface: str = "1-2",
+        logical_interface: str = "default_eth",
+        log_server_ref: Optional[str] = None,
+        domain_server_address: Optional[list[str]] = None,
+        zone_ref: Optional[str] = None,
+        enable_antivirus: bool = False,
+        enable_gti: bool = False,
+        comment: Optional[str] = None,
+        extra_opts: Optional[dict[str, Any]] = None,
+        lldp_profile: Optional[LLDPProfile] = None,
+        discard_quic_if_cant_inspect: bool = True,
+        node_definition: Optional[dict[str, Any]] = None,
+        scan_detection: Optional[ScanDetectionSetting] = None,
+        **kw: Any,
+    ) -> Layer2Firewall:
         """
         Create a single layer 2 firewall with management interface and inline pair
 
@@ -780,25 +795,25 @@ class IPS(Engine):
     @classmethod
     def create(
         cls,
-        name,
-        mgmt_ip,
-        mgmt_network,
-        mgmt_interface=0,
-        inline_interface="1-2",
-        logical_interface="default_eth",
-        log_server_ref=None,
-        domain_server_address=None,
-        zone_ref=None,
-        enable_antivirus=False,
-        enable_gti=False,
-        comment=None,
-        extra_opts=None,
-        lldp_profile=None,
-        discard_quic_if_cant_inspect=True,
-        node_definition=None,
-        scan_detection=None,
-        **kw
-    ):
+        name: str,
+        mgmt_ip: str,
+        mgmt_network: str,
+        mgmt_interface: int = 0,
+        inline_interface: str = "1-2",
+        logical_interface: str = "default_eth",
+        log_server_ref: Optional[str] = None,
+        domain_server_address: Optional[list[str]] = None,
+        zone_ref: Optional[str] = None,
+        enable_antivirus: bool = False,
+        enable_gti: bool = False,
+        comment: Optional[str] = None,
+        extra_opts: Optional[dict[str, Any]] = None,
+        lldp_profile: Optional[LLDPProfile] = None,
+        discard_quic_if_cant_inspect: bool = True,
+        node_definition: Optional[dict[str, Any]] = None,
+        scan_detection: Optional[ScanDetectionSetting] = None,
+        **kw: Any,
+    ) -> IPS:
         """
         Create a single IPS engine with management interface and inline pair
 
@@ -885,22 +900,22 @@ class VirtualIPS(IPS):
     @classmethod
     def create(
         cls,
-        name,
-        inline_interface="1-2",
-        logical_interface="default_eth",
-        log_server_ref=None,
-        domain_server_address=None,
-        zone_ref=None,
-        enable_antivirus=False,
-        enable_gti=False,
-        comment=None,
-        extra_opts=None,
-        lldp_profile=None,
-        discard_quic_if_cant_inspect=True,
-        node_definition=None,
-        scan_detection=None,
-        **kw
-    ):
+        name: str,
+        inline_interface: str = "1-2",
+        logical_interface: str = "default_eth",
+        log_server_ref: Optional[str] = None,
+        domain_server_address: Optional[list[str]] = None,
+        zone_ref: Optional[str] = None,
+        enable_antivirus: bool = False,
+        enable_gti: bool = False,
+        comment: Optional[str] = None,
+        extra_opts: Optional[dict[str, Any]] = None,
+        lldp_profile: Optional[LLDPProfile] = None,
+        discard_quic_if_cant_inspect: bool = True,
+        node_definition: Optional[dict[str, Any]] = None,
+        scan_detection: Optional[ScanDetectionSetting] = None,
+        **kw: Any,
+    ) -> VirtualIPS:
         """
         Create a single IPS engine with management interface and inline pair
 
@@ -987,27 +1002,27 @@ class Layer3VirtualEngine(Engine):
     @classmethod
     def create(
         cls,
-        name,
-        master_engine,
-        virtual_resource,
-        interfaces,
-        default_nat='automatic',
-        outgoing_intf=0,
-        domain_server_address=None,
-        enable_ospf=False,
-        ospf_profile=None,
-        comment=None,
-        extra_opts=None,
-        quic_enabled=True,
-        discard_quic_if_cant_inspect=True,
-        ssm_advanced_setting=None,
-        scan_detection=None,
-        static_multicast_route=None,
-        pim_settings=None,
-        web_authentication=None,
-        nat64_settings=None,
-        **kw
-    ):
+        name: str,
+        master_engine: str,
+        virtual_resource: str,
+        interfaces: list[dict[str, Any]],
+        default_nat: str = "automatic",
+        outgoing_intf: int = 0,
+        domain_server_address: Optional[list[str]] = None,
+        enable_ospf: bool = False,
+        ospf_profile: Optional[str] = None,
+        comment: Optional[str] = None,
+        extra_opts: Optional[dict[str, Any]] = None,
+        quic_enabled: bool = True,
+        discard_quic_if_cant_inspect: bool = True,
+        ssm_advanced_setting: Optional[list[SidewinderProxyAdvancedSettings]] = None,
+        scan_detection: Optional[ScanDetectionSetting] = None,
+        static_multicast_route: Optional[list[StaticMulticastRoute]] = None,
+        pim_settings: Optional[Any] = None,
+        web_authentication: Optional[WebAuthentication] = None,
+        nat64_settings: Optional[Any] = None,
+        **kw: Any,
+    ) -> Layer3VirtualEngine:
         """
         Create a Layer3Virtual engine for a Master Engine. Provide interfaces
         as a list of dict items specifying the interface details in format::
@@ -1123,7 +1138,7 @@ class Layer3VirtualEngine(Engine):
             raise CreateEngineFailed(e)
 
     @property
-    def quic_enabled(self):
+    def quic_enabled(self) -> Optional[bool]:
         """
         include QUIC ports for web traffic
 
@@ -1132,7 +1147,7 @@ class Layer3VirtualEngine(Engine):
         return self.data.get("quic_enabled")
 
     @quic_enabled.setter
-    def quic_enabled(self, value):
+    def quic_enabled(self, value: Any) -> None:
         if min_smc_version("7.0"):
             self.data["quic_enabled"] = value
 
@@ -1152,37 +1167,37 @@ class FirewallCluster(Engine):
     @classmethod
     def create_bulk(
         cls,
-        name,
-        interfaces=None,
-        nodes=2,
-        nodes_definition=[],
-        cluster_mode="balancing",
-        primary_mgt=None,
-        backup_mgt=None,
-        primary_heartbeat=None,
-        log_server_ref=None,
-        domain_server_address=None,
-        location_ref=None,
-        default_nat='automatic',
-        enable_antivirus=False,
-        enable_gti=False,
-        comment=None,
-        snmp=None,
-        ntp_settings=None,
-        timezone=None,
-        extra_opts=None,
-        lldp_profile=None,
-        link_usage_profile=None,
-        quic_enabled=True,
-        discard_quic_if_cant_inspect=True,
-        ssm_advanced_setting=None,
-        scan_detection=None,
-        static_multicast_route=None,
-        pim_settings=None,
-        web_authentication=None,
-        nat64_settings=None,
-        **kw
-    ):
+        name: str,
+        interfaces: Optional[list[dict[str, Any]]] = None,
+        nodes: int = 2,
+        nodes_definition: list[Any] = [],
+        cluster_mode: str = "balancing",
+        primary_mgt: Optional[Any] = None,
+        backup_mgt: Optional[Any] = None,
+        primary_heartbeat: Optional[Any] = None,
+        log_server_ref: Optional[str] = None,
+        domain_server_address: Optional[list[str]] = None,
+        location_ref: Optional[str] = None,
+        default_nat: str = "automatic",
+        enable_antivirus: bool = False,
+        enable_gti: bool = False,
+        comment: Optional[str] = None,
+        snmp: Optional[dict[str, Any]] = None,
+        ntp_settings: Optional[NTPSettings] = None,
+        timezone: Optional[str] = None,
+        extra_opts: Optional[dict[str, Any]] = None,
+        lldp_profile: Optional[LLDPProfile] = None,
+        link_usage_profile: Optional[LinkUsageProfile] = None,
+        quic_enabled: bool = True,
+        discard_quic_if_cant_inspect: bool = True,
+        ssm_advanced_setting: Optional[list[SidewinderProxyAdvancedSettings]] = None,
+        scan_detection: Optional[ScanDetectionSetting] = None,
+        static_multicast_route: Optional[list[StaticMulticastRoute]] = None,
+        pim_settings: Optional[Any] = None,
+        web_authentication: Optional[WebAuthentication] = None,
+        nat64_settings: Optional[Any] = None,
+        **kw: Any,
+    ) -> FirewallCluster:
         """
         Create bulk is called by the `create` constructor when creating a cluster engine.
         This allows for multiple interfaces to be defined and passed in during element
@@ -1289,39 +1304,39 @@ class FirewallCluster(Engine):
     @classmethod
     def create(
         cls,
-        name,
-        cluster_virtual,
-        network_value,
-        macaddress,
-        interface_id,
-        nodes,
-        nodes_definition=[],
-        vlan_id=None,
-        cluster_mode="balancing",
-        backup_mgt=None,
-        primary_heartbeat=None,
-        log_server_ref=None,
-        domain_server_address=None,
-        location_ref=None,
-        zone_ref=None,
-        default_nat='automatic',
-        enable_antivirus=False,
-        enable_gti=False,
-        comment=None,
-        snmp=None,
-        ntp_settings=None,
-        timezone=None,
-        extra_opts=None,
-        lldp_profile=None,
-        link_usage_profile=None,
-        quic_enabled=True,
-        discard_quic_if_cant_inspect=True,
-        ssm_advanced_setting=None,
-        static_multicast_route=None,
-        pim_settings=None,
-        web_authentication=None,
-        **kw
-    ):
+        name: str,
+        cluster_virtual: str,
+        network_value: str,
+        macaddress: str,
+        interface_id: Any,
+        nodes: list[dict[str, Any]],
+        nodes_definition: list[Any] = [],
+        vlan_id: Optional[str] = None,
+        cluster_mode: str = "balancing",
+        backup_mgt: Optional[Any] = None,
+        primary_heartbeat: Optional[Any] = None,
+        log_server_ref: Optional[str] = None,
+        domain_server_address: Optional[list[str]] = None,
+        location_ref: Optional[str] = None,
+        zone_ref: Optional[str] = None,
+        default_nat: str = "automatic",
+        enable_antivirus: bool = False,
+        enable_gti: bool = False,
+        comment: Optional[str] = None,
+        snmp: Optional[dict[str, Any]] = None,
+        ntp_settings: Optional[NTPSettings] = None,
+        timezone: Optional[str] = None,
+        extra_opts: Optional[dict[str, Any]] = None,
+        lldp_profile: Optional[LLDPProfile] = None,
+        link_usage_profile: Optional[LinkUsageProfile] = None,
+        quic_enabled: bool = True,
+        discard_quic_if_cant_inspect: bool = True,
+        ssm_advanced_setting: Optional[list[SidewinderProxyAdvancedSettings]] = None,
+        static_multicast_route: Optional[list[StaticMulticastRoute]] = None,
+        pim_settings: Optional[Any] = None,
+        web_authentication: Optional[WebAuthentication] = None,
+        **kw: Any,
+    ) -> FirewallCluster:
         """
         Create a layer 3 firewall cluster with management interface and any number
         of nodes. If providing keyword arguments to create additional interfaces,
@@ -1543,7 +1558,7 @@ class FirewallCluster(Engine):
         )
 
     @property
-    def quic_enabled(self):
+    def quic_enabled(self) -> Optional[bool]:
         """
         include QUIC ports for web traffic
 
@@ -1552,19 +1567,19 @@ class FirewallCluster(Engine):
         return self.data.get("quic_enabled")
 
     @quic_enabled.setter
-    def quic_enabled(self, value):
+    def quic_enabled(self, value: Any) -> None:
         if min_smc_version("7.0"):
             self.data["quic_enabled"] = value
 
     @property
-    def saml_settings(self):
+    def saml_settings(self) -> list[SamlSettings]:
         """
         Represents the SAML settings.
         :rtype: list(SamlSettings):
         """
         return [SamlSettings(s) for s in self.data.get("saml_settings", [])]
 
-    def get_saml_settings_from_usage(self, usage):
+    def get_saml_settings_from_usage(self, usage: str) -> list[SamlSettings]:
         """
         Get all SAML settings by usage type.
 
@@ -1574,7 +1589,7 @@ class FirewallCluster(Engine):
         """
         return [s for s in self.saml_settings if s.usage == usage]
 
-    def configure_saml_on_engine(self, usage, saml_settings_entries):
+    def configure_saml_on_engine(self, usage: str, saml_settings_entries: Optional[list[Any]]) -> None:
         """
         Configure SAML settings on a FW.
        :param str usage: the usage type of SAML settings
@@ -1609,26 +1624,26 @@ class MasterEngine(Engine):
     @classmethod
     def create(
         cls,
-        name,
-        master_type,
-        mgmt_ip,
-        mgmt_network,
-        mgmt_interface=0,
-        log_server_ref=None,
-        zone_ref=None,
-        domain_server_address=None,
-        enable_gti=False,
-        enable_antivirus=False,
-        comment=None,
-        extra_opts=None,
-        lldp_profile=None,
-        cluster_mode="standby",
-        reverse_connection=False,
-        node_definition=None,
-        ssm_advanced_setting=None,
-        scan_detection=None,
-        **kw
-    ):
+        name: str,
+        master_type: str,
+        mgmt_ip: str,
+        mgmt_network: str,
+        mgmt_interface: int = 0,
+        log_server_ref: Optional[str] = None,
+        zone_ref: Optional[str] = None,
+        domain_server_address: Optional[list[str]] = None,
+        enable_gti: bool = False,
+        enable_antivirus: bool = False,
+        comment: Optional[str] = None,
+        extra_opts: Optional[dict[str, Any]] = None,
+        lldp_profile: Optional[LLDPProfile] = None,
+        cluster_mode: str = "standby",
+        reverse_connection: bool = False,
+        node_definition: Optional[dict[str, Any]] = None,
+        ssm_advanced_setting: Optional[list[SidewinderProxyAdvancedSettings]] = None,
+        scan_detection: Optional[ScanDetectionSetting] = None,
+        **kw: Any,
+    ) -> MasterEngine:
         """
         Create a Master Engine with management interface
 
@@ -1708,25 +1723,25 @@ class MasterEngineCluster(Engine):
     @classmethod
     def create(
         cls,
-        name,
-        master_type,
-        macaddress,
-        nodes,
-        nodes_definition=None,
-        mgmt_interface=0,
-        log_server_ref=None,
-        domain_server_address=None,
-        enable_gti=False,
-        enable_antivirus=False,
-        comment=None,
-        extra_opts=None,
-        lldp_profile=None,
-        cluster_mode="standby",
-        reverse_connection=False,
-        ssm_advanced_setting=None,
-        scan_detection=None,
-        **kw
-    ):
+        name: str,
+        master_type: str,
+        macaddress: str,
+        nodes: list[dict[str, Any]],
+        nodes_definition: Optional[list[Any]] = None,
+        mgmt_interface: int = 0,
+        log_server_ref: Optional[str] = None,
+        domain_server_address: Optional[list[str]] = None,
+        enable_gti: bool = False,
+        enable_antivirus: bool = False,
+        comment: Optional[str] = None,
+        extra_opts: Optional[dict[str, Any]] = None,
+        lldp_profile: Optional[LLDPProfile] = None,
+        cluster_mode: str = "standby",
+        reverse_connection: bool = False,
+        ssm_advanced_setting: Optional[list[SidewinderProxyAdvancedSettings]] = None,
+        scan_detection: Optional[ScanDetectionSetting] = None,
+        **kw: Any,
+    ) -> MasterEngineCluster:
         """
         Create Master Engine Cluster
 
@@ -1804,7 +1819,7 @@ class MasterEngineCluster(Engine):
             raise CreateEngineFailed(e)
 
 
-def add_snmp(data, interfaces):
+def add_snmp(data: list[Any], interfaces: Any) -> list[dict[str, Any]]:
     """
     Format data for adding SNMP to an engine.
 

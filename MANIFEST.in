@@ -1,1 +1,2 @@
 include README.rst HISTORY.rst
+include smc/py.typed

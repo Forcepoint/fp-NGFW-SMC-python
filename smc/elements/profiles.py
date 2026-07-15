@@ -50,6 +50,10 @@ Specify a DNS server to handle specific domains::
     [{u'dns_server_addresses': u'172.18.1.20', u'domain_name': u'myfoo.com'}]
 
 """
+from __future__ import annotations
+
+from typing import Any, Optional, Union, Iterator
+
 from smc.base.model import Element, ElementCreator
 from smc.api.exceptions import ElementNotFound, UnsupportedAttribute, UnsupportedSMCVersion, \
     UnsupportedEngineFeature
@@ -66,10 +70,10 @@ class DNSRule(object):
 
     __slots__ = "profile"
 
-    def __init__(self, profile):
+    def __init__(self, profile: Any) -> None:
         self.profile = profile
 
-    def add(self, instance, answers):
+    def add(self, instance: Any, answers: Any) -> Any:
         key, left, right = instance._attr
         json = [dict(zip([left, right], d)) for d in answers]
         try:
@@ -79,7 +83,7 @@ class DNSRule(object):
             j = {"name": self.profile.name, key: json}
             return ElementCreator(self.profile.__class__, j)
 
-    def all(self):
+    def all(self) -> list[Any]:
         """
         Return all entries
 
@@ -97,7 +101,7 @@ class FixedDomainAnswer(DNSRule):
 
     _attr = ("fixed_domain_answer", "domain_name", "translated_domain_name")
 
-    def add(self, answers):
+    def add(self, answers: Any) -> None:
         """
         Add a fixed domain answer. This should be a list of
         two-tuples, the first entry is the domain name, and
@@ -127,7 +131,7 @@ class HostnameMapping(DNSRule):
 
     _attr = ("hostname_mapping", "hostnames", "ipaddress")
 
-    def add(self, answers):
+    def add(self, answers: Any) -> None:
         """
         Map specific hostname to specified IP address. Provide a list
         of two-tuples. The first entry is the hostname/s to translate
@@ -154,7 +158,7 @@ class DomainSpecificDNSServer(DNSRule):
 
     _attr = ("domain_specific_dns_server", "domain_name", "dns_server_addresses")
 
-    def add(self, answers):
+    def add(self, answers: Any) -> None:
         """
         Relay specific domains to a specified DNS server. Provide
         a list of two-tuple with first entry the domain name to relay
@@ -181,7 +185,7 @@ class DNSAnswerTranslation(DNSRule):
 
     _attr = ("dns_answer_translation", "original_ipaddress", "translated_ipaddress")
 
-    def add(self, answers):
+    def add(self, answers: Any) -> None:
         """
         Takes an IPv4 address and translates to a specified IPv4 value.
         Provide a list of two-tuple with the first entry providing the
@@ -208,7 +212,7 @@ class DNSRelayProfile(Element):
     typeof = "dns_relay_profile"
 
     @property
-    def fixed_domain_answer(self):
+    def fixed_domain_answer(self) -> FixedDomainAnswer:
         """
         Add a fixed domain answer entry.
 
@@ -217,7 +221,7 @@ class DNSRelayProfile(Element):
         return FixedDomainAnswer(self)
 
     @property
-    def hostname_mapping(self):
+    def hostname_mapping(self) -> HostnameMapping:
         """
         Add a hostname to IP mapping
 
@@ -226,7 +230,7 @@ class DNSRelayProfile(Element):
         return HostnameMapping(self)
 
     @property
-    def domain_specific_dns_server(self):
+    def domain_specific_dns_server(self) -> DomainSpecificDNSServer:
         """
         Add domain to DNS server mapping
 
@@ -235,7 +239,7 @@ class DNSRelayProfile(Element):
         return DomainSpecificDNSServer(self)
 
     @property
-    def dns_answer_translation(self):
+    def dns_answer_translation(self) -> DNSAnswerTranslation:
         """
         Add a DNS answer translation
 
@@ -254,18 +258,18 @@ class SNMPAgent(Element):
     @classmethod
     def create(
             cls,
-            name,
-            snmp_users=[],
-            trap_destinations=[],
-            snmp_monitoring_contact=None,
-            snmp_monitoring_listening_port=161,
-            snmp_version="v3",
-            monitoring_user_names=[],
-            trap_user_name=None,
-            hardware_alerts=False,
-            go_offline=False,
-            comment=None,
-    ):
+            name: str,
+            snmp_users: list = [],
+            trap_destinations: list = [],
+            snmp_monitoring_contact: Optional[str] = None,
+            snmp_monitoring_listening_port: int = 161,
+            snmp_version: str = "v3",
+            monitoring_user_names: list = [],
+            trap_user_name: Optional[str] = None,
+            hardware_alerts: bool = False,
+            go_offline: bool = False,
+            comment: Optional[str] = None,
+    ) -> SNMPAgent:
         json = {
             "boot": False,
             "go_offline": go_offline,
@@ -288,7 +292,7 @@ class SNMPAgent(Element):
         return ElementCreator(cls, json)
 
 
-def _snmp_authentication_protocol_compatible_check(snmp_users):
+def _snmp_authentication_protocol_compatible_check(snmp_users: Any) -> None:
     """
     Check if the capabilities are compatible with the current SMC version.
     will raise UnsupportedEngineFeature if not compatible.
@@ -307,7 +311,8 @@ class SandboxService(Element):
     typeof = "sandbox_service"
 
     @classmethod
-    def create(cls, name, sandbox_data_center, portal_username=None, comment=None):
+    def create(cls, name: str, sandbox_data_center: Any, portal_username: Optional[str] = None,
+               comment: Optional[str] = None) -> SandboxService:
         """
         Create a Sandbox Service element
         :param str name: name of Sandbox Service, if custom must be the same as data center
@@ -327,7 +332,7 @@ class SandboxService(Element):
         return ElementCreator(cls, json)
 
     @property
-    def sandbox_license_key(self):
+    def sandbox_license_key(self) -> Optional[str]:
         """
         Sandbox License Key.
         :rtype: str
@@ -335,7 +340,7 @@ class SandboxService(Element):
         return self.data.get("sandbox_license_key")
 
     @property
-    def sandbox_license_token(self):
+    def sandbox_license_token(self) -> Optional[str]:
         """
         License Token.
         :rtype: str
@@ -343,7 +348,7 @@ class SandboxService(Element):
         return self.data.get("sandbox_license_token")
 
     @property
-    def sandbox_data_center(self):
+    def sandbox_data_center(self) -> Any:
         """
         Sandbox Data Center
         :rtype: SandboxDataCenter
@@ -368,8 +373,9 @@ class SandboxDataCenter(Element):
     """
 
     @classmethod
-    def create(cls, name, hostname, tls_profile, sandbox_type=None, api_key=None, api_url=None,
-               portal_url=None, comment=None):
+    def create(cls, name: str, hostname: str, tls_profile: Any, sandbox_type: Optional[str] = None,
+               api_key: Optional[str] = None, api_url: Optional[str] = None,
+               portal_url: Optional[str] = None, comment: Optional[str] = None) -> SandboxDataCenter:
         """
         Create a Sandbox Datacenter element
         """
@@ -391,27 +397,27 @@ class SandboxDataCenter(Element):
             raise UnsupportedSMCVersion("Sandbox Datacenter only permitted in smc version > 7.1")
 
     @property
-    def hostname(self):
+    def hostname(self) -> Optional[str]:
         """Sandbox Service Hostname"""
         return self.data.get("hostname")
 
     @property
-    def server_url(self):
+    def server_url(self) -> Optional[str]:
         """Sandbox Data Center Server URL"""
         return self.data.get("server_url")
 
     @property
-    def portal_url(self):
+    def portal_url(self) -> Optional[str]:
         """Sandbox Data Center Portal URL"""
         return self.data.get("portal_url")
 
     @property
-    def api_url(self):
+    def api_url(self) -> Optional[str]:
         """Sandbox Data Center API URL."""
         return self.data.get("api_url")
 
     @property
-    def sandbox_type(self):
+    def sandbox_type(self) -> Optional[str]:
         """
         Sandbox Data Center Type.
             1. forcepoint_sandbox
@@ -423,12 +429,12 @@ class SandboxDataCenter(Element):
         return self.data.get("sandbox_type")
 
     @property
-    def tls_profile(self):
+    def tls_profile(self) -> Any:
         """Represents a TLS Profile."""
         return self.from_href(self.data.get("tls_profile"))
 
     @property
-    def api_key(self):
+    def api_key(self) -> Optional[str]:
         """Sandbox Data Center API Key"""
         if is_smc_version_less_than("7.1"):
             raise UnsupportedAttribute("Unsupported Attribute, sandbox_type is available in "
@@ -445,20 +451,20 @@ class UserIDService(Element, MultiContactServer):
     @classmethod
     def create(
             cls,
-            name,
-            address=None,
-            ipv6_address=None,
-            cache_expiration=300,
-            connect_timeout=10,
-            monitored_user_domains=None,
-            tls_field="DNSName",
-            tls_value=None,
-            tls_profile=None,
-            port=5000,
-            address_list=None,
-            third_party_monitoring=None,
-            comment=None
-    ):
+            name: str,
+            address: Optional[str] = None,
+            ipv6_address: Optional[str] = None,
+            cache_expiration: int = 300,
+            connect_timeout: int = 10,
+            monitored_user_domains: Optional[list] = None,
+            tls_field: str = "DNSName",
+            tls_value: Optional[str] = None,
+            tls_profile: Optional[Any] = None,
+            port: int = 5000,
+            address_list: Optional[list] = None,
+            third_party_monitoring: Optional[Any] = None,
+            comment: Optional[str] = None
+    ) -> UserIDService:
         """
         :param str name: Name of user id service.
         :param str address: IP addresses to contact the User ID Service.
@@ -508,19 +514,19 @@ class UserIDService(Element, MultiContactServer):
         return ElementCreator(cls, json)
 
     @property
-    def tls_profile(self):
+    def tls_profile(self) -> Any:
         """Represents a TLS Profile."""
         return self.from_href(self.data.get("tls_profile"))
 
     @property
-    def tls_identity(self):
+    def tls_identity(self) -> Any:
         """
         Field/value pair used to insure server identity when connecting to User ID service using TLS
         """
         return self.data.get("tls_identity")
 
     @property
-    def monitored_user_domains(self):
+    def monitored_user_domains(self) -> Any:
         """
         Specific user domains to check. If not defined, it uses all known user domains by User ID
         service.
@@ -528,28 +534,28 @@ class UserIDService(Element, MultiContactServer):
         return self.data.get("monitored_user_domains")
 
     @property
-    def cache_expiration(self):
+    def cache_expiration(self) -> Optional[int]:
         """
         The time in seconds for the cache expiration on the engine.
         """
         return self.data.get("cache_expiration")
 
     @property
-    def connect_timeout(self):
+    def connect_timeout(self) -> Optional[int]:
         """
         The time in seconds for the connection from the engine to time out.
         """
         return self.data.get("connect_timeout")
 
     @property
-    def port(self):
+    def port(self) -> Optional[int]:
         """
         The port on which the User ID Service communicates with the Firewall.
         """
         return self.data.get("port")
 
     @property
-    def list(self):
+    def list(self) -> Any:
         """
         List of additional IP addresses to contact the User ID Service.
         """
@@ -561,19 +567,19 @@ class UserResponseEntry(NestedDict):
     This represents an entry in a User Response.
     """
 
-    def __init__(self, data):
+    def __init__(self, data: Any) -> None:
         super(UserResponseEntry, self).__init__(data)
 
     @classmethod
     def create(
             cls,
-            reason=None,
-            response_type=None,
-            user_response_text=None,
-            user_response_message=None,
-            user_response_title=None,
-            redirect=None
-    ):
+            reason: Optional[str] = None,
+            response_type: Optional[str] = None,
+            user_response_text: Optional[str] = None,
+            user_response_message: Optional[str] = None,
+            user_response_title: Optional[str] = None,
+            redirect: Optional[str] = None
+    ) -> UserResponseEntry:
         """
         :param str reason: Reason for sending a response one from given below.
             1. conn_blacklisted
@@ -582,6 +588,8 @@ class UserResponseEntry(NestedDict):
             4. url_not_allowed
             5. virus_found
             6. blocked_by_dlp
+            7. browser_session_authentication (supported by SMC >= 7.5)
+            8. browser_session_confirm_response (supported by SMC >= 7.5)
         :param str response_type: Type of response.
             1. tcp_close
             2. response_page
@@ -593,6 +601,10 @@ class UserResponseEntry(NestedDict):
         :param str redirect: For URL redirect response: automatic or manual redirection.
         :return UserResponseEntry
         """
+        if is_smc_version_less_than("7.5"):
+            if reason == "browser_session_authentication" or reason == "browser_session_confirm_response":
+                raise UnsupportedEngineFeature(
+                    f"UserResponseEntry '{reason}' is not supported in smc version lower than 7.5")
         json = {
             "reason": reason,
             "type": response_type,
@@ -614,10 +626,10 @@ class UserResponse(Element):
     @classmethod
     def create(
             cls,
-            name,
-            user_response_entry=None,
-            comment=None
-    ):
+            name: str,
+            user_response_entry: Optional[list] = None,
+            comment: Optional[str] = None
+    ) -> UserResponse:
         """
         :param str name: Name of user id service.
         :param list(UserResponseEntry) user_response_entry: This represents an entry in a User
@@ -633,7 +645,7 @@ class UserResponse(Element):
         return ElementCreator(cls, json)
 
     @property
-    def user_response_entry(self):
+    def user_response_entry(self) -> list[Any]:
         """
         This represents an entry in a User Response.
         :rtype: list(UserResponseEntry)
@@ -658,11 +670,11 @@ class CustomPropertiesProfile(Element):
     @classmethod
     def create(
             cls,
-            name,
-            custom_property=None,
-            property_type="custom",
-            comment=None
-    ):
+            name: str,
+            custom_property: Optional[list] = None,
+            property_type: str = "custom",
+            comment: Optional[str] = None
+    ) -> CustomPropertiesProfile:
         """
         :param str name: Name of custom property profile.
         :param list(custom_property) custom_property: List of properties.
@@ -685,14 +697,14 @@ class CustomPropertiesProfile(Element):
         return ElementCreator(cls, json)
 
     @property
-    def custom_script(self):
+    def custom_script(self) -> CustomScript:
         """
         Instance of custom script.
         """
         return CustomScript(self)
 
     @property
-    def custom_property(self):
+    def custom_property(self) -> list[Any]:
         """
         Return list custom properties.
         :rtype: dict
@@ -702,14 +714,14 @@ class CustomPropertiesProfile(Element):
 
 class CustomScript(object):
 
-    def __init__(self, custom_script_profile):
+    def __init__(self, custom_script_profile: Any) -> None:
         """
         This defines custom script operation.
         :param CustomPropertiesProfile custom_script_profile: Instance of CustomPropertiesProfile.
         """
         self.custom_script_profile = custom_script_profile
 
-    def _import(self, custom_script_file_name):
+    def _import(self, custom_script_file_name: str) -> None:
         """
         Import a specified custom script for the specified custom properties profile element.
         :param str script_name: The script name to be used to upload the script to the engine file
@@ -724,7 +736,7 @@ class CustomScript(object):
                 raw_result=True,
             )
 
-    def delete(self):
+    def delete(self) -> None:
         """
         Deletes custom script from custom properties profile.
         """
@@ -733,7 +745,7 @@ class CustomScript(object):
             resource="custom_script"
         )
 
-    def export(self, file_name):
+    def export(self, file_name: str) -> None:
         """
         Export compressed file of custom script.
         :param str file_name: Custom script with file name in custom properties profile.

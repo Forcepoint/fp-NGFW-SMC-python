@@ -96,7 +96,7 @@ def main():
                                        mgmt_network="192.168.10.0/24")
         logging.info("initial contact and license..")
         for node in engine.nodes:
-            node.initial_contact()
+            node.initial_contact(root_password="T3mpP&d8x)T")
             node.bind_license()
 
         #        time.sleep(5)

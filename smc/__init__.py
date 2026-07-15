@@ -9,6 +9,9 @@
 #  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #  License for the specific language governing permissions and limitations
 #  under the License.
+from __future__ import annotations
+
+from typing import Any, Optional, Union, Iterator
 
 import logging
 
@@ -21,7 +24,7 @@ session_name = None
 manager = SessionManager.create()
 session = manager.get_default_session()
 
-def get_session_by_user(user):
+def get_session_by_user(user: Optional[str]) -> Any:
     """
     Get a session specifically by it's name
     or new Session if not found in manager
@@ -40,7 +43,7 @@ try:  # Python 2.7+
 except ImportError:
 
     class NullHandler(logging.Handler):
-        def emit(self, record):
+        def emit(self, record: Any) -> None:
             pass
 
 
@@ -50,7 +53,7 @@ logging.getLogger(__name__).addHandler(NullHandler())
 LOG_FORMAT = "%(asctime)s - %(name)s - [%(levelname)s] - %(message)s"
 
 
-def set_stream_logger(log_level=logging.DEBUG, format_string=None, logger_name="smc"):
+def set_stream_logger(log_level: int = logging.DEBUG, format_string: Optional[str] = None, logger_name: str = "smc") -> None:
     """
     Stream logger convenience function to log to console
 
@@ -75,7 +78,7 @@ def set_stream_logger(log_level=logging.DEBUG, format_string=None, logger_name="
     logger.addHandler(ch)
 
 
-def set_file_logger(path, log_level=logging.DEBUG, format_string=None, logger_name="smc"):
+def set_file_logger(path: str, log_level: int = logging.DEBUG, format_string: Optional[str] = None, logger_name: str = "smc") -> None:
     """
     Convenience function to quickly configure any level of logging
     to a file.
@@ -103,7 +106,7 @@ def set_file_logger(path, log_level=logging.DEBUG, format_string=None, logger_na
     log.addHandler(ch)
 
 
-def _import_registry():
+def _import_registry() -> None:
     # Load the modules to register needed classes
     # This should be extracted and made dynamic
     for pkg in (

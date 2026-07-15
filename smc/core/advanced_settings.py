@@ -14,6 +14,10 @@
 Engine advanced setting functionality such as LogModeration. These are common settings that are
 located under the SMC Advanced Settings.
 """
+from __future__ import annotations
+
+from typing import Any, Optional, Union, Iterator
+
 from smc.base.structs import NestedDict
 
 
@@ -29,11 +33,11 @@ class LogModeration(NestedDict):
     entries are once more logged and displayed separately.
     """
 
-    def __init__(self, engine):
+    def __init__(self, engine: Any) -> None:
         ars = {'log_moderation': engine.data.get("log_moderation", {})}
         super(LogModeration, self).__init__(data=ars)
 
-    def add(self, burst=None, log_event=None, rate=None):
+    def add(self, burst: Optional[str] = None, log_event: Optional[int] = None, rate: Optional[int] = None) -> None:
         """
         Add log_moderation setting entry on interface or engine.
         :param str burst: The maximum number of matching entries in a single burst. The default
@@ -50,7 +54,7 @@ class LogModeration(NestedDict):
         self.data.get('log_moderation').append(
             {'burst': burst, 'log_event': log_event, 'rate': rate})
 
-    def get(self, log_event):
+    def get(self, log_event: Optional[int]) -> Optional[dict]:
         """
         Return log_moderation entry with specific log_event
         :param str log_event: Log Moderation Event Type:
@@ -63,7 +67,7 @@ class LogModeration(NestedDict):
                 return log_setting
         return None
 
-    def remove(self, log_event):
+    def remove(self, log_event: Optional[int]) -> None:
         """
         Remove the specific log_moderation setting.
         :param str log_event: Log Moderation Event Type:
@@ -75,7 +79,7 @@ class LogModeration(NestedDict):
                 self.data['log_moderation'].remove(log_setting)
                 break
 
-    def contains(self, log_event):
+    def contains(self, log_event: Optional[int]) -> bool:
         """
         Check if specific log_moderation settings are present.
         :param int log_event: Log Moderation Event Type:

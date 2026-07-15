@@ -27,12 +27,15 @@ SMC entry point.
 
 See :ref:`collection-reference-label` for examples on search capabilities.
 """
+from __future__ import annotations
+
+from typing import Any, Optional, Union, Iterator
 import re
 import copy
 from itertools import islice
 import smc.base.model
 from smc.base.decorators import cached_property, classproperty
-from smc.api.exceptions import FetchElementFailed, InvalidSearchFilter
+from smc.api.exceptions import FetchElementFailed, InvalidSearchFilter, PolicyCommandFailed
 from smc.api.common import entry_point
 
 
@@ -78,19 +81,19 @@ class SubElementCollection(object):
     :raises FetchElementFailed: If the resource could not be retrieved
     """
 
-    def __init__(self, href, cls):
+    def __init__(self, href: str, cls: type) -> None:
         self.href = href
         self.cls = cls
         self._result_cache = None
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Any]:
         self._fetch_all()
         return iter(self._result_cache)
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: int) -> Any:
         return self._result_cache[key]
 
-    def _load_from_engine(self, engine, reference):
+    def _load_from_engine(self, engine: Any, reference: str) -> None:
         resources = []
         for r in engine.data.get(reference, []):
             for _, data in r.items():
@@ -101,21 +104,21 @@ class SubElementCollection(object):
                 resources.append(res)
         self._result_cache = resources
 
-    def _fetch_all(self):
+    def _fetch_all(self) -> None:
         if self._result_cache is None:
             results = (
                 smc.base.model.prepared_request(FetchElementFailed, href=self.href).read().json
             )
             self._result_cache = [self.cls(**r) for r in results]
 
-    def __len__(self):
+    def __len__(self) -> int:
         self._fetch_all()
         return len(self._result_cache)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "{}Collection(items: {})".format(self.cls.__name__, len(self))
 
-    def count(self):
+    def count(self) -> int:
         """
         Return the number of results in this collection
 
@@ -123,7 +126,7 @@ class SubElementCollection(object):
         """
         return len(self)
 
-    def get(self, index):
+    def get(self, index: int) -> Optional[Any]:
         """
         Get the element by index. If index is out of bounds for
         the internal list, None is returned. Indexes cannot be
@@ -135,7 +138,7 @@ class SubElementCollection(object):
         if self and (index <= len(self) - 1):
             return self._result_cache[index]
 
-    def get_exact(self, value):
+    def get_exact(self, value: str) -> Optional[Any]:
         """
         Get an element using an exact match based on the elements meta
         `name` field. The SMC is case sensitive so the name will need to
@@ -151,7 +154,7 @@ class SubElementCollection(object):
             if element.name == value:
                 return element
 
-    def get_contains(self, value, case_sensitive=True):
+    def get_contains(self, value: str, case_sensitive: bool = True) -> Optional[Any]:
         """
         A partial match on the name field. Does an `in` comparsion to
         elements by the meta `name` field. Sub elements created by SMC
@@ -173,7 +176,7 @@ class SubElementCollection(object):
             elif value in element.name:
                 return element
 
-    def get_all_contains(self, value, case_sensitive=True):
+    def get_all_contains(self, value: str, case_sensitive: bool = True) -> list[Any]:
         """
         A partial match on the name field. Does an `in` comparsion to
         elements by the meta `name` field.
@@ -196,7 +199,7 @@ class SubElementCollection(object):
                 elements.append(element)
         return elements
 
-    def all(self):
+    def all(self) -> Iterator[Any]:
         """
         Generator returning collection for sub element types.
         Return full contents as list or iterate through each.
@@ -205,6 +208,31 @@ class SubElementCollection(object):
         :rtype: list(SubElement)
         """
         return iter(self)
+
+    def re_rank(self, ordered_tags: list) -> None:
+        """
+        Re-rank elements in this collection according to the supplied tag order.
+
+        Calls the ``re_rank`` POST endpoint for this sub-element collection.
+        Every element tag must appear exactly once and the list must cover all
+        elements in the collection.
+
+        Example usage::
+
+            policy = FirewallPolicy('my_policy')
+            rules = list(policy.fw_ipv4_access_rules.all())
+            tags = [r.tag for r in rules]
+            policy.fw_ipv4_access_rules.re_rank(list(reversed(tags)))
+
+        :param list ordered_tags: ordered list of rule tag strings
+        :raises PolicyCommandFailed: if the payload is invalid (empty, duplicate
+            tag, or incomplete coverage) or if the policy is locked
+        """
+        smc.base.model.prepared_request(
+            PolicyCommandFailed,
+            href=self.href + "/re_rank",
+            json={"values": ordered_tags},
+        ).create()
 
 
 class CreateCollection(SubElementCollection):
@@ -254,7 +282,7 @@ class CreateCollection(SubElementCollection):
         engine.vpn.sites.create('mynewsite')
     """
 
-    def create(self, *args, **kwargs):
+    def create(self, *args: Any, **kwargs: Any) -> Any:
         """
         The create function from the sub element is proxied by
         this collections class to provide the iterable functionality
@@ -264,7 +292,7 @@ class CreateCollection(SubElementCollection):
         pass
 
 
-def sub_collection(href, cls):
+def sub_collection(href: str, cls: type) -> SubElementCollection:
     """
     Helper method to generate a SubElementCollection dynamically
     using the SubElement constructor.
@@ -272,7 +300,7 @@ def sub_collection(href, cls):
     return type(cls.__name__, (CreateCollection,), {})(href, cls)
 
 
-def create_collection(href, cls):
+def create_collection(href: str, cls: type) -> SubElementCollection:
     """
     This collection type inserts a ``create`` method into the collection.
     This will proxy to the sub elements create method while restricting
@@ -290,7 +318,7 @@ def create_collection(href, cls):
     return type(cls.__name__, (SubElementCollection,), {"create": meth})(href, cls)
 
 
-def rule_collection(href, cls):
+def rule_collection(href: str, cls: type) -> SubElementCollection:
     """
     Rule collections insert a ``create`` ``create_insert_point`` and ``create_rule_section`` method
     into the collection. This collection type is returned when accessing rules
@@ -319,7 +347,7 @@ def rule_collection(href, cls):
     )(href, cls)
 
 
-def _strip_metachars(val):
+def _strip_metachars(val: Any) -> Any:
     """
     When a filter uses a / or - in the search, only the elements
     name and comment field is searched. This can cause issues if
@@ -406,11 +434,11 @@ class ElementCollection(object):
         results or iterating.
     """
 
-    def __init__(self, **params):
+    def __init__(self, **params: Any) -> None:
         self._params = params
         self._iexact = params.pop("iexact", None)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Any]:
         limit = self._params.pop("limit", None)
         count = 0
 
@@ -428,7 +456,7 @@ class ElementCollection(object):
                 return
 
     @cached_property
-    def _list(self):
+    def _list(self) -> list[Any]:
         try:
             params = {k: self._params[k] for k in self._params if "href" not in k}
             _list = (
@@ -445,15 +473,15 @@ class ElementCollection(object):
             _list = list()
         return _list
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return bool(self._list)
 
     __nonzero__ = __bool__
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._list)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         href = self._params.get('href')
         if href is not None:
             query = ['{}={}'.format(q, v) for q, v in self._params.items() if q != "href"]
@@ -464,7 +492,7 @@ class ElementCollection(object):
             return "{}(GET /elements?{})".format(self.__class__.__name__,
                                                  "&".join(query) if query else "")
 
-    def _clone(self, **kwargs):
+    def _clone(self, **kwargs: Any) -> ElementCollection:
         """
         Create a clone of this collection. The only param in the
         initial collection is the filter context. Each chainable
@@ -480,7 +508,7 @@ class ElementCollection(object):
         clone = self.__class__(**params)
         return clone
 
-    def limit(self, count):
+    def limit(self, count: int) -> ElementCollection:
         """
         Limit provides the ability to limit the number of results returned
         from the collection.
@@ -490,7 +518,7 @@ class ElementCollection(object):
         """
         return self._clone(limit=count)
 
-    def all(self):
+    def all(self) -> ElementCollection:
         """
         Retrieve all elements based on element type. When using the ``all``
         option, any filters are automatically removed.
@@ -499,7 +527,7 @@ class ElementCollection(object):
         """
         return self._clone()
 
-    def filter(self, *filter, **kw):  # @ReservedAssignment
+    def filter(self, *filter: Any, **kw: Any) -> ElementCollection:  # @ReservedAssignment
         """
         Filter results for specific element type.
 
@@ -553,7 +581,7 @@ class ElementCollection(object):
             filter=_filter, iexact=iexact, exact_match=exact_match, case_sensitive=case_sensitive
         )
 
-    def batch(self, num):
+    def batch(self, num: int) -> Iterator[list[Any]]:
         """
         Iterator returning results in batches. When making more general queries
         that might have larger results, specify a batch result that should be
@@ -570,7 +598,7 @@ class ElementCollection(object):
                 return
             yield chunk
 
-    def first(self):
+    def first(self) -> Optional[Any]:
         """
         Returns the first object matched or None if there is no
         matching object.
@@ -601,7 +629,7 @@ class ElementCollection(object):
                 if result:
                     return result[0]
 
-    def last(self):
+    def last(self) -> Optional[Any]:
         """
         Returns the last object matched or None if there is no
         matching object.
@@ -624,7 +652,7 @@ class ElementCollection(object):
                 if result:
                     return result[-1]
 
-    def exists(self):
+    def exists(self) -> bool:
         """
         Returns True if the query contains any results, and False
         if not. This is handy for checking existence without having
@@ -641,7 +669,7 @@ class ElementCollection(object):
         """
         return bool(self)
 
-    def count(self):
+    def count(self) -> int:
         """
         Return number of results
 
@@ -649,7 +677,7 @@ class ElementCollection(object):
         """
         return len(self)
 
-    def between(self, start, end):
+    def between(self, start: Union[str, int], end: Union[str, int]) -> ElementCollection:
         """
         Specify a batch of records to return. Start and end correlate to
         which records to return from a batch. Convenience method to capture
@@ -668,7 +696,7 @@ class ElementCollection(object):
         """
         return self._clone(start=start, end=end)
 
-    def flatten(self):
+    def flatten(self) -> ElementCollection:
         return self._clone(flatten=True)
 
 
@@ -702,10 +730,10 @@ class CollectionManager(object):
     :return: :class:`.CollectionManager`
     """
 
-    def __init__(self, resource):
+    def __init__(self, resource: Any) -> None:
         self._cls = resource  # Class type
 
-    def iterator(self, **kwargs):
+    def iterator(self, **kwargs: Any) -> ElementCollection:
         """
         Return an iterator from the collection manager. The iterator can
         be re-used to chain together filters, each chaining event will be
@@ -729,37 +757,37 @@ class CollectionManager(object):
         params.update(kwargs)
         return collection_cls(**params)
 
-    def first(self):
+    def first(self) -> Optional[Any]:
         return self.iterator().first()
 
     first.__doc__ = ElementCollection.first.__doc__
 
-    def batch(self, num):
+    def batch(self, num: int) -> Iterator[list[Any]]:
         return self.iterator().batch(num)
 
     batch.__doc__ = ElementCollection.batch.__doc__
 
-    def limit(self, count):
+    def limit(self, count: int) -> ElementCollection:
         return self.iterator(limit=count)
 
     limit.__doc__ = ElementCollection.limit.__doc__
 
-    def all(self):
+    def all(self) -> ElementCollection:
         return self.iterator()
 
     all.__doc__ = ElementCollection.all.__doc__
 
-    def between(self, start, end):
+    def between(self, start: Union[str, int], end: Union[str, int]) -> ElementCollection:
         return self.iterator(start=start, end=end)
 
     between.__doc__ = ElementCollection.between.__doc__
 
-    def flatten(self):
+    def flatten(self) -> ElementCollection:
         return self.iterator(flatten=True)
 
     flatten.__doc__ = ElementCollection.flatten.__doc__
 
-    def filter(self, *filter, **kw):  # @ReservedAssignment
+    def filter(self, *filter: Any, **kw: Any) -> ElementCollection:  # @ReservedAssignment
         iexact = None
         if filter:
             _filter = filter[0]
@@ -843,18 +871,18 @@ class Search(ElementCollection):
         to use ``filter`` and possibly ``batch`` to control the result set.
     """
 
-    def __init__(self, **params):
+    def __init__(self, **params: Any) -> None:
         super(Search, self).__init__(**params)
         self._resource = entry_point()
 
     @classproperty
-    def objects(self):
+    def objects(self) -> Search:
         """
         :rtype: Search
         """
         return self()
 
-    def entry_point(self, entry_point):
+    def entry_point(self, entry_point: str) -> Search:
         """
         Provide an entry point for element types to search.
 
@@ -868,7 +896,7 @@ class Search(ElementCollection):
             self._params.update(filter_context=entry_point)
             return self
 
-    def context_filter(self, context):
+    def context_filter(self, context: str) -> Search:
         """
         Provide a context filter to search.
 
@@ -881,7 +909,7 @@ class Search(ElementCollection):
             "Context filter %r was invalid. Available filters: %s" % (context, CONTEXTS)
         )
 
-    def unused(self):
+    def unused(self) -> Search:
         """
         Return unused user-created elements.
 
@@ -890,7 +918,7 @@ class Search(ElementCollection):
         self._params.update(href=self._resource.get("search_unused"))
         return self
 
-    def duplicates(self):
+    def duplicates(self) -> Search:
         """
         Return duplicate user-created elements.
 
@@ -900,7 +928,7 @@ class Search(ElementCollection):
         return self
 
     @staticmethod
-    def object_types():
+    def object_types() -> list[str]:
         """
         Show all available 'entry points' available for searching. An entry
         point defines a uri that provides unfiltered access to all elements

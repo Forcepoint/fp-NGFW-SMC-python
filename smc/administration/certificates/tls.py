@@ -108,6 +108,8 @@ the relevant engines::
 .. note:: It is possible to import and export certificates from the SMC, but it is not
     possible to export private keys.
 """
+from __future__ import annotations
+from typing import Any, Optional, Union, Iterator
 from smc.base.model import Element, ElementCreator
 from smc.administration.certificates.tls_common import (
     ImportExportCertificate,
@@ -138,18 +140,18 @@ class TLSProfile(Element):
     @classmethod
     def create(
         cls,
-        name,
-        tls_version,
-        use_only_subject_alt_name=False,
-        accept_wildcard=False,
-        check_revocation=True,
-        tls_cryptography_suites=None,
-        crl_delay=0,
-        ocsp_delay=0,
-        ignore_network_issues=False,
-        tls_trusted_ca_ref=None,
-        comment=None,
-    ):
+        name: str,
+        tls_version: str,
+        use_only_subject_alt_name: bool = False,
+        accept_wildcard: bool = False,
+        check_revocation: bool = True,
+        tls_cryptography_suites: Optional[Any] = None,
+        crl_delay: int = 0,
+        ocsp_delay: int = 0,
+        ignore_network_issues: bool = False,
+        tls_trusted_ca_ref: Optional[list] = None,
+        comment: Optional[str] = None,
+    ) -> TLSProfile:
         """
         Create a TLS Profile. By default the SMC will have a default NIST
         TLS Profile but it is also possible to create a custom profile to
@@ -217,7 +219,7 @@ class TLSIdentity(NestedDict):
 
     """
 
-    def __init__(self, tls_field, tls_value):
+    def __init__(self, tls_field: str, tls_value: str) -> None:
         data = {"tls_field": tls_field, "tls_value": tls_value}
         super(TLSIdentity, self).__init__(data=data)
 
@@ -232,7 +234,7 @@ class TLSCryptographySuite(Element):
     typeof = "tls_cryptography_suite_set"
 
     @staticmethod
-    def ciphers(from_suite=None):
+    def ciphers(from_suite: Optional[Any] = None) -> Any:
         """
         This is a helper method that will return all of the cipher
         strings used in a specified TLSCryptographySuite or returns
@@ -246,7 +248,7 @@ class TLSCryptographySuite(Element):
         return suite.data.get("tls_cryptography_suites")
 
     @classmethod
-    def create(cls, name, comment=None, **ciphers):
+    def create(cls, name: str, comment: Optional[str] = None, **ciphers: Any) -> TLSCryptographySuite:
         """
         Create a new TLSCryptographySuite. The ciphers kwargs should
         be a dict with the cipher suite string as key and boolean value
@@ -291,7 +293,7 @@ class TLSCertificateAuthority(ImportExportCertificate, Element):
     typeof = "tls_certificate_authority"
 
     @classmethod
-    def create(cls, name, certificate):
+    def create(cls, name: str, certificate: str) -> TLSCertificateAuthority:
         """
         Create a TLS CA. The certificate must be compatible with OpenSSL
         and be in PEM format. The certificate can be either a file with
@@ -341,7 +343,7 @@ class TLSServerCredential(
     typeof = "tls_server_credentials"
 
     @classmethod
-    def create(cls, name):
+    def create(cls, name: str) -> TLSServerCredential:
         """
         Create an empty certificate. This will only create the element
         in the SMC and will then require that you import the server
@@ -357,7 +359,7 @@ class TLSServerCredential(
         return ElementCreator(cls, json)
 
     @classmethod
-    def create_csr(cls, *args, **kwargs):
+    def create_csr(cls, *args: Any, **kwargs: Any) -> TLSServerCredential:
         """
         Create a certificate signing request.
 
@@ -385,13 +387,13 @@ class TLSServerCredential(
     @classmethod
     def _create_csr_66(
         cls,
-        name,
-        common_name,
-        public_key_algorithm="rsa",
-        signature_algorithm="rsa_sha_512",
-        key_length=4096,
-        **kw
-    ):
+        name: str,
+        common_name: str,
+        public_key_algorithm: str = "rsa",
+        signature_algorithm: str = "rsa_sha_512",
+        key_length: int = 4096,
+        **kw: Any,
+    ) -> TLSServerCredential:
         json = {
             "name": name,
             "info": common_name,
@@ -406,13 +408,13 @@ class TLSServerCredential(
     @classmethod
     def _create_csr_67(
         cls,
-        name,
-        common_name,
-        public_key_algorithm="rsa",
-        signature_algorithm="rsa_sha_512",
-        key_length=4096,
-        **kw
-    ):
+        name: str,
+        common_name: str,
+        public_key_algorithm: str = "rsa",
+        signature_algorithm: str = "rsa_sha_512",
+        key_length: int = 4096,
+        **kw: Any,
+    ) -> TLSServerCredential:
         json = {
             "name": name,
             "subject_name": common_name,
@@ -427,12 +429,12 @@ class TLSServerCredential(
     @classmethod
     def create_self_signed(
         cls,
-        name,
-        common_name,
-        public_key_algorithm="rsa",
-        signature_algorithm="rsa_sha_512",
-        key_length=4096,
-    ):
+        name: str,
+        common_name: str,
+        public_key_algorithm: str = "rsa",
+        signature_algorithm: str = "rsa_sha_512",
+        key_length: int = 4096,
+    ) -> TLSServerCredential:
         """
         Create a self signed certificate. This is a convenience method that
         first calls :meth:`~create_csr`, then calls :meth:`~self_sign` on the
@@ -470,7 +472,13 @@ class TLSServerCredential(
         return tls
 
     @classmethod
-    def import_signed(cls, name, certificate, private_key, intermediate=None):
+    def import_signed(
+        cls,
+        name: str,
+        certificate: str,
+        private_key: str,
+        intermediate: Optional[str] = None,
+    ) -> TLSServerCredential:
         """
         Import a signed certificate and private key to SMC, and optionally
         an intermediate certificate.
@@ -510,7 +518,12 @@ class TLSServerCredential(
         return tls
 
     @classmethod
-    def import_from_chain(cls, name, certificate_file, private_key=None):
+    def import_from_chain(
+        cls,
+        name: str,
+        certificate_file: str,
+        private_key: Optional[str] = None,
+    ) -> TLSServerCredential:
         """
         Import the server certificate, intermediate and optionally private
         key from a certificate chain file. The expected format of the chain
@@ -581,7 +594,7 @@ class TLSServerCredential(
             raise
         return tls
 
-    def self_sign(self):
+    def self_sign(self) -> Any:
         """
         Self sign the certificate in 'request' state.
 
@@ -590,7 +603,7 @@ class TLSServerCredential(
         return self.make_request(method="create", resource="self_sign")
 
     @property
-    def valid_from(self):
+    def valid_from(self) -> Any:
         """
         .. versionadded:: 0.6.0
             Requires SMC version >= 6.3.4
@@ -602,7 +615,7 @@ class TLSServerCredential(
         return datetime_from_ms(self.data.get("valid_from"))
 
     @property
-    def valid_to(self):
+    def valid_to(self) -> Any:
         """
         .. versionadded:: 0.6.0
             Requires SMC version >= 6.3.4
@@ -645,7 +658,7 @@ class ClientProtectionCA(ImportPrivateKey, ImportExportCertificate, Element):
     typeof = "tls_signing_certificate_authority"
 
     @classmethod
-    def import_signed(cls, name, certificate, private_key):
+    def import_signed(cls, name: str, certificate: str, private_key: str) -> ClientProtectionCA:
         """
         Import a signed certificate and private key as a client protection CA.
 
@@ -680,8 +693,13 @@ class ClientProtectionCA(ImportPrivateKey, ImportExportCertificate, Element):
 
     @classmethod
     def create_self_signed(
-        cls, name, public_key_algorithm="rsa", life_time=365, key_length=2048, **kwargs
-    ):
+        cls,
+        name: str,
+        public_key_algorithm: str = "rsa",
+        life_time: Union[str, int] = 365,
+        key_length: int = 2048,
+        **kwargs: Any,
+    ) -> ClientProtectionCA:
         """
         .. versionchanged:: 0.7.0
 

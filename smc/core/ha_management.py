@@ -36,6 +36,9 @@ To get the HA Diagnostics, do::
     msg:    Contact IP addresses: LocationHQ:127.0.0.1 HQ:127.0.0.1 Default:127.0.0.1
     ...
 """
+from __future__ import annotations
+
+from typing import Any, Optional, Union, Iterator
 import time
 
 from smc.api.common import fetch_entry_point, SMCRequest, _get_session
@@ -50,11 +53,11 @@ class HAInfo(NestedDict):
     """
     Represents HA Management information.
     """
-    def __init__(self, data):
+    def __init__(self, data: Any) -> None:
         super(HAInfo, self).__init__(data=data)
 
     @property
-    def connected_server(self):
+    def connected_server(self) -> Any:
         """
         :return: Connected server
         :rtype: Server
@@ -62,11 +65,11 @@ class HAInfo(NestedDict):
         return Element.from_href(self.data.get("connected_server"))
 
     @connected_server.setter
-    def connected_server(self, value):
+    def connected_server(self, value: Any) -> None:
         self.data.set("connected_server", value)
 
     @property
-    def active_server(self):
+    def active_server(self) -> Any:
         """
         :return: Active server
         :rtype: Server
@@ -74,11 +77,11 @@ class HAInfo(NestedDict):
         return Element.from_href(self.data.get("active_server"))
 
     @active_server.setter
-    def active_server(self, value):
+    def active_server(self, value: Any) -> None:
         self.data.set("active_server", value)
 
     @property
-    def standby_servers(self):
+    def standby_servers(self) -> list[Any]:
         """
         :return: list of Standby servers
         :rtype: list(Server)
@@ -88,10 +91,10 @@ class HAInfo(NestedDict):
         return []
 
     @standby_servers.setter
-    def standby_servers(self, values):
+    def standby_servers(self, values: Any) -> None:
         self.data.set("standby_servers", values)
 
-    def __str__(self):
+    def __str__(self) -> str:
         lst_stdby = ""
         if self.standby_servers is not None:
             for stdby in self.standby_servers:
@@ -104,11 +107,11 @@ class InfoBlock(NestedDict):
     """
     Represents diagnostic messages.
     """
-    def __init__(self, data):
+    def __init__(self, data: Any) -> None:
         super(InfoBlock, self).__init__(data=data)
 
     @property
-    def title(self):
+    def title(self) -> Optional[str]:
         """
         :return: title for the block
         :rtype: str
@@ -116,11 +119,11 @@ class InfoBlock(NestedDict):
         return self.data.get("title")
 
     @title.setter
-    def title(self, value):
+    def title(self, value: Any) -> None:
         self.data.set("title", value)
 
     @property
-    def message(self):
+    def message(self) -> Optional[Any]:
         """
         :return: messages for the block
         :rtype: list(str)
@@ -128,7 +131,7 @@ class InfoBlock(NestedDict):
         return self.data.get("message")
 
     @message.setter
-    def message(self, value):
+    def message(self, value: Any) -> None:
         self.data.set("message", value)
 
 
@@ -136,11 +139,11 @@ class HADiagnostic(NestedDict):
     """
     HA Availability diagnostic result.
     """
-    def __init__(self, data):
+    def __init__(self, data: Any) -> None:
         super(HADiagnostic, self).__init__(data=data)
 
     @property
-    def status(self):
+    def status(self) -> Optional[str]:
         """
         :return: status
         :rtype: str
@@ -148,11 +151,11 @@ class HADiagnostic(NestedDict):
         return self.data.get("status")
 
     @status.setter
-    def status(self, value):
+    def status(self, value: Any) -> None:
         self.data.set("status", value)
 
     @property
-    def execution_message(self):
+    def execution_message(self) -> Optional[Any]:
         """
         :return: execution messages
         :rtype: list(str)
@@ -160,11 +163,11 @@ class HADiagnostic(NestedDict):
         return self.data.get("execution_message")
 
     @execution_message.setter
-    def execution_message(self, value):
+    def execution_message(self, value: Any) -> None:
         self.data.set("execution_message", value)
 
     @property
-    def errors_warnings(self):
+    def errors_warnings(self) -> InfoBlock:
         """
         :return: error and warning messages
         :rtype: list(str)
@@ -172,11 +175,11 @@ class HADiagnostic(NestedDict):
         return InfoBlock(self.data.get("errors_warnings"))
 
     @errors_warnings.setter
-    def errors_warnings(self, value):
+    def errors_warnings(self, value: Any) -> None:
         self.data.set("errors_warnings", InfoBlock(value))
 
     @property
-    def durations(self):
+    def durations(self) -> InfoBlock:
         """
         :return: diagnostic messages
         :rtype: InfoBlock
@@ -184,11 +187,11 @@ class HADiagnostic(NestedDict):
         return InfoBlock(self.data.get("durations"))
 
     @durations.setter
-    def durations(self, value):
+    def durations(self, value: Any) -> None:
         self.data.set("durations", InfoBlock(value))
 
     @property
-    def message(self):
+    def message(self) -> list[Any]:
         """
         :return: messages
         :rtype: list(InfoBlock)
@@ -196,7 +199,7 @@ class HADiagnostic(NestedDict):
         return [InfoBlock(message) for message in self.data.get("message")]
 
     @message.setter
-    def message(self, value):
+    def message(self, value: Any) -> None:
         self.data.set("message", [InfoBlock(message) for message in value])
 
 
@@ -205,21 +208,22 @@ class HAManagement(object):
     High level Class to administrate Management Server High availability.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.entry = fetch_entry_point("ha")
 
     @staticmethod
-    def check_status(response):
+    def check_status(response: Any, valid_status_codes: Any = (200,)) -> None:
         """
         Check the response status code and raise HaCommandException.
         :param Response response: API Response
-        :raise: HaCommandException: if status code is not 200
+        :param valid_status_codes: status codes considered successful (default: 200 only).
+        :raise: HaCommandException: if status code is not one of valid_status_codes
         """
-        if response.status_code != 200:
+        if response.status_code not in valid_status_codes:
             raise HaCommandException(response)
 
     @staticmethod
-    def check_result(smc_result):
+    def check_result(smc_result: Any) -> None:
         """
         Check the smc_result content and raise HaRequestException if there is no JSON content.
         :param SMCResult raw result of the SMC API request
@@ -228,14 +232,14 @@ class HAManagement(object):
         if smc_result.json is None :
             raise HaRequestException(smc_result.msg)
 
-    def get_ha(self):
+    def get_ha(self) -> HAInfo:
         """
         :return: HA Information
         :rtype: HAInfo
         """
         return HAInfo(SMCRequest(href=self.entry).read().json)
 
-    def set_activation(self, timeout=600, verbose=False):
+    def set_activation(self, timeout: int = 600, verbose: bool = False) -> dict[str, Any]:
         """
         Launches the activation of the connected Management Server.
 
@@ -304,7 +308,7 @@ class HAManagement(object):
             "state": response_message
         }
 
-    def init_standby(self, server, timeout=600, verbose=False):
+    def init_standby(self, server: Any, timeout: int = 600, verbose: bool = False) -> dict[str, Any]:
         """
         Launches the initialization of the incremental replication for the standby server provided as a parameter.
 
@@ -386,7 +390,7 @@ class HAManagement(object):
             "state": response_message
         }
 
-    def set_active(self, server=None, force=False):
+    def set_active(self, server: Optional[Any] = None, force: bool = False) -> Any:
         """
         Launch activation of the specified management server or the connected management server
         if not specified. ( Since SMC 7.3, activation should be requested on target server to
@@ -422,10 +426,11 @@ class HAManagement(object):
             headers={"Content-Type": "application/json"},
             params=params,
         )
-        self.check_status(response)
+        # set_active may answer 202 with an operation id (async wizard) or a standard 200.
+        self.check_status(response, valid_status_codes=(200, 202))
         return response
 
-    def set_standby(self, server=None, force=False):
+    def set_standby(self, server: Optional[Any] = None, force: bool = False) -> Any:
         """
         Launch deactivation of the specified management server or the connected management server
         if not specified
@@ -455,7 +460,7 @@ class HAManagement(object):
         self.check_status(response)
         return response
 
-    def full_replication(self, server, force=False):
+    def full_replication(self, server: Any, force: bool = False) -> Any:
         """
         Launch full replication of the specified standby management server.
 
@@ -476,7 +481,7 @@ class HAManagement(object):
         self.check_status(response)
         return response
 
-    def exclude(self, server, force=False):
+    def exclude(self, server: Any, force: bool = False) -> Any:
         """
         Exclude the specified management server from database replication (database scope only)
 
@@ -497,7 +502,7 @@ class HAManagement(object):
         self.check_status(response)
         return response
 
-    def diagnostic(self, deep=False, exclude_info=False, global_timeout=0, server_timeout=0):
+    def diagnostic(self, deep: bool = False, exclude_info: bool = False, global_timeout: int = 0, server_timeout: int = 0) -> HADiagnostic:
         """
         Returns a diagnostic for replication status over all SMC Servers.
 
@@ -535,7 +540,7 @@ class HAManagement(object):
         self.check_result(result)
         return HADiagnostic(result.json)
 
-    def all_servers_replication_diagnostic(self):
+    def all_servers_replication_diagnostic(self) -> dict[str, Any]:
         """
         Returns a diagnostic for database replication status across all servers.
 
@@ -570,11 +575,11 @@ class HAManagement(object):
         if min_smc_version("7.3"):
             result = SMCRequest(href=self.entry + "/all_servers_replication_states").read()
             self.check_result(result)
-            return response.json
+            return result.json
         else:
             raise HaCommandException("This method is only available for SMC 7.3 or higher.")
 
-    def database_replication_diagnostic(self):
+    def database_replication_diagnostic(self) -> dict[str, Any]:
         """
         Returns a diagnostic for database replication status.
 
@@ -624,7 +629,7 @@ class HAManagement(object):
         else:
             raise HaCommandException("This method is only available for SMC 7.3 or higher.")
 
-    def audit_replication_diagnostic(self):
+    def audit_replication_diagnostic(self) -> dict[str, Any]:
         """
         Returns a diagnostic for audit replication status.
 
@@ -664,7 +669,7 @@ class HAManagement(object):
         else:
             raise HaCommandException("This method is only available for SMC 7.3 or higher.")
 
-    def audit_scan(self):
+    def audit_scan(self) -> Any:
         """
         Launch an audit scan request on the standby management server.
         Active management server will reject the request.
@@ -684,7 +689,7 @@ class HAManagement(object):
         else:
             raise HaCommandException("This method is only available for SMC 7.3 or higher.")
 
-    def audit_full_scan(self, disable_delay = False):
+    def audit_full_scan(self, disable_delay: bool = False) -> Any:
         """
         Launch an audit full scan request on the standby management server.
         Active management server will reject the request.

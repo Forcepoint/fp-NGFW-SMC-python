@@ -26,6 +26,9 @@ To get Monitoring Status for VPN and tunnels, do::
     tunnel status monitoring=VPNGatewayTunnelStatus=>_gatewayA = Helsinki VPN Gateway, _gatewayB =..
     ...
 """
+from __future__ import annotations
+
+from typing import Any, Optional, Union, Iterator
 import logging
 from smc.api.common import fetch_entry_point, SMCRequest
 from smc.api.exceptions import NotMonitored
@@ -72,7 +75,7 @@ class MonitoringStatus(object):
 
     """
 
-    def __init__(self, **data):
+    def __init__(self, **data: Any) -> None:
         for d, v in data.items():
             # Made the code SMC 7.1 compatible
             if min_smc_version('7.1') and d == 'child':
@@ -80,18 +83,18 @@ class MonitoringStatus(object):
             setattr(self, d, v)
 
     @property
-    def name(self):
+    def name(self) -> Optional[str]:
         """
         name of the element described by href
         """
         return self._name
 
     @name.setter
-    def name(self, value):
+    def name(self, value: Any) -> None:
         self._name = value
 
     @property
-    def monitoring_state(self):
+    def monitoring_state(self) -> Optional[str]:
         """
         The monitoring state:
 
@@ -113,11 +116,11 @@ class MonitoringStatus(object):
         return self._monitoring_state
 
     @monitoring_state.setter
-    def monitoring_state(self, value):
+    def monitoring_state(self, value: Any) -> None:
         self._monitoring_state = value
 
     @property
-    def monitoring_status(self):
+    def monitoring_status(self) -> Optional[str]:
         """
         The monitoring status:
 
@@ -137,11 +140,11 @@ class MonitoringStatus(object):
         return self._monitoring_status
 
     @monitoring_status.setter
-    def monitoring_status(self, value):
+    def monitoring_status(self, value: Any) -> None:
         self._monitoring_status = value
 
     @property
-    def result(self):
+    def result(self) -> Optional[list[Any]]:
         """
         :return: The API's links of the children or SDWAN Branch Status if exists
         :rtype: list str
@@ -149,7 +152,7 @@ class MonitoringStatus(object):
         return self._result
 
     @property
-    def history(self):
+    def history(self) -> Optional[History]:
         """
         This function returns a history object.
         :return: history object.
@@ -163,11 +166,11 @@ class MonitoringStatus(object):
                     return History(**result.json)
 
     @result.setter
-    def result(self, value):
+    def result(self, value: Any) -> None:
         self._result = value
 
     @staticmethod
-    def __get_status_type(data):
+    def __get_status_type(data: Any) -> Any:
         """
         :return: status class related to data
         :rtype: MonitoringStatus
@@ -192,7 +195,7 @@ class MonitoringStatus(object):
         return result
 
     @staticmethod
-    def get_status(href):
+    def get_status(href: str) -> MonitoringStatus:
         """
         Return Monitoring Status for the given href element
         :param str href: the uri of the element to retrieve the status
@@ -210,7 +213,7 @@ class MonitoringStatus(object):
         status = MonitoringStatus.__get_status_type(result.json)
         return status(**result.json)
 
-    def __str__(self):
+    def __str__(self) -> str:
         result = "{}=>".format(self.__class__.__name__)
         for attr in vars(self):
             result += "{} = {}, ".format(attr, getattr(self, attr))
@@ -228,35 +231,35 @@ class ServerStatus(MonitoringStatus):
     """
 
     @property
-    def replication_status(self):
+    def replication_status(self) -> Optional[str]:
         return self._replication_status
 
     @replication_status.setter
-    def replication_status(self, value):
+    def replication_status(self, value: Any) -> None:
         self._replication_status = value
 
     @property
-    def replication_info(self):
+    def replication_info(self) -> Optional[str]:
         return self._replication_info
 
     @replication_info.setter
-    def replication_info(self, value):
+    def replication_info(self, value: Any) -> None:
         self._replication_info = value
 
     @property
-    def memory_used(self):
+    def memory_used(self) -> Optional[int]:
         return self._memory_used
 
     @memory_used.setter
-    def memory_used(self, value):
+    def memory_used(self, value: Any) -> None:
         self._memory_used = value
 
     @property
-    def memory_info(self):
+    def memory_info(self) -> Optional[str]:
         return self._memory_info
 
     @memory_info.setter
-    def memory_info(self, value):
+    def memory_info(self, value: Any) -> None:
         self._memory_info = value
 
 
@@ -268,18 +271,18 @@ class EngineNodeStatus(MonitoringStatus):
     """
 
     @property
-    def installed_policy(self):
+    def installed_policy(self) -> Optional[str]:
         """
         :return: The Last Uploaded Policy.
         :rtype: str
         """
         return self._installed_policy
 
-    def installed_policy(self, value):
+    def installed_policy(self, value: Any) -> None:
         self._installed_policy = value
 
     @property
-    def installed_policy_ref(self):
+    def installed_policy_ref(self) -> Any:
         """
         :return: The reference to Last Uploaded Policy.
         :rtype: Policy
@@ -287,11 +290,11 @@ class EngineNodeStatus(MonitoringStatus):
         return Element.from_href(self._installed_policy_ref)
 
     @installed_policy_ref.setter
-    def installed_policy_ref(self, value):
+    def installed_policy_ref(self, value: Any) -> None:
         self._installed_policy_ref = value
 
     @property
-    def last_upload_time(self):
+    def last_upload_time(self) -> Optional[str]:
         """
         :return: The Upload Time of the Last Uploaded Policy.
         :rtype: str
@@ -299,11 +302,11 @@ class EngineNodeStatus(MonitoringStatus):
         return self._last_upload_time
 
     @last_upload_time.setter
-    def last_upload_time(self, value):
+    def last_upload_time(self, value: Any) -> None:
         self._last_upload_time = value
 
     @property
-    def active_policy(self):
+    def active_policy(self) -> Optional[str]:
         """
         :return: The Currently Active Policy.
         :rtype: str
@@ -311,11 +314,11 @@ class EngineNodeStatus(MonitoringStatus):
         return self._active_policy
 
     @active_policy.setter
-    def active_policy(self, value):
+    def active_policy(self, value: Any) -> None:
         self._active_policy = value
 
     @property
-    def active_policy_ref(self):
+    def active_policy_ref(self) -> Any:
         """
         :return: The reference to Currently Active Policy.
         :rtype: Policy
@@ -323,11 +326,11 @@ class EngineNodeStatus(MonitoringStatus):
         return Element.from_href(self._active_policy_ref)
 
     @active_policy_ref.setter
-    def active_policy_ref(self, value):
+    def active_policy_ref(self, value: Any) -> None:
         self._active_policy_ref = value
 
     @property
-    def local_alternative_policy_activation_time(self):
+    def local_alternative_policy_activation_time(self) -> Optional[int]:
         """
         :return: The timestamp when Active Policy was activated, if it is a Local Alternative
         Policy.
@@ -336,11 +339,11 @@ class EngineNodeStatus(MonitoringStatus):
         return self._local_alternative_policy_activation_time
 
     @local_alternative_policy_activation_time.setter
-    def local_alternative_policy_activation_time(self, value):
+    def local_alternative_policy_activation_time(self, value: Any) -> None:
         self._local_alternative_policy_activation_time = value
 
     @property
-    def configuration_status(self):
+    def configuration_status(self) -> Optional[str]:
         """
         :return: The Configuration status:
         -*Initial* no initial configuration file is yet generated.
@@ -352,11 +355,11 @@ class EngineNodeStatus(MonitoringStatus):
         return self._configuration_status
 
     @configuration_status.setter
-    def configuration_status(self, value):
+    def configuration_status(self, value: Any) -> None:
         self._configuration_status = value
 
     @property
-    def hw_info(self):
+    def hw_info(self) -> Optional[str]:
         """
         :return: The information about the hardware.
         :rtype: str
@@ -364,11 +367,11 @@ class EngineNodeStatus(MonitoringStatus):
         return self._hw_info
 
     @hw_info.setter
-    def hw_info(self, value):
+    def hw_info(self, value: Any) -> None:
         self._hw_info = value
 
     @property
-    def engine_node_status(self):
+    def engine_node_status(self) -> Optional[str]:
         """
         :return: The engine status ("Not Monitored"/"Unknown"/"Online"/"Going Online"/
         "Locked Online"/"Going Locked Online"/"Offline"/"Going Offline"/"Locked Offline"/
@@ -378,11 +381,11 @@ class EngineNodeStatus(MonitoringStatus):
         return self._engine_node_status
 
     @engine_node_status.setter
-    def engine_node_status(self, value):
+    def engine_node_status(self, value: Any) -> None:
         self._engine_node_status = value
 
     @property
-    def dyn_up(self):
+    def dyn_up(self) -> Optional[str]:
         """
         :return: The dynamic update package received.
         :rtype: str
@@ -390,11 +393,11 @@ class EngineNodeStatus(MonitoringStatus):
         return self._dyn_up
 
     @dyn_up.setter
-    def dyn_up(self, value):
+    def dyn_up(self, value: Any) -> None:
         self._dyn_up = value
 
     @property
-    def platform(self):
+    def platform(self) -> Optional[str]:
         """
         :return: The engine platform.
         :rtype: str
@@ -402,11 +405,11 @@ class EngineNodeStatus(MonitoringStatus):
         return self._platform
 
     @platform.setter
-    def platform(self, value):
+    def platform(self, value: Any) -> None:
         self._platform = value
 
     @property
-    def version(self):
+    def version(self) -> Optional[str]:
         """
         :return: The engine version.
         :rtype: str
@@ -414,11 +417,11 @@ class EngineNodeStatus(MonitoringStatus):
         return self._version
 
     @version.setter
-    def version(self, value):
+    def version(self, value: Any) -> None:
         self._version = value
 
     @property
-    def local_alternative_policies(self):
+    def local_alternative_policies(self) -> Optional[list[Any]]:
         """
         :return: The Local Alternative Policies.
         :rtype: list str
@@ -426,11 +429,11 @@ class EngineNodeStatus(MonitoringStatus):
         return self._local_alternative_policies
 
     @local_alternative_policies.setter
-    def local_alternative_policies(self, value):
+    def local_alternative_policies(self, value: Any) -> None:
         self._local_alternative_policies = value
 
     @property
-    def master_node(self):
+    def master_node(self) -> Any:
         """
         Used by Virtual Firewall Node
         :return: master node.
@@ -439,11 +442,11 @@ class EngineNodeStatus(MonitoringStatus):
         return Element.from_href(self._master_node)
 
     @master_node.setter
-    def master_node(self, master_node):
+    def master_node(self, master_node: Any) -> None:
         self._master_node = master_node
 
     @property
-    def connectivity_status(self):
+    def connectivity_status(self) -> Optional[str]:
         """
         :return: The Node connectivity status.
         :rtype: str
@@ -451,7 +454,7 @@ class EngineNodeStatus(MonitoringStatus):
         return self._connectivity_status
 
     @connectivity_status.setter
-    def connectivity_status(self, value):
+    def connectivity_status(self, value: Any) -> None:
         self._connectivity_status = value
 
 
@@ -461,7 +464,7 @@ class SDWANBranchStatus(MonitoringStatus):
     """
 
     @property
-    def health_in_percent(self):
+    def health_in_percent(self) -> Optional[int]:
         """
         :return: SDWAN Branch Health in percent
         :rtype: int
@@ -469,7 +472,7 @@ class SDWANBranchStatus(MonitoringStatus):
         return self._health_in_percent
 
     @health_in_percent.setter
-    def health_in_percent(self, value):
+    def health_in_percent(self, value: Any) -> None:
         self._health_in_percent = value
 
 
@@ -479,7 +482,7 @@ class SDWANBranchToBranchStatus(MonitoringStatus):
     """
 
     @property
-    def health_in_percent(self):
+    def health_in_percent(self) -> Optional[int]:
         """
         :return: SDWAN Branch Health in percent
         :rtype: int
@@ -487,11 +490,11 @@ class SDWANBranchToBranchStatus(MonitoringStatus):
         return self._health_in_percent
 
     @health_in_percent.setter
-    def health_in_percent(self, value):
+    def health_in_percent(self, value: Any) -> None:
         self._health_in_percent = value
 
     @property
-    def traffic_in_bits_per_sec(self):
+    def traffic_in_bits_per_sec(self) -> Optional[int]:
         """
         :return: SDWAN Branch to Branch Traffic in bits per second
         :rtype: long
@@ -499,11 +502,11 @@ class SDWANBranchToBranchStatus(MonitoringStatus):
         return self._traffic_in_bits_per_sec
 
     @traffic_in_bits_per_sec.setter
-    def traffic_in_bits_per_sec(self, value):
+    def traffic_in_bits_per_sec(self, value: Any) -> None:
         self._traffic_in_bits_per_sec = value
 
     @property
-    def packet_loss_in_permyriad(self):
+    def packet_loss_in_permyriad(self) -> Optional[int]:
         """
         :return: SDWAN Branch to Branch Packet loss in permyriad (per ten thousands)
         :rtype: int
@@ -511,11 +514,11 @@ class SDWANBranchToBranchStatus(MonitoringStatus):
         return self._packet_loss_in_permyriad
 
     @packet_loss_in_permyriad.setter
-    def packet_loss_in_permyriad(self, value):
+    def packet_loss_in_permyriad(self, value: Any) -> None:
         self._packet_loss_in_permyriad = value
 
     @property
-    def latency_in_ms(self):
+    def latency_in_ms(self) -> Optional[int]:
         """
         :return: SDWAN Branch to Branch Latency in  milliseconds
         :rtype: int
@@ -523,11 +526,11 @@ class SDWANBranchToBranchStatus(MonitoringStatus):
         return self._latency_in_ms
 
     @latency_in_ms.setter
-    def latency_in_ms(self, value):
+    def latency_in_ms(self, value: Any) -> None:
         self._latency_in_ms = value
 
     @property
-    def jitter_in_ms(self):
+    def jitter_in_ms(self) -> Optional[int]:
         """
         :return: SDWAN Branch to Branch Jitter in  milliseconds
         :rtype: int
@@ -535,7 +538,7 @@ class SDWANBranchToBranchStatus(MonitoringStatus):
         return self._jitter_in_ms
 
     @jitter_in_ms.setter
-    def jitter_in_ms(self, value):
+    def jitter_in_ms(self, value: Any) -> None:
         self._jitter_in_ms = value
 
 
@@ -545,7 +548,7 @@ class SDWANNetlinkElementStatus(MonitoringStatus):
     """
 
     @property
-    def inbound_traffic_in_bits_per_sec(self):
+    def inbound_traffic_in_bits_per_sec(self) -> Optional[int]:
         """
         :return: Inbound traffic in bits per second
         :rtype: long
@@ -553,11 +556,11 @@ class SDWANNetlinkElementStatus(MonitoringStatus):
         return self._inbound_traffic_in_bits_per_sec
 
     @inbound_traffic_in_bits_per_sec.setter
-    def inbound_traffic_in_bits_per_sec(self, value):
+    def inbound_traffic_in_bits_per_sec(self, value: Any) -> None:
         self._inbound_traffic_in_bits_per_sec = value
 
     @property
-    def outbound_traffic_in_bits_per_sec(self):
+    def outbound_traffic_in_bits_per_sec(self) -> Optional[int]:
         """
         :return: Outbound traffic in bits per second
         :rtype: long
@@ -565,11 +568,11 @@ class SDWANNetlinkElementStatus(MonitoringStatus):
         return self._outbound_traffic_in_bits_per_sec
 
     @outbound_traffic_in_bits_per_sec.setter
-    def outbound_traffic_in_bits_per_sec(self, value):
+    def outbound_traffic_in_bits_per_sec(self, value: Any) -> None:
         self._outbound_traffic_in_bits_per_sec = value
 
     @property
-    def connection_count(self):
+    def connection_count(self) -> Optional[int]:
         """
         :return: Connection Count
         :rtype: long
@@ -577,11 +580,11 @@ class SDWANNetlinkElementStatus(MonitoringStatus):
         return self._connection_count
 
     @connection_count.setter
-    def connection_count(self, value):
+    def connection_count(self, value: Any) -> None:
         self._connection_count = value
 
     @property
-    def packet_loss_in_permyriad(self):
+    def packet_loss_in_permyriad(self) -> Optional[int]:
         """
         :return: Packet loss in permyriad (per ten thousands)
         :rtype: long
@@ -589,7 +592,7 @@ class SDWANNetlinkElementStatus(MonitoringStatus):
         return self._packet_loss_in_permyriad
 
     @packet_loss_in_permyriad.setter
-    def packet_loss_in_permyriad(self, value):
+    def packet_loss_in_permyriad(self, value: Any) -> None:
         self._packet_loss_in_permyriad = value
 
 
@@ -599,7 +602,7 @@ class VPNStatus(MonitoringStatus):
     """
 
     @property
-    def vpn_status_code(self):
+    def vpn_status_code(self) -> Optional[str]:
         """
         :return: The Monitoring VPN Status Code.
         :rtype: str
@@ -607,11 +610,11 @@ class VPNStatus(MonitoringStatus):
         return self._vpn_status_code
 
     @vpn_status_code.setter
-    def vpn_status_code(self, value):
+    def vpn_status_code(self, value: Any) -> None:
         self._vpn_status_code = value
 
     @property
-    def health_in_percent(self):
+    def health_in_percent(self) -> Optional[str]:
         """
         :return: VPN Health in percent.
         :rtype: str
@@ -619,11 +622,11 @@ class VPNStatus(MonitoringStatus):
         return self._health_in_percent
 
     @health_in_percent.setter
-    def health_in_percent(self, value):
+    def health_in_percent(self, value: Any) -> None:
         self._health_in_percent = value
 
     @property
-    def traffic_in_bits_per_sec(self):
+    def traffic_in_bits_per_sec(self) -> Optional[int]:
         """
         :return: VPN Traffic in bits per second
         :rtype: long
@@ -631,11 +634,11 @@ class VPNStatus(MonitoringStatus):
         return self._traffic_in_bits_per_sec
 
     @traffic_in_bits_per_sec.setter
-    def traffic_in_bits_per_sec(self, value):
+    def traffic_in_bits_per_sec(self, value: Any) -> None:
         self._traffic_in_bits_per_sec = value
 
     @property
-    def packet_loss_in_permyriad(self):
+    def packet_loss_in_permyriad(self) -> Optional[int]:
         """
         :return: VPN Packet loss in permyriad (per ten thousands)
         :rtype: int
@@ -643,11 +646,11 @@ class VPNStatus(MonitoringStatus):
         return self._packet_loss_in_permyriad
 
     @packet_loss_in_permyriad.setter
-    def packet_loss_in_permyriad(self, value):
+    def packet_loss_in_permyriad(self, value: Any) -> None:
         self._packet_loss_in_permyriad = value
 
     @property
-    def latency_in_ms(self):
+    def latency_in_ms(self) -> Optional[int]:
         """
         :return: VPN Latency in  milliseconds
         :rtype: int
@@ -655,11 +658,11 @@ class VPNStatus(MonitoringStatus):
         return self._latency_in_ms
 
     @latency_in_ms.setter
-    def latency_in_ms(self, value):
+    def latency_in_ms(self, value: Any) -> None:
         self._latency_in_ms = value
 
     @property
-    def jitter_in_ms(self):
+    def jitter_in_ms(self) -> Optional[int]:
         """
         :return: VPN Jitter in  milliseconds
         :rtype: int
@@ -667,7 +670,7 @@ class VPNStatus(MonitoringStatus):
         return self._jitter_in_ms
 
     @jitter_in_ms.setter
-    def jitter_in_ms(self, value):
+    def jitter_in_ms(self, value: Any) -> None:
         self._jitter_in_ms = value
 
 
@@ -677,7 +680,7 @@ class VPNGatewayTunnelStatus(VPNStatus):
     """
 
     @property
-    def gatewayA(self):
+    def gatewayA(self) -> Optional[str]:
         """
         :return: Name of Gateway A
         :rtype: str
@@ -685,11 +688,11 @@ class VPNGatewayTunnelStatus(VPNStatus):
         return self._gatewayA
 
     @gatewayA.setter
-    def gatewayA(self, value):
+    def gatewayA(self, value: Any) -> None:
         self._gatewayA = value
 
     @property
-    def gatewayB(self):
+    def gatewayB(self) -> Optional[str]:
         """
         :return: Name of Gateway B
         :rtype: str
@@ -697,7 +700,7 @@ class VPNGatewayTunnelStatus(VPNStatus):
         return self._gatewayB
 
     @gatewayB.setter
-    def gatewayB(self, value):
+    def gatewayB(self, value: Any) -> None:
         self._gatewayB = value
 
 
@@ -707,7 +710,7 @@ class VPNEndpointTunnelStatus(VPNGatewayTunnelStatus):
     """
 
     @property
-    def endpointA(self):
+    def endpointA(self) -> Optional[str]:
         """
         :return: Name of Endpoint A
         :rtype: str
@@ -715,11 +718,11 @@ class VPNEndpointTunnelStatus(VPNGatewayTunnelStatus):
         return self._endpointA
 
     @endpointA.setter
-    def endpointA(self, value):
+    def endpointA(self, value: Any) -> None:
         self._endpointA = value
 
     @property
-    def endpointB(self):
+    def endpointB(self) -> Optional[str]:
         """
         :return: Name of Endpoint B
         :rtype: str
@@ -727,7 +730,7 @@ class VPNEndpointTunnelStatus(VPNGatewayTunnelStatus):
         return self._endpointB
 
     @endpointB.setter
-    def endpointB(self, value):
+    def endpointB(self, value: Any) -> None:
         self._endpointB = value
 
 

@@ -18,13 +18,17 @@ basic settings such as ip address, network, administrative settings etc. These a
 not called directly but used as a reference to the top level interface.
 All sub interfaces are type dict.
 """
+from __future__ import annotations
+
+from typing import Any, Optional, Union, Iterator
+
 import ipaddress
 
 from smc.base.structs import NestedDict, BaseIterable
 from smc.api.exceptions import EngineCommandFailed, UpdateElementFailed
 
 
-def get_sub_interface(typeof):
+def get_sub_interface(typeof: Any) -> Any:
     if typeof in clsmembers:
         return clsmembers[typeof]
 
@@ -34,7 +38,7 @@ class SubInterfaceCollection(BaseIterable):
     A Sub Interface collection for non-VLAN interfaces.
     """
 
-    def __init__(self, interface):
+    def __init__(self, interface: Any) -> None:
         data = [
             clsmembers.get(kind)(data)
             for intf in interface.data.get("interfaces", [])
@@ -44,10 +48,10 @@ class SubInterfaceCollection(BaseIterable):
 
 
 class SubInterface(NestedDict):
-    def __init__(self, data):
+    def __init__(self, data: Any) -> None:
         super(SubInterface, self).__init__(data=data)
 
-    def change_interface_id(self, interface_id):
+    def change_interface_id(self, interface_id: Any) -> None:
         """
         Generic change interface ID for VLAN interfaces that are not
         Inline Interfaces (non-VLAN sub interfaces do not have an
@@ -58,7 +62,7 @@ class SubInterface(NestedDict):
         _, second = self.nicid.split(".")
         self.update(nicid="{}.{}".format(str(interface_id), second))
 
-    def change_vlan_id(self, vlan_id):
+    def change_vlan_id(self, vlan_id: Any) -> None:
         """
         Change a VLAN id
 
@@ -67,15 +71,15 @@ class SubInterface(NestedDict):
         first, _ = self.nicid.split(".")
         self.update(nicid="{}.{}".format(first, str(vlan_id)))
 
-    def __getattr__(self, key):
+    def __getattr__(self, key: str) -> Any:
         return self.get(key)
 
     @property
-    def address(self):
+    def address(self) -> Optional[str]:
         return self.data.get("address")
 
     @property
-    def is_ipv6(self):
+    def is_ipv6(self) -> bool:
         try:
             ipaddress.IPv6Address(self.address)
             return True
@@ -102,11 +106,12 @@ class ClusterVirtualInterface(SubInterface):
 
     typeof = "cluster_virtual_interface"
 
-    def __init__(self, data):
+    def __init__(self, data: Any) -> None:
         super(ClusterVirtualInterface, self).__init__(data)
 
     @classmethod
-    def create(cls, interface_id, address, network_value, **kwargs):
+    def create(cls, interface_id: Any, address: str, network_value: str,
+               **kwargs: Any) -> ClusterVirtualInterface:
         """
         :param int interface_id: nic id to use for physical interface
         :param str address: address of CVI
@@ -126,7 +131,7 @@ class ClusterVirtualInterface(SubInterface):
         return cls(data)
 
     @property
-    def vlan_id(self):
+    def vlan_id(self) -> Optional[str]:
         """
         VLAN ID for this interface, if any
 
@@ -139,7 +144,7 @@ class ClusterVirtualInterface(SubInterface):
             if len(v) > 1:
                 return nicid.split(".")[1]
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         if self.vlan_id:
             return "{0}(address={1}, vlan_id={2})".format(
                 self.__class__.__name__, self.address, self.vlan_id
@@ -168,13 +173,14 @@ class InlineInterface(SubInterface):
 
     typeof = "inline_interface"
 
-    def __init__(self, data):
+    def __init__(self, data: Any) -> None:
         super(InlineInterface, self).__init__(data)
 
     @classmethod
     def create(
-        cls, interface_id, logical_interface_ref, second_interface_id=None, zone_ref=None, **kwargs
-    ):
+        cls, interface_id: Any, logical_interface_ref: str, second_interface_id: Any = None,
+        zone_ref: Optional[str] = None, **kwargs: Any
+    ) -> InlineInterface:
         """
         :param str interface_id: two interfaces, i.e. '1-2', '4-5', '7-10', etc
         :param str logical_ref: logical interface reference
@@ -197,7 +203,7 @@ class InlineInterface(SubInterface):
 
         return cls(data)
 
-    def change_vlan_id(self, vlan_id):
+    def change_vlan_id(self, vlan_id: Any) -> None:
         """
         Change a VLAN id for an inline interface.
 
@@ -213,7 +219,7 @@ class InlineInterface(SubInterface):
         newvlan = str(vlan_id).split("-")
         self.update(nicid="{}.{}-{}.{}".format(firstintf, newvlan[0], secondintf, newvlan[-1]))
 
-    def change_interface_id(self, newid):
+    def change_interface_id(self, newid: Any) -> None:
         """
         Change the inline interface ID. The current format is
         nicid='1-2', where '1' is the top level interface ID (first),
@@ -240,7 +246,7 @@ class InlineInterface(SubInterface):
             self.update(nicid=newid)
 
     @property
-    def vlan_id(self):
+    def vlan_id(self) -> Optional[str]:
         """
         VLAN ID for this interface, if any
 
@@ -255,7 +261,7 @@ class InlineInterface(SubInterface):
                     u.append(vlan.split(".")[-1])
             return "-".join(u)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "{0}(nicid={1})".format(self.__class__.__name__, self.nicid)
 
 
@@ -272,7 +278,7 @@ class InlineIPSInterface(InlineInterface):
 
     typeof = "inline_ips_interface"
 
-    def __init__(self, data):
+    def __init__(self, data: Any) -> None:
         super(InlineIPSInterface, self).__init__(data)
 
 
@@ -289,13 +295,14 @@ class InlineL2FWInterface(InlineInterface):
 
     typeof = "inline_l2fw_interface"
 
-    def __init__(self, data):
+    def __init__(self, data: Any) -> None:
         super(InlineL2FWInterface, self).__init__(data)
 
     @classmethod
     def create(
-        cls, interface_id, logical_interface_ref, second_interface_id=None, zone_ref=None, **kwargs
-    ):
+        cls, interface_id: Any, logical_interface_ref: str, second_interface_id: Any = None,
+        zone_ref: Optional[str] = None, **kwargs: Any
+    ) -> InlineL2FWInterface:
         kwargs.pop("failure_mode", None)
         return super(InlineL2FWInterface, cls).create(
             interface_id, logical_interface_ref, second_interface_id, zone_ref=zone_ref, **kwargs
@@ -317,11 +324,11 @@ class CaptureInterface(SubInterface):
 
     typeof = "capture_interface"
 
-    def __init__(self, data):
+    def __init__(self, data: Any) -> None:
         super(CaptureInterface, self).__init__(data)
 
     @classmethod
-    def create(cls, interface_id, logical_interface_ref, **kw):
+    def create(cls, interface_id: Any, logical_interface_ref: str, **kw: Any) -> CaptureInterface:
         """
         :param int interface_id: the interface id
         :param str logical_ref: logical interface reference, must be unique from
@@ -340,11 +347,11 @@ class CaptureInterface(SubInterface):
         return cls(data)
 
     @property
-    def vlan_id(self):
+    def vlan_id(self) -> Optional[str]:
         if "." in self.nicid:
             return self.nicid.split(".")[-1]
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "{0}(nicid={1})".format(self.__class__.__name__, self.nicid)
 
 
@@ -397,11 +404,12 @@ class NodeInterface(SubInterface):
 
     typeof = "node_interface"
 
-    def __init__(self, data):
+    def __init__(self, data: Any) -> None:
         super(NodeInterface, self).__init__(data)
 
     @classmethod
-    def create(cls, interface_id, address, network_value, nodeid=1, **kwargs):
+    def create(cls, interface_id: Any, address: str, network_value: str, nodeid: int = 1,
+               **kwargs: Any) -> NodeInterface:
         """
         :param int interface_id: interface id
         :param str address: ip address of the interface
@@ -427,7 +435,7 @@ class NodeInterface(SubInterface):
         return cls(data)
 
     @property
-    def vlan_id(self):
+    def vlan_id(self) -> Optional[str]:
         """
         VLAN ID for this interface, if any
 
@@ -441,7 +449,7 @@ class NodeInterface(SubInterface):
             if len(v) > 1:
                 return nicid.split(".")[1]
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         if self.vlan_id:
             return "{0}(address={1}, vlan_id={2})".format(
                 self.__class__.__name__, self.address, self.vlan_id
@@ -468,11 +476,13 @@ class SingleNodeInterface(NodeInterface):
 
     typeof = "single_node_interface"
 
-    def __init__(self, data):
+    def __init__(self, data: Any) -> None:
         super(SingleNodeInterface, self).__init__(data)
 
     @classmethod
-    def create(cls, interface_id, address=None, network_value=None, nodeid=1, **kw):
+    def create(cls, interface_id: Any, address: Optional[str] = None,
+               network_value: Optional[str] = None, nodeid: int = 1,
+               **kw: Any) -> SingleNodeInterface:
         """
         :param int interface_id: interface id
         :param str address: address of this interface
@@ -522,12 +532,13 @@ class LoopbackClusterInterface(ClusterVirtualInterface):
 
     typeof = "loopback_cluster_virtual_interface"
 
-    def __init__(self, data, engine=None):
+    def __init__(self, data: Any, engine: Any = None) -> None:
         self._engine = engine
         super(LoopbackClusterInterface, self).__init__(data)
 
     @classmethod
-    def create(cls, address, ospf_area=None, **kwargs):
+    def create(cls, address: str, ospf_area: Any = None,
+               **kwargs: Any) -> LoopbackClusterInterface:
         """
         Create a loopback interface. Uses parent constructor
 
@@ -542,7 +553,7 @@ class LoopbackClusterInterface(ClusterVirtualInterface):
             **kwargs
         )
 
-    def delete(self):
+    def delete(self) -> None:
         """
         Delete a loopback cluster virtual interface from this engine.
         Changes to the engine configuration are done immediately.
@@ -564,7 +575,8 @@ class LoopbackClusterInterface(ClusterVirtualInterface):
 
         self._engine.update()
 
-    def add_cvi_loopback(self, address, rank=None, ospf_area=None, **kw):
+    def add_cvi_loopback(self, address: str, rank: Optional[int] = None,
+                         ospf_area: Any = None, **kw: Any) -> None:
         """
         Add a loopback interface as a cluster virtual loopback. This enables
         the loopback to 'float' between cluster members. Changes are committed
@@ -598,7 +610,7 @@ class LoopbackClusterInterface(ClusterVirtualInterface):
 
         self._engine.update()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "LoopbackClusterInterface(address={}, auth_request={})".format(
             self.address, self.auth_request
         )
@@ -614,12 +626,13 @@ class LoopbackInterface(NodeInterface):
 
     typeof = "loopback_node_dedicated_interface"
 
-    def __init__(self, data, engine=None):
+    def __init__(self, data: Any, engine: Any = None) -> None:
         self._engine = engine
         super(LoopbackInterface, self).__init__(data)
 
     @classmethod
-    def create(cls, address, rank=1, nodeid=1, ospf_area=None, **kwargs):
+    def create(cls, address: str, rank: int = 1, nodeid: int = 1, ospf_area: Any = None,
+               **kwargs: Any) -> LoopbackInterface:
         mask = 32 if ipaddress.ip_address(address).version == 4 else 128
         return super(LoopbackInterface, cls).create(
             interface_id="Loopback Interface",
@@ -631,7 +644,7 @@ class LoopbackInterface(NodeInterface):
             **kwargs
         )
 
-    def add_node_loopback(self, addresses, **kwargs):
+    def add_node_loopback(self, addresses: Any, **kwargs: Any) -> None:
         """
         Add a node loopback interface to this engine.
 
@@ -682,7 +695,8 @@ class LoopbackInterface(NodeInterface):
         if engine_to_update:
             self._engine.update()
 
-    def add_single(self, address, rank=None, nodeid=1, ospf_area=None, **kwargs):
+    def add_single(self, address: str, rank: Optional[int] = None, nodeid: int = 1,
+                   ospf_area: Any = None, **kwargs: Any) -> None:
         """
         Add a single loopback interface to this engine. This is used
         for single or virtual engines.
@@ -696,7 +710,7 @@ class LoopbackInterface(NodeInterface):
         lb_settings = {nodeid: {"address": address, "ospf_area": ospf_area, "rank": rank}}
         self.add_node_loopback(addresses=lb_settings, **kwargs)
 
-    def delete(self):
+    def delete(self) -> None:
         """
         Delete a loopback interface from this engine. Changes to the
         engine configuration are done immediately.
@@ -723,17 +737,17 @@ class LoopbackInterface(NodeInterface):
         self._engine.data["nodes"] = nodes
         self._engine.update()
 
-    def change_ipaddress(self, address):
+    def change_ipaddress(self, address: str) -> None:
         mask = 32 if ipaddress.ip_address(address).version == 4 else 128
         self.update(address=address, network_value="{}/{}".format(address, mask))
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "LoopbackInterface(address={}, nodeid={}, rank={})".format(
             self.address, self.nodeid, self.rank
         )
 
 
-def inheritors(klass):
+def inheritors(klass: Any) -> dict[str, Any]:
     subclasses = {}
     work = [klass]
     while work:

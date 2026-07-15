@@ -57,6 +57,10 @@ Only Layer3Firewall and Layer3VirtualEngine types can support running OSPF.
              :py:class:`smc.core.engines.Layer3VirtualEngine`
 
 """
+from __future__ import annotations
+
+from typing import Any, Optional, Union, Iterator
+
 from smc.base.model import Element, ElementCreator, ElementCache, ElementRef, ElementList
 from smc.base.util import element_resolver
 
@@ -78,11 +82,11 @@ class OSPF(object):
 
     profile = ElementRef("ospfv2_profile_ref")
 
-    def __init__(self, data=None):
+    def __init__(self, data: Optional[Any] = None) -> None:
         self.data = data if data else ElementCache()
 
     @property
-    def router_id(self):
+    def router_id(self) -> Optional[str]:
         """
         Get the router ID for this OSPF configuration. If None, then
         the ID will use the interface IP.
@@ -92,7 +96,7 @@ class OSPF(object):
         return self.data.get("router_id")
 
     @property
-    def status(self):
+    def status(self) -> Optional[bool]:
         """
         Is OSPF enabled on this engine.
 
@@ -100,7 +104,7 @@ class OSPF(object):
         """
         return self.data.get("enabled")
 
-    def disable(self):
+    def disable(self) -> None:
         """
         Disable OSPF on this engine.
 
@@ -108,7 +112,11 @@ class OSPF(object):
         """
         self.data.update(enabled=False)
 
-    def enable(self, ospf_profile=None, router_id=None):
+    def enable(
+        self,
+        ospf_profile: Optional[Any] = None,
+        router_id: Optional[str] = None,
+    ) -> None:
         """
         Enable OSPF on this engine. For master engines, enable
         OSPF on the virtual firewall.
@@ -133,7 +141,7 @@ class OSPF(object):
 
         self.data.update(enabled=True, ospfv2_profile_ref=ospf_profile, router_id=router_id)
 
-    def update_configuration(self, **kwargs):
+    def update_configuration(self, **kwargs: Any) -> bool:
         """
         Update the OSPF configuration using kwargs that match the
         `enable` constructor.
@@ -220,18 +228,18 @@ class OSPFArea(Element):
     @classmethod
     def create(
         cls,
-        name,
-        interface_settings_ref=None,
-        area_id=1,
-        area_type="normal",
-        outbound_filters=None,
-        inbound_filters=None,
-        shortcut_capable_area=False,
-        ospfv2_virtual_links_endpoints_container=None,
-        ospf_abr_substitute_container=None,
-        comment=None,
-        **kwargs
-    ):
+        name: str,
+        interface_settings_ref: Optional[Any] = None,
+        area_id: int = 1,
+        area_type: str = "normal",
+        outbound_filters: Optional[Any] = None,
+        inbound_filters: Optional[Any] = None,
+        shortcut_capable_area: bool = False,
+        ospfv2_virtual_links_endpoints_container: Optional[list[Any]] = None,
+        ospf_abr_substitute_container: Optional[list[Any]] = None,
+        comment: Optional[str] = None,
+        **kwargs: Any,
+    ) -> "OSPFArea":
         """
         Create a new OSPF Area
 
@@ -280,7 +288,7 @@ class OSPFArea(Element):
         return ElementCreator(cls, json)
 
     @classmethod
-    def update_or_create(cls, with_status=False, **kwargs):
+    def update_or_create(cls, with_status: bool = False, **kwargs: Any) -> Any:
         if "inbound_filters" in kwargs:
             kwargs.update(inbound_filters_ref=element_resolver(kwargs.pop("inbound_filters")))
         if "outbound_filters" in kwargs:
@@ -318,19 +326,19 @@ class OSPFInterfaceSetting(Element):
     @classmethod
     def create(
         cls,
-        name,
-        dead_interval=40,
-        hello_interval=10,
-        hello_interval_type="normal",
-        dead_multiplier=1,
-        mtu_mismatch_detection=True,
-        retransmit_interval=5,
-        router_priority=1,
-        transmit_delay=1,
-        authentication_type=None,
-        password=None,
-        key_chain_ref=None,
-    ):
+        name: str,
+        dead_interval: int = 40,
+        hello_interval: int = 10,
+        hello_interval_type: str = "normal",
+        dead_multiplier: int = 1,
+        mtu_mismatch_detection: bool = True,
+        retransmit_interval: int = 5,
+        router_priority: int = 1,
+        transmit_delay: int = 1,
+        authentication_type: Optional[str] = None,
+        password: Optional[str] = None,
+        key_chain_ref: Optional[Any] = None,
+    ) -> "OSPFInterfaceSetting":
         """
         Create custom OSPF interface settings profile
 
@@ -390,7 +398,7 @@ class OSPFKeyChain(Element):
     typeof = "ospfv2_key_chain"
 
     @classmethod
-    def create(cls, name, key_chain_entry):
+    def create(cls, name: str, key_chain_entry: Optional[list[Any]]) -> "OSPFKeyChain":
         """
         Create a key chain with list of keys
 
@@ -410,7 +418,7 @@ class OSPFKeyChain(Element):
         return ElementCreator(cls, json)
 
 
-def _format_redist_entry(redistribution_entry):
+def _format_redist_entry(redistribution_entry: list[Any]) -> list[Any]:
     for entry in redistribution_entry:
         _filter = entry.pop("filter", None)
         if _filter and _filter.typeof == "ip_access_list":
@@ -453,15 +461,15 @@ class OSPFProfile(Element):
     @classmethod
     def create(
         cls,
-        name,
-        domain_settings_ref=None,
-        external_distance=110,
-        inter_distance=110,
-        intra_distance=110,
-        redistribution_entry=None,
-        default_metric=None,
-        comment=None,
-    ):
+        name: str,
+        domain_settings_ref: Optional[Any] = None,
+        external_distance: int = 110,
+        inter_distance: int = 110,
+        intra_distance: int = 110,
+        redistribution_entry: Optional[list[Any]] = None,
+        default_metric: Optional[int] = None,
+        comment: Optional[str] = None,
+    ) -> "OSPFProfile":
         """
         Create an OSPF Profile.
 
@@ -518,7 +526,12 @@ class OSPFProfile(Element):
         return ElementCreator(cls, json)
 
     @classmethod
-    def update_or_create(cls, filter_key=None, with_status=False, **kwargs):
+    def update_or_create(
+        cls,
+        filter_key: Optional[Any] = None,
+        with_status: bool = False,
+        **kwargs: Any,
+    ) -> Any:
         if "redistribution_entry" in kwargs:
             kwargs.update(
                 redistribution_entry=_format_redist_entry(kwargs.pop("redistribution_entry", []))
@@ -561,16 +574,16 @@ class OSPFDomainSetting(Element):
     @classmethod
     def create(
         cls,
-        name,
-        abr_type="cisco",
-        auto_cost_bandwidth=100,
-        deprecated_algorithm=False,
-        initial_delay=200,
-        initial_hold_time=1000,
-        max_hold_time=10000,
-        shutdown_max_metric_lsa=0,
-        startup_max_metric_lsa=0,
-    ):
+        name: str,
+        abr_type: str = "cisco",
+        auto_cost_bandwidth: int = 100,
+        deprecated_algorithm: bool = False,
+        initial_delay: int = 200,
+        initial_hold_time: int = 1000,
+        max_hold_time: int = 10000,
+        shutdown_max_metric_lsa: int = 0,
+        startup_max_metric_lsa: int = 0,
+    ) -> "OSPFDomainSetting":
         """
         Create custom Domain Settings
 

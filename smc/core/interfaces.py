@@ -40,6 +40,9 @@ first getting the top level interface, and calling
     :func:`~smc.core.interfaces.Interface.vlan_interface`
 to view or modify specific aspects of a VLAN, such as addresses, etc.
 """
+from __future__ import annotations
+
+from typing import Any, Iterator, Optional, Union
 import copy
 from smc.base.model import Element, SubElement, lookup_class, ElementCache
 from smc.api.exceptions import InterfaceNotFound
@@ -82,12 +85,12 @@ class InterfaceOptions(object):
     .. note:: Setting an interface option will commit the change immediately.
     """
 
-    def __init__(self, engine):
+    def __init__(self, engine: Any) -> None:
         self._engine = engine
         self.interface = InterfaceEditor(engine)
 
     @property
-    def primary_mgt(self):
+    def primary_mgt(self) -> Optional[str]:
         """
         Obtain the interface specified as the primary management interface.
         This will always return a value as you must have at least one
@@ -99,7 +102,7 @@ class InterfaceOptions(object):
         return self.interface.find_mgmt_interface("primary_mgt")
 
     @property
-    def backup_mgt(self):
+    def backup_mgt(self) -> Optional[str]:
         """
         Obtain the interface specified as the backup management
         interface. This can return None if no backup has been
@@ -111,7 +114,7 @@ class InterfaceOptions(object):
         return self.interface.find_mgmt_interface("backup_mgt")
 
     @property
-    def primary_heartbeat(self):
+    def primary_heartbeat(self) -> Optional[str]:
         """
         Obtain the interface specified as the primary heartbeat
         interface. This will return None if this is not
@@ -123,7 +126,7 @@ class InterfaceOptions(object):
         return self.interface.find_mgmt_interface("primary_heartbeat")
 
     @property
-    def backup_heartbeat(self):
+    def backup_heartbeat(self) -> Optional[str]:
         """
         Obtain the interface specified as the backup heartbeat
         interface. This may return None if a backup has not been
@@ -135,7 +138,7 @@ class InterfaceOptions(object):
         return self.interface.find_mgmt_interface("backup_heartbeat")
 
     @property
-    def outgoing(self):
+    def outgoing(self) -> Optional[str]:
         """
         Obtain the interface specified as the "Default IP address for
         outgoing traffic". This will always return a value.
@@ -146,7 +149,7 @@ class InterfaceOptions(object):
         return self.interface.find_mgmt_interface("outgoing")
 
     @property
-    def auth_request(self):
+    def auth_request(self) -> Optional[str]:
         """
         Return the interface for authentication requests. Can be either
         a PhysicalInterface or LoopbackInterface
@@ -156,7 +159,7 @@ class InterfaceOptions(object):
         """
         return self.interface.find_mgmt_interface("auth_request")
 
-    def set_auth_request(self, interface_id, address=None):
+    def set_auth_request(self, interface_id: Any, address: Optional[str] = None) -> None:
         """
         Set the authentication request field for the specified
         engine.
@@ -165,7 +168,7 @@ class InterfaceOptions(object):
         self.interface.set_auth_request(interface_id, address)
         self._engine.update()
 
-    def set_primary_heartbeat(self, interface_id):
+    def set_primary_heartbeat(self, interface_id: Any) -> None:
         """
         Set this interface as the primary heartbeat for this engine.
         This will 'unset' the current primary heartbeat and move to
@@ -180,7 +183,7 @@ class InterfaceOptions(object):
         self.interface.set_unset(interface_id, "primary_heartbeat")
         self._engine.update()
 
-    def set_backup_heartbeat(self, interface_id):
+    def set_backup_heartbeat(self, interface_id: Any) -> None:
         """
         Set this interface as the backup heartbeat interface.
         Clusters and Master NGFW Engines only.
@@ -193,7 +196,7 @@ class InterfaceOptions(object):
         self.interface.set_unset(interface_id, "backup_heartbeat")
         self._engine.update()
 
-    def set_primary_mgt(self, interface_id, auth_request=None, address=None):
+    def set_primary_mgt(self, interface_id: Any, auth_request: Any = None, address: Optional[str] = None) -> None:
         """
         Specifies the Primary Control IP address for Management Server
         contact. For single engine and cluster engines, this will enable 'Outgoing',
@@ -250,7 +253,7 @@ class InterfaceOptions(object):
 
         self._engine.update()
 
-    def set_backup_mgt(self, interface_id):
+    def set_backup_mgt(self, interface_id: Any) -> None:
         """
         Set this interface as a backup management interface.
 
@@ -278,7 +281,7 @@ class InterfaceOptions(object):
         self.interface.set_unset(interface_id, "backup_mgt")
         self._engine.update()
 
-    def set_outgoing(self, interface_id):
+    def set_outgoing(self, interface_id: Any) -> None:
         """
         Specifies the IP address that the engine uses to initiate connections
         (such as for system communications and ping) through an interface
@@ -304,12 +307,12 @@ class DHCPRelay(NestedDict):
     When configuring VLAN interfaces, you must set the DHCP relay separately for each VLAN.
     """
 
-    def __init__(self, data):
+    def __init__(self, data: Any) -> None:
         super(DHCPRelay, self).__init__(data=data)
 
     @classmethod
     def create(cls, enabled: bool = True, dhcp_servers: list[DHCPServer] = None,
-               max_packet_size: int = None, trusted_circuit: bool = False):
+               max_packet_size: int = None, trusted_circuit: bool = False) -> DHCPRelay:
         """
         :param str siit_eam_mapping_ipv6_prefix: the IPv6 prefix.
         :param str siit_eam_mapping_ipv4_network: the IPv4 network.
@@ -392,17 +395,17 @@ class QoS(object):
     .. note:: You must call `update` on the interface to commit the change
     """
 
-    def __init__(self, interface):
+    def __init__(self, interface: Any) -> None:
         self._interface = interface
 
-    def disable(self):
+    def disable(self) -> None:
         """
         Disable QoS on this interface
         """
         self._interface.data.update(qos_limit=-1, qos_mode="no_qos", qos_policy_ref=None)
 
     @property
-    def qos_policy(self):
+    def qos_policy(self) -> Any:
         """
         QoS Policy for this interface/vlan. A QoS policy will only
         be present if DSCP throttling or Full QoS is specified.
@@ -412,7 +415,7 @@ class QoS(object):
         return QoSPolicy.from_href(self._interface.data.get("qos_policy_ref", None))
 
     @property
-    def qos_mode(self):
+    def qos_mode(self) -> Optional[str]:
         """
         QoS mode in string format
 
@@ -421,7 +424,7 @@ class QoS(object):
         return self._interface.data.get("qos_mode", "no_qos")
 
     @property
-    def qos_limit(self):
+    def qos_limit(self) -> Optional[int]:
         """
         QoS Limit for this interface. The limit represents the number in
         bps. For example, 100000 represents 100Mbps.
@@ -430,7 +433,7 @@ class QoS(object):
         """
         return self._interface.data.get("qos_limit", -1)
 
-    def statistics_only(self):
+    def statistics_only(self) -> None:
         """
         Set interface to collect QoS statistics only. No enforcement is being
         done but visiblity will be provided in dashboards against applications
@@ -438,7 +441,7 @@ class QoS(object):
         """
         self._interface.data.update(qos_limit=-1, qos_mode="statistics_only", qos_policy_ref=None)
 
-    def full_qos(self, qos_limit, qos_policy):
+    def full_qos(self, qos_limit: int, qos_policy: Any) -> None:
         """
         Enable full QoS on the interface. Full QoS requires that you set a
         bandwidth limit (in Mbps) for the interface. You must also provide a
@@ -451,7 +454,7 @@ class QoS(object):
             qos_limit=qos_limit, qos_mode="full_qos", qos_policy_ref=qos_policy.href
         )
 
-    def dscp_marking_and_throttling(self, qos_policy):
+    def dscp_marking_and_throttling(self, qos_policy: Any) -> None:
         """
         Enable DSCP marking and throttling on the interface. This requires that
         you provide a QoS policy to which identifies DSCP tags and how to prioritize
@@ -467,13 +470,13 @@ class Interface(SubElement):
     Interface settings common to all interface types.
     """
 
-    def __init__(self, **meta):
+    def __init__(self, **meta: Any) -> None:
         self._engine = meta.pop("engine", None)  # Engine reference
         if self._engine and not meta.get("href"):
             meta.update(href=self._engine.get_relation(self.typeof))
         super(Interface, self).__init__(**meta)
 
-    def delete(self):
+    def delete(self) -> None:
         """
         Override delete in parent class, this will also delete
         the routing configuration referencing this interface.
@@ -489,7 +492,7 @@ class Interface(SubElement):
                 route.delete()
         self._engine._del_cache()
 
-    def update(self, *args, **kw):
+    def update(self, *args: Any, **kw: Any) -> Interface:  # type: ignore[override]
         """
         Update/save this interface information back to SMC. When interface
         changes are made, especially to sub interfaces, call `update` on
@@ -509,13 +512,13 @@ class Interface(SubElement):
         self._engine._del_cache()
         return self
 
-    def save(self):
+    def save(self) -> None:
         self.update()
         if self._engine:
             self._engine._del_cache()
 
     @property
-    def all_interfaces(self):
+    def all_interfaces(self) -> Any:
         """
         Access to all assigned sub-interfaces on this interface. A sub
         interface is the node level where IP addresses are assigned, or
@@ -543,7 +546,7 @@ class Interface(SubElement):
         return AllInterfaces([self.vlan_interface, self.interfaces, self.port_group_interface])
 
     @property
-    def interfaces(self):
+    def interfaces(self) -> Any:
         """
         Access to assigned `sub-interfaces` on this interface. A sub
         interface is the node level where IP addresses are assigned, or
@@ -561,7 +564,7 @@ class Interface(SubElement):
         return SubInterfaceCollection(self)
 
     @property
-    def vlan_interface(self):
+    def vlan_interface(self) -> Any:
         """
         Access VLAN interfaces for this interface, if any.
         Example usage::
@@ -586,7 +589,7 @@ class Interface(SubElement):
         return VlanCollection(self)
 
     @property
-    def port_group_interface(self):
+    def port_group_interface(self) -> Any:
         """
         The associated port group interfaces for this switch physical
         interface.
@@ -596,7 +599,7 @@ class Interface(SubElement):
         return PortGroupInterfaceCollection(self)
 
     @property
-    def addresses(self):
+    def addresses(self) -> list[Any]:
         """
         Return 3-tuple with (address, network, nicid)
 
@@ -613,7 +616,7 @@ class Interface(SubElement):
         return addresses
 
     @property
-    def contact_addresses(self):
+    def contact_addresses(self) -> Any:
         """
         Configure an interface contact address for this interface.
         Note that an interface may have multiple IP addresses assigned
@@ -643,7 +646,7 @@ class Interface(SubElement):
         return self._engine.contact_addresses.get(self.interface_id)
 
     @property
-    def has_multiple_addresses(self):
+    def has_multiple_addresses(self) -> bool:
         if len(self.cluster_virtual_interface) > 1:
             return True
         nodeid = [
@@ -654,7 +657,7 @@ class Interface(SubElement):
         return any(nodeid.count(n) > 1 for n in nodeid)
 
     @property
-    def cluster_virtual_interface(self):
+    def cluster_virtual_interface(self) -> list[Any]:
         return [
             interface
             for interface in self.interfaces
@@ -662,7 +665,7 @@ class Interface(SubElement):
         ]
 
     @property
-    def has_vlan(self):
+    def has_vlan(self) -> bool:
         """
         Does the interface have VLANs
 
@@ -672,7 +675,7 @@ class Interface(SubElement):
         return bool(self.data.get("vlanInterfaces", []))
 
     @property
-    def has_interfaces(self):
+    def has_interfaces(self) -> bool:
         """
         Does the interface have interface have any sub interface
         types assigned. For example, a physical interface with no
@@ -683,7 +686,7 @@ class Interface(SubElement):
         """
         return bool(self.data.get("interfaces", []))
 
-    def sub_interfaces(self):
+    def sub_interfaces(self) -> list[Any]:
         """
         Flatten out all top level interfaces and only return sub interfaces.
         It is recommended to use :meth:`~all_interfaces`, :meth:`~interfaces`
@@ -706,7 +709,7 @@ class Interface(SubElement):
 
         return sub_interfaces
 
-    def get_boolean(self, name):
+    def get_boolean(self, name: str) -> bool:
         """
         Get the boolean value for attribute specified from the
         sub interface/s.
@@ -720,7 +723,7 @@ class Interface(SubElement):
                     return True
         return False
 
-    def delete_invalid_route(self):
+    def delete_invalid_route(self) -> None:
         """
         Delete any invalid routes for this interface. An invalid route is
         a left over when an interface is changed to a different network.
@@ -735,7 +738,7 @@ class Interface(SubElement):
         except InterfaceNotFound:  # Only VLAN identifiers, so no routing
             pass
 
-    def reset_interface(self):
+    def reset_interface(self) -> None:
         """
         Reset the interface by removing all assigned addresses and VLANs.
         This will not delete the interface itself, only the sub interfaces that
@@ -758,7 +761,7 @@ class Interface(SubElement):
         self.delete_invalid_route()
 
     @property
-    def interface_id(self):
+    def interface_id(self) -> Optional[str]:
         """
         The Interface ID automatically maps to a physical network port
         of the same number during the initial configuration of the engine,
@@ -775,10 +778,10 @@ class Interface(SubElement):
         return self.data.get("interface_id")
 
     @interface_id.setter
-    def interface_id(self, newid):
+    def interface_id(self, newid: Any) -> None:
         self.data["interface_id"] = newid
 
-    def change_interface_id(self, interface_id):
+    def change_interface_id(self, interface_id: Any) -> None:
         """
         Change the interface ID for this interface. This can be used on any
         interface type. If the interface is an Inline interface, you must
@@ -825,7 +828,7 @@ class Interface(SubElement):
         self.interface_id = if1
         self.update()
 
-    def _update_interface(self, other_interface):
+    def _update_interface(self, other_interface: Any) -> bool:
         """
         Update the physical interface base settings with another interface.
         Only set updated if a value has changed. You must also call `update`
@@ -849,7 +852,7 @@ class Interface(SubElement):
                 updated = True
         return updated
 
-    def update_interface(self, other_interface, ignore_mgmt=True):
+    def update_interface(self, other_interface: Any, ignore_mgmt: bool = True) -> Any:
         """
         Update an existing interface by comparing values between two
         interfaces. If a VLAN interface is defined in the other interface
@@ -881,7 +884,7 @@ class Interface(SubElement):
         updated = False
         invalid_routes = []
 
-        def process_interfaces(current, interface):
+        def process_interfaces(current: Any, interface: Any) -> tuple[bool, list[Any]]:
             updated = False
             invalid_routes = []
 
@@ -952,7 +955,7 @@ class Interface(SubElement):
         return interface, base_updated or updated
 
     @property
-    def name(self):
+    def name(self) -> Optional[str]:
         """
         Read only name tag
         """
@@ -960,7 +963,7 @@ class Interface(SubElement):
         return name if name else self.data.get("name")
 
     @property
-    def comment(self):
+    def comment(self) -> Optional[str]:
         """
         Optional interface comment
 
@@ -969,11 +972,11 @@ class Interface(SubElement):
         return self.data.get("comment", None)
 
     @comment.setter
-    def comment(self, value):
+    def comment(self, value: Any) -> None:
         self.data["comment"] = value if value is not None else ""
 
     @property
-    def zone(self):
+    def zone(self) -> Any:
         """
         Return the Zone for this interface, otherwise None
 
@@ -982,7 +985,7 @@ class Interface(SubElement):
         return Zone.from_href(self.zone_ref)
 
     @property
-    def zone_ref(self):
+    def zone_ref(self) -> Optional[str]:
         """
         Zone for this physical interface.
 
@@ -992,13 +995,13 @@ class Interface(SubElement):
         return self.data.get("zone_ref")
 
     @zone_ref.setter
-    def zone_ref(self, value):
+    def zone_ref(self, value: Any) -> None:
         if value is None:
             self.data.pop("zone_ref", None)
         else:
             self.data["zone_ref"] = zone_helper(value)
 
-    def add_ip_address(self, cvi=None, sni=None, nodes=None):
+    def add_ip_address(self, cvi: Any = None, sni: Any = None, nodes: Optional[list[Any]] = None) -> None:
         """
         Add an ip address(ipv4/ipv6) to tunnel interface
         :param SingleNodeInterface sni: The single node interface.
@@ -1015,7 +1018,7 @@ class Interface(SubElement):
         self.update()
 
     @property
-    def log_moderation(self):
+    def log_moderation(self) -> Any:
         """
         This is the definition of Log Compression for the engine or for an interface. You can also
         configure Log Compression to save resources on the engine. By default, each generated
@@ -1088,14 +1091,14 @@ class TunnelInterface(Interface):
 
     typeof = "tunnel_interface"
 
-    def __init__(self, engine=None, meta=None, **interface):
+    def __init__(self, engine: Any = None, meta: Any = None, **interface: Any) -> None:
         if not meta:
             meta = {key: interface.pop(key) for key in ("href", "type", "name") if key in interface}
         super(TunnelInterface, self).__init__(engine=engine, meta=meta)
         if interface:
             self._add_interface(**interface)
 
-    def _add_interface(self, interface_id, **kw):
+    def _add_interface(self, interface_id: Any, **kw: Any) -> None:
         """
         Create a tunnel interface. Kw argument list is as follows
         """
@@ -1135,7 +1138,7 @@ class TunnelInterface(Interface):
                         base_interface.setdefault("interfaces", []).append({sni.typeof: sni.data})
 
     @property
-    def qos(self):
+    def qos(self) -> QoS:
         """
         The QoS settings for this tunnel interface
 
@@ -1144,12 +1147,63 @@ class TunnelInterface(Interface):
         return QoS(self)
 
     @property
-    def ndi_interfaces(self):
+    def ndi_interfaces(self) -> list[Any]:
         return [
             interface
             for interface in self.interfaces
             if getattr(interface, "typeof", None) == "node_interface"
         ]
+
+    def update_interface(self, other_interface: Any, ignore_mgmt: bool = True) -> Any:  # type: ignore[override]
+        """
+        Update an existing tunnel interface by comparing values between two
+        interfaces.
+
+        :param other_interface TunnelInterface: template interface with new values
+        :param bool ignore_mgmt: ignore resetting management fields
+        :raises UpdateElementFailed: Failed to update the element
+        :return: (Interface, modified)
+        :rtype: tuple
+        """
+        base_updated = self._update_interface(other_interface)
+        updated = False
+        invalid_routes = []
+
+        mgmt = (
+            "auth_request", "backup_heartbeat", "backup_mgt",
+            "primary_mgt", "primary_heartbeat", "outgoing",
+        )
+
+        local_interfaces = self.interfaces
+        for interface in other_interface.interfaces:
+            local_interface = None
+            if not getattr(interface, "nodeid", None):
+                cvi = [itf for itf in local_interfaces if not getattr(itf, "nodeid", None)]
+                local_interface = cvi[0] if cvi else None
+            else:
+                local_interface = local_interfaces.get(nodeid=interface.nodeid)
+
+            if local_interface:
+                for name, value in interface.data.items():
+                    if getattr(local_interface, name) != value:
+                        if not (ignore_mgmt and name in mgmt):
+                            local_interface[name] = value
+                            updated = True
+                        if "network_value" in name:
+                            invalid_routes.append(interface.nicid)
+            else:
+                self.data.setdefault("interfaces", []).append(
+                    {interface.typeof: interface.data}
+                )
+                updated = True
+
+        interface = self
+        if updated or base_updated:
+            interface = self.update()
+            if invalid_routes:
+                del_invalid_routes(self._engine, invalid_routes)
+
+        return interface, base_updated or updated
 
 
 class VPNBrokerInterface(Interface):
@@ -1182,7 +1236,7 @@ class VPNBrokerInterface(Interface):
 
     typeof = "vpn_broker_interface"
 
-    def __init__(self, engine=None, meta=None, **interface):
+    def __init__(self, engine: Any = None, meta: Any = None, **interface: Any) -> None:
         if not meta:
             meta = {key: interface.pop(key) for key in ("href", "type", "name") if key in interface}
 
@@ -1190,7 +1244,7 @@ class VPNBrokerInterface(Interface):
         if interface:
             self._add_interface(**interface)
 
-    def _add_interface(self, interface_id, **kw):
+    def _add_interface(self, interface_id: Any, **kw: Any) -> None:
         """
         Create a vpn broker interface. Kw argument list is as follows
         """
@@ -1264,7 +1318,7 @@ class ModemInterface(Interface):
 
     typeof = "modem_interface"
 
-    def __init__(self, engine=None, meta=None, **kw):
+    def __init__(self, engine: Any = None, meta: Any = None, **kw: Any) -> None:
         super(ModemInterface, self).__init__(engine=engine, meta=meta)
         self.data = ElementCache()
         if "modem_interface_type" in kw:
@@ -1279,9 +1333,12 @@ class ModemInterface(Interface):
         if "apn" in kw:
             self.add_apn_interface(**kw)
 
-    def add_apn_interface(self, apn, interfaces=[], zone_ref=None, mtu=None, qos_mode=None,
-                          qos_limit=None, qos_policy_ref=None, auth_method=None,
-                          username=None, password=None, **kw):
+    def add_apn_interface(self, apn: str, interfaces: list[Any] = [], zone_ref: Optional[str] = None,
+                          mtu: Optional[int] = None, qos_mode: Optional[str] = None,
+                          qos_limit: Optional[int] = None, qos_policy_ref: Optional[str] = None,
+                          auth_method: Optional[str] = None,
+                          username: Optional[str] = None, password: Optional[str] = None,
+                          **kw: Any) -> Any:
         """
         Add an APN interface to this modem interface. This will create a new APN interface with the provided settings and associate it with this modem interface.
         """
@@ -1354,6 +1411,133 @@ class ModemInterface(Interface):
 
                 self.data.setdefault("interfaces", []).append(
                     {"single_node_interface": interface_content})
+        if self.href:
+            return self.update()
+
+    def update_apn_interface(self, apn_interface_id: Any, apn: Optional[str] = None,
+                             zone_ref: Optional[str] = None, mtu: Optional[int] = None,
+                             qos_mode: Optional[str] = None, qos_limit: Optional[int] = None,
+                             qos_policy_ref: Optional[str] = None,
+                             auth_method: Optional[str] = None, username: Optional[str] = None,
+                             password: Optional[str] = None) -> Any:
+        """
+        Update an existing APN sub-interface on this modem interface.
+
+        On SMC >= 7.5, use apn_interface_id to identify which APN to update (e.g. "5.1").
+        On SMC < 7.5, the single embedded APN is updated (apn_interface_id is ignored).
+
+        :param str apn_interface_id: APN sub-interface ID (e.g. "5.1"), required on SMC >= 7.5
+        :param str apn: APN name
+        :param str zone_ref: zone reference
+        :param int mtu: MTU value
+        :param str qos_mode: QoS mode
+        :param int qos_limit: QoS limit
+        :param str qos_policy_ref: QoS policy reference
+        :param str auth_method: authentication method
+        :param str username: username for authentication
+        :param str password: password for authentication
+        :raises InterfaceNotFound: if apn_interface_id does not exist on SMC >= 7.5
+        :raises UpdateElementFailed: failure to save changes
+        :return: updated ModemInterface
+        """
+        if is_smc_version_more_than_or_equal("7.5"):
+            apn_list = self.data.get("apnInterfaces", [])
+            match = next(
+                (a for a in apn_list if a.get("interface_id") == str(apn_interface_id)), None
+            )
+            if match is None:
+                raise InterfaceNotFound(
+                    "APN interface id {} not found on modem interface {}.".format(
+                        apn_interface_id, self.interface_id)
+                )
+            if apn is not None:
+                match["apn"] = apn
+            if zone_ref is not None:
+                match["zone_ref"] = zone_helper(zone_ref)
+            if mtu is not None:
+                match["mtu"] = mtu
+            if qos_mode is not None:
+                match["qos_mode"] = qos_mode
+                match["qos_limit"] = qos_limit
+            if qos_policy_ref is not None:
+                match["qos_policy_ref"] = qos_policy_helper(qos_policy_ref)
+            if auth_method is not None:
+                match["modem_auth_method"] = auth_method
+                match["username"] = username
+                match["password"] = password
+        else:
+            interfaces = self.data.get("interfaces", [])
+            if interfaces:
+                sni = interfaces[0].get("single_node_interface", {})
+                if apn is not None:
+                    sni["apn"] = apn
+                if auth_method is not None:
+                    sni["pppoe_username"] = username
+                    sni["pppoe_password"] = password
+        return self.update()
+
+    def delete_apn_interface(self, apn_interface_id: Any) -> Any:
+        """
+        Delete an APN sub-interface from this modem interface.
+
+        Only supported on SMC >= 7.5.
+
+        :param str apn_interface_id: APN sub-interface ID to delete (e.g. "5.1")
+        :raises InterfaceNotFound: if apn_interface_id does not exist
+        :raises UpdateElementFailed: failure to save changes
+        :return: updated ModemInterface
+        """
+        if not is_smc_version_more_than_or_equal("7.5"):
+            raise InterfaceNotFound(
+                "delete_apn_interface is only supported on SMC >= 7.5."
+            )
+        apn_list = self.data.get("apnInterfaces", [])
+        new_list = [a for a in apn_list if a.get("interface_id") != str(apn_interface_id)]
+        if len(new_list) == len(apn_list):
+            raise InterfaceNotFound(
+                "APN interface id {} not found on modem interface {}.".format(
+                    apn_interface_id, self.interface_id)
+            )
+        self.data["apnInterfaces"] = new_list
+        return self.update()
+
+    def update_interface(self, other_interface: Any, ignore_mgmt: bool = True) -> Any:  # type: ignore[override]
+        """
+        Update an existing modem interface by comparing values between two
+        interfaces.
+
+        :param other_interface ModemInterface: template interface with new values
+        :param bool ignore_mgmt: ignore resetting management fields
+        :raises UpdateElementFailed: Failed to update the element
+        :return: (Interface, modified)
+        :rtype: tuple
+        """
+        base_updated = self._update_interface(other_interface)
+        updated = False
+
+        if is_smc_version_more_than_or_equal("7.5") and "apnInterfaces" in other_interface.data:
+            existing = self.data.get("apnInterfaces", [])
+            for new_apn in other_interface.data["apnInterfaces"]:
+                match = next(
+                    (a for a in existing
+                     if a.get("interface_id") == new_apn.get("interface_id")), None
+                )
+                if match:
+                    for k, v in new_apn.items():
+                        if match.get(k) != v:
+                            match[k] = v
+                            updated = True
+                else:
+                    existing.append(new_apn)
+                    updated = True
+            if updated:
+                self.data["apnInterfaces"] = existing
+
+        interface = self
+        if updated or base_updated:
+            interface = self.update()
+
+        return interface, base_updated or updated
 
 
 class SwitchPhysicalInterface(Interface):
@@ -1400,14 +1584,14 @@ class SwitchPhysicalInterface(Interface):
 
     typeof = "switch_physical_interface"
 
-    def __init__(self, engine=None, meta=None, **interface):
+    def __init__(self, engine: Any = None, meta: Any = None, **interface: Any) -> None:
         if not meta:
             meta = {key: interface.pop(key) for key in ("href", "type", "name") if key in interface}
         super(SwitchPhysicalInterface, self).__init__(engine=engine, meta=meta)
         if interface:
             self._add_interface(**interface)
 
-    def _add_interface(self, interface_id, **kw):
+    def _add_interface(self, interface_id: Any, **kw: Any) -> None:
         """
         Create a tunnel interface. Kw argument list is as follows
         """
@@ -1465,7 +1649,7 @@ class SwitchPhysicalInterface(Interface):
 
             base_interface.setdefault("port_group_interface", []).append(sub_interface)
 
-    def update_interface(self, other_interface, ignore_mgmt=True):
+    def update_interface(self, other_interface: Any, ignore_mgmt: bool = True) -> Any:  # type: ignore[override]
         """
         Update a switch physical interface with another interface. You can provide
         only partial interface data, for example, if you have an existing port group
@@ -1577,7 +1761,7 @@ class SwitchPhysicalInterface(Interface):
         return self, updated
 
     @property
-    def appliance_switch_module(self):
+    def appliance_switch_module(self) -> Any:
         """
         Return the appliance module used for this switch physical interface.
 
@@ -1620,7 +1804,7 @@ class PhysicalInterface(Interface):
 
     typeof = "physical_interface"
 
-    def __init__(self, engine=None, meta=None, **interface):
+    def __init__(self, engine: Any = None, meta: Any = None, **interface: Any) -> None:
         if not meta:
             meta = {key: interface.pop(key) for key in ("href", "type", "name") if key in interface}
         super(PhysicalInterface, self).__init__(engine=engine, meta=meta)
@@ -1652,7 +1836,7 @@ class PhysicalInterface(Interface):
             self._add_interface(mgt=mgt, **interface)
 
     @property
-    def qos(self):
+    def qos(self) -> QoS:
         """
         The QoS settings for this physical interface
 
@@ -1661,7 +1845,7 @@ class PhysicalInterface(Interface):
         return QoS(self)
 
     @property
-    def is_primary_mgt(self):
+    def is_primary_mgt(self) -> bool:
         """
         Is this physical interface tagged as the backup management
         interface for this cluster.
@@ -1672,7 +1856,7 @@ class PhysicalInterface(Interface):
         return self.get_boolean("primary_mgt")
 
     @property
-    def is_backup_mgt(self):
+    def is_backup_mgt(self) -> bool:
         """
         Is this physical interface tagged as the backup management
         interface for this cluster.
@@ -1683,7 +1867,7 @@ class PhysicalInterface(Interface):
         return self.get_boolean("backup_mgt")
 
     @property
-    def is_primary_heartbeat(self):
+    def is_primary_heartbeat(self) -> bool:
         """
         Is this physical interface tagged as the primary heartbeat
         interface for this cluster.
@@ -1694,7 +1878,7 @@ class PhysicalInterface(Interface):
         return self.get_boolean("primary_heartbeat")
 
     @property
-    def is_auth_request(self):
+    def is_auth_request(self) -> bool:
         """
         Is this physical interface tagged as the interface for
         authentication requests
@@ -1704,7 +1888,7 @@ class PhysicalInterface(Interface):
         return self.get_boolean("auth_request")
 
     @property
-    def relayed_by_dhcp(self):
+    def relayed_by_dhcp(self) -> bool:
         """
         Is this physical interface tagged as the interface for
         relayed by dhcp requests
@@ -1714,7 +1898,7 @@ class PhysicalInterface(Interface):
         return self.get_boolean("relayed_by_dhcp")
 
     @property
-    def is_backup_heartbeat(self):
+    def is_backup_heartbeat(self) -> bool:
         """
         Is this physical interface tagged as the backup heartbeat
         interface for this cluster.
@@ -1725,7 +1909,7 @@ class PhysicalInterface(Interface):
         return self.get_boolean("backup_heartbeat")
 
     @property
-    def is_outgoing(self):
+    def is_outgoing(self) -> bool:
         """
         Is this the default interface IP used for outgoing for system
         communications.
@@ -1735,7 +1919,7 @@ class PhysicalInterface(Interface):
         """
         return self.get_boolean("outgoing")
 
-    def update_dhcp_relay(self, ipv6: bool, dhcp_relay: DHCPRelay):
+    def update_dhcp_relay(self, ipv6: bool, dhcp_relay: DHCPRelay) -> None:
         """
         Updates the DHCP Relay settings to the current interface.
         """
@@ -1745,20 +1929,20 @@ class PhysicalInterface(Interface):
             self.data.data.update(dhcp_relay=dhcp_relay.data)
 
     @property
-    def native_vlan_id(self):
+    def native_vlan_id(self) -> Optional[int]:
         """
         From SMC >= 7.5.0, get the native VLAN ID for this physical interface.
         """
         return self.data.data.get("native_vlan_id", None)
 
-    def update_native_vlan_id(self, native_vlan_id: int):
+    def update_native_vlan_id(self, native_vlan_id: int) -> None:
         """
         From SMC >= 7.5.0, update the native VLAN ID for this physical interface.
         """
         self.data.data.update(native_vlan_id=native_vlan_id)
 
     @property
-    def ndi_interfaces(self):
+    def ndi_interfaces(self) -> list[Any]:
         """
         Return a formatted dict list of NDI interfaces on this engine.
         This will ignore CVI or any inline or layer 2 interface types.
@@ -1775,7 +1959,7 @@ class PhysicalInterface(Interface):
             if isinstance(interface, (NodeInterface, SingleNodeInterface))
         ]
 
-    def change_vlan_id(self, original, new):
+    def change_vlan_id(self, original: Any, new: Any) -> None:
         """
         Change VLAN ID for a single VLAN, cluster VLAN or inline
         interface. When changing a single or cluster engine vlan, you
@@ -1821,7 +2005,7 @@ class PhysicalInterface(Interface):
                 interface.change_vlan_id(newvlan[0])
         self.update()
 
-    def enable_aggregate_mode(self, mode, interfaces):
+    def enable_aggregate_mode(self, mode: str, interfaces: list[Any]) -> None:
         """
         Enable Aggregate (LAGG) mode on this interface. Possible LAGG
         types are 'ha' and 'lb' (load balancing). For HA, only one
@@ -1840,7 +2024,7 @@ class PhysicalInterface(Interface):
             self.save()
 
     @property
-    def aggregate_mode(self):
+    def aggregate_mode(self) -> Optional[str]:
         """
         LAGG configuration mode for this interface. Values are 'ha' or
         'lb' (load balancing). This can return None if LAGG is not
@@ -1851,7 +2035,7 @@ class PhysicalInterface(Interface):
         """
         return self.data.get("aggregate_mode")
 
-    def static_arp_entry(self, ipaddress, macaddress, arp_type="static", netmask=32):
+    def static_arp_entry(self, ipaddress: str, macaddress: str, arp_type: str = "static", netmask: Any = 32) -> None:
         """
         Add an arp entry to this physical interface.
         ::
@@ -1874,7 +2058,7 @@ class PhysicalInterface(Interface):
         )
 
     @property
-    def arp_entry(self):
+    def arp_entry(self) -> Optional[list[Any]]:
         """
         Return any manually configured ARP entries for this physical
         interface
@@ -1884,8 +2068,8 @@ class PhysicalInterface(Interface):
         """
         return self.data.get("arp_entry")
 
-    def set_sync_parameter(self, sync_mode, full_sync_interval, incr_sync_interval,
-                           sync_security, statesync_group_ip, heartbeat_group_ip):
+    def set_sync_parameter(self, sync_mode: str, full_sync_interval: int, incr_sync_interval: int,
+                           sync_security: str, statesync_group_ip: str, heartbeat_group_ip: str) -> None:
         """
         Set SYNC parameter settings this physical interface.
         ::
@@ -1949,7 +2133,7 @@ class PhysicalInterface(Interface):
                                         'heartbeat_group_ip': heartbeat_group_ip }
 
     @property
-    def sync_parameter(self):
+    def sync_parameter(self) -> Any:
         """
         Return Sync Paramerer settings for this physical interface
 
@@ -1958,7 +2142,7 @@ class PhysicalInterface(Interface):
         return self.data.get("sync_parameter", {})
 
     @property
-    def mtu(self):
+    def mtu(self) -> Optional[int]:
         """
         Set MTU on interface. Enter a value between 400-65535.
         The same MTU is automatically applied to any VLANs
@@ -1970,11 +2154,11 @@ class PhysicalInterface(Interface):
         return self.data.get("mtu")
 
     @mtu.setter
-    def mtu(self, value):
+    def mtu(self, value: Any) -> None:
         self.data["mtu"] = value
 
     @property
-    def multicast_ip(self):
+    def multicast_ip(self) -> Optional[str]:
         """
         Enter a multicast address, that is, an IP address from the
         range 224.0.0.0-239.255.255.255.
@@ -1987,11 +2171,11 @@ class PhysicalInterface(Interface):
         return self.data.get("multicast_ip")
 
     @multicast_ip.setter
-    def multicast_ip(self, value):
+    def multicast_ip(self, value: Any) -> None:
         self.data["multicast_ip"] = value
 
     @property
-    def second_interface_id(self):
+    def second_interface_id(self) -> Optional[str]:
         """
         Peer interfaces used in LAGG configuration.
 
@@ -2001,7 +2185,7 @@ class PhysicalInterface(Interface):
         return self.data.get("second_interface_id")
 
     @property
-    def virtual_mapping(self):
+    def virtual_mapping(self) -> Optional[int]:
         """
         The virtual mapping id. Required if Virtual Resource chosen.
         See :py:class:`smc.core.engine.VirtualResource.vfw_id`
@@ -2019,7 +2203,7 @@ class PhysicalInterface(Interface):
             return int(self.data["virtual_resource_settings"][0]["virtual_mapping"])
 
     @property
-    def virtual_resource_name(self):
+    def virtual_resource_name(self) -> Optional[str]:
         """
         Virtual Resource name used on Master Engine to map a virtual engine.
         See :py:class:`smc.core.engine.VirtualResource.name`
@@ -2035,7 +2219,7 @@ class PhysicalInterface(Interface):
         return self.data.get("virtual_resource_name")
 
     @property
-    def virtual_engine_vlan_ok(self):
+    def virtual_engine_vlan_ok(self) -> Optional[bool]:
         """
         Whether to allow VLAN creation on the Virtual Engine.
         Only valid for master engine.
@@ -2046,7 +2230,7 @@ class PhysicalInterface(Interface):
         return self.data.get("virtual_engine_vlan_ok")
 
     @property
-    def lldp_mode(self):
+    def lldp_mode(self) -> Optional[str]:
         """
         Represents the LLDP Mode configuration on an interface.
         Send is to advertise information about device itself.
@@ -2128,14 +2312,14 @@ class Layer2PhysicalInterface(PhysicalInterface):
     """
 
     @property
-    def failure_mode(self):
+    def failure_mode(self) -> Any:
         return self.interfaces.get(0, {}).get("failure_mode")
 
     @property
-    def inspect_unspecified_vlans(self):
+    def inspect_unspecified_vlans(self) -> Any:
         return self.interfaces.get(0, {}).get("inspect_unspecified_vlans")
 
-    def _add_interface(self, interface_id, **kw):
+    def _add_interface(self, interface_id: Any, **kw: Any) -> None:
         # Top level physical interface reference
         clz = get_sub_interface(kw.pop("interface", "capture_interface"))
 
@@ -2190,7 +2374,7 @@ class Layer2PhysicalInterface(PhysicalInterface):
                 vlan_interface.update(interfaces=[{_inline_intf.typeof: _inline_intf.data}])
                 self.data.setdefault("vlanInterfaces", []).append(vlan_interface)
 
-    def update_interface(self, other_interface, ignore_mgmt=True):
+    def update_interface(self, other_interface: Any, ignore_mgmt: bool = True) -> None:  # type: ignore[override]
         # TODO: Not Yet Implemented
         pass
 
@@ -2254,7 +2438,7 @@ class Layer3PhysicalInterface(PhysicalInterface):
     :param str comment: comment for interface
     """
 
-    def _add_interface(self, interface_id, interface="node_interface", **kw):
+    def _add_interface(self, interface_id: Any, interface: str = "node_interface", **kw: Any) -> None:
         if "dhcp_relay" in kw:
             if isinstance(kw["dhcp_relay"], DHCPRelay):
                 self.data["dhcp_relay"] = kw.pop("dhcp_relay").data
@@ -2415,7 +2599,7 @@ class ClusterPhysicalInterface(PhysicalInterface):
     .. note:: Values for dict match the FirewallCluster.create constructor
     """
 
-    def _add_interface(self, interface_id, mgt=None, **kw):
+    def _add_interface(self, interface_id: Any, mgt: Any = None, **kw: Any) -> None:
         """
         Add the Cluster interface. If adding a cluster interface to
         an existing node, retrieve the existing interface and call
@@ -2500,7 +2684,7 @@ class ClusterPhysicalInterface(PhysicalInterface):
             self.data[name] = value
 
     @property
-    def cvi_mode(self):
+    def cvi_mode(self) -> Optional[str]:
         """
         HA Cluster mode.
 
@@ -2511,12 +2695,12 @@ class ClusterPhysicalInterface(PhysicalInterface):
         return self.data.get("cvi_mode")
 
     @cvi_mode.setter
-    def cvi_mode(self, value):
+    def cvi_mode(self, value: Any) -> None:
         if value in ("packetdispatch", "none"):
             self.data["cvi_mode"] = value
 
     @property
-    def macaddress(self):
+    def macaddress(self) -> Optional[str]:
         """
         MAC Address for cluster virtual interface. Not required for NDI
         only interfaces.
@@ -2527,10 +2711,10 @@ class ClusterPhysicalInterface(PhysicalInterface):
         return self.data.get("macaddress")
 
     @macaddress.setter
-    def macaddress(self, value):
+    def macaddress(self, value: Any) -> None:
         self.data["macaddress"] = value
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "{}(name={})".format(
             self.__class__.__name__, self.name if self.name else "Interface %s" % self.interface_id
         )
@@ -2566,7 +2750,7 @@ class PortGroupInterface(object):
     """
 
     @property
-    def switch_physical_interface_port(self):
+    def switch_physical_interface_port(self) -> list[Any]:
         """
         Return a raw dict of the switch port configuration which is a list of
         dict with a comment field and interface port number, i.e::
@@ -2579,7 +2763,7 @@ class PortGroupInterface(object):
         return self.data.get("switch_physical_interface_port", [])
 
     @property
-    def ndi_interfaces(self):
+    def ndi_interfaces(self) -> list[Any]:
         """
         Return a formatted dict list of NDI interfaces on this interface.
         Port Group Interfaces are assigned to a Switch Physical Interface
@@ -2603,14 +2787,14 @@ class VlanInterface(object):
     is dependent on the parent interface.
     """
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         return bool(other.name == self.name)
 
-    def __ne__(self, other):
+    def __ne__(self, other: Any) -> bool:
         return not self.__eq__(other)
 
     @property
-    def qos(self):
+    def qos(self) -> Optional[QoS]:
         """
         QoS on VLANs is only supported for Layer3PhysicalInterface
         types.
@@ -2620,7 +2804,7 @@ class VlanInterface(object):
         if isinstance(self._parent, (Layer3PhysicalInterface, ClusterPhysicalInterface)):
             return QoS(self)
 
-    def delete(self):
+    def delete(self) -> None:
         """
         Delete this Vlan interface from the parent interface.
         This will also remove stale routes if the interface has
@@ -2637,13 +2821,13 @@ class VlanInterface(object):
                 if route.to_delete:
                     route.delete()
 
-    def update(self, **kw):
+    def update(self, **kw: Any) -> None:
         if kw:
             self.data.update(**kw)
         self._parent.update()
 
     @property
-    def vlan_id(self):
+    def vlan_id(self) -> str:
         """
         Vlan id for this vlan
 
@@ -2651,7 +2835,7 @@ class VlanInterface(object):
         """
         return self.data.get("interface_id").split(".")[-1]
 
-    def change_vlan_id(self, vlan_id):
+    def change_vlan_id(self, vlan_id: Any) -> None:
         """
         Change the VLAN id for this VLAN interface. If this is an
         inline interface, you can specify two interface values to
@@ -2686,18 +2870,18 @@ class AllInterfaces(BaseIterable):
     :rtype: SubInterface or VlanInterface
     """
 
-    def __init__(self, interfaces):
+    def __init__(self, interfaces: Any) -> None:
         super(AllInterfaces, self).__init__(interfaces)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Any]:
         for it in self.items:
             for element in it:
                 yield element
 
-    def __len__(self):
+    def __len__(self) -> int:
         return sum(len(x) for x in self.items)
 
-    def get(self, *args, **kwargs):
+    def get(self, *args: Any, **kwargs: Any) -> Any:
         """
         Get from the interface collection. It is more accurate to use
         kwargs to specify an attribute of the sub interface to retrieve
@@ -2734,7 +2918,7 @@ class VlanCollection(BaseIterable):
     :rtype: BaseIterable
     """
 
-    def __init__(self, interface):
+    def __init__(self, interface: Any) -> None:
         name = "{}Vlan".format(type(interface).__name__)
         data = [
             type(
@@ -2747,7 +2931,7 @@ class VlanCollection(BaseIterable):
         super(VlanCollection, self).__init__(data)
 
     @property
-    def vlan_ids(self):
+    def vlan_ids(self) -> list[Any]:
         """
         Return all VLAN ids in use by the interface
 
@@ -2756,7 +2940,7 @@ class VlanCollection(BaseIterable):
         """
         return [vlan.vlan_id for vlan in self]
 
-    def get_vlan(self, *args, **kwargs):
+    def get_vlan(self, *args: Any, **kwargs: Any) -> Any:
         """
         Get the VLAN from this PhysicalInterface.
         Use args if you want to specify only the VLAN id. Otherwise
@@ -2782,7 +2966,7 @@ class VlanCollection(BaseIterable):
                 return vlan
         raise InterfaceNotFound("VLAN ID {} was not found on this engine.".format(value))
 
-    def get(self, *args, **kwargs):
+    def get(self, *args: Any, **kwargs: Any) -> Any:
         """
         Get the sub interfaces for this VlanInterface
 
@@ -2816,7 +3000,7 @@ class PortGroupInterfaceCollection(BaseIterable):
     :rtype: PortGroupInterface(Interface)
     """
 
-    def __init__(self, interface):
+    def __init__(self, interface: Any) -> None:
         data = [
             type(
                 "PortGroupInterface",
@@ -2830,7 +3014,7 @@ class PortGroupInterfaceCollection(BaseIterable):
         ]
         super(PortGroupInterfaceCollection, self).__init__(data)
 
-    def get(self, *args, **kwargs):
+    def get(self, *args: Any, **kwargs: Any) -> Any:
         """
         Get a specific port group interface from the collection. Port group names
         will be in the format::
@@ -2865,15 +3049,15 @@ class PortGroupInterfaceCollection(BaseIterable):
 
 
 class InterfaceEditor(object):
-    def __init__(self, engine):
+    def __init__(self, engine: Any) -> None:
         self.engine = engine
 
-    def extract_self(self, link_list):
+    def extract_self(self, link_list: Any) -> Any:
         for keys in link_list:
             if keys.get("rel") == "self":
                 return keys.get("href")
 
-    def serialize(self):
+    def serialize(self) -> Iterator[Any]:
         for interface in self.engine.data.get("physicalInterfaces", []):
             for typeof, data in interface.items():
                 subif_type = extract_sub_interface(data)
@@ -2900,13 +3084,13 @@ class InterfaceEditor(object):
                 clazz._engine = self.engine
                 yield clazz
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Any]:
         return self.serialize()
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.engine.data.get("physicalInterfaces"))
 
-    def find_mgmt_interface(self, mgmt):
+    def find_mgmt_interface(self, mgmt: str) -> Optional[str]:
         """
         Find the management interface specified and return
         either the string representation of the interface_id.
@@ -2926,7 +3110,7 @@ class InterfaceEditor(object):
                     if getattr(allitf, mgmt, None):
                         return intf.interface_id
 
-    def get(self, interface_id):
+    def get(self, interface_id: Any) -> Any:
         """
         Get the interface from engine json
 
@@ -2965,7 +3149,7 @@ class InterfaceEditor(object):
             "Interface id {} was not found on this engine.".format(interface_id)
         )
 
-    def set_unset(self, interface_id, attribute, address=None):
+    def set_unset(self, interface_id: Any, attribute: str, address: Optional[str] = None) -> None:
         """
         Set attribute to True and unset the same attribute for all other
         interfaces. This is used for interface options that can only be
@@ -3010,7 +3194,7 @@ class InterfaceEditor(object):
                         else:  # unset
                             sub_interface[attribute] = False
 
-    def set_auth_request(self, interface_id, address=None):
+    def set_auth_request(self, interface_id: Any, address: Optional[str] = None) -> None:
         """
         Set auth request, there can only be one per engine so unset all
         other interfaces. If this is a cluster, auth request can only be
@@ -3060,7 +3244,7 @@ class InterfaceEditor(object):
                         itf["auth_request"] = True
 
 
-def extract_sub_interface(data):
+def extract_sub_interface(data: Any) -> Any:
     for intf in data.get("interfaces", []):
         for if_type, values in intf.items():
             return get_sub_interface(if_type)(values)

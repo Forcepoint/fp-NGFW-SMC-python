@@ -12,6 +12,9 @@
 """
 ECA Client configuration and ECA Endpoint Settings are used to configure endpoint integration
 """
+from __future__ import annotations
+
+from typing import Any, Iterator, Optional, Union
 
 from smc.base.model import Element, ElementCreator
 from smc.base.structs import NestedDict
@@ -31,7 +34,13 @@ class EcaClientConfig(Element):
     typeof = "eca_client_config"
 
     @classmethod
-    def create(cls, name=None, eca_ca_ref=None, auto_discovery=True, admin_domain=None):
+    def create(
+        cls,
+        name: Optional[str] = None,
+        eca_ca_ref: Optional[list[Any]] = None,
+        auto_discovery: bool = True,
+        admin_domain: Optional[Any] = None,
+    ) -> "EcaClientConfig":
         """
         Create an eca client config
         :param str, name: Name of ECA client configuration
@@ -54,7 +63,7 @@ class EcaClientConfig(Element):
         json.update(eca_ca_ref=eca_ca_ref_list)
         return ElementCreator(cls, json)
 
-    def export_client_config(self, filename=None):
+    def export_client_config(self, filename: Optional[str] = None) -> Optional[str]:
         """
         Export the ECA client config .
         :raises CertificateExportError: error exporting certificate
@@ -70,17 +79,17 @@ class EcaClientConfig(Element):
 
         return result.content
 
-    def __getattr__(self, attr):
+    def __getattr__(self, attr: str) -> Any:
         return None
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"eca_client_config(name={self.name}," \
                f" eca_ca_ref={self.eca_ca_ref}," \
                f" admin_domain={self.admin_domain}," \
                f" auto_discovery={self.auto_discovery})"
 
 
-def create_eca_os_situation_dict():
+def create_eca_os_situation_dict() -> dict[str, bool]:
     """
         This method gather all ECA OS situation from system update package
         and create a dict with it : Like checkbox page in GUI
@@ -104,12 +113,22 @@ class EcaEndpointSettings(Element):
     typeof = "eca_endpoint_settings"
 
     @classmethod
-    def create(cls, name=None, admin_domain=None, client_av_disabled=False,
-               client_av_enabled=False, client_av_unknown=None, eca_os_dict={},
-               local_firewall_disabled=False, local_firewall_enabled=False,
-               local_firewall_unknown=False, os_update_time_days=0,
-               os_update_time_enabled=False, os_update_time_operator="less_than",
-               os_update_unknown=False):
+    def create(
+        cls,
+        name: Optional[str] = None,
+        admin_domain: Optional[Any] = None,
+        client_av_disabled: bool = False,
+        client_av_enabled: bool = False,
+        client_av_unknown: Optional[bool] = None,
+        eca_os_dict: dict[Any, Any] = {},
+        local_firewall_disabled: bool = False,
+        local_firewall_enabled: bool = False,
+        local_firewall_unknown: bool = False,
+        os_update_time_days: int = 0,
+        os_update_time_enabled: bool = False,
+        os_update_time_operator: str = "less_than",
+        os_update_unknown: bool = False,
+    ) -> "EcaEndpointSettings":
         """
         Create an eca endpoint setting
         :param str name: Name of ECA Endpoint Settings.
@@ -157,77 +176,77 @@ class EcaEndpointSettings(Element):
         json.update(eca_os=eca_os_situation_list)
         return ElementCreator(cls, json)
 
-    def client_av_disabled(self):
+    def client_av_disabled(self) -> Optional[bool]:
         """
         Client Anti-Virus disabled status
         :rtype: bool
         """
         return self.data.get("client_av_disabled")
 
-    def client_av_enabled(self):
+    def client_av_enabled(self) -> Optional[bool]:
         """
         Client Anti-Virus enabled status.
         :rtype: bool
         """
         return self.data.get("client_av_enabled")
 
-    def client_av_unknown(self):
+    def client_av_unknown(self) -> Optional[bool]:
         """
         Client Anti-Virus unknown status.
         :rtype: bool
         """
         return self.data.get("os_update_time_operator")
 
-    def local_firewall_disabled(self):
+    def local_firewall_disabled(self) -> Optional[bool]:
         """
         Endpoint local engine disable status..
         :rtype: bool
         """
         return self.data.get("local_firewall_disabled")
 
-    def local_firewall_enabled(self):
+    def local_firewall_enabled(self) -> Optional[bool]:
         """
         Endpoint local engine enable status.
         :rtype: bool
         """
         return self.data.get("local_firewall_enabled")
 
-    def local_firewall_unknown(self):
+    def local_firewall_unknown(self) -> Optional[bool]:
         """
         Endpoint local engine unknown status.
         :rtype: bool
         """
         return self.data.get("local_firewall_unknown")
 
-    def eca_os(self):
+    def eca_os(self) -> list[Any]:
         """
         ECA OS situation.
         :rtype: list(ECAOperatingSystemSituation)
         """
         return [EcaOperatingSystemSituation.from_href(os) for os in self.data.get("eca_os")]
 
-    def os_update_time_days(self):
+    def os_update_time_days(self) -> Optional[int]:
         """
         Status of system update installed.
         :rtype: int
         """
         return self.data.get("os_update_time_days")
 
-    def os_update_time_enabled(self):
+    def os_update_time_enabled(self) -> Optional[bool]:
         """
          Os update time enable.
         :rtype: bool
         """
         return self.data.get("os_update_time_enabled")
 
-    def os_update_time_operator(self):
+    def os_update_time_operator(self) -> Optional[str]:
         """
         Os update time operator like 'less than or more than'.
         :rtype: str
         """
         return self.data.get("os_update_time_operator")
 
-    def os_update_unknown(self):
+    def os_update_unknown(self) -> Optional[bool]:
         """
          Os update unknown.
         :rtype: bool
@@ -240,12 +259,18 @@ class ECAExecutable(NestedDict):
     ECA Executable object used by ECA Custom situations.
     """
 
-    def __init__(self, data):
+    def __init__(self, data: Any) -> None:
         super(ECAExecutable, self).__init__(data=data)
 
     @classmethod
-    def create(cls, file_name=None, md5_hash=None, product_name=None, sha256_hash=None,
-               version_number=None):
+    def create(
+        cls,
+        file_name: Optional[str] = None,
+        md5_hash: Optional[str] = None,
+        product_name: Optional[str] = None,
+        sha256_hash: Optional[str] = None,
+        version_number: Optional[str] = None,
+    ) -> "ECAExecutable":
         """
         :param str file_name: Executable file name.
         :param str md5_hash: Executable's md5 hash.
@@ -271,10 +296,17 @@ class EndpointApplication(Element):
     situation_context_name = "EI Correlation"
 
     @classmethod
-    def create(cls, name=None, version_number=None, product_name=None,
-               signer_name=None, eca_custom_situation_type="signer_information", file_name=None,
-               eca_executable=None,
-               comment=None):
+    def create(
+        cls,
+        name: Optional[str] = None,
+        version_number: Optional[str] = None,
+        product_name: Optional[str] = None,
+        signer_name: Optional[str] = None,
+        eca_custom_situation_type: str = "signer_information",
+        file_name: Optional[str] = None,
+        eca_executable: Optional[list[Any]] = None,
+        comment: Optional[str] = None,
+    ) -> "EndpointApplication":
         """
         Create an eca endpoint setting
         :param str name: Name of ECA Endpoint Application.
@@ -314,7 +346,7 @@ class EndpointApplication(Element):
         return ElementCreator(cls, json)
 
     @property
-    def eca_executable(self):
+    def eca_executable(self) -> list[Any]:
         """
         ECA Executable object used by ECA Custom situations.
         :rtype: list(ECAExecutable)

@@ -12,6 +12,10 @@
 """
 Classes for VSS Containers
 """
+from __future__ import annotations
+
+from typing import Any, Optional, Union, Iterator
+
 from smc.base.model import Element, ElementCreator, ElementRef
 from smc.core.engines import MasterEngine
 from smc.core.node import Node
@@ -25,11 +29,11 @@ from smc.api.common import fetch_entry_point
 class VSSContainer(MasterEngine):
     typeof = "vss_container"
 
-    def __init__(self, name, **meta):
+    def __init__(self, name: str, **meta: Any) -> None:
         super(VSSContainer, self).__init__(name, **meta)
 
     @classmethod
-    def create(cls, name, vss_def=None):
+    def create(cls, name: str, vss_def: Optional[dict] = None) -> VSSContainer:
         """
         Create a VSS Container. This maps to the Service Manager
         within NSX.
@@ -52,7 +56,7 @@ class VSSContainer(MasterEngine):
         return ElementCreator(cls, json)
 
     @property
-    def nodes(self):
+    def nodes(self) -> Any:
         """
         Return the nodes for this VSS Container
 
@@ -63,11 +67,11 @@ class VSSContainer(MasterEngine):
         return resource
 
     @property
-    def container_node(self):
+    def container_node(self) -> Any:
         return self.nodes
 
     @property
-    def isc_settings(self):
+    def isc_settings(self) -> dict:
         """
         ISC Settings provide top level information about the VSS
         container. For the native NSX implementation, only the
@@ -84,7 +88,7 @@ class VSSContainer(MasterEngine):
         return self.data.get("vss_isc", {})
 
     @property
-    def vss_contexts(self):
+    def vss_contexts(self) -> list[Any]:
         """
         Return all virtual contexts for this VSS Container.
 
@@ -99,7 +103,7 @@ class VSSContainer(MasterEngine):
         return []  # pre-6.5
 
     @property
-    def security_groups(self):
+    def security_groups(self) -> list[Any]:
         """
         Security Groups for this VSS container. Security Groups are added
         automatically based on assigned NSX groups in vCenter Security Policy.
@@ -108,7 +112,7 @@ class VSSContainer(MasterEngine):
         """
         return [SecurityGroup(**group) for group in self.make_request(resource="security_groups")]
 
-    def remove_security_group(self, name):
+    def remove_security_group(self, name: str) -> None:
         """
         Remove a security group from container
         """
@@ -116,7 +120,8 @@ class VSSContainer(MasterEngine):
             if group.isc_name == name:
                 group.delete()
 
-    def add_security_group(self, name, isc_id, comment=None):
+    def add_security_group(self, name: str, isc_id: str,
+                           comment: Optional[str] = None) -> SecurityGroup:
         """
         Create a new security group.
 
@@ -128,7 +133,8 @@ class VSSContainer(MasterEngine):
         """
         return SecurityGroup.create(name=name, isc_id=isc_id, vss_container=self, comment=comment)
 
-    def add_context(self, isc_name, isc_policy_id, isc_traffic_tag):
+    def add_context(self, isc_name: str, isc_policy_id: str,
+                    isc_traffic_tag: str) -> VSSContext:
         """
         Create the VSS Context within the VSSContainer
 
@@ -165,18 +171,19 @@ class VSSContainer(MasterEngine):
         return element
 
     @property
-    def upload_result(self):
+    def upload_result(self) -> None:
         pass
 
 
 class VSSContainerNode(Node):
     typeof = "vss_container_node"
 
-    def __init__(self, **meta):
+    def __init__(self, **meta: Any) -> None:
         super(VSSContainerNode, self).__init__(**meta)
 
     @classmethod
-    def create(cls, name, vss_container, vss_node_def, comment=None):
+    def create(cls, name: str, vss_container: VSSContainer,
+               vss_node_def: dict, comment: Optional[str] = None) -> VSSContainerNode:
         """
         Create VSS node. This is the engines dvFilter management
         interface within the NSX agent.
@@ -199,7 +206,7 @@ class VSSContainerNode(Node):
         return element
 
     @property
-    def isc_settings(self):
+    def isc_settings(self) -> Optional[dict]:
         """
         Return ISC settings for this node. These are set during the
         create process.
@@ -224,11 +231,12 @@ class VSSContext(Engine):
     typeof = "vss_context"
     virtual_resource = ElementRef("virtual_resource")
 
-    def __init__(self, name, **meta):
+    def __init__(self, name: str, **meta: Any) -> None:
         super(VSSContext, self).__init__(name, **meta)
 
     @classmethod
-    def create(cls, isc_name, isc_policy_id, isc_traffic_tag, vss_container):
+    def create(cls, isc_name: str, isc_policy_id: str, isc_traffic_tag: str,
+               vss_container: VSSContainer) -> VSSContext:
         """
         Create the VSS Context within the VSSContainer
 
@@ -253,7 +261,8 @@ class VSSContext(Engine):
             },
         )
 
-    def remove_from_master_node(self, wait_for_finish=False, timeout=20, **kw):
+    def remove_from_master_node(self, wait_for_finish: bool = False,
+                                timeout: int = 20, **kw: Any) -> Any:
         """
         Remove this VSS Context from it's parent VSS Container.
         This is required before calling VSSContext.delete(). It preps
@@ -267,11 +276,11 @@ class VSSContext(Engine):
             self, "remove_from_master_node", timeout=timeout, wait_for_finish=wait_for_finish, **kw
         )
 
-    def move_to_master_node(self, master):
+    def move_to_master_node(self, master: Any) -> None:
         pass
 
     @property
-    def isc_settings(self):
+    def isc_settings(self) -> Optional[dict]:
         """
         ISC Settings are used to provide information about the
         security policy mapping for the engine.
@@ -297,11 +306,12 @@ class SecurityGroup(Element):
 
     typeof = "security_group"
 
-    def __init__(self, name, **meta):
+    def __init__(self, name: str, **meta: Any) -> None:
         super(SecurityGroup, self).__init__(name, **meta)
 
     @classmethod
-    def create(cls, name, isc_id, vss_container, comment=None):
+    def create(cls, name: str, isc_id: str, vss_container: VSSContainer,
+               comment: Optional[str] = None) -> SecurityGroup:
         """
         Create a new security group.
 
@@ -330,5 +340,5 @@ class SecurityGroup(Element):
         )
 
     @property
-    def is_obsolete(self):
+    def is_obsolete(self) -> bool:
         return bool(self.data.get("obsolete"))

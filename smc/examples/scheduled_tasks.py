@@ -140,7 +140,7 @@ def main():
                                            extra_opts={"is_cert_auto_renewal": True}
                                            )
             for node in engine.nodes:
-                node.initial_contact()
+                node.initial_contact(root_password="T3mpP&d8x)T")
                 node.bind_license()
 
             # wait time for engine to be online

@@ -12,20 +12,25 @@
 """
 Decorators used in various areas throughout smc-python.
 """
+from __future__ import annotations
+
 import warnings
 import functools
+from typing import TypeVar, Callable, Any, Optional, Union, Iterator
+
+_F = TypeVar("_F", bound=Callable[..., Any])
 
 
-def deprecated(func_replacement):
+def deprecated(func_replacement: str) -> Callable[[_F], _F]:
     """
     Use this decorator on functions that are marked as deprecated.
     It takes a single argument of the function name it's being
     replaced with.
     """
 
-    def _deprecated(func):
+    def _deprecated(func: _F) -> _F:
         @functools.wraps(func)
-        def new_func(*args, **kwargs):
+        def new_func(*args: Any, **kwargs: Any) -> Any:
             warnings.simplefilter("always", DeprecationWarning)  # turn off filter
             warnings.warn(
                 "Call to deprecated function {}. Use new function: {}() instead.".format(
@@ -37,9 +42,9 @@ def deprecated(func_replacement):
             warnings.simplefilter("default", DeprecationWarning)  # reset filter
             return func(*args, **kwargs)
 
-        return new_func
+        return new_func  # type: ignore[return-value]
 
-    return _deprecated
+    return _deprecated  # type: ignore[return-value]
 
 
 class classproperty(object):
@@ -48,17 +53,17 @@ class classproperty(object):
     class property and also from the instance
     """
 
-    def __init__(self, fget):
+    def __init__(self, fget: Callable[..., Any]) -> None:
         self.fget = fget
 
-    def __get__(self, instance, owner_cls):
+    def __get__(self, instance: Any, owner_cls: Any) -> Any:
         return self.fget(owner_cls)
 
 
-def memoize(f):
-    memo = {}
+def memoize(f: Callable[..., Any]) -> Callable[..., Any]:
+    memo: dict[Any, Any] = {}
 
-    def helper(x):
+    def helper(x: Any) -> Any:
         if x not in memo:
             memo[x] = f(x)
         return memo[x]
@@ -66,9 +71,9 @@ def memoize(f):
     return helper
 
 
-def cacheable_resource(func):
+def cacheable_resource(func: Callable[..., Any]) -> Any:
     @functools.wraps(func)
-    def get(self):
+    def get(self: Any) -> Any:
         try:
             return self._cache[func]
         except AttributeError:
@@ -87,18 +92,18 @@ class cached_property(object):
     attribute is deleted, it will be recreated when called.
     """
 
-    def __init__(self, func):
+    def __init__(self, func: Callable[..., Any]) -> None:
         self.func = func
         # self.__doc__ = func.__doc__
 
-    def __get__(self, obj, cls):
+    def __get__(self, obj: Any, cls: Any) -> Any:
         if obj is None:
             return self
         value = obj.__dict__[self.func.__name__] = self.func(obj)
         return value
 
 
-def create_hook(function):
+def create_hook(function: _F) -> _F:
     """
     Provide a pre-filter to the create function that provides the ability
     to modify the element json before submitting to the SMC. To register
@@ -118,15 +123,15 @@ def create_hook(function):
     """
 
     @functools.wraps(function)
-    def run(cls, json, **kwargs):
+    def run(cls: Any, json: Any, **kwargs: Any) -> Any:
         if hasattr(cls, "_create_hook"):
             json = cls._create_hook(json)
         return function(cls, json, **kwargs)
 
-    return run
+    return run  # type: ignore[return-value]
 
 
-def exception(function):
+def exception(function: Callable[..., Any]) -> Callable[..., Any]:
     """
     If exception was specified for prepared_request,
     inject this into SMCRequest so it can be used for
@@ -134,7 +139,7 @@ def exception(function):
     """
 
     @functools.wraps(function)
-    def wrapper(*exception, **kwargs):
+    def wrapper(*exception: Any, **kwargs: Any) -> Any:
         result = function(**kwargs)
         if exception:
             result.exception = exception[0]
@@ -143,12 +148,12 @@ def exception(function):
     return wrapper
 
 
-def with_metaclass(mcls):
+def with_metaclass(mcls: Any) -> Callable[[Any], Any]:
     """
     Metaclass class decorator for py2 and py3
     """
 
-    def decorator(cls):
+    def decorator(cls: Any) -> Any:
         body = vars(cls).copy()
         # clean out class body
         body.pop("__dict__", None)

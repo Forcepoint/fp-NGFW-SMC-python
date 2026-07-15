@@ -9,6 +9,10 @@
 #  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #  License for the specific language governing permissions and limitations
 #  under the License.
+from __future__ import annotations
+
+from typing import Any, Optional, Union, Iterator
+
 """
 BGP Module representing BGP settings for Forcepoint NGFW layer 3 engines. BGP can be
 enabled and run on either single/cluster layer 3 firewalls or virtual engines.
@@ -72,14 +76,14 @@ class DynamicRouting(object):
     to OSPF and BGP configurations.
     """
 
-    def __init__(self, engine):
+    def __init__(self, engine: Any) -> None:
         self.data = engine.data.get("dynamic_routing", {})
 
     @property
-    def antispoofing_networks(self):
+    def antispoofing_networks(self) -> list[Any]:
         return [Element.from_href(network) for network in self.data.get("antispoofing_ne_ref", [])]
 
-    def update_antispoofing(self, networks=None):
+    def update_antispoofing(self, networks: Optional[list[Any]] = None) -> bool:
         """
         Pass a list of networks to update antispoofing networks with.
         You can clear networks by providing an empty list. If networks
@@ -98,7 +102,7 @@ class DynamicRouting(object):
         return False
 
     @property
-    def bgp(self):
+    def bgp(self) -> BGP:
         """
         Reference to BGP configuration
 
@@ -107,13 +111,13 @@ class DynamicRouting(object):
         return BGP(self.data.get("bgp", {}))
 
     @property
-    def ecmp_count(self):
+    def ecmp_count(self) -> Optional[Any]:
         """
         Equal cost multi path count
         """
         return self.data.get("path_count", None)
 
-    def update_ecmp(self, count=None):
+    def update_ecmp(self, count: Optional[int] = None) -> bool:
         """
         Give count desired for ecmp count data, or disable ecmp count
         if left as None.
@@ -132,7 +136,7 @@ class DynamicRouting(object):
         return False
 
     @property
-    def ospf(self):
+    def ospf(self) -> OSPF:
         """
         Reference to OSPF configuration
 
@@ -168,11 +172,11 @@ class BGP(object):
     autonomous_system = ElementRef("bgp_as_ref")
     profile = ElementRef("bgp_profile_ref")
 
-    def __init__(self, data=None):
+    def __init__(self, data: Optional[Any] = None) -> None:
         self.data = data if data else ElementCache()
 
     @property
-    def router_id(self):
+    def router_id(self) -> Optional[str]:
         """
         Get the router ID for this BGP configuration. If None, then
         the ID will use the interface IP.
@@ -182,7 +186,7 @@ class BGP(object):
         return self.data.get("router_id")
 
     @property
-    def bmp_router_id(self):
+    def bmp_router_id(self) -> Optional[str]:
         """
         Get the BMP router ID for this BGP configuration.
         Directly linked to 'bmp_router_id_type' attribute:
@@ -195,7 +199,7 @@ class BGP(object):
         return self.data.get("bmp_router_id")
 
     @property
-    def bmp_router_id_type(self):
+    def bmp_router_id_type(self) -> Optional[str]:
         """
         Get the BMP router ID type for this BGP configuration.
         Accepted values:
@@ -208,7 +212,7 @@ class BGP(object):
         return self.data.get("bmp_router_id_type")
 
     @property
-    def status(self):
+    def status(self) -> Optional[bool]:
         """
         Is BGP enabled on this engine.
 
@@ -216,7 +220,7 @@ class BGP(object):
         """
         return self.data.get("enabled")
 
-    def disable(self):
+    def disable(self) -> None:
         """
         Disable BGP on this engine.
 
@@ -224,7 +228,7 @@ class BGP(object):
         """
         self.data.update(enabled=False, announced_ne_setting=[])
 
-    def enable(self, autonomous_system, announced_networks, router_id=None, bgp_profile=None):
+    def enable(self, autonomous_system: Any, announced_networks: list[Any], router_id: Optional[str] = None, bgp_profile: Optional[Any] = None) -> None:
         """
         Enable BGP on this engine. On master engine, enable BGP on the
         virtual firewall. When adding networks to `announced_networks`, the
@@ -271,7 +275,7 @@ class BGP(object):
             router_id=router_id,
         )
 
-    def update_configuration(self, **kwargs):
+    def update_configuration(self, **kwargs: Any) -> bool:
         """
         Update configuration using valid kwargs as defined in
         the enable constructor.
@@ -305,12 +309,12 @@ class BGP(object):
 
         return updated
 
-    def _equal(self, dict1, dict2):
+    def _equal(self, dict1: list[Any], dict2: list[Any]) -> bool:
         _s = {entry.get("announced_ne_ref"): entry.get("announced_rm_ref") for entry in dict1}
         _d = {entry.get("announced_ne_ref"): entry.get("announced_rm_ref") for entry in dict2}
         return len({k: _s[k] for k in _s if k not in _d or _d.get(k) != _s[k]}) == 0
 
-    def _unwrap(self, network):
+    def _unwrap(self, network: list[Any]) -> list[Any]:
         _announced = []
         for net in network:
             d = dict()
@@ -326,7 +330,7 @@ class BGP(object):
         return _announced
 
     @property
-    def announced_networks(self):
+    def announced_networks(self) -> list[Any]:
         """
         Show all announced networks for the BGP configuration.
         Returns tuple of advertised network, routemap. Route
@@ -347,7 +351,7 @@ class BGP(object):
         ]
 
 
-def as_dotted(dotted_str):
+def as_dotted(dotted_str: str) -> Any:
     """
     Implement RFC 5396 to support 'asdotted' notation for BGP AS numbers.
     Provide a string in format of '1.10', '65000.65015' and this will return
@@ -382,7 +386,7 @@ class AutonomousSystem(Element):
     typeof = "autonomous_system"
 
     @classmethod
-    def create(cls, name, as_number, comment=None):
+    def create(cls, name: str, as_number: Any, comment: Optional[str] = None) -> AutonomousSystem:
         """
         Create an AS to be applied on the engine BGP configuration. An
         AS is a required parameter when creating an ExternalBGPPeer. You
@@ -405,7 +409,7 @@ class AutonomousSystem(Element):
         return ElementCreator(cls, json)
 
     @property
-    def as_number(self):
+    def as_number(self) -> int:
         """
         The AS Number for this autonomous system
 
@@ -415,7 +419,7 @@ class AutonomousSystem(Element):
         return int(self.data.get("as_number"))
 
     @classmethod
-    def update_or_create(cls, with_status=False, **kwargs):
+    def update_or_create(cls, with_status: bool = False, **kwargs: Any) -> Any:
         if "." in str(kwargs.get("as_number")):
             kwargs.update(as_number=int(as_dotted(kwargs["as_number"])))
         return super(AutonomousSystem, cls).update_or_create(with_status=with_status, **kwargs)
@@ -430,7 +434,7 @@ class BGPBMPSettings(NestedDict):
     must be done through master.
     """
 
-    def __init__(self, bmp_address, bmp_port, bmp_connect_through_master):
+    def __init__(self, bmp_address: str, bmp_port: int, bmp_connect_through_master: bool) -> None:
         data = {"bmp_address": bmp_address,
                 "bmp_port": bmp_port,
                 "bmp_connect_through_master": bmp_connect_through_master}
@@ -467,16 +471,16 @@ class BGPProfile(Element):
     @classmethod
     def create(
         cls,
-        name,
-        port=179,
-        external_distance=20,
-        internal_distance=200,
-        local_distance=200,
-        subnet_distance=None,
-        bmp_settings=None,
-        aggregation_entry=None,
-        redistribution_entry=None
-    ):
+        name: str,
+        port: int = 179,
+        external_distance: int = 20,
+        internal_distance: int = 200,
+        local_distance: int = 200,
+        subnet_distance: Optional[list[Any]] = None,
+        bmp_settings: Optional[list[Any]] = None,
+        aggregation_entry: Optional[list[Any]] = None,
+        redistribution_entry: Optional[list[Any]] = None
+    ) -> BGPProfile:
         """
         Create a custom BGP Profile
 
@@ -525,7 +529,7 @@ class BGPProfile(Element):
         return ElementCreator(cls, json)
 
     @property
-    def port(self):
+    def port(self) -> Optional[int]:
         """
         Specified port for BGP
 
@@ -535,14 +539,14 @@ class BGPProfile(Element):
         return self.data.get("port")
 
     @property
-    def bmp_settings(self):
+    def bmp_settings(self) -> list[Any]:
         """
         BMP settings: list of address/port/connect_through_master
         """
         return [BGPBMPSettings(**b) for b in self.data.get("bmp_entry", [])]
 
     @property
-    def external_distance(self):
+    def external_distance(self) -> Optional[int]:
         """
         External administrative distance (eBGP)
 
@@ -552,7 +556,7 @@ class BGPProfile(Element):
         return self.data.get("external")
 
     @property
-    def internal_distance(self):
+    def internal_distance(self) -> Optional[int]:
         """
         Internal administrative distance (iBGP)
 
@@ -562,7 +566,7 @@ class BGPProfile(Element):
         return self.data.get("internal")
 
     @property
-    def local_distance(self):
+    def local_distance(self) -> Optional[int]:
         """
         Local administrative distance (aggregation)
 
@@ -572,7 +576,7 @@ class BGPProfile(Element):
         return self.data.get("local")
 
     @property
-    def subnet_distance(self):
+    def subnet_distance(self) -> list[Any]:
         """
         Specific subnet administrative distances
 
@@ -584,7 +588,7 @@ class BGPProfile(Element):
         ]
 
     @property
-    def aggregation_entry(self):
+    def aggregation_entry(self) -> list[Any]:
         """
         Specific subnet with mode
         :return: list of BGPAggregationEntry
@@ -592,7 +596,7 @@ class BGPProfile(Element):
         return [BGPAggregationEntry(entry) for entry in self.data.get("aggregation_entry", [])]
 
     @property
-    def redistribution_entry(self):
+    def redistribution_entry(self) -> list[Any]:
         """
         This represents an BGP or OSPF Profile Redistribution Entry.
         :return: list of RedistributionEntry
@@ -618,7 +622,7 @@ class ExternalBGPPeer(Element):
     neighbor_as = ElementRef("neighbor_as")
 
     @classmethod
-    def create(cls, name, neighbor_as, neighbor_ip, neighbor_port=179, comment=None):
+    def create(cls, name: str, neighbor_as: Any, neighbor_ip: str, neighbor_port: int = 179, comment: Optional[str] = None) -> ExternalBGPPeer:
         """
         Create an external BGP Peer.
 
@@ -644,7 +648,7 @@ class ExternalBGPPeer(Element):
         return ElementCreator(cls, json)
 
     @property
-    def neighbor_ip(self):
+    def neighbor_ip(self) -> Optional[str]:
         """
         IP address of the external BGP Peer
 
@@ -654,7 +658,7 @@ class ExternalBGPPeer(Element):
         return self.data.get("neighbor_ip")
 
     @property
-    def neighbor_port(self):
+    def neighbor_port(self) -> Optional[int]:
         """
         Port used for neighbor AS
 
@@ -685,44 +689,44 @@ class BGPPeering(Element):
     @classmethod
     def create(
             cls,
-            name,
-            connection_profile_ref=None,
-            md5_password=None,
-            local_as_option="not_set",
-            local_as_value=None,
-            max_prefix_option="not_enabled",
-            max_prefix_value=None,
-            send_community="no",
-            connected_check="disabled",
-            orf_option="disabled",
-            next_hop_self=True,
-            override_capability=False,
-            dont_capability_negotiate=False,
-            remote_private_as=False,
-            route_reflector_client=False,
-            soft_reconfiguration=True,
-            ttl_option="disabled",
-            ttl_value=None,
-            inbound_rm_filter=None,
-            inbound_ip_filter=None,
-            inbound_ipv6_filter=None,
-            inbound_ipprefix_filter=None,
-            inbound_ipv6prefix_filter=None,
-            inbound_aspath_filter=None,
-            outbound_rm_filter=None,
-            outbound_ip_filter=None,
-            outbound_ipv6_filter=None,
-            outbound_ipprefix_filter=None,
-            outbound_ipv6prefix_filter=None,
-            outbound_aspath_filter=None,
-            default_originate=False,
-            bfd_enabled=False,
-            bfd_interval=750,
-            bfd_min_rx=500,
-            bfd_multiplier=3,
-            bfd_passive_mode=False,
-            comment=None,
-    ):
+            name: str,
+            connection_profile_ref: Optional[Any] = None,
+            md5_password: Optional[str] = None,
+            local_as_option: str = "not_set",
+            local_as_value: Optional[str] = None,
+            max_prefix_option: str = "not_enabled",
+            max_prefix_value: Optional[int] = None,
+            send_community: str = "no",
+            connected_check: str = "disabled",
+            orf_option: str = "disabled",
+            next_hop_self: bool = True,
+            override_capability: bool = False,
+            dont_capability_negotiate: bool = False,
+            remote_private_as: bool = False,
+            route_reflector_client: bool = False,
+            soft_reconfiguration: bool = True,
+            ttl_option: str = "disabled",
+            ttl_value: Optional[int] = None,
+            inbound_rm_filter: Optional[Any] = None,
+            inbound_ip_filter: Optional[Any] = None,
+            inbound_ipv6_filter: Optional[Any] = None,
+            inbound_ipprefix_filter: Optional[Any] = None,
+            inbound_ipv6prefix_filter: Optional[Any] = None,
+            inbound_aspath_filter: Optional[Any] = None,
+            outbound_rm_filter: Optional[Any] = None,
+            outbound_ip_filter: Optional[Any] = None,
+            outbound_ipv6_filter: Optional[Any] = None,
+            outbound_ipprefix_filter: Optional[Any] = None,
+            outbound_ipv6prefix_filter: Optional[Any] = None,
+            outbound_aspath_filter: Optional[Any] = None,
+            default_originate: bool = False,
+            bfd_enabled: bool = False,
+            bfd_interval: int = 750,
+            bfd_min_rx: int = 500,
+            bfd_multiplier: int = 3,
+            bfd_passive_mode: bool = False,
+            comment: Optional[str] = None,
+    ) -> BGPPeering:
         """
         Create a new BGPPeering configuration.
 
@@ -839,115 +843,115 @@ class BGPPeering(Element):
         return ElementCreator(cls, json)
 
     @property
-    def local_as_option(self):
+    def local_as_option(self) -> Optional[str]:
         return self.data.get("local_as_option")
 
     @property
-    def local_as_value(self):
+    def local_as_value(self) -> Optional[Any]:
         return self.data.get("local_as_value", None)
 
     @property
-    def max_prefix_value(self):
+    def max_prefix_value(self) -> Optional[Any]:
         return self.data.get("max_prefix_value", None)
 
     @property
-    def inbound_aspath_filter(self):
+    def inbound_aspath_filter(self) -> Optional[Any]:
         return self.data.get("inbound_aspath_filter")
 
     @property
-    def outbound_rm_filter(self):
+    def outbound_rm_filter(self) -> Optional[Any]:
         return self.data.get("outbound_rm_filter")
 
     @property
-    def outbound_ip_filter(self):
+    def outbound_ip_filter(self) -> Optional[Any]:
         return self.data.get("outbound_ip_filter")
 
     @property
-    def outbound_ipv6_filter(self):
+    def outbound_ipv6_filter(self) -> Optional[Any]:
         return self.data.get("outbound_ipv6_filter")
 
     @property
-    def outbound_ipprefix_filter(self):
+    def outbound_ipprefix_filter(self) -> Optional[Any]:
         return self.data.get("outbound_ipprefix_filter")
 
     @property
-    def outbound_ipv6prefix_filter(self):
+    def outbound_ipv6prefix_filter(self) -> Optional[Any]:
         return self.data.get("outbound_ipv6prefix_filter")
 
     @property
-    def outbound_aspath_filter(self):
+    def outbound_aspath_filter(self) -> Optional[Any]:
         return self.data.get("outbound_aspath_filter")
 
     @property
-    def inbound_rm_filter(self):
+    def inbound_rm_filter(self) -> Optional[Any]:
         return self.data.get("inbound_rm_filter")
 
     @property
-    def inbound_ip_filter(self):
+    def inbound_ip_filter(self) -> Optional[Any]:
         return self.data.get("inbound_ip_filter")
 
     @property
-    def inbound_ipv6_filter(self):
+    def inbound_ipv6_filter(self) -> Optional[Any]:
         return self.data.get("inbound_ipv6_filter")
 
     @property
-    def inbound_ipprefix_filter(self):
+    def inbound_ipprefix_filter(self) -> Optional[Any]:
         return self.data.get("inbound_ipprefix_filter")
 
     @property
-    def inbound_ipv6prefix_filter(self):
+    def inbound_ipv6prefix_filter(self) -> Optional[Any]:
         return self.data.get("inbound_ipv6prefix_filter")
 
     @property
-    def max_prefix_option(self):
+    def max_prefix_option(self) -> Optional[str]:
         return self.data.get("max_prefix_option")
 
     @property
-    def send_community(self):
+    def send_community(self) -> Optional[str]:
         return self.data.get("send_community")
 
     @property
-    def connected_check(self):
+    def connected_check(self) -> Optional[str]:
         return self.data.get("connected_check")
 
     @property
-    def orf_option(self):
+    def orf_option(self) -> Optional[str]:
         return self.data.get("orf_option")
 
     @property
-    def next_hop_self(self):
+    def next_hop_self(self) -> Optional[bool]:
         return self.data.get("next_hop_self")
 
     @property
-    def override_capability(self):
+    def override_capability(self) -> Optional[bool]:
         return self.data.get("override_capability")
 
     @property
-    def dont_capability_negotiate(self):
+    def dont_capability_negotiate(self) -> Optional[bool]:
         return self.data.get("dont_capability_negotiate")
 
     @property
-    def soft_reconfiguration(self):
+    def soft_reconfiguration(self) -> Optional[bool]:
         return self.data.get("soft_reconfiguration")
 
     @property
-    def remove_private_as(self):
+    def remove_private_as(self) -> Optional[bool]:
         return self.data.get("remove_private_as")
 
     @property
-    def route_reflector_client(self):
+    def route_reflector_client(self) -> Optional[bool]:
         return self.data.get("route_reflector_client")
 
     @property
-    def ttl_option(self):
+    def ttl_option(self) -> Optional[str]:
         return self.data.get("ttl_option")
 
     @property
-    def default_originate(self):
+    def default_originate(self) -> Optional[bool]:
         return self.data.get("default_originate")
 
     @property
-    def bfd_enabled(self):
+    def bfd_enabled(self) -> Optional[bool]:
         return self.data.get("bfd_enabled")
 
 
@@ -971,12 +975,12 @@ class BGPConnectionProfile(Element):
     @classmethod
     def create(
         cls,
-        name,
-        md5_password=None,
-        connect_retry=120,
-        session_hold_timer=180,
-        session_keep_alive=60,
-    ):
+        name: str,
+        md5_password: Optional[str] = None,
+        connect_retry: int = 120,
+        session_hold_timer: int = 180,
+        session_keep_alive: int = 60,
+    ) -> BGPConnectionProfile:
         """
         Create a new BGP Connection Profile.
 
@@ -1002,7 +1006,7 @@ class BGPConnectionProfile(Element):
         return ElementCreator(cls, json)
 
     @property
-    def connect_retry(self):
+    def connect_retry(self) -> Optional[int]:
         """
         The connect retry timer, in seconds
 
@@ -1012,7 +1016,7 @@ class BGPConnectionProfile(Element):
         return self.data.get("connect")
 
     @property
-    def session_hold_timer(self):
+    def session_hold_timer(self) -> Optional[int]:
         """
         The session hold timer, in seconds
 
@@ -1022,7 +1026,7 @@ class BGPConnectionProfile(Element):
         return self.data.get("session_hold_timer")
 
     @property
-    def session_keep_alive(self):
+    def session_keep_alive(self) -> Optional[int]:
         """
         The session keep alive, in seconds
 
@@ -1034,11 +1038,11 @@ class BGPConnectionProfile(Element):
 
 class BGPAggregationEntry(NestedDict):
 
-    def __init__(self, data):
+    def __init__(self, data: Any) -> None:
         super(BGPAggregationEntry, self).__init__(data)
 
     @classmethod
-    def create(cls, mode, subnet):
+    def create(cls, mode: str, subnet: Any) -> BGPAggregationEntry:
         """
         :param str mode: The Aggregation value:
             1.aggregate: Aggregate mode.
@@ -1056,11 +1060,11 @@ class BGPAggregationEntry(NestedDict):
 
 
 class RedistributionEntry(NestedDict):
-    def __init__(self, data):
+    def __init__(self, data: Any) -> None:
         super(RedistributionEntry, self).__init__(data)
 
     @classmethod
-    def create(cls, redistribution_type, enabled=False, filter_type=None, **kwargs):
+    def create(cls, redistribution_type: str, enabled: bool = False, filter_type: Optional[str] = None, **kwargs: Any) -> RedistributionEntry:
         """
         :param str redistribution_type: The redistribution type:
             1.kernel: Redistribution from Kernel.

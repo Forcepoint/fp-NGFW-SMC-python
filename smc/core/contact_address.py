@@ -56,6 +56,10 @@ Remove a contact address::
 .. note:: Contact Addresses for servers (Management/Log Server) do not use
           this same object definition
 """
+from __future__ import annotations
+
+from typing import Any, Optional, Union, Iterator
+
 from smc.base.model import SubElement
 from smc.elements.helpers import location_helper
 from smc.elements.other import ContactAddress
@@ -73,11 +77,11 @@ class InterfaceContactAddress(ContactAddress):
     """
 
     @property
-    def addresses(self):
+    def addresses(self) -> Optional[str]:
         return self.get("address")
 
     @property
-    def dynamic(self):
+    def dynamic(self) -> bool:
         return self.get("dynamic", "false") == "true"
 
 
@@ -87,26 +91,26 @@ class ContactAddressNode(SubElement):
     assigning the contact address on the engine.
     """
 
-    def __init__(self, **meta):
+    def __init__(self, **meta: Any) -> None:
         meta.update(type="contact_addresses")
         super(ContactAddressNode, self).__init__(**meta)
         self._name, self._address = self.name.split("_")
 
     @property
-    def _cas(self):
+    def _cas(self) -> list[Any]:
         return self.data.get("contact_addresses", [])
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Any]:
         for addr in self._cas:
             yield InterfaceContactAddress(addr)
 
-    def __contains__(self, location_href):
+    def __contains__(self, location_href: Any) -> bool:
         for location in self._cas:
             if location.get("location_ref") == location_href:
                 return True
         return False
 
-    def delete(self, location_name):
+    def delete(self, location_name: str) -> bool:
         """
         Remove a given location by location name. This operation is
         performed only if the given location is valid, and if so,
@@ -124,7 +128,14 @@ class ContactAddressNode(SubElement):
             updated = True
         return updated
 
-    def update_or_create(self, location, contact_address, dynamic=False, with_status=False, **kw):
+    def update_or_create(
+        self,
+        location: Any,
+        contact_address: str,
+        dynamic: bool = False,
+        with_status: bool = False,
+        **kw: Any,
+    ) -> Any:
         """
         Update an existing contact address or create if the location does
         not exist.
@@ -182,7 +193,12 @@ class ContactAddressNode(SubElement):
             return self, updated, created
         return self
 
-    def add_contact_address(self, contact_address, location="Default", dynamic=False):
+    def add_contact_address(
+        self,
+        contact_address: str,
+        location: str = "Default",
+        dynamic: bool = False,
+    ) -> "ContactAddressNode":
         """
         Add a contact address to this specified interface. A
         contact address is an alternative address which is
@@ -207,7 +223,7 @@ class ContactAddressNode(SubElement):
         """
         return self.update_or_create(location, contact_address, dynamic)
 
-    def remove_contact_address(self, location):
+    def remove_contact_address(self, location: str) -> bool:
         """
         Remove a contact address from an interface by the location
         name. There is a one to one relationship between a
@@ -221,7 +237,7 @@ class ContactAddressNode(SubElement):
         return self.delete(location)
 
     @property
-    def interface_id(self):
+    def interface_id(self) -> str:
         """
         The interface ID for this contact address interface
 
@@ -235,7 +251,7 @@ class ContactAddressNode(SubElement):
         return interface_id_to_return
 
     @property
-    def interface_ip(self):
+    def interface_ip(self) -> str:
         """
         The IP address for this contact address interface
 
@@ -243,7 +259,7 @@ class ContactAddressNode(SubElement):
         """
         return self._address
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "{}(interface_id={}, interface_ip={})".format(
             self.__class__.__name__, self.interface_id, self.interface_ip
         )
@@ -263,10 +279,10 @@ class ContactAddressCollection(SubElementCollection):
         a contact address is assigned or not.
     """
 
-    def __init__(self, resource):
+    def __init__(self, resource: Any) -> None:
         super(ContactAddressCollection, self).__init__(resource, ContactAddressNode)
 
-    def get(self, interface_id, interface_ip=None):
+    def get(self, interface_id: Any, interface_ip: Optional[str] = None) -> Any:
         """
         Get will return a list of interface references based on the
         specified interface id. Multiple references can be returned if

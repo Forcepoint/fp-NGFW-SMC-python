@@ -10,6 +10,8 @@
 #  License for the specific language governing permissions and limitations
 #  under the License.
 
+from __future__ import annotations
+from typing import Any, Optional, Union, Iterator
 import collections
 from smc.api.exceptions import EngineCommandFailed
 from smc.base.model import SubElement, Element
@@ -39,7 +41,7 @@ class Snapshot(SubElement):
     Snapshot filename will be <snapshot_name>.zip if not specified.
     """
 
-    def download(self, filename=None):
+    def download(self, filename: Optional[str] = None) -> None:
         """
         Download snapshot to filename
 
@@ -56,7 +58,7 @@ class Snapshot(SubElement):
         except IOError as e:
             raise EngineCommandFailed("Snapshot download failed: {}".format(e))
 
-    def download_html(self, filename=None):
+    def download_html(self, filename: Optional[str] = None) -> None:
         """
         Download snapshot as HTML to filename
 
@@ -73,7 +75,7 @@ class Snapshot(SubElement):
         except IOError as e:
             raise EngineCommandFailed("HTML Snapshot download failed: {}".format(e))
 
-    def compare_to_latest(self, filename=None):
+    def compare_to_latest(self, filename: Optional[str] = None) -> None:
         """
         Download comparison between this snapshot and the current version of the configuration
         as HTML to filename
@@ -118,12 +120,12 @@ class PendingChanges(SerializedIterable):
     :rtype: ChangeRecord
     """
 
-    def __init__(self, engine):
+    def __init__(self, engine: Any) -> None:
         result = engine.make_request(resource="pending_changes")
         self.engine = engine
         super(PendingChanges, self).__init__(result, ChangeRecord)
 
-    def approve_all(self):
+    def approve_all(self) -> None:
         """
         Approve all pending changes
 
@@ -132,7 +134,7 @@ class PendingChanges(SerializedIterable):
         """
         self.engine.make_request(method="create", resource="approve_all_changes")
 
-    def disapprove_all(self):
+    def disapprove_all(self) -> None:
         """
         Disapprove all pending changes
 
@@ -166,7 +168,7 @@ class ChangeRecord(_ChangeRecord):
     __slots__ = ()
 
     @property
-    def resolve_element(self):
+    def resolve_element(self) -> Element:
         return Element.from_href(self.element)
 
 
@@ -193,7 +195,7 @@ class History(_History):
     __slots__ = ()
 
     @property
-    def created_by(self):
+    def created_by(self) -> Element:
         """
         The account that created this element. Returned as
         an Element.
@@ -203,7 +205,7 @@ class History(_History):
         return Element.from_href(self.creator)
 
     @property
-    def modified_by(self):
+    def modified_by(self) -> Element:
         """
         The account that last modified this element.
 
@@ -212,7 +214,7 @@ class History(_History):
         return Element.from_href(self.modifier)
 
     @property
-    def when_created(self):
+    def when_created(self) -> Any:
         """
         When the element was created as a datetime object
 
@@ -221,7 +223,7 @@ class History(_History):
         return datetime_from_ms(self.creation_time)
 
     @property
-    def last_modified(self):
+    def last_modified(self) -> Any:
         """
         When the element was last modified as a datetime object
 
@@ -229,7 +231,7 @@ class History(_History):
         """
         return datetime_from_ms(self.last_modification_time)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "History(is_locked={}, is_obsolete={}, is_trashed={})".format(
             self.is_locked, self.is_obsolete, self.is_trashed
         )

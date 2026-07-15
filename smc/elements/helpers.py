@@ -13,6 +13,10 @@
 Helper functions to retrieve various elements that may be required by specific
 constructors.
 """
+from __future__ import annotations
+
+from typing import Any, Optional, Union, Iterator
+
 from smc.elements.network import Zone
 from smc.policy.qos import QoSPolicy
 from smc.administration.system import AdminDomain
@@ -21,7 +25,7 @@ from smc.api.exceptions import ElementNotFound
 from smc.base.collection import Search
 
 
-def location_helper(name, search_only=False):
+def location_helper(name: Any, search_only: bool = False) -> Optional[str]:
     """
     Location finder by name. If location doesn't exist, create it
     and return the href
@@ -53,7 +57,7 @@ def location_helper(name, search_only=False):
         return locations[0].href
 
 
-def zone_helper(zone):
+def zone_helper(zone: Any) -> Optional[str]:
     """
     Zone finder by name. If zone doesn't exist, create it and
     return the href
@@ -70,7 +74,7 @@ def zone_helper(zone):
     return Zone.get_or_create(name=zone).href
 
 
-def qos_policy_helper(qos_policy):
+def qos_policy_helper(qos_policy: Any) -> Optional[str]:
     """
     QoS Policy finder by name. If QoS Policy doesn't exist, create it and
     return the href
@@ -87,7 +91,7 @@ def qos_policy_helper(qos_policy):
     return QoSPolicy.get_or_create(name=qos_policy).href
 
 
-def logical_intf_helper(interface):
+def logical_intf_helper(interface: Any) -> Optional[str]:
     """
     Logical Interface finder by name. Create if it doesn't exist.
     This is useful when adding logical interfaces to for inline
@@ -105,7 +109,7 @@ def logical_intf_helper(interface):
     return LogicalInterface.get_or_create(name=interface).href
 
 
-def domain_helper(name):
+def domain_helper(name: Any) -> Optional[str]:
     """
     Find a domain based on name
 

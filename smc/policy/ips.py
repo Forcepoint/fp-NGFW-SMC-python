@@ -45,6 +45,10 @@ Example rule deletion::
         if rule.name == 'ipsrule1':
             rule.delete()
 """
+from __future__ import annotations
+
+from typing import Any, Optional, Union, Iterator
+
 from smc.policy.policy import Policy
 from smc.policy.rule import IPv4Layer2Rule, IPv6Layer2Rule, EthernetRule, IPSRule
 from smc.base.model import ElementCreator
@@ -65,7 +69,7 @@ class IPSPolicyRule(object):
     """
 
     @property
-    def ips_ipv4_access_rules(self):
+    def ips_ipv4_access_rules(self) -> Any:
         """
         IPS ipv4 access rules
 
@@ -74,12 +78,12 @@ class IPSPolicyRule(object):
         return rule_collection(self.get_relation("ips_ipv4_access_rules"), IPv4Layer2Rule)
 
     @property
-    def ips_ipv6_access_rules(self):
+    def ips_ipv6_access_rules(self) -> Any:
         """"""
         return rule_collection(self.get_relation("ips_ipv6_access_rules"), IPv6Layer2Rule)
 
     @property
-    def ips_ethernet_rules(self):
+    def ips_ethernet_rules(self) -> Any:
         """
         IPS Ethernet access rule
 
@@ -107,7 +111,7 @@ class IPSPolicy(IPSPolicyRule, Policy):
     typeof = "ips_policy"
 
     @classmethod
-    def create(cls, name, template="High-Security IPS Template"):
+    def create(cls, name: str, template: Optional[str] = "High-Security IPS Template") -> IPSPolicy:
         """
         Create an IPS Policy
 
@@ -153,7 +157,7 @@ class IPSSubPolicy(Policy):
     typeof = "sub_ipv4_ips_policy"
 
     @classmethod
-    def create(cls, name):
+    def create(cls, name: str) -> IPSSubPolicy:
         """
         Create a sub policy. Only name is required. Other settings are
         inherited from the parent IPS policy (template, inspection
@@ -166,7 +170,7 @@ class IPSSubPolicy(Policy):
         return ElementCreator(cls, json={"name": name})
 
     @property
-    def ips_ipv4_access_rules(self):
+    def ips_ipv4_access_rules(self) -> Any:
         """
         IPv4 rule entry point
 
@@ -194,5 +198,5 @@ class IPSTemplatePolicy(IPSPolicy):
 
     typeof = "ips_template_policy"
 
-    def upload(self):
+    def upload(self) -> None:
         pass

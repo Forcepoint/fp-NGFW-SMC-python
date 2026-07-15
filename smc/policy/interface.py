@@ -16,6 +16,8 @@ engines or cluster layer 3 engines have layer 2 interfaces. The configuration
 is identical to creating Layer 2 Rules for layer 2 or IPS engines.
 
 """
+from __future__ import annotations
+from typing import Any, Optional, Union, Iterator
 from smc.base.collection import rule_collection
 from smc.policy.policy import Policy
 from smc.policy.rule import IPv4Layer2Rule, IPv6Layer2Rule, EthernetRule
@@ -34,7 +36,7 @@ class InterfaceRule(object):
     """
 
     @property
-    def layer2_ipv4_access_rules(self):
+    def layer2_ipv4_access_rules(self) -> Any:
         """
         Layer2 IPv4 access rule
 
@@ -43,7 +45,7 @@ class InterfaceRule(object):
         return rule_collection(self.get_relation("l2_interface_ipv4_access_rules"), IPv4Layer2Rule)
 
     @property
-    def layer2_ipv6_access_rules(self):
+    def layer2_ipv6_access_rules(self) -> Any:
         """
         Layer 2 IPv6 access rule
 
@@ -53,7 +55,7 @@ class InterfaceRule(object):
         pass
 
     @property
-    def layer2_ethernet_rules(self):
+    def layer2_ethernet_rules(self) -> Any:
         """
         Layer 2 Ethernet access rule
 
@@ -80,7 +82,7 @@ class InterfacePolicy(InterfaceRule, Policy):
     typeof = "l2_interface_policy"
 
     @classmethod
-    def create(cls, name, template):
+    def create(cls, name: str, template: str) -> "InterfacePolicy":
         """
         Create a new Layer 2 Interface Policy.
 
@@ -103,7 +105,7 @@ class InterfacePolicy(InterfaceRule, Policy):
         except CreateElementFailed as err:
             raise CreatePolicyFailed(err)
 
-    def inspection_policy(self):
+    def inspection_policy(self) -> None:  # type: ignore[override]
         pass
 
 
@@ -121,10 +123,10 @@ class InterfaceTemplatePolicy(InterfacePolicy):
 
     typeof = "l2_interface_template_policy"
 
-    def inspection_policy(self):
+    def inspection_policy(self) -> None:  # type: ignore[override]
         pass
 
-    def upload(self):
+    def upload(self) -> None:  # type: ignore[override]
         pass  # Not supported on the template
 
 
@@ -150,7 +152,7 @@ class InterfaceSubPolicy(Policy):
     typeof = "sub_l2_interface_policy"
 
     @classmethod
-    def create(cls, name):
+    def create(cls, name: str) -> "InterfaceSubPolicy":
         """
         Create a sub policy. Only name is required. Other settings are
         inherited from the parent firewall policy (template, policy, etc).
@@ -162,7 +164,7 @@ class InterfaceSubPolicy(Policy):
         return ElementCreator(cls, json={"name": name})
 
     @property
-    def layer2_ipv4_access_rules(self):
+    def layer2_ipv4_access_rules(self) -> Any:
         """
         IPv4 rule entry point
 

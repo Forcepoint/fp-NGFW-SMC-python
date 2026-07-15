@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import Any, Optional, Union, Iterator
+
 from smc.base.model import Element, ElementCreator, lookup_class
 from smc.base.structs import NestedDict
 from smc.base.util import element_resolver
@@ -15,12 +19,16 @@ class SSLVPNPortal(Element):
     typeof = "ssl_vpn_portal"
 
     @classmethod
-    def create(cls, name, admin_domain=None, allow_empty_referrer=None, brand_color=None,
-               log_access=None, look_and_feel=None, persistent_session=None,
-               portal_session_timeout=None, portal_theme=None, portal_timeout=None,
-               self_signed_certificate=False, server_credentials=None,
-               session_timeout_unit=None, ssl_vpn_hostnames=None,
-               ssl_vpn_policy=None, timeout_unit=None, title=None):
+    def create(cls, name: str, admin_domain: Any = None, allow_empty_referrer: Optional[bool] = None,
+               brand_color: Optional[str] = None,
+               log_access: Optional[bool] = None, look_and_feel: Optional[str] = None,
+               persistent_session: Optional[bool] = None,
+               portal_session_timeout: Optional[int] = None, portal_theme: Optional[str] = None,
+               portal_timeout: Optional[int] = None,
+               self_signed_certificate: bool = False, server_credentials: Optional[list[Any]] = None,
+               session_timeout_unit: Optional[str] = None, ssl_vpn_hostnames: Optional[list[Any]] = None,
+               ssl_vpn_policy: Any = None, timeout_unit: Optional[str] = None,
+               title: Optional[str] = None) -> SSLVPNPortal:
         """
         An SSL VPN Portal.
         :param name: str, name of the portal
@@ -72,7 +80,7 @@ class SSLVPNPortal(Element):
         return ElementCreator(cls, json)
 
     @property
-    def ssl_vpn_hostnames(self):
+    def ssl_vpn_hostnames(self) -> Optional[list[Any]]:
         """
         SSL VPN Hostnames.
         :rtype: list
@@ -80,11 +88,11 @@ class SSLVPNPortal(Element):
         return self.data.get("ssl_vpn_hostname")
 
     @ssl_vpn_hostnames.setter
-    def ssl_vpn_hostnames(self, value):
+    def ssl_vpn_hostnames(self, value: Any) -> None:
         self.data.update({"ssl_vpn_hostnames": value})
 
     @property
-    def allow_empty_referrer(self):
+    def allow_empty_referrer(self) -> Optional[bool]:
         """
         Allow empty referrer.
         :rtype: bool
@@ -92,11 +100,11 @@ class SSLVPNPortal(Element):
         return self.data.get("allow_empty_referrer")
 
     @allow_empty_referrer.setter
-    def allow_empty_referrer(self, value):
+    def allow_empty_referrer(self, value: Any) -> None:
         self.data.update({"allow_empty_referrer": value})
 
     @property
-    def brand_color(self):
+    def brand_color(self) -> Optional[str]:
         """
         Brand color.
         :rtype: str
@@ -104,11 +112,11 @@ class SSLVPNPortal(Element):
         return self.data.get("brand_color")
 
     @brand_color.setter
-    def brand_color(self, value):
+    def brand_color(self, value: Any) -> None:
         self.data.update({"brand_color": value})
 
     @property
-    def log_access(self):
+    def log_access(self) -> Optional[str]:
         """
         Log access.
         :rtype: str
@@ -116,11 +124,11 @@ class SSLVPNPortal(Element):
         return self.data.get("log_access")
 
     @log_access.setter
-    def log_access(self, value):
+    def log_access(self, value: Any) -> None:
         self.data.update({"log_access": value})
 
     @property
-    def look_and_feel(self):
+    def look_and_feel(self) -> Optional[str]:
         """
         Look and feel.
         :rtype: str
@@ -128,11 +136,11 @@ class SSLVPNPortal(Element):
         return self.data.get("look_and_feel")
 
     @look_and_feel.setter
-    def look_and_feel(self, value):
+    def look_and_feel(self, value: Any) -> None:
         self.data.update({"look_and_feel": value})
 
     @property
-    def persistent_session(self):
+    def persistent_session(self) -> Optional[bool]:
         """
         Persistent session.
         :rtype: bool
@@ -140,11 +148,11 @@ class SSLVPNPortal(Element):
         return self.data.get("persistent_session")
 
     @persistent_session.setter
-    def persistent_session(self, value):
+    def persistent_session(self, value: Any) -> None:
         self.data.update({"persistent_session": value})
 
     @property
-    def portal_session_timeout(self):
+    def portal_session_timeout(self) -> Optional[int]:
         """
         Portal session timeout.
         :rtype: int
@@ -152,11 +160,11 @@ class SSLVPNPortal(Element):
         return self.data.get("portal_session_timeout")
 
     @portal_session_timeout.setter
-    def portal_session_timeout(self, value):
+    def portal_session_timeout(self, value: Any) -> None:
         self.data.update({"portal_session_timeout": value})
 
     @property
-    def portal_theme(self):
+    def portal_theme(self) -> Optional[str]:
         """
         Portal theme.
         :rtype: str
@@ -164,11 +172,11 @@ class SSLVPNPortal(Element):
         return self.data.get("portal_theme")
 
     @portal_theme.setter
-    def portal_theme(self, value):
+    def portal_theme(self, value: Any) -> None:
         self.data.update({"portal_theme": value})
 
     @property
-    def portal_timeout(self):
+    def portal_timeout(self) -> Optional[int]:
         """
         Portal timeout.
         :rtype: int
@@ -176,11 +184,11 @@ class SSLVPNPortal(Element):
         return self.data.get("portal_timeout")
 
     @portal_timeout.setter
-    def portal_timeout(self, value):
+    def portal_timeout(self, value: Any) -> None:
         self.data.update({"portal_timeout": value})
 
     @property
-    def self_signed_certificate(self):
+    def self_signed_certificate(self) -> Optional[bool]:
         """
         Self signed certificate.
         :rtype: bool
@@ -188,11 +196,11 @@ class SSLVPNPortal(Element):
         return self.data.get("self_signed_certificate")
 
     @self_signed_certificate.setter
-    def self_signed_certificate(self, value):
+    def self_signed_certificate(self, value: Any) -> None:
         self.data.update({"self_signed_certificate": value})
 
     @property
-    def session_timeout_unit(self):
+    def session_timeout_unit(self) -> Optional[str]:
         """
         Session timeout unit.
         :rtype: str
@@ -200,11 +208,11 @@ class SSLVPNPortal(Element):
         return self.data.get("session_timeout_unit")
 
     @session_timeout_unit.setter
-    def session_timeout_unit(self, value):
+    def session_timeout_unit(self, value: Any) -> None:
         self.data.update({"session_timeout_unit": value})
 
     @property
-    def ssl_vpn_policy(self):
+    def ssl_vpn_policy(self) -> Optional[str]:
         """
         SSL VPN Policy.
         :rtype: str
@@ -212,11 +220,11 @@ class SSLVPNPortal(Element):
         return self.data.get("ssl_vpn_policy")
 
     @ssl_vpn_policy.setter
-    def ssl_vpn_policy(self, value):
+    def ssl_vpn_policy(self, value: Any) -> None:
         self.data.update({"ssl_vpn_policy": value})
 
     @property
-    def timeout_unit(self):
+    def timeout_unit(self) -> Optional[str]:
         """
         Timeout unit.
         :rtype: str
@@ -224,11 +232,11 @@ class SSLVPNPortal(Element):
         return self.data.get("timeout_unit")
 
     @timeout_unit.setter
-    def timeout_unit(self, value):
+    def timeout_unit(self, value: Any) -> None:
         self.data.update({"timeout_unit": value})
 
     @property
-    def title(self):
+    def title(self) -> Optional[str]:
         """
         Title.
         :rtype: str
@@ -236,11 +244,11 @@ class SSLVPNPortal(Element):
         return self.data.get("title")
 
     @title.setter
-    def title(self, value):
+    def title(self, value: Any) -> None:
         self.data.update({"title": value})
 
     @property
-    def server_credentials(self):
+    def server_credentials(self) -> Optional[list[Any]]:
         """
         Server credentials.
         :rtype: list
@@ -248,11 +256,11 @@ class SSLVPNPortal(Element):
         return self.data.get("server_credentials")
 
     @server_credentials.setter
-    def server_credentials(self, value):
+    def server_credentials(self, value: Any) -> None:
         self.data.update({"server_credentials": value})
 
     @property
-    def admin_domain(self):
+    def admin_domain(self) -> Optional[str]:
         """
         Admin domain.
         :rtype: str
@@ -260,7 +268,7 @@ class SSLVPNPortal(Element):
         return self.data.get("admin_domain")
 
     @admin_domain.setter
-    def admin_domain(self, value):
+    def admin_domain(self, value: Any) -> None:
         self.data.update({"admin_domain": value})
 
 
@@ -270,7 +278,8 @@ class SSLVPNHttpField(NestedDict):
     Deprecated since SMC >= 7.5.0, replaced by ApplicationAccessHttpField.
     """
 
-    def __init__(self, http_field_name=None, http_field_value=None):
+    def __init__(self, http_field_name: Optional[str] = None,
+                 http_field_value: Optional[str] = None) -> None:
         data = {"http_field_name": http_field_name, "http_field_value": http_field_value}
         super(SSLVPNHttpField, self).__init__(data=data)
 
@@ -281,7 +290,7 @@ class SSLVPNHostname(NestedDict):
     Deprecated since SMC >= 7.5.0, replaced by ApplicationAccessHostname.
     """
 
-    def __init__(self, ssl_vpn_hostname):
+    def __init__(self, ssl_vpn_hostname: Any) -> None:
         data = {"ssl_vpn_hostname": ssl_vpn_hostname}
         super(SSLVPNHostname, self).__init__(data=data)
 
@@ -292,7 +301,8 @@ class SSLVPNAllowedURL(NestedDict):
     Deprecated since SMC >= 7.5.0, replaced by ApplicationAccessAllowedURL.
     """
 
-    def __init__(self, protocol="HTTP", url_host=None, port=None):
+    def __init__(self, protocol: str = "HTTP", url_host: Optional[str] = None,
+                 port: Optional[int] = None) -> None:
         data = {"protocol": protocol, "url_host": url_host, "port": port}
         super(SSLVPNAllowedURL, self).__init__(data=data)
 
@@ -305,7 +315,8 @@ class SSLVPNSSODomain(Element):
     typeof = "ssl_vpn_sso_domain"
 
     @classmethod
-    def create(cls, name, sso_mode="session_based", timeout=30):
+    def create(cls, name: str, sso_mode: str = "session_based",
+               timeout: int = 30) -> SSLVPNSSODomain:
         """
         An SSL VPN Single Sign On Domain.
         :param str name: Name of the ssl vpn sso domain.
@@ -321,19 +332,19 @@ class SSLVPNSSODomain(Element):
         return ElementCreator(cls, json)
 
     @property
-    def sso_mode(self):
+    def sso_mode(self) -> Optional[str]:
         return self.data.get("sso_mode")
 
     @sso_mode.setter
-    def sso_mode(self, value):
+    def sso_mode(self, value: Any) -> None:
         self.data.update({"sso_mode": value})
 
     @property
-    def timeout(self):
+    def timeout(self) -> Optional[int]:
         return self.data.get("timeout")
 
     @timeout.setter
-    def timeout(self, value):
+    def timeout(self, value: Any) -> None:
         self.data.update({"timeout": value})
 
 
@@ -346,10 +357,14 @@ class SSLVPNServiceProfile(Element):
     typeof = "ssl_vpn_service_profile"
 
     @classmethod
-    def create(cls, name, cookie_hiding="no_encryption", ssl_vpn_profile_exception=None,
-               authentication_type="none", login_page_url=None, ntlm_support=False,
-               password_input_name=None, post_request_url=None, ssl_vpn_http_field=None,
-               user_input_custom_format=None, user_input_format="user", user_input_name=None):
+    def create(cls, name: str, cookie_hiding: str = "no_encryption",
+               ssl_vpn_profile_exception: Optional[list[Any]] = None,
+               authentication_type: str = "none", login_page_url: Optional[str] = None,
+               ntlm_support: bool = False,
+               password_input_name: Optional[str] = None, post_request_url: Optional[str] = None,
+               ssl_vpn_http_field: Optional[list[Any]] = None,
+               user_input_custom_format: Optional[str] = None, user_input_format: str = "user",
+               user_input_name: Optional[str] = None) -> SSLVPNServiceProfile:
         """
         An SSL VPN Service Profile.
         :param str name: Name of SSL VPN Service Profile.
@@ -392,91 +407,91 @@ class SSLVPNServiceProfile(Element):
         return ElementCreator(cls, json)
 
     @property
-    def cookie_hiding(self):
+    def cookie_hiding(self) -> Optional[str]:
         return self.data.get("cookie_hiding")
 
     @cookie_hiding.setter
-    def cookie_hiding(self, value):
+    def cookie_hiding(self, value: Any) -> None:
         self.data.update({"cookie_hiding": value})
 
     @property
-    def ssl_vpn_profile_exception(self):
+    def ssl_vpn_profile_exception(self) -> Optional[list[Any]]:
         return self.data.get("ssl_vpn_profile_exception")
 
     @ssl_vpn_profile_exception.setter
-    def ssl_vpn_profile_exception(self, value):
+    def ssl_vpn_profile_exception(self, value: Any) -> None:
         self.data.update({"ssl_vpn_profile_exception": value})
 
     @property
-    def authentication_type(self):
+    def authentication_type(self) -> Optional[str]:
         return self.data.get("authentication_type")
 
     @authentication_type.setter
-    def authentication_type(self, value):
+    def authentication_type(self, value: Any) -> None:
         self.data.update({"authentication_type": value})
 
     @property
-    def login_page_url(self):
+    def login_page_url(self) -> Optional[str]:
         return self.data.get("login_page_url")
 
     @login_page_url.setter
-    def login_page_url(self, value):
+    def login_page_url(self, value: Any) -> None:
         self.data.update({"login_page_url": value})
 
     @property
-    def ntlm_support(self):
+    def ntlm_support(self) -> Optional[bool]:
         return self.data.get("ntlm_support")
 
     @ntlm_support.setter
-    def ntlm_support(self, value):
+    def ntlm_support(self, value: Any) -> None:
         self.data.update({"ntlm_support": value})
 
     @property
-    def password_input_name(self):
+    def password_input_name(self) -> Optional[str]:
         return self.data.get("password_input_name")
 
     @password_input_name.setter
-    def password_input_name(self, value):
+    def password_input_name(self, value: Any) -> None:
         self.data.update({"password_input_name": value})
 
     @property
-    def post_request_url(self):
+    def post_request_url(self) -> Optional[str]:
         return self.data.get("post_request_url")
 
     @post_request_url.setter
-    def post_request_url(self, value):
+    def post_request_url(self, value: Any) -> None:
         self.data.update({"post_request_url": value})
 
     @property
-    def ssl_vpn_http_field(self):
+    def ssl_vpn_http_field(self) -> Optional[list[Any]]:
         return self.data.get("ssl_vpn_http_field")
 
     @ssl_vpn_http_field.setter
-    def ssl_vpn_http_field(self, value):
+    def ssl_vpn_http_field(self, value: Any) -> None:
         self.data.update({"ssl_vpn_http_field": value})
 
     @property
-    def user_input_custom_format(self):
+    def user_input_custom_format(self) -> Optional[str]:
         return self.data.get("user_input_custom_format")
 
     @user_input_custom_format.setter
-    def user_input_custom_format(self, value):
+    def user_input_custom_format(self, value: Any) -> None:
         self.data.update({"user_input_custom_format": value})
 
     @property
-    def user_input_format(self):
+    def user_input_format(self) -> Optional[str]:
         return self.data.get("user_input_format")
 
     @user_input_format.setter
-    def user_input_format(self, value):
+    def user_input_format(self, value: Any) -> None:
         self.data.update({"user_input_format": value})
 
     @property
-    def user_input_name(self):
+    def user_input_name(self) -> Optional[str]:
         return self.data.get("user_input_name")
 
     @user_input_name.setter
-    def user_input_name(self, value):
+    def user_input_name(self, value: Any) -> None:
         self.data.update({"user_input_name": value})
 
 
@@ -489,12 +504,19 @@ class SSLVPNWebService(Element):
     typeof = "ssl_vpn_web_service"
 
     @classmethod
-    def create(cls, name, admin_domain=None, cookie_protection=None, description=None,
-               disable_rewrite=None, external_url=None, internal_url=None, rewrite_html=None,
-               routing_method=None, self_signed_certificate=None, server_credential=None,
-               ssl_vpn_allowed_url=None, ssl_vpn_althost=None, ssl_vpn_service_profile=None,
-               start_page=None, title=None, trusted_ca=None, url_prefix=None,
-               visible_in_portal=None, ssl_vpn_sso_domain=None):
+    def create(cls, name: str, admin_domain: Any = None, cookie_protection: Optional[bool] = None,
+               description: Optional[str] = None,
+               disable_rewrite: Optional[bool] = None, external_url: Optional[str] = None,
+               internal_url: Optional[str] = None, rewrite_html: Optional[bool] = None,
+               routing_method: Optional[str] = None, self_signed_certificate: Optional[bool] = None,
+               server_credential: Any = None,
+               ssl_vpn_allowed_url: Optional[list[Any]] = None,
+               ssl_vpn_althost: Optional[list[Any]] = None,
+               ssl_vpn_service_profile: Any = None,
+               start_page: Optional[str] = None, title: Optional[str] = None,
+               trusted_ca: Optional[list[Any]] = None, url_prefix: Optional[str] = None,
+               visible_in_portal: Optional[bool] = None,
+               ssl_vpn_sso_domain: Any = None) -> SSLVPNWebService:
         """
         Create an SSL VPN Web Service.
         :param str ssl_vpn_sso_domain: ssl_vpn_sso_domain obj or href
@@ -547,155 +569,155 @@ class SSLVPNWebService(Element):
         return ElementCreator(cls, json)
 
     @property
-    def external_url(self):
+    def external_url(self) -> Optional[str]:
         return self.data.get("external_url")
 
     @external_url.setter
-    def external_url(self, value):
+    def external_url(self, value: Any) -> None:
         self.data.update({"external_url": value})
 
     @property
-    def server_credential(self):
+    def server_credential(self) -> Any:
         return self.data.get("server_credential")
 
     @server_credential.setter
-    def server_credential(self, value):
+    def server_credential(self, value: Any) -> None:
         self.data.update({"server_credential": value})
 
     @property
-    def admin_domain(self):
+    def admin_domain(self) -> Any:
         return self.data.get("admin_domain")
 
     @admin_domain.setter
-    def admin_domain(self, value):
+    def admin_domain(self, value: Any) -> None:
         self.data.update({"admin_domain": value})
 
     @property
-    def cookie_protection(self):
+    def cookie_protection(self) -> Optional[bool]:
         return self.data.get("cookie_protection")
 
     @cookie_protection.setter
-    def cookie_protection(self, value):
+    def cookie_protection(self, value: Any) -> None:
         self.data.update({"cookie_protection": value})
 
     @property
-    def description(self):
+    def description(self) -> Optional[str]:
         return self.data.get("description")
 
     @description.setter
-    def description(self, value):
+    def description(self, value: Any) -> None:
         self.data.update({"description": value})
 
     @property
-    def disable_rewrite(self):
+    def disable_rewrite(self) -> Optional[bool]:
         return self.data.get("disable_rewrite")
 
     @disable_rewrite.setter
-    def disable_rewrite(self, value):
+    def disable_rewrite(self, value: Any) -> None:
         self.data.update({"disable_rewrite": value})
 
     @property
-    def internal_url(self):
+    def internal_url(self) -> Optional[str]:
         return self.data.get("internal_url")
 
     @internal_url.setter
-    def internal_url(self, value):
+    def internal_url(self, value: Any) -> None:
         self.data.update({"internal_url": value})
 
     @property
-    def rewrite_html(self):
+    def rewrite_html(self) -> Optional[bool]:
         return self.data.get("rewrite_html")
 
     @rewrite_html.setter
-    def rewrite_html(self, value):
+    def rewrite_html(self, value: Any) -> None:
         self.data.update({"rewrite_html": value})
 
     @property
-    def routing_method(self):
+    def routing_method(self) -> Optional[str]:
         return self.data.get("routing_method")
 
     @routing_method.setter
-    def routing_method(self, value):
+    def routing_method(self, value: Any) -> None:
         self.data.update({"routing_method": value})
 
     @property
-    def self_signed_certificate(self):
+    def self_signed_certificate(self) -> Optional[bool]:
         return self.data.get("self_signed_certificate")
 
     @self_signed_certificate.setter
-    def self_signed_certificate(self, value):
+    def self_signed_certificate(self, value: Any) -> None:
         self.data.update({"self_signed_certificate": value})
 
     @property
-    def ssl_vpn_allowed_url(self):
+    def ssl_vpn_allowed_url(self) -> Optional[list[Any]]:
         return self.data.get("ssl_vpn_allowed_url")
 
     @ssl_vpn_allowed_url.setter
-    def ssl_vpn_allowed_url(self, value):
+    def ssl_vpn_allowed_url(self, value: Any) -> None:
         self.data.update({"ssl_vpn_allowed_url": value})
 
     @property
-    def ssl_vpn_althost(self):
+    def ssl_vpn_althost(self) -> Optional[list[Any]]:
         return self.data.get("ssl_vpn_althost")
 
     @ssl_vpn_althost.setter
-    def ssl_vpn_althost(self, value):
+    def ssl_vpn_althost(self, value: Any) -> None:
         self.data.update({"ssl_vpn_althost": value})
 
     @property
-    def ssl_vpn_service_profile(self):
+    def ssl_vpn_service_profile(self) -> Any:
         return self.data.get("ssl_vpn_service_profile")
 
     @ssl_vpn_service_profile.setter
-    def ssl_vpn_service_profile(self, value):
+    def ssl_vpn_service_profile(self, value: Any) -> None:
         self.data.update({"ssl_vpn_service_profile": value})
 
     @property
-    def ssl_vpn_sso_domain(self):
+    def ssl_vpn_sso_domain(self) -> Any:
         return self.data.get("ssl_vpn_sso_domain")
 
     @ssl_vpn_sso_domain.setter
-    def ssl_vpn_sso_domain(self, value):
+    def ssl_vpn_sso_domain(self, value: Any) -> None:
         self.data.update({"ssl_vpn_sso_domain": value})
 
     @property
-    def start_page(self):
+    def start_page(self) -> Optional[str]:
         return self.data.get("start_page")
 
     @start_page.setter
-    def start_page(self, value):
+    def start_page(self, value: Any) -> None:
         self.data.update({"start_page": value})
 
     @property
-    def title(self):
+    def title(self) -> Optional[str]:
         return self.data.get("title")
 
     @title.setter
-    def title(self, value):
+    def title(self, value: Any) -> None:
         self.data.update({"title": value})
 
     @property
-    def trusted_ca(self):
+    def trusted_ca(self) -> Optional[list[Any]]:
         return self.data.get("trusted_ca")
 
     @trusted_ca.setter
-    def trusted_ca(self, value):
+    def trusted_ca(self, value: Any) -> None:
         self.data.update({"trusted_ca": value})
 
     @property
-    def url_prefix(self):
+    def url_prefix(self) -> Optional[str]:
         return self.data.get("url_prefix")
 
     @url_prefix.setter
-    def url_prefix(self, value):
+    def url_prefix(self, value: Any) -> None:
         self.data.update({"url_prefix": value})
 
     @property
-    def visible_in_portal(self):
+    def visible_in_portal(self) -> Optional[bool]:
         return self.data.get("visible_in_portal")
 
     @visible_in_portal.setter
-    def visible_in_portal(self, value):
+    def visible_in_portal(self, value: Any) -> None:
         self.data.update({"visible_in_portal": value})
 
 
@@ -708,12 +730,12 @@ class SSLVPNRule(RuleCommon, Rule, SubElement):
     typeof = "sslvpn_rule"
 
     def create(self,
-               name=None,
-               ssl_vpn_web_service=None,
-               authentication=None,
-               comment=None,
-               rank=None,
-               **kw):
+               name: Optional[str] = None,
+               ssl_vpn_web_service: Optional[list[Any]] = None,
+               authentication: Any = None,
+               comment: Optional[str] = None,
+               rank: Optional[int] = None,
+               **kw: Any) -> SSLVPNRule:
         """
         An SSL VPN Policy Rule
         :param str name: Name of the SSL VPN Policy Rule.
@@ -744,14 +766,14 @@ class SSLVPNRule(RuleCommon, Rule, SubElement):
         return ElementCreator(self.__class__, exception=CreateRuleFailed, href=href, json=json)
 
     @property
-    def name(self):
+    def name(self) -> str:
         """
         Name attribute of rule element
         """
         return self._meta.name if self._meta.name else "Rule @%s" % self.tag
 
     @property
-    def history(self):
+    def history(self) -> History:
         """
         .. versionadded:: 0.6.3
             Requires SMC version >= 6.5
@@ -767,7 +789,7 @@ class SSLVPNRule(RuleCommon, Rule, SubElement):
         return History(**self.make_request(resource="history"))
 
     @cacheable_resource
-    def authentication(self):
+    def authentication(self) -> Authentication:
         """
         Read only authentication field
 
@@ -776,7 +798,7 @@ class SSLVPNRule(RuleCommon, Rule, SubElement):
         return Authentication(self)
 
     @property
-    def comment(self):
+    def comment(self) -> Optional[str]:
         """
         Optional comment for this rule.
 
@@ -786,11 +808,11 @@ class SSLVPNRule(RuleCommon, Rule, SubElement):
         return self.data.get("comment")
 
     @comment.setter
-    def comment(self, value):
+    def comment(self, value: Any) -> None:
         self.data["comment"] = value
 
     @property
-    def is_disabled(self):
+    def is_disabled(self) -> Optional[bool]:
         """
         Whether the rule is enabled or disabled
 
@@ -799,20 +821,20 @@ class SSLVPNRule(RuleCommon, Rule, SubElement):
         """
         return self.data.get("is_disabled")
 
-    def disable(self):
+    def disable(self) -> None:
         """
         Disable this rule
         """
         self.data["is_disabled"] = True
 
-    def enable(self):
+    def enable(self) -> None:
         """
         Enable this rule
         """
         self.data["is_disabled"] = False
 
     @cacheable_resource
-    def ssl_vpn_web_service(self):
+    def ssl_vpn_web_service(self) -> SSLVPNWebService:
         """
         Services assigned to this rule
 
@@ -821,7 +843,7 @@ class SSLVPNRule(RuleCommon, Rule, SubElement):
         return SSLVPNWebService(self)
 
     @property
-    def parent_policy(self):
+    def parent_policy(self) -> Any:
         """
         Read-only name of the parent policy
 
@@ -829,7 +851,7 @@ class SSLVPNRule(RuleCommon, Rule, SubElement):
         """
         return Element.from_href(self.data.get("parent_policy"))
 
-    def save(self):
+    def save(self) -> str:
         """
         After making changes to a rule element, you must call save
         to apply the changes. Rule changes are made to cache before
@@ -848,14 +870,14 @@ class Authentication(NestedDict):
     whether a user requires identification to match.
     """
 
-    def __init__(self, rule=None):
+    def __init__(self, rule: Any = None) -> None:
         if rule is None:
             auth = dict(methods=[], require_auth=False, users=[])
         else:
             auth = rule.data.data.get("Authentication", {})
         super(Authentication, self).__init__(data=auth)
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         if isinstance(other, Authentication):
             if self.require_auth != other.require_auth:
                 return False
@@ -865,10 +887,10 @@ class Authentication(NestedDict):
             return True
         return False
 
-    def __ne__(self, other):
+    def __ne__(self, other: Any) -> bool:
         return not self.__eq__(other)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (f"<Authentication(methods={self.methods},"
                 f" require_auth={self.require_auth}, users={self.users})>")
 
@@ -879,7 +901,7 @@ class SSLVPNPolicyRule(object):
     Deprecated since SMC >= 7.5.0, replaced by ApplicationAccessPolicyRule.
     """
     @property
-    def sslvpn_rules(self):
+    def sslvpn_rules(self) -> Any:
         return rule_collection(self.get_relation("sslvpn_rules"), SSLVPNRule)
 
 
@@ -892,7 +914,7 @@ class SSLVPNPolicy(SSLVPNPolicyRule, Element):
     typeof = "ssl_vpn_policy"
 
     @classmethod
-    def create(cls, name):
+    def create(cls, name: str) -> SSLVPNPolicy:
         """
         An SSL VPN Policy.
         :param str name: Name of the SSL VPN Policy.
@@ -903,14 +925,14 @@ class SSLVPNPolicy(SSLVPNPolicyRule, Element):
         }
         return ElementCreator(cls, json)
 
-    def force_unlock(self):
+    def force_unlock(self) -> None:
         """
         Forcibly unlock a locked policy
         :return: None
         """
         self.make_request(PolicyCommandFailed, method="create", resource="force_unlock")
 
-    def save_as(self, new_name: str):
+    def save_as(self, new_name: str) -> Any:
         """
         Save as the current policy with a new name
         :return: the duplicated policy
@@ -921,7 +943,7 @@ class SSLVPNPolicy(SSLVPNPolicyRule, Element):
                                                    params={"name": new_name},
                                                    raw_result=True).href)
 
-    def search_rule(self, search):
+    def search_rule(self, search: str) -> list[Any]:
         """
         Search a rule for a rule tag or name value
         Result will be the meta data for rule (name, href, type)

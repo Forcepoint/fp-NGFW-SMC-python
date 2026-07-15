@@ -81,6 +81,10 @@ Or by the name::
 
 .. seealso:: :class:`smc.base.collection.rule_collection`
 """
+from __future__ import annotations
+
+from typing import Any, Optional, Union, Iterator
+
 import collections
 from smc.base.model import Element, ElementCreator, SubElement
 from smc.base.collection import rule_collection
@@ -126,10 +130,10 @@ class MatchCondition(object):
     :rtype: list(Condition)
     """
 
-    def __init__(self, rule=None):
+    def __init__(self, rule: Any = None) -> None:
         self.conditions = rule.data.get("match_condition", []) if rule else []
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Any]:
         for condition in self.conditions:
             condition_type = condition.get("type")
             if "element" in condition_type:
@@ -149,7 +153,7 @@ class MatchCondition(object):
 
             yield Condition(condition.get("rank"), entry, condition_type)
 
-    def add_access_list(self, accesslist, rank=None):
+    def add_access_list(self, accesslist: Any, rank: Optional[int] = None) -> None:
         """
         Add an access list to the match condition. Valid
         access list types are IPAccessList (v4 and v6),
@@ -158,7 +162,7 @@ class MatchCondition(object):
         """
         self.conditions.append(dict(access_list_ref=accesslist.href, type="element", rank=rank))
 
-    def add_metric(self, value, rank=None):
+    def add_metric(self, value: int, rank: Optional[int] = None) -> None:
         """
         Add a metric to this match condition
 
@@ -166,7 +170,7 @@ class MatchCondition(object):
         """
         self.conditions.append(dict(metric=value, type="metric", rank=rank))
 
-    def add_next_hop(self, access_or_prefix_list, rank=None):
+    def add_next_hop(self, access_or_prefix_list: Any, rank: Optional[int] = None) -> None:
         """
         Add a next hop condition. Next hop elements must be
         of type IPAccessList or IPPrefixList.
@@ -177,7 +181,7 @@ class MatchCondition(object):
             dict(next_hop_ref=access_or_prefix_list.href, type="next_hop", rank=rank)
         )
 
-    def add_peer_address(self, ext_bgp_peer_or_fw, rank=None):
+    def add_peer_address(self, ext_bgp_peer_or_fw: Any, rank: Optional[int] = None) -> None:
         """
         Add a peer address. Peer address types are ExternalBGPPeer
         or Engine.
@@ -190,7 +194,7 @@ class MatchCondition(object):
             ref = "fwcluster_peer_address_ref"
         self.conditions.append({ref: ext_bgp_peer_or_fw.href, "rank": rank, "type": "peer_address"})
 
-    def remove_condition(self, rank):
+    def remove_condition(self, rank: int) -> None:
         """
         Remove a condition element using it's rank. You can find the
         rank and element for a match condition by iterating the match
@@ -213,7 +217,7 @@ class MatchCondition(object):
         """
         self.conditions[:] = [r for r in self.conditions if r.get("rank") != rank]
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "MatchCondition(entries={})".format(len(self.conditions))
 
 
@@ -229,18 +233,18 @@ class RouteMapRule(RuleCommon, SubElement):
 
     def create(
         self,
-        name,
-        action="permit",
-        goto=None,
-        finish=False,
-        call=None,
-        comment=None,
-        add_pos=None,
-        after=None,
-        before=None,
-        route_entry_settings=None,
-        **match_condition
-    ):
+        name: str,
+        action: str = "permit",
+        goto: Optional[Any] = None,
+        finish: bool = False,
+        call: Optional[Any] = None,
+        comment: Optional[str] = None,
+        add_pos: Optional[int] = None,
+        after: Optional[str] = None,
+        before: Optional[str] = None,
+        route_entry_settings: Optional[dict] = None,
+        **match_condition: Any
+    ) -> RouteMapRule:
         """
         Create a route map rule. You can provide match conditions
         by using keyword arguments specifying the required types.
@@ -316,7 +320,7 @@ class RouteMapRule(RuleCommon, SubElement):
         )
 
     @property
-    def comment(self):
+    def comment(self) -> Optional[str]:
         """
         Get and set the comment for this rule.
 
@@ -326,11 +330,11 @@ class RouteMapRule(RuleCommon, SubElement):
         return self.data.get("comment")
 
     @comment.setter
-    def comment(self, value):
+    def comment(self, value: str) -> None:
         self.data["comment"] = value
 
     @property
-    def goto(self):
+    def goto(self) -> Optional[Any]:
         """
         If the rule is set to goto a rule section, return
         the rule section, otherwise it will return None.
@@ -341,7 +345,7 @@ class RouteMapRule(RuleCommon, SubElement):
         """
         return Element.from_href(self.data.get("goto"))
 
-    def goto_rule_section(self, rule_section):
+    def goto_rule_section(self, rule_section: Any) -> None:
         """
         Set this rule to goto a specific rule section after
         match. If goto is None, then check value of finish.
@@ -352,7 +356,7 @@ class RouteMapRule(RuleCommon, SubElement):
         self.data.update(goto=rule_section.href)
 
     @property
-    def action(self):
+    def action(self) -> Optional[str]:
         """
         Action for this route map rule. Valid actions
         are 'permit' and 'deny'.
@@ -362,7 +366,7 @@ class RouteMapRule(RuleCommon, SubElement):
         return self.data.get("action")
 
     @property
-    def finish(self):
+    def finish(self) -> Optional[bool]:
         """
         Is rule action goto set to finish on this rule match.
         If finish is False, then the policy will proceed to
@@ -373,7 +377,7 @@ class RouteMapRule(RuleCommon, SubElement):
         return self.data.get("finish")
 
     @property
-    def is_disabled(self):
+    def is_disabled(self) -> Optional[bool]:
         """
         Is the rule disabled
 
@@ -382,10 +386,10 @@ class RouteMapRule(RuleCommon, SubElement):
         return self.data.get("is_disabled")
 
     @property
-    def is_rule_section(self):
+    def is_rule_section(self) -> bool:
         return "match_condition" not in self.data
 
-    def call_route_map(self, route_map):
+    def call_route_map(self, route_map: Any) -> None:
         """
         Call another route map after match of this rule.
         Call update on the rule to save after modification.
@@ -397,7 +401,7 @@ class RouteMapRule(RuleCommon, SubElement):
         self.data.update(call_route_map_ref=route_map.href)
 
     @property
-    def match_condition(self):
+    def match_condition(self) -> MatchCondition:
         """
         Return the match condition for this rule. This
         can then be modified in place. Be sure to call
@@ -428,7 +432,7 @@ class RouteMap(Element):
     typeof = "route_map"
 
     @classmethod
-    def create(cls, name, comment=None):
+    def create(cls, name: str, comment: Optional[str] = None) -> RouteMap:
         """
         Create a new route map. After creation, you can add a rule
         and subsequent match conditions.
@@ -443,7 +447,7 @@ class RouteMap(Element):
         return ElementCreator(cls, json)
 
     @property
-    def route_map_rules(self):
+    def route_map_rules(self) -> Any:
         """
         IPv6NAT Rule entry point
 
@@ -451,7 +455,7 @@ class RouteMap(Element):
         """
         return rule_collection(self.get_relation("route_map_rules"), RouteMapRule)
 
-    def search_rule(self, search):
+    def search_rule(self, search: str) -> list[Any]:
         """
         Search the RouteMap policy using a search string
 

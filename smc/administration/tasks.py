@@ -28,6 +28,8 @@ An example of using a task poller when uploading an engine policy
     assert poller.is_success(), logging.error("Timeout error during policy upload")
 
 """
+from __future__ import annotations
+from typing import Any, Optional, Union, Iterator
 import re
 import time
 import threading
@@ -43,7 +45,7 @@ from smc.compat import PYTHON_v3_9, is_smc_version_less_than
 clean_html = re.compile(r"<.*?>")
 
 
-def TaskHistory():
+def TaskHistory() -> list[Any]:
     """
     Task history retrieves a list of tasks in an event queue.
 
@@ -64,7 +66,7 @@ class TaskProgress(Element):
     typeof = "task_progress"
 
     @property
-    def task(self):
+    def task(self) -> Task:
         """
         Return the task associated with this event
 
@@ -86,12 +88,12 @@ class Task(SubElement):
         this task.
     """
 
-    def __init__(self, task):
+    def __init__(self, task: Any) -> None:
         super(Task, self).__init__(href=task.get("follower", None), name=task.get("type", None))
         self.data = ElementCache(task)
 
     @property
-    def parent(self):
+    def parent(self) -> Optional[Task]:
         """
         The possible parent task
 
@@ -104,7 +106,7 @@ class Task(SubElement):
         return None
 
     @property
-    def children(self):
+    def children(self) -> Optional[list[Task]]:
         """
         The possible children tasks
 
@@ -117,7 +119,7 @@ class Task(SubElement):
         return None
 
     @property
-    def resource(self):
+    def resource(self) -> list[Any]:
         """
         The resource/s associated with this task
 
@@ -126,7 +128,7 @@ class Task(SubElement):
         return [Element.from_href(resource) for resource in self.data.get("resource", [])]
 
     @property
-    def progress(self):
+    def progress(self) -> int:
         """
         Percentage of completion
 
@@ -135,7 +137,7 @@ class Task(SubElement):
         return self.data.get("progress", 0)
 
     @property
-    def waiting_inputs(self):
+    def waiting_inputs(self) -> Any:
         """
         the task is waiting for inputs
 
@@ -143,7 +145,7 @@ class Task(SubElement):
         """
         return self.data.get("waiting_inputs", 0)
 
-    def get_waiting_input_link(self):
+    def get_waiting_input_link(self) -> Optional[str]:
         links = self.data.get("link", [])
         waiting_input_link = None
         for link in links:
@@ -152,7 +154,7 @@ class Task(SubElement):
         return waiting_input_link
 
     @property
-    def success(self):
+    def success(self) -> Any:
         """
         the task has succeed
 
@@ -161,7 +163,7 @@ class Task(SubElement):
         return self.data.get("success", 0)
 
     @property
-    def last_message(self):
+    def last_message(self) -> Any:
         """
         the last message returned by the task
 
@@ -170,7 +172,7 @@ class Task(SubElement):
         return self.data.get("last_message", 0)
 
     @property
-    def start_time(self):
+    def start_time(self) -> Any:
         """
         Task start time in UTC datetime format
 
@@ -181,7 +183,7 @@ class Task(SubElement):
             return millis_to_utc(start_time)
 
     @property
-    def end_time(self):
+    def end_time(self) -> Any:
         """
         Task end time in UTC datetime format
 
@@ -191,7 +193,7 @@ class Task(SubElement):
         if end_time:
             return millis_to_utc(end_time)
 
-    def abort(self):
+    def abort(self) -> None:
         """
         Abort existing task.
 
@@ -207,7 +209,7 @@ class Task(SubElement):
             pass
 
     @property
-    def result_url(self):
+    def result_url(self) -> str:
         """
         Link to result (this task)
 
@@ -217,14 +219,14 @@ class Task(SubElement):
             raise IOError("Task is not finished!")
         return self.get_relation("result")
 
-    def get_result(self):
+    def get_result(self) -> Any:
         """
         Get result of task.
         :rtype SMCResult.
         """
         return self.make_request(TaskRunFailed, href=self.result_url, raw_result=True).content
 
-    def save_result(self, filename):
+    def save_result(self, filename: str) -> None:
         """
         Save result of task to specified filename
 
@@ -235,7 +237,7 @@ class Task(SubElement):
             raise IOError("Task is not finished!")
         self.make_request(TaskRunFailed, href=self.result_url, raw_result=True, filename=filename)
 
-    def get_progress_report(self):
+    def get_progress_report(self) -> list[Any]:
         """
         Get progress report if applicable
 
@@ -257,7 +259,7 @@ class Task(SubElement):
         else:
             raise BaseException("No progress report available!")
 
-    def update_status(self):
+    def update_status(self) -> Task:
         """
         Gets the current status of this task and returns a
         new task object.
@@ -268,11 +270,11 @@ class Task(SubElement):
 
         return Task(task)
 
-    def __getattr__(self, key):
+    def __getattr__(self, key: str) -> Any:
         return self.data.get(key)
 
     @staticmethod
-    def execute(self, resource, **kw):
+    def execute(self: Any, resource: Any, **kw: Any) -> TaskOperationPoller:
         """
         Execute the task and return a TaskOperationPoller.
 
@@ -291,7 +293,7 @@ class Task(SubElement):
             task=task, timeout=timeout, wait_for_finish=wait_for_finish, **kw
         )
 
-    def get_task_poller(self, **kw):
+    def get_task_poller(self, **kw: Any) -> TaskOperationPoller:
         """
         return a TaskOperationPoller for the Task.
 
@@ -306,7 +308,7 @@ class Task(SubElement):
             **kw)
 
     @staticmethod
-    def download(self, resource, filename, timeout=5, max_tries=36, **kw):
+    def download(self: Any, resource: Any, filename: str, timeout: int = 5, max_tries: int = 36, **kw: Any) -> DownloadTask:
         """
         Start and return a Download Task
 
@@ -317,7 +319,7 @@ class Task(SubElement):
 
         return DownloadTask(timeout=timeout, max_tries=max_tries, filename=filename, task=task)
 
-    def download_only(self, filename, timeout=5, max_tries=36):
+    def download_only(self, filename: str, timeout: int = 5, max_tries: int = 36) -> DownloadTask:
         """
         This does not start task only return a Download Task.
         :rtype: DownloadTask(TaskOperationPoller)
@@ -333,7 +335,7 @@ class TaskOperationPoller(object):
     operations like refreshing policy, uploading policy, etc.
     """
 
-    def __init__(self, task, timeout=5, max_tries=36, wait_for_finish=False):
+    def __init__(self, task: Any, timeout: int = 5, max_tries: int = 36, wait_for_finish: bool = False) -> None:
         self._task = Task(task)
         self._thread = None
         self._done = None
@@ -347,7 +349,7 @@ class TaskOperationPoller(object):
             self._thread.daemon = True
             self._thread.start()
 
-    def _start(self):
+    def _start(self) -> None:
         while not self.finished():
             try:
                 time.sleep(self._timeout)
@@ -361,10 +363,10 @@ class TaskOperationPoller(object):
         for call in self.callbacks:
             call(self.task)
 
-    def finished(self):
+    def finished(self) -> bool:
         return self._done.is_set() or not self._task.in_progress or self._max_tries == 0
 
-    def add_done_callback(self, callback):
+    def add_done_callback(self, callback: Any) -> None:
         """
         Add a callback to run after the task completes.
         The callable must take 1 argument which will be
@@ -378,7 +380,7 @@ class TaskOperationPoller(object):
         if callable(callback):
             self.callbacks.append(callback)
 
-    def result(self, timeout=None):
+    def result(self, timeout: Optional[float] = None) -> Task:
         """
         Return the current Task after waiting for timeout
 
@@ -387,7 +389,7 @@ class TaskOperationPoller(object):
         self.wait(timeout)
         return self._task
 
-    def wait(self, timeout=None):
+    def wait(self, timeout: Optional[float] = None) -> None:
         """
         Blocking wait for task status.
         """
@@ -395,7 +397,7 @@ class TaskOperationPoller(object):
             return
         self._thread.join(timeout=timeout)
 
-    def last_message(self, timeout=5):
+    def last_message(self, timeout: int = 5) -> Any:
         """
         Wait a specified amount of time and return
         the last message from the task
@@ -406,7 +408,7 @@ class TaskOperationPoller(object):
             self._thread.join(timeout=timeout)
         return self._task.last_message
 
-    def done(self):
+    def done(self) -> bool:
         """
         Is the task done yet
 
@@ -418,7 +420,7 @@ class TaskOperationPoller(object):
             (PYTHON_v3_9 and not self._thread.is_alive())
 
     @property
-    def task(self):
+    def task(self) -> Task:
         """
         Access to task
 
@@ -426,14 +428,14 @@ class TaskOperationPoller(object):
         """
         return self._task
 
-    def stop(self):
+    def stop(self) -> None:
         """
         Stop the running task
         """
         if self._thread is not None and self._thread.isAlive():
             self._done.set()
 
-    def is_success(self):
+    def is_success(self) -> bool:
         """
         Check if the task was successful and not in progress.
         complete done method since we can be in timeout
@@ -449,7 +451,7 @@ class DownloadTask(TaskOperationPoller):
     exporting an element to a specified file.
     """
 
-    def __init__(self, filename, task, timeout=5, max_tries=36, **kw):
+    def __init__(self, filename: str, task: Any, timeout: int = 5, max_tries: int = 36, **kw: Any) -> None:
         super(DownloadTask, self).__init__(
             task, timeout=timeout, max_tries=max_tries, wait_for_finish=True, **kw
         )
@@ -458,7 +460,7 @@ class DownloadTask(TaskOperationPoller):
 
         self.download(None)
 
-    def download(self, timeout):
+    def download(self, timeout: Optional[float]) -> None:
         self.wait(timeout)
         if not self.task.in_progress and not self.task.success:
             raise TaskRunFailed(self.task.last_message)

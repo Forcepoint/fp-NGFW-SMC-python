@@ -13,6 +13,8 @@
 Functionality related to updating dynamic update packages and
 engine upgrades
 """
+from __future__ import annotations
+from typing import Any, Optional, Union, Iterator
 from smc.base.model import SubElement
 from smc.administration.tasks import Task
 
@@ -23,7 +25,7 @@ class PackageMixin(object):
     upgrades
     """
 
-    def download(self, timeout=5, wait_for_finish=False):
+    def download(self, timeout: int = 5, wait_for_finish: bool = False) -> Any:
         """
         Download Package or Engine Update
 
@@ -33,7 +35,7 @@ class PackageMixin(object):
         """
         return Task.execute(self, "download", timeout=timeout, wait_for_finish=wait_for_finish)
 
-    def activate(self, resource=None, force_upgrade=False, timeout=5, wait_for_finish=False):
+    def activate(self, resource: Optional[list] = None, force_upgrade: bool = False, timeout: int = 5, wait_for_finish: bool = False) -> Any:
         """
         Activate this package on the SMC
 
@@ -55,7 +57,7 @@ class PackageMixin(object):
         )
 
     @property
-    def release_notes(self):
+    def release_notes(self) -> Optional[str]:
         """
         HTTP location of the release notes
         """
@@ -82,21 +84,21 @@ class EngineUpgrade(PackageMixin, SubElement):
     """
 
     @property
-    def release_date(self):
+    def release_date(self) -> Optional[str]:
         """
         Release date for this engine upgrade
         """
         return self.data.get("release_date")
 
     @property
-    def version(self):
+    def version(self) -> Optional[str]:
         """
         Engine upgrade version
         """
         return self.data.get("version")
 
     @property
-    def platform(self):
+    def platform(self) -> Optional[str]:
         """
         Platform for this engine upgrade
         """
@@ -124,7 +126,7 @@ class UpdatePackage(PackageMixin, SubElement):
     typeof = "update_package"
 
     @property
-    def activation_date(self):
+    def activation_date(self) -> Optional[str]:
         """
         Date this update was activated, if any
 
@@ -133,7 +135,7 @@ class UpdatePackage(PackageMixin, SubElement):
         return self.data.get("activation_date")
 
     @property
-    def package_id(self):
+    def package_id(self) -> Optional[str]:
         """
         ID of the package. These will increment as new versions
         are released.
@@ -143,7 +145,7 @@ class UpdatePackage(PackageMixin, SubElement):
         return self.data.get("package_id")
 
     @property
-    def release_date(self):
+    def release_date(self) -> Optional[str]:
         """
         Date of release
 
@@ -152,7 +154,7 @@ class UpdatePackage(PackageMixin, SubElement):
         return self.data.get("release_date")
 
     @property
-    def state(self):
+    def state(self) -> Optional[str]:
         """
         State of this package as string. Valid states are available, imported, active.
         If the package is available, you can execute a download. If the package is

@@ -12,20 +12,27 @@
 """
 Module that represents server based configurations
 """
+from __future__ import annotations
+
+from typing import Any, Iterator, Optional, Union
+
 from smc.api.common import SMCRequest, _get_session
 from smc.api.exceptions import CreateElementFailed, SMCOperationFailure, CertificateImportError, \
-    CertificateExportError, CertificateError, UnsupportedEngineFeature, UnsupportedAttribute
+    CertificateExportError, CertificateError, UnsupportedEngineFeature, UnsupportedAttribute, \
+    UnsupportedEntryPoint
 from smc.base.decorators import deprecated
 from smc.base.model import SubElement, ElementCreator, Element, ElementRef
 from smc.base.structs import NestedDict
 from smc.compat import is_smc_version_less_than, is_smc_version_less_than_or_equal, \
-    is_api_version_less_than_or_equal, is_smc_version_equal, is_api_version_less_than
+    is_api_version_less_than_or_equal, is_smc_version_equal, is_api_version_less_than, \
+    is_smc_version_more_than_or_equal, is_api_version_more_than_or_equal
 from smc.elements.common import MultiContactServer, NodeElement, IPv6Node
 from smc.elements.helpers import location_helper
 from smc.elements.other import ContactAddress, Location
 from smc.base.util import element_resolver, save_to_file
 from smc.administration.certificates import tls
 from smc.administration.certificates.tls_common import certificate_content
+from smc.administration.tasks import Task
 from smc.core.external_pki import PkiCertificateSettings, PkiCertificateInfo
 
 
@@ -50,22 +57,22 @@ class MultiContactAddress(SubElement):
     """
 
     @property
-    def _cas(self):
+    def _cas(self) -> list[Any]:
         return self.data.get("multi_contact_addresses", []) or self.data.get(
             "contact_addresses", []
         )
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[ContactAddress]:
         for address in self._cas:
             yield ContactAddress(**address)
 
-    def __contains__(self, location_href):
+    def __contains__(self, location_href: Any) -> bool:
         for location in self._cas:
             if location.get("location_ref") == location_href:
                 return True
         return False
 
-    def get(self, location_name):
+    def get(self, location_name: str) -> Optional[ContactAddress]:
         """
         Get a contact address by location name
 
@@ -78,8 +85,9 @@ class MultiContactAddress(SubElement):
             for location in self:
                 if location.location_ref == location_ref:
                     return location
+        return None
 
-    def delete(self, location_name):
+    def delete(self, location_name: str) -> bool:
         """
         Remove a given location by location name. This operation is
         performed only if the given location is valid, and if so,
@@ -98,8 +106,9 @@ class MultiContactAddress(SubElement):
         return updated
 
     def update_or_create(
-            self, location, contact_addresses, with_status=False, overwrite_existing=False, **kw
-    ):
+            self, location: str, contact_addresses: list[str], with_status: bool = False,
+            overwrite_existing: bool = False, **kw: Any,
+    ) -> Union[MultiContactAddress, tuple[MultiContactAddress, bool, bool]]:
         """
         Update or create a contact address and location pair. If the
         location does not exist it will be automatically created. If the
@@ -155,7 +164,7 @@ class ContactAddressMixin(object):
     """
 
     @property
-    def contact_addresses(self):
+    def contact_addresses(self) -> MultiContactAddress:
         """
         Provides a reference to contact addresses used by this server.
 
@@ -176,7 +185,7 @@ class ContactAddressMixin(object):
             href=self.get_relation("contact_addresses"), type=self.typeof, name=self.name
         )
 
-    def add_contact_address(self, contact_address, location):
+    def add_contact_address(self, contact_address: str, location: str) -> Any:
         """
         Add a contact address to the Log Server::
 
@@ -191,7 +200,7 @@ class ContactAddressMixin(object):
         """
         return self.contact_addresses.update_or_create(location, [contact_address])
 
-    def remove_contact_address(self, location):
+    def remove_contact_address(self, location: str) -> bool:
         """
         Remove contact address by name of location. You can obtain all contact
         addresses by calling :func:`contact_addresses`.
@@ -209,25 +218,25 @@ class WebApp(NestedDict):
     Represents a Web Application parameter.
     """
 
-    def __init__(self, data):
+    def __init__(self, data: Any) -> None:
         super(WebApp, self).__init__(data=data)
 
     @classmethod
     def create(cls,
-               enabled=False,
-               eca_enabled=False,
-               listening_address=None,
-               log_access=False,
-               port=8083,
-               server_credentials_ref=None,
-               session_timeout=300,
-               ssl_session_id=False,
-               tls_cipher_suites=None,
-               standalone_enabled=False,
-               web_app_identifier=None,
-               host_name=None,
-               saml_settings=None,
-               ):
+               enabled: bool = False,
+               eca_enabled: bool = False,
+               listening_address: Optional[str] = None,
+               log_access: bool = False,
+               port: int = 8083,
+               server_credentials_ref: Optional[Any] = None,
+               session_timeout: int = 300,
+               ssl_session_id: bool = False,
+               tls_cipher_suites: Optional[Any] = None,
+               standalone_enabled: bool = False,
+               web_app_identifier: Optional[str] = None,
+               host_name: Optional[str] = None,
+               saml_settings: Optional[list[SamlSettings]] = None,
+               ) -> WebApp:
         """
         :param bool enabled: If the Web Application is enabled or not.
         :param bool eca_enabled: Indicates if ECA Rollout evaluation is enabled in SMC Download
@@ -267,58 +276,58 @@ class WebApp(NestedDict):
         return cls(web_app_data)
 
     @property
-    def enabled(self):
+    def enabled(self) -> Optional[bool]:
         return self.data.get("enabled")
 
     @property
-    def host_name(self):
+    def host_name(self) -> Optional[str]:
         return self.data.get("host_name")
 
     @property
-    def listening_address(self):
+    def listening_address(self) -> Optional[str]:
         return self.data.get("listening_address")
 
     @property
-    def log_access(self):
+    def log_access(self) -> Optional[bool]:
         return self.data.get("log_access")
 
     @property
-    def port(self):
+    def port(self) -> Optional[int]:
         return self.data.get("port")
 
     @property
-    def server_credentials_ref(self):
+    def server_credentials_ref(self) -> Any:
         return Element.from_href(self.data.get("server_credentials_ref"))
 
     @property
-    def session_timeout(self):
+    def session_timeout(self) -> Optional[int]:
         return self.data.get("session_timeout")
 
     @property
-    def tls_cipher_suites(self):
+    def tls_cipher_suites(self) -> Any:
         return Element.from_href(self.data.get("tls_cipher_suites"))
 
     @property
-    def eca_enabled(self):
+    def eca_enabled(self) -> Optional[bool]:
         return self.data.get("eca_enabled")
 
     @property
-    def standalone_enabled(self):
+    def standalone_enabled(self) -> Optional[bool]:
         return self.data.get("standalone_enabled")
 
     @property
-    def web_app_identifier(self):
+    def web_app_identifier(self) -> Optional[str]:
         return self.data.get("web_app_identifier")
 
     @property
-    def saml_settings(self):
+    def saml_settings(self) -> list[SamlSettings]:
         """
         Represents the SAML settings.
         :rtype: list(SamlSettings):
         """
         return [SamlSettings(data) for data in self.data.get("saml_settings", [])]
 
-    def get_saml_settings_from_usage(self, usage):
+    def get_saml_settings_from_usage(self, usage: str) -> Optional[SamlSettings]:
         """
         Get SAML settings by usage type.
 
@@ -331,11 +340,12 @@ class WebApp(NestedDict):
 
 class TlsSettings(NestedDict):
 
-    def __init__(self, data):
+    def __init__(self, data: Any) -> None:
         super(TlsSettings, self).__init__(data=data)
 
     @classmethod
-    def create(cls, use_internal_credentials=None, tls_credentials=None):
+    def create(cls, use_internal_credentials: Optional[bool] = None,
+               tls_credentials: Optional[Any] = None) -> TlsSettings:
         """
         TLS credentials used for Elasticsearch/Log Forwarding If useInternalCredentials is set to
         FALSE, this attribute will be read. If this field is set to null, no authentication will
@@ -354,17 +364,17 @@ class TlsSettings(NestedDict):
         return cls(data)
 
     @property
-    def use_internal_credentials(self):
+    def use_internal_credentials(self) -> Optional[bool]:
         return self.data.get("use_internal_credentials")
 
     @property
-    def tls_credentials(self):
+    def tls_credentials(self) -> Any:
         return Element.from_href(self.data.get("tls_credentials"))
 
 
 class ExternalPki:
 
-    def pki_certificate_settings(self):
+    def pki_certificate_settings(self) -> PkiCertificateSettings:
         """
         Get the certificate info of this component when working with External PKI.
 
@@ -377,7 +387,7 @@ class ExternalPki:
             "external PKI installation mode."
         )
 
-    def pki_export_certificate_request(self, filename=None):
+    def pki_export_certificate_request(self, filename: Optional[str] = None) -> Optional[bytes]:
         """
         Export the certificate request for the component when working with an External PKI.
         This can return None if the component does not have a certificate request.
@@ -395,7 +405,7 @@ class ExternalPki:
 
         return result.content
 
-    def pki_import_certificate(self, certificate):
+    def pki_import_certificate(self, certificate: str) -> None:
         """
         Import a valid certificate. Certificate can be either a file path
         or a string of the certificate. If string certificate, it must include
@@ -416,7 +426,7 @@ class ExternalPki:
                 },
             )
 
-    def pki_renew_certificate(self):
+    def pki_renew_certificate(self) -> None:
         """
         Start renewal process on component when using external PKI mode.
         It generates new private key and prepare a new certificate request.
@@ -427,7 +437,7 @@ class ExternalPki:
             resource="pki_start_certificate_renewal",
         )
 
-    def pki_certificate_info(self):
+    def pki_certificate_info(self) -> PkiCertificateInfo:
         """
         Get the certificate info of this component when working with External PKI.
         This can return None if the component does not directly have a certificate.
@@ -439,7 +449,7 @@ class ExternalPki:
         )
         return PkiCertificateInfo(result)
 
-    def pki_delete_certificate_request(self):
+    def pki_delete_certificate_request(self) -> None:
         """
         Delete the certificate request if any is defined for this component.
         """
@@ -447,7 +457,7 @@ class ExternalPki:
                           resource="pki_delete_certificate_request")
 
     @property
-    def external_pki_certificate_settings(self):
+    def external_pki_certificate_settings(self) -> PkiCertificateSettings:
         """
         Get the certificate info of this component when working with External PKI.
         :rtype: PkiCertificateSettings
@@ -458,7 +468,7 @@ class ExternalPki:
 class ManagementLogServerMixin(MultiContactServer, ExternalPki):
 
     @property
-    def log_disk_space_handling_mode(self):
+    def log_disk_space_handling_mode(self) -> Optional[str]:
         """
         Mode chosen to handle extra logs when disk runs out of space.
         :rtype: str
@@ -467,7 +477,7 @@ class ManagementLogServerMixin(MultiContactServer, ExternalPki):
 
     @property
     @deprecated("elasticsearch_authentication_settings")
-    def es_tls_settings(self):
+    def es_tls_settings(self) -> Any:
         """
         Elasticsearch TLS Settings.
         :rtype: TlsSettings
@@ -477,7 +487,7 @@ class ManagementLogServerMixin(MultiContactServer, ExternalPki):
             "elasticsearch_authentication_settings")
 
     @property
-    def elasticsearch_authentication_settings(self):
+    def elasticsearch_authentication_settings(self) -> Any:
         """
         Elasticsearch authentication settings.
         """
@@ -487,7 +497,7 @@ class ManagementLogServerMixin(MultiContactServer, ExternalPki):
             None)
 
     @property
-    def forwarding_tls_settings(self):
+    def forwarding_tls_settings(self) -> TlsSettings:
         """
         Log Forwarding TLS Settings.
         :rtype: TlsSettings
@@ -495,7 +505,7 @@ class ManagementLogServerMixin(MultiContactServer, ExternalPki):
         return TlsSettings(self.data.get("forwarding_tls_settings"))
 
     @property
-    def netflow_collector(self):
+    def netflow_collector(self) -> list[NetflowCollector]:
         """
         A collection of NetflowCollector
 
@@ -503,7 +513,7 @@ class ManagementLogServerMixin(MultiContactServer, ExternalPki):
         """
         return [NetflowCollector(**nc) for nc in self.data.get("netflow_collector", [])]
 
-    def add_netflow_collector(self, netflow_collectors):
+    def add_netflow_collector(self, netflow_collectors: list[NetflowCollector]) -> None:
         """
         Add netflow collector/s to this log server.
 
@@ -519,7 +529,7 @@ class ManagementLogServerMixin(MultiContactServer, ExternalPki):
             self.data["netflow_collector"].append(p.data)
         self.update()
 
-    def remove_netflow_collector(self, netflow_collector):
+    def remove_netflow_collector(self, netflow_collector: NetflowCollector) -> bool:
         """
         Remove a netflow collector from this log server.
 
@@ -542,7 +552,7 @@ class ManagementLogServerMixin(MultiContactServer, ExternalPki):
         return changed
 
     @property
-    def uiid(self):
+    def uiid(self) -> Optional[str]:
         """
         Installation ID (aka UUID).
         :rtype: str
@@ -550,10 +560,10 @@ class ManagementLogServerMixin(MultiContactServer, ExternalPki):
         return self.data.get("uiid")
 
     @property
-    def announcement_message(self):
+    def announcement_message(self) -> Optional[str]:
         return self.data.get("announcement_message")
 
-    def collect_sginfo(self, perform_backup=False, no_log=True, hprof="limited", **kwargs):
+    def collect_sginfo(self, perform_backup: bool = False, no_log: bool = True, hprof: str = "limited", **kwargs: Any) -> Any:
         """
         Collect SGInfo and also possiblyServer backup of the associated SMC server.
 
@@ -581,7 +591,8 @@ class ManagementLogServerMixin(MultiContactServer, ExternalPki):
                 self,
                 "collect_sginfo",
                 json={"perform_backup": perform_backup,
-                                    "no_log": no_log, "hprof": hprof},
+                      "no_log": no_log,
+                      "hprof": hprof},
                 **kwargs
             )
         else:
@@ -606,45 +617,45 @@ class ManagementServer(ContactAddressMixin, Element, ManagementLogServerMixin):
     @classmethod
     def create(
             cls,
-            name,
-            address=None,
-            ipv6_address=None,
-            alert_server=None,
-            location_ref=None,
-            web_app=None,
-            announcement_enabled=False,
-            announcement_message=None,
-            external_pki_certificate_settings=None,
-            uiid=None,
-            tools_profile_ref=None,
-            secondary=None,
-            updates_check_enabled=False,
-            license_update_enabled=False,
-            updates_proxy_enabled=False,
-            updates_proxy_address=None,
-            updates_proxy_port=82,
-            updates_proxy_authentication_enabled=False,
-            updates_proxy_username=None,
-            updates_proxy_password=None,
-            db_replication=False,
-            tls_profile=None,
-            tls_credentials=None,
-            es_tls_settings=None,
-            elasticsearch_authentication_settings=None,
-            forwarding_tls_settings=None,
-            netflow_collector=None,
-            smtp_server_ref=None,
-            sender_address=None,
-            sender_name=None,
-            snmp_gateways=None,
-            script_path=None,
-            sms_http_channel=None,
-            sms_smtp_channel=None,
-            sms_script_channel=None,
-            radius_method="eap-md5",
-            tacacs_method="mschap",
-            comment=None
-    ):
+            name: str,
+            address: Optional[str] = None,
+            ipv6_address: Optional[str] = None,
+            alert_server: Optional[Any] = None,
+            location_ref: Optional[Any] = None,
+            web_app: Optional[list[WebApp]] = None,
+            announcement_enabled: bool = False,
+            announcement_message: Optional[str] = None,
+            external_pki_certificate_settings: Optional[Any] = None,
+            uiid: Optional[str] = None,
+            tools_profile_ref: Optional[Any] = None,
+            secondary: Optional[list[str]] = None,
+            updates_check_enabled: bool = False,
+            license_update_enabled: bool = False,
+            updates_proxy_enabled: bool = False,
+            updates_proxy_address: Optional[str] = None,
+            updates_proxy_port: int = 82,
+            updates_proxy_authentication_enabled: bool = False,
+            updates_proxy_username: Optional[str] = None,
+            updates_proxy_password: Optional[str] = None,
+            db_replication: bool = False,
+            tls_profile: Optional[Any] = None,
+            tls_credentials: Optional[Any] = None,
+            es_tls_settings: Optional[TlsSettings] = None,
+            elasticsearch_authentication_settings: Optional[dict[str, Any]] = None,
+            forwarding_tls_settings: Optional[TlsSettings] = None,
+            netflow_collector: Optional[list[NetflowCollector]] = None,
+            smtp_server_ref: Optional[Any] = None,
+            sender_address: Optional[str] = None,
+            sender_name: Optional[str] = None,
+            snmp_gateways: Optional[str] = None,
+            script_path: Optional[str] = None,
+            sms_http_channel: Optional[list[Any]] = None,
+            sms_smtp_channel: Optional[list[Any]] = None,
+            sms_script_channel: Optional[list[Any]] = None,
+            radius_method: str = "eap-md5",
+            tacacs_method: str = "mschap",
+            comment: Optional[str] = None,
+    ) -> ManagementServer:
         """
         This represents a Management Server. A system component that stores all information about
         the configurations of all NGFW Engines,and other components in the Stonesoft Management
@@ -772,14 +783,14 @@ class ManagementServer(ContactAddressMixin, Element, ManagementLogServerMixin):
                                                   elasticsearch_authentication_settings)
         return ElementCreator(cls, json)
 
-    def update(self, *exception, **kwargs):
+    def update(self, *exception: Any, **kwargs: Any) -> None:  # type: ignore[override]
         super().update(*exception,
                        **_ElasticsearchCompatibility.update_helper(
                            "elasticsearch_authentication_settings",
                            **kwargs))
 
     @property
-    def alert_server_ref(self):
+    def alert_server_ref(self) -> Any:
         """
         Specify the Log Server to which you want the Mgt Server to send its logs
         :rtype: LogServer
@@ -787,20 +798,43 @@ class ManagementServer(ContactAddressMixin, Element, ManagementLogServerMixin):
         return Element.from_href(self.data.get("alert_server_ref"))
 
     @property
-    def web_app(self):
+    def web_app(self) -> list[WebApp]:
         """
         Represents a Web Application parameter.
         :rtype: list(WebApp):
         """
         return [WebApp(data) for data in self.data.get("web_app")]
 
-    def get_web_app_by_identifier(self, webapp_name):
+    def get_web_app_by_identifier(self, webapp_name: str) -> Optional[WebApp]:
         """
         Retrieves the WebApp by its identifier. None otherwise.
         """
         return next((w for w in self.web_app if w.web_app_identifier == webapp_name), None)
 
-    def configure_saml_on_web_app(self, webapp_name, saml_settings_entries):
+    def update_web_app(self, webapp_name: str, **kwargs: Any) -> None:
+        """
+        Update fields of a WebApp identified by its web_app_identifier and persist the
+        change to SMC.
+        ::
+
+            mgt_server.update_web_app("webswing",
+                server_credentials_ref=TLSServerCredential("new cert"))
+
+        :param str webapp_name: the identifier of the WebApp (ex: 'webswing')
+        :param kwargs: WebApp fields to update, ex: server_credentials_ref, tls_cipher_suites
+        :raises ValueError: if the WebApp with the given identifier is not found.
+        """
+        web_app = self.get_web_app_by_identifier(webapp_name)
+        if not web_app:
+            raise ValueError(f"WebApp with identifier {webapp_name} not found.")
+        for ref_key in ("server_credentials_ref", "tls_cipher_suites"):
+            if ref_key in kwargs:
+                kwargs[ref_key] = element_resolver(kwargs[ref_key])
+        web_app.data.update(kwargs)
+        self.update()
+
+    def configure_saml_on_web_app(self, webapp_name: str,
+                                   saml_settings_entries: Optional[list[Any]]) -> None:
         """
         Configure SAML settings on a WebApp by its identifier.
         :param str webapp_name: the identifier of the WebApp
@@ -810,24 +844,23 @@ class ManagementServer(ContactAddressMixin, Element, ManagementLogServerMixin):
         :raises ValueError: if the WebApp with the given identifier is not found.
         """
         web_app = self.get_web_app_by_identifier(webapp_name)
-        if web_app:
-            saml_usage = "web_access"
-            new_saml_settings_entries = [s for s in web_app.data.get("saml_settings", []) if
-                                         s.get("usage") != saml_usage]
-
-            if saml_settings_entries:
-                for entry in saml_settings_entries:
-                    entry["saml_setting_usage"] = saml_usage
-                    new_saml_settings_entries.append(entry)
-            web_app.data["enable_saml_for_web_access"] = (saml_settings_entries is not None
-                                                          and len(saml_settings_entries) > 0)
-            web_app.data["saml_settings"] = new_saml_settings_entries
-            web_app.update()
-        else:
+        if not web_app:
             raise ValueError(f"WebApp with identifier {webapp_name} not found.")
+        saml_usage = "web_access"
+        new_saml_settings_entries = [s for s in web_app.data.get("saml_settings", []) if
+                                     s.get("usage") != saml_usage]
+
+        if saml_settings_entries:
+            for entry in saml_settings_entries:
+                entry["saml_setting_usage"] = saml_usage
+                new_saml_settings_entries.append(entry)
+        web_app.data["enable_saml_for_web_access"] = (saml_settings_entries is not None
+                                                      and len(saml_settings_entries) > 0)
+        web_app.data["saml_settings"] = new_saml_settings_entries
+        self.update()
 
     @property
-    def updates_check_enabled(self):
+    def updates_check_enabled(self) -> Optional[bool]:
         """
         Are you notified of new dynamic updates?
         :rtype: bool
@@ -835,7 +868,7 @@ class ManagementServer(ContactAddressMixin, Element, ManagementLogServerMixin):
         return self.data.get("updates_check_enabled")
 
     @property
-    def license_update_enabled(self):
+    def license_update_enabled(self) -> Optional[bool]:
         """
         Select Generate and Install New Licenses Automatically to automatically regenerate and
             install the licenses required for upgrading system components to a major new release.
@@ -844,7 +877,7 @@ class ManagementServer(ContactAddressMixin, Element, ManagementLogServerMixin):
         return self.data.get("license_update_enabled")
 
     @property
-    def updates_proxy_enabled(self):
+    def updates_proxy_enabled(self) -> Optional[bool]:
         """
         If the connection from the Management Server to the Internet servers requires a proxy server
             , select Use Proxy Server for HTTPS Connection.
@@ -853,7 +886,7 @@ class ManagementServer(ContactAddressMixin, Element, ManagementLogServerMixin):
         return self.data.get("updates_proxy_enabled")
 
     @property
-    def updates_proxy_address(self):
+    def updates_proxy_address(self) -> Optional[str]:
         """
         FQDN as proxy address
         :rtype: str
@@ -861,7 +894,7 @@ class ManagementServer(ContactAddressMixin, Element, ManagementLogServerMixin):
         return self.data.get("updates_proxy_address")
 
     @property
-    def updates_proxy_port(self):
+    def updates_proxy_port(self) -> Optional[int]:
         """
         Proxy server port.
         :rtype: int
@@ -869,7 +902,7 @@ class ManagementServer(ContactAddressMixin, Element, ManagementLogServerMixin):
         return self.data.get("updates_proxy_port")
 
     @property
-    def updates_proxy_authentication_enabled(self):
+    def updates_proxy_authentication_enabled(self) -> Optional[bool]:
         """
         If the connection from the Management Server to the Internet servers requires a proxy server
             with authentication.
@@ -878,7 +911,7 @@ class ManagementServer(ContactAddressMixin, Element, ManagementLogServerMixin):
         return self.data.get("updates_proxy_authentication_enabled")
 
     @property
-    def updates_proxy_username(self):
+    def updates_proxy_username(self) -> Optional[str]:
         """
         Proxy server authentication username.
         :rtype: str
@@ -886,7 +919,7 @@ class ManagementServer(ContactAddressMixin, Element, ManagementLogServerMixin):
         return self.data.get("updates_proxy_username")
 
     @property
-    def updates_proxy_password(self):
+    def updates_proxy_password(self) -> Optional[str]:
         """
         Proxy server authentication password.
         :rtype: str
@@ -894,7 +927,7 @@ class ManagementServer(ContactAddressMixin, Element, ManagementLogServerMixin):
         return self.data.get("updates_proxy_password")
 
     @property
-    def db_replication(self):
+    def db_replication(self) -> Optional[bool]:
         """
         Disable automatic database replication?
         :rtype: bool
@@ -902,7 +935,7 @@ class ManagementServer(ContactAddressMixin, Element, ManagementLogServerMixin):
         return self.data.get("db_replication")
 
     @property
-    def tls_profile(self):
+    def tls_profile(self) -> Any:
         """
         TLS Profile to be used for admin login with Client Certificate authentication.
         :rtype: TLSProfile.
@@ -910,7 +943,7 @@ class ManagementServer(ContactAddressMixin, Element, ManagementLogServerMixin):
         return Element.from_href(self.data.get("tls_profile"))
 
     @property
-    def tls_credentials(self):
+    def tls_credentials(self) -> Any:
         """
         Credentials to be used for admin login with Client Certificate authentication.
         :rtype: TLSServerCredential
@@ -918,7 +951,7 @@ class ManagementServer(ContactAddressMixin, Element, ManagementLogServerMixin):
         return Element.from_href(self.data.get("tls_credentials"))
 
     @property
-    def smtp_server_ref(self):
+    def smtp_server_ref(self) -> Any:
         """
         The SMTP Server used for sending emails.
         :rtype: SmtpServer
@@ -926,7 +959,7 @@ class ManagementServer(ContactAddressMixin, Element, ManagementLogServerMixin):
         return Element.from_href(self.data.get("smtp_server_ref"))
 
     @property
-    def sender_address(self):
+    def sender_address(self) -> Optional[str]:
         """
         The sender email address.
         :rtype: str
@@ -934,7 +967,7 @@ class ManagementServer(ContactAddressMixin, Element, ManagementLogServerMixin):
         return self.data.get("sender_address")
 
     @property
-    def sender_name(self):
+    def sender_name(self) -> Optional[str]:
         """
         The sender name.
         :rtype: str
@@ -942,7 +975,7 @@ class ManagementServer(ContactAddressMixin, Element, ManagementLogServerMixin):
         return self.data.get("sender_name")
 
     @property
-    def snmp_gateways(self):
+    def snmp_gateways(self) -> Any:
         """
         The SNMP gateway.
         :rtype: str
@@ -950,7 +983,7 @@ class ManagementServer(ContactAddressMixin, Element, ManagementLogServerMixin):
         return self.data.get("snmp_gateways")
 
     @property
-    def script_path(self):
+    def script_path(self) -> Optional[str]:
         """
         The custom alert script path.
         :rtype: str
@@ -958,7 +991,7 @@ class ManagementServer(ContactAddressMixin, Element, ManagementLogServerMixin):
         return self.data.get("script_path")
 
     @property
-    def sms_http_channel(self):
+    def sms_http_channel(self) -> Any:
         """
         The SMS HTTP channels.
         :rtype: list
@@ -966,7 +999,7 @@ class ManagementServer(ContactAddressMixin, Element, ManagementLogServerMixin):
         return self.data.get("sms_http_channel")
 
     @property
-    def sms_smtp_channel(self):
+    def sms_smtp_channel(self) -> Any:
         """
         The SMS SMTP channels.
         :rtype: list
@@ -974,14 +1007,14 @@ class ManagementServer(ContactAddressMixin, Element, ManagementLogServerMixin):
         return self.data.get("sms_smtp_channel")
 
     @property
-    def sms_script_channel(self):
+    def sms_script_channel(self) -> Any:
         """
         The SMS Script channels.
         :rtype: list
         """
         return self.data.get("sms_script_channel")
 
-    def restart_web_access(self):
+    def restart_web_access(self) -> None:
         """
         Restart Web Access on Mgt Server.
         :raises SMCOperationFailure: failed to restart SMC Web Access
@@ -1003,7 +1036,7 @@ class DataContext(Element):
     typeof = "data_context"
 
     @property
-    def info_data_tag(self):
+    def info_data_tag(self) -> Any:
         return self.data.get("info_data_tag")
 
 
@@ -1018,16 +1051,16 @@ class NetflowCollector(NestedDict):
 
     def __init__(
             self,
-            data_context,
-            host,
-            netflow_collector_port,
-            netflow_collector_service,
-            netflow_collector_version,
-            filter=None,
-            tls_profile=None,
-            tlsIdentity=None,
-            kafka_topic=None,
-    ):
+            data_context: Any,
+            host: Any,
+            netflow_collector_port: int,
+            netflow_collector_service: str,
+            netflow_collector_version: str,
+            filter: Optional[Any] = None,
+            tls_profile: Optional[Any] = None,
+            tlsIdentity: Optional[Any] = None,
+            kafka_topic: Optional[str] = None,
+    ) -> None:
         dc = dict(
             data_context=element_resolver(data_context),
             filter=element_resolver(filter),
@@ -1041,7 +1074,7 @@ class NetflowCollector(NestedDict):
         )
         super(NetflowCollector, self).__init__(data=dc)
 
-    def __str__(self):
+    def __str__(self) -> str:
         str = ""
         str += f"data_context = {self.data_context}; "
         str += f"filter = {self.filter}; "
@@ -1054,7 +1087,7 @@ class NetflowCollector(NestedDict):
         return str
 
     @property
-    def data_context(self):
+    def data_context(self) -> Optional[Any]:
         """
         The type of log data that is forwarded.
         :rtype: DataContext
@@ -1066,7 +1099,7 @@ class NetflowCollector(NestedDict):
         )
 
     @property
-    def filter(self):
+    def filter(self) -> Optional[Any]:
         """
         An optional local filter that defines which log data is forwarded. The
         local filter is only applied to the log data that matches the Log
@@ -1076,7 +1109,7 @@ class NetflowCollector(NestedDict):
         return Element.from_href(self.get("filter")) if self.get("filter") is not None else None
 
     @property
-    def host(self):
+    def host(self) -> Optional[Any]:
         """
         The Host element that represents the target host to which the log
         data is forwarded.
@@ -1085,7 +1118,7 @@ class NetflowCollector(NestedDict):
         return Element.from_href(self.get("host")) if self.get("host") is not None else None
 
     @property
-    def netflow_collector_port(self):
+    def netflow_collector_port(self) -> int:
         """
         The Port that is used for log forwarding. The default port used by
         IPFIX/NetFlow data collectors is 2055.<br/>
@@ -1097,7 +1130,7 @@ class NetflowCollector(NestedDict):
         return self.data["netflow_collector_port"]
 
     @property
-    def netflow_collector_service(self):
+    def netflow_collector_service(self) -> str:
         """
         The network protocol for forwarding the log data (udp/tcp/tcp_with_tls).<br/>
         <b>Note!</b> If you have to define an Access rule that allows traffic to the
@@ -1108,7 +1141,7 @@ class NetflowCollector(NestedDict):
         return self.data["netflow_collector_service"]
 
     @property
-    def netflow_collector_version(self):
+    def netflow_collector_version(self) -> str:
         """
         The format for forwarding the log data:
         <ul>
@@ -1127,7 +1160,7 @@ class NetflowCollector(NestedDict):
         return self.data["netflow_collector_version"]
 
     @property
-    def tls_profile(self):
+    def tls_profile(self) -> Optional[Any]:
         """
         TLS information required to establish TLS connection to SysLog servers
         *Mandatory* when service is "tcp_with_tls"
@@ -1137,7 +1170,7 @@ class NetflowCollector(NestedDict):
             if self.get("tls_profile") is not None else None
 
     @property
-    def tlsIdentity(self):
+    def tlsIdentity(self) -> Any:
         """
         Field/value pair used to insure server identity when connecting to Sys Log server using TLS
         *Optional* If not provided, server identity is not checked
@@ -1148,7 +1181,7 @@ class NetflowCollector(NestedDict):
         return self.data["tlsIdentity"]
 
     @property
-    def kafka_topic(self):
+    def kafka_topic(self) -> Optional[str]:
         """
         Kafka Topic: used only in the case forwarding logs through KAFKA.
         :rtype str
@@ -1163,7 +1196,7 @@ class DataContext(Element):
     typeof = "data_context"
 
     @property
-    def info_data_tag(self):
+    def info_data_tag(self) -> Any:
         return self.data.get("info_data_tag")
 
 
@@ -1185,24 +1218,24 @@ class LogServer(ContactAddressMixin, Element, ManagementLogServerMixin):
     @classmethod
     def create(
             cls,
-            name,
-            address=None,
-            ipv6_address=None,
-            location_ref=None,
-            external_pki_certificate_settings=None,
-            uiid="N/A",
-            tools_profile_ref=None,
-            secondary=None,
-            es_tls_settings=None,
-            elasticsearch_authentication_settings=None,
-            forwarding_tls_settings=None,
-            netflow_collector=None,
-            log_disk_space_handling_mode=None,
-            backup_log_server=None,
-            channel_port=3020,
-            inactive=False,
-            comment=None
-    ):
+            name: str,
+            address: Optional[str] = None,
+            ipv6_address: Optional[str] = None,
+            location_ref: Optional[Any] = None,
+            external_pki_certificate_settings: Optional[Any] = None,
+            uiid: str = "N/A",
+            tools_profile_ref: Optional[Any] = None,
+            secondary: Optional[list[str]] = None,
+            es_tls_settings: Optional[TlsSettings] = None,
+            elasticsearch_authentication_settings: Optional[dict[str, Any]] = None,
+            forwarding_tls_settings: Optional[TlsSettings] = None,
+            netflow_collector: Optional[list[NetflowCollector]] = None,
+            log_disk_space_handling_mode: Optional[str] = None,
+            backup_log_server: Optional[Any] = None,
+            channel_port: int = 3020,
+            inactive: bool = False,
+            comment: Optional[str] = None,
+    ) -> LogServer:
         """
         Log Server elements are used to receive log data from the security engines Most settings on
         Log Server generally do not need to be changed, however it may be useful to set a contact
@@ -1291,14 +1324,14 @@ class LogServer(ContactAddressMixin, Element, ManagementLogServerMixin):
                                                   elasticsearch_authentication_settings)
         return ElementCreator(cls, json)
 
-    def update(self, *exception, **kwargs):
+    def update(self, *exception: Any, **kwargs: Any) -> None:  # type: ignore[override]
         super().update(*exception,
                        **_ElasticsearchCompatibility.update_helper(
                            "elasticsearch_authentication_settings",
                            **kwargs))
 
     @property
-    def backup_log_server(self):
+    def backup_log_server(self) -> list[Any]:
         """
         Several backup Log Servers.
         :rtype list(LogServer)
@@ -1307,7 +1340,7 @@ class LogServer(ContactAddressMixin, Element, ManagementLogServerMixin):
                 for server in self.data.get("backup_log_server", [])]
 
     @property
-    def channel_port(self):
+    def channel_port(self) -> Optional[int]:
         """
         Log Server's TCP Port Number.
         :rtype int
@@ -1315,7 +1348,7 @@ class LogServer(ContactAddressMixin, Element, ManagementLogServerMixin):
         return self.data.get("channel_port")
 
     @property
-    def inactive(self):
+    def inactive(self) -> Optional[bool]:
         """
         Is excluded from Log Browsing, Reporting and Statistics.
         :rtype bool
@@ -1335,16 +1368,16 @@ class HttpProxy(Element, NodeElement):
     @classmethod
     def create(
             cls,
-            name,
-            address,
-            proxy_port=8080,
-            username=None,
-            password=None,
-            secondary=None,
-            third_party_monitoring=None,
-            tools_profile_ref=None,
-            comment=None,
-    ):
+            name: str,
+            address: str,
+            proxy_port: int = 8080,
+            username: Optional[str] = None,
+            password: Optional[str] = None,
+            secondary: Optional[list[str]] = None,
+            third_party_monitoring: Optional[Any] = None,
+            tools_profile_ref: Optional[Any] = None,
+            comment: Optional[str] = None,
+    ) -> HttpProxy:
         """
         Create a new HTTP Proxy service. Proxy must define at least
         one primary address but can optionally also define a list
@@ -1380,7 +1413,7 @@ class HttpProxy(Element, NodeElement):
         return ElementCreator(cls, json)
 
     @property
-    def address(self):
+    def address(self) -> Optional[str]:
         """
         Single valid IPv4 address.
         :rtype str
@@ -1388,7 +1421,7 @@ class HttpProxy(Element, NodeElement):
         return self.data.get("address")
 
     @property
-    def http_proxy_username(self):
+    def http_proxy_username(self) -> Optional[str]:
         """
         Username for authentication.
         :rtype str
@@ -1396,7 +1429,7 @@ class HttpProxy(Element, NodeElement):
         return self.data.get("http_proxy_username")
 
     @property
-    def http_proxy_port(self):
+    def http_proxy_port(self) -> Optional[int]:
         """
         Listening proxy port.
         :rtype int
@@ -1425,8 +1458,14 @@ class DNSServer(Element):
 
     @classmethod
     def create(
-            cls, name, address, time_to_live=20, update_interval=10, secondary=None, comment=None
-    ):
+            cls,
+            name: str,
+            address: str,
+            time_to_live: int = 20,
+            update_interval: int = 10,
+            secondary: Optional[list[str]] = None,
+            comment: Optional[str] = None,
+    ) -> DNSServer:
         """
         Create a DNS Server element.
 
@@ -1462,7 +1501,14 @@ class DHCPServer(Element):
     location = ElementRef("location_ref")
 
     @classmethod
-    def create(cls, name, address=None, ipv6_address=None, location=None, comment=None):
+    def create(
+            cls,
+            name: str,
+            address: Optional[str] = None,
+            ipv6_address: Optional[str] = None,
+            location: Optional[Any] = None,
+            comment: Optional[str] = None,
+    ) -> DHCPServer:
         """
         Create a DHCP Server element.
 
@@ -1513,21 +1559,21 @@ class ProxyServer(ContactAddressMixin, Element, MultiContactServer):
     @classmethod
     def create(
             cls,
-            name,
-            address,
-            secondary=None,
-            ipv6_address=None,
-            balancing_mode="ha",
-            proxy_service="generic",
-            location=None,
-            add_x_forwarded_for=False,
-            trust_host_header=False,
-            inspected_service=None,
-            third_party_monitoring=None,
-            tools_profile_ref=None,
-            comment=None,
-            **kw
-    ):
+            name: str,
+            address: str,
+            secondary: Optional[list[str]] = None,
+            ipv6_address: Optional[str] = None,
+            balancing_mode: str = "ha",
+            proxy_service: str = "generic",
+            location: Optional[Any] = None,
+            add_x_forwarded_for: bool = False,
+            trust_host_header: bool = False,
+            inspected_service: Optional[list[dict[str, Any]]] = None,
+            third_party_monitoring: Optional[Any] = None,
+            tools_profile_ref: Optional[Any] = None,
+            comment: Optional[str] = None,
+            **kw: Any,
+    ) -> ProxyServer:
         """
         Create a Proxy Server element
 
@@ -1590,7 +1636,7 @@ class ProxyServer(ContactAddressMixin, Element, MultiContactServer):
         return ElementCreator(cls, json)
 
     @property
-    def proxy_service(self):
+    def proxy_service(self) -> Optional[str]:
         """
         The proxy service for this proxy server configuration
 
@@ -1599,7 +1645,7 @@ class ProxyServer(ContactAddressMixin, Element, MultiContactServer):
         return self.data.get("http_proxy")
 
     @property
-    def ip_address(self):
+    def ip_address(self) -> Optional[list[str]]:
         """
         List of IP Addresses to be used in addition to the 'address' field to allow using multiple
             IP Addresses for the element.
@@ -1609,7 +1655,7 @@ class ProxyServer(ContactAddressMixin, Element, MultiContactServer):
         return self.data.get("ip_address")
 
     @property
-    def balancing_mode(self):
+    def balancing_mode(self) -> Optional[str]:
         """
         How to balance traffic, valid options are ha (first available server), src, dst, srcdst
             (default: ha)
@@ -1618,7 +1664,7 @@ class ProxyServer(ContactAddressMixin, Element, MultiContactServer):
         return self.data.get("balancing_mode")
 
     @property
-    def trust_host_header(self):
+    def trust_host_header(self) -> Optional[bool]:
         """
         Trust the host header when using the Generic Proxy forwarding method (default: False)
         :rtype: bool
@@ -1626,7 +1672,7 @@ class ProxyServer(ContactAddressMixin, Element, MultiContactServer):
         return self.data.get("trust_host_header")
 
     @property
-    def add_x_forwarded_for(self):
+    def add_x_forwarded_for(self) -> Optional[bool]:
         """
         Add X-Forwarded-For header when using the Generic Proxy forwarding method (default: False)
         :rtype: bool
@@ -1634,7 +1680,7 @@ class ProxyServer(ContactAddressMixin, Element, MultiContactServer):
         return self.data.get("add_x_forwarded_for")
 
     @property
-    def fp_proxy_key(self):
+    def fp_proxy_key(self) -> Optional[str]:
         """
         Password of Customer ID used in HTTP/HTTPS properties.
         :rtype: str
@@ -1642,7 +1688,7 @@ class ProxyServer(ContactAddressMixin, Element, MultiContactServer):
         return self.data.get("fp_proxy_key", None)
 
     @property
-    def fp_proxy_key_id(self):
+    def fp_proxy_key_id(self) -> Optional[int]:
         """
         Key ID in case of Web-Gateway choice
         :rtype: int
@@ -1650,7 +1696,7 @@ class ProxyServer(ContactAddressMixin, Element, MultiContactServer):
         return self.data.get("fp_proxy_key_id", None)
 
     @property
-    def fp_proxy_user_id(self):
+    def fp_proxy_user_id(self) -> Optional[str]:
         """
         Customer ID used in HTTP/HTTPS properties.
         :rtype: str
@@ -1658,7 +1704,7 @@ class ProxyServer(ContactAddressMixin, Element, MultiContactServer):
         return self.data.get("fp_proxy_user_id", None)
 
     @classmethod
-    def update_or_create(cls, with_status=False, **kwargs):
+    def update_or_create(cls, with_status: bool = False, **kwargs: Any) -> Union[ProxyServer, tuple[ProxyServer, bool, bool]]:
         element, updated, created = super(ProxyServer, cls).update_or_create(
             defer_update=True, **kwargs
         )
@@ -1696,7 +1742,7 @@ class ProxyServer(ContactAddressMixin, Element, MultiContactServer):
         return element
 
     @property
-    def inspected_services(self):
+    def inspected_services(self) -> list[Any]:
         """
         The specified services for inspection. An inspected service is a
         reference to a protocol that can be forwarded for inspection, such
@@ -1733,20 +1779,20 @@ class ElasticsearchCluster(ContactAddressMixin, Element):
     @classmethod
     def create(
             cls,
-            name,
-            addresses,
-            port=9200,
-            es_retention_period=30,
-            es_shard_number=0,
-            es_replica_number=0,
-            enable_cluster_sniffer=False,
-            location=None,
-            comment=None,
-            tls_profile=None,
-            es_tls_settings=None,
-            authentication_settings=None,
-            product=None
-    ):
+            name: str,
+            addresses: Union[str, list[str]],
+            port: int = 9200,
+            es_retention_period: int = 30,
+            es_shard_number: int = 0,
+            es_replica_number: int = 0,
+            enable_cluster_sniffer: bool = False,
+            location: Optional[Any] = None,
+            comment: Optional[str] = None,
+            tls_profile: Optional[str] = None,
+            es_tls_settings: Optional[TlsSettings] = None,
+            authentication_settings: Optional[dict[str, Any]] = None,
+            product: Optional[str] = None,
+    ) -> ElasticsearchCluster:
         """
         Create a Elasticsearch Cluster Server element.
 
@@ -1804,14 +1850,14 @@ class ElasticsearchCluster(ContactAddressMixin, Element):
                                                   product)
         return ElementCreator(cls, json)
 
-    def update(self, *exception, **kwargs):
+    def update(self, *exception: Any, **kwargs: Any) -> None:  # type: ignore[override]
         super().update(*exception,
                        **_ElasticsearchCompatibility.update_helper(
                            "authentication_settings",
                            **kwargs))
 
     @property
-    def port(self):
+    def port(self) -> Optional[int]:
         """
         The port on which connection is established on Elasticsearch Cluster nodes.
         :rtype: int
@@ -1820,7 +1866,7 @@ class ElasticsearchCluster(ContactAddressMixin, Element):
 
     @property
     @deprecated("authentication_settings")
-    def es_tls_settings(self):
+    def es_tls_settings(self) -> Optional[TlsSettings]:
         """
         Elasticsearch TLS Settings.
         :rtype: TlsSettings
@@ -1830,7 +1876,7 @@ class ElasticsearchCluster(ContactAddressMixin, Element):
             "authentication_settings")
 
     @property
-    def authentication_settings(self):
+    def authentication_settings(self) -> Any:
         """
         Elasticsearch authentication settings.
         """
@@ -1842,7 +1888,7 @@ class ElasticsearchCluster(ContactAddressMixin, Element):
             })
 
     @property
-    def addresses(self):
+    def addresses(self) -> Optional[list[str]]:
         """
         The list of hostnames / IP addresses (at least one) used to establish connection to the
             Elasticsearch Cluster.
@@ -1851,7 +1897,7 @@ class ElasticsearchCluster(ContactAddressMixin, Element):
         return self.data.get("addresses")
 
     @property
-    def es_retention_period(self):
+    def es_retention_period(self) -> Optional[int]:
         """
         Retention period (in days) for logs in Elasticsearch cluster.
         :rtype: int
@@ -1859,7 +1905,7 @@ class ElasticsearchCluster(ContactAddressMixin, Element):
         return self.data.get("es_retention_period")
 
     @property
-    def es_shard_number(self):
+    def es_shard_number(self) -> Optional[int]:
         """
         The number of shards for the fwlogsandalerts indices, a strictly positive number, or auto
             (default value).
@@ -1868,7 +1914,7 @@ class ElasticsearchCluster(ContactAddressMixin, Element):
         return self.data.get("es_shard_number")
 
     @property
-    def es_enable_cluster_sniffer(self):
+    def es_enable_cluster_sniffer(self) -> Optional[bool]:
         """
         Enabling the cluster sniffer. Default: false.
         :rtype: bool
@@ -1892,11 +1938,11 @@ class _ElasticsearchCompatibility:
 
     @classmethod
     def create_helper(cls,
-                      json,
+                      json: dict[str, Any],
                       authentication_property_name: str,
-                      tls_settings=None,
-                      authentication_settings=None,
-                      product=None):
+                      tls_settings: Optional[TlsSettings] = None,
+                      authentication_settings: Optional[dict[str, Any]] = None,
+                      product: Optional[str] = None) -> None:
         """Backward-compatibility function for Elasticsearch-related components' create method"""
         if (not tls_settings and authentication_settings
                 and cls._uses_es_tls_settings_settings()):
@@ -1940,7 +1986,7 @@ class _ElasticsearchCompatibility:
     @classmethod
     def update_helper(cls,
                       authentication_property_name: str,
-                      **kwargs):
+                      **kwargs: Any) -> dict[str, Any]:
         """Backward-compatibility function for Elasticsearch-related components' update"""
         # Backward-compatibility of deprecated "es_tls_settings" with version 7.2 and above
         if not cls._uses_es_tls_settings_settings() and "es_tls_settings" in kwargs:
@@ -1978,7 +2024,7 @@ class _ElasticsearchCompatibility:
         return kwargs
 
     @staticmethod
-    def _convert_tls_settings(tls_settings: TlsSettings):
+    def _convert_tls_settings(tls_settings: TlsSettings) -> Optional[dict[str, Any]]:
         """Convert TLS Settings to equivalent Elasticsearch Authentication Settings"""
         return {
             "method": "certificate",
@@ -1988,8 +2034,8 @@ class _ElasticsearchCompatibility:
 
     @classmethod
     def es_tls_settings_property(cls,
-                                 data,
-                                 authentication_property_name: str):
+                                 data: dict[str, Any],
+                                 authentication_property_name: str) -> Optional[TlsSettings]:
         """Backward-compatibility function for Elasticsearch-related components' es_tls_settings
         property"""
         if cls._uses_es_tls_settings_settings():
@@ -2006,9 +2052,9 @@ class _ElasticsearchCompatibility:
 
     @classmethod
     def authentication_settings_property(cls,
-                                         data,
+                                         data: dict[str, Any],
                                          property_name: str,
-                                         default_value):
+                                         default_value: Any) -> Any:
         authentication_settings = data.get(property_name)
         # Backward compatibility below 7.2
         if cls._uses_es_tls_settings_settings():
@@ -2029,14 +2075,14 @@ class NTPServer(Element, IPv6Node):
     typeof = "ntp"
 
     @property
-    def ntp_host_name(self):
+    def ntp_host_name(self) -> Optional[str]:
         """
         The NTP Host Name (Not Required)
         """
         return self.data.get("ntp_host_name")
 
     @property
-    def ntp_auth_key_type(self):
+    def ntp_auth_key_type(self) -> Optional[str]:
         """
         The NTP Authentication Key Type (Required)
         Possible values are:
@@ -2048,7 +2094,7 @@ class NTPServer(Element, IPv6Node):
         return self.data.get("ntp_auth_key_type")
 
     @property
-    def ntp_auth_key_id(self):
+    def ntp_auth_key_id(self) -> Optional[int]:
         """
         The NTP Authentication Key ID (Not Required)
         value between 1 - 65534
@@ -2056,7 +2102,7 @@ class NTPServer(Element, IPv6Node):
         return self.data.get("ntp_auth_key_id")
 
     @property
-    def ntp_auth_key(self):
+    def ntp_auth_key(self) -> Optional[str]:
         """
         The NTP Authentication Key (Not Required)
         """
@@ -2065,18 +2111,18 @@ class NTPServer(Element, IPv6Node):
     @classmethod
     def create(
             cls,
-            name,
-            address,
-            ipv6_address=None,
-            ntp_host_name=None,
-            ntp_auth_key_type="none",
-            ntp_auth_key_id=None,
-            ntp_auth_key=None,
-            secondary=None,
-            third_party_monitoring=None,
-            tools_profile_ref=None,
-            comment=None
-    ):
+            name: str,
+            address: str,
+            ipv6_address: Optional[str] = None,
+            ntp_host_name: Optional[str] = None,
+            ntp_auth_key_type: str = "none",
+            ntp_auth_key_id: Optional[int] = None,
+            ntp_auth_key: Optional[str] = None,
+            secondary: Optional[list[str]] = None,
+            third_party_monitoring: Optional[Any] = None,
+            tools_profile_ref: Optional[Any] = None,
+            comment: Optional[str] = None,
+    ) -> NTPServer:
         """
         Create NTP server
 
@@ -2125,21 +2171,21 @@ class AuthenticationServerMixin(Element, MultiContactServer):
     @classmethod
     def create(
             cls,
-            name,
-            address=None,
-            ipv6_address=None,
-            clear_text=False,
-            location_ref=None,
-            provided_method=None,
-            retries=2,
-            timeout=10,
-            secondary=None,
-            shared_secret=None,
-            port=49,
-            third_party_monitoring=None,
-            tools_profile_ref=None,
-            comment=None
-    ):
+            name: str,
+            address: Optional[str] = None,
+            ipv6_address: Optional[str] = None,
+            clear_text: bool = False,
+            location_ref: Optional[Any] = None,
+            provided_method: Optional[list[Any]] = None,
+            retries: int = 2,
+            timeout: int = 10,
+            secondary: Optional[list[str]] = None,
+            shared_secret: Optional[str] = None,
+            port: int = 49,
+            third_party_monitoring: Optional[Any] = None,
+            tools_profile_ref: Optional[Any] = None,
+            comment: Optional[str] = None,
+    ) -> Any:
         """
         :param str name: Name of the TacacsServer/RadiusServer.
         :param str address: Single valid IPv4 address. Required.
@@ -2194,7 +2240,7 @@ class AuthenticationServerMixin(Element, MultiContactServer):
         return ElementCreator(cls, json)
 
     @property
-    def provided_method(self):
+    def provided_method(self) -> list[Any]:
         """
         Provided Authentication methods.
         :rtype list(AuthenticationMethod)
@@ -2202,7 +2248,7 @@ class AuthenticationServerMixin(Element, MultiContactServer):
         return [Element.from_href(method) for method in self.data.get("provided_method")]
 
     @property
-    def timeout(self):
+    def timeout(self) -> Optional[int]:
         """
          Specify the time (in seconds) that Firewalls wait for the TACACS+/RADIUS authentication
             server to reply
@@ -2211,7 +2257,7 @@ class AuthenticationServerMixin(Element, MultiContactServer):
         return self.data.get("timeout")
 
     @property
-    def shared_secret(self):
+    def shared_secret(self) -> Optional[str]:
         """
         Shared secrete text
         :rtype str
@@ -2219,7 +2265,7 @@ class AuthenticationServerMixin(Element, MultiContactServer):
         return self.data.get("shared_secret")
 
     @property
-    def port(self):
+    def port(self) -> Optional[int]:
         """
         Specify the port number if the server communicates on a port other than the default port.
         :rtype int
@@ -2234,20 +2280,20 @@ class AbstractWebServer(Element, MultiContactServer, ExternalPki):
     @classmethod
     def create(
             cls,
-            name,
-            address=None,
-            ipv6_address=None,
-            alert_server=None,
-            location_ref=None,
-            web_app=None,
-            announcement_enabled=False,
-            announcement_message=None,
-            external_pki_certificate_settings=None,
-            uiid=None,
-            tools_profile_ref=None,
-            secondary=None,
-            comment=None
-    ):
+            name: str,
+            address: Optional[str] = None,
+            ipv6_address: Optional[str] = None,
+            alert_server: Optional[Any] = None,
+            location_ref: Optional[Any] = None,
+            web_app: Optional[list[WebApp]] = None,
+            announcement_enabled: bool = False,
+            announcement_message: Optional[str] = None,
+            external_pki_certificate_settings: Optional[Any] = None,
+            uiid: Optional[str] = None,
+            tools_profile_ref: Optional[Any] = None,
+            secondary: Optional[list[str]] = None,
+            comment: Optional[str] = None,
+    ) -> Any:
         """
         This represents a Web Access Server. A component of the Management Center responsible for
             browsing logs, Policy Snapshots and reports from a Web Browser.
@@ -2294,15 +2340,69 @@ class AbstractWebServer(Element, MultiContactServer, ExternalPki):
         return ElementCreator(cls, json)
 
     @property
-    def web_app(self):
+    def web_app(self) -> list[WebApp]:
         """
         Represents a Web Application parameter.
         :rtype list(WebApp):
         """
         return [WebApp(data) for data in self.data.get("web_app")]
 
+    def get_web_app_by_identifier(self, webapp_name: str) -> Optional[WebApp]:
+        """
+        Retrieves the WebApp by its identifier. None otherwise.
+        """
+        return next((w for w in self.web_app if w.web_app_identifier == webapp_name), None)
+
+    def update_web_app(self, webapp_name: str, **kwargs: Any) -> None:
+        """
+        Update fields of a WebApp identified by its web_app_identifier and persist the
+        change to SMC.
+        ::
+
+            web_access_server.update_web_app("webswing",
+                server_credentials_ref=TLSServerCredential("new cert"))
+
+        :param str webapp_name: the identifier of the WebApp (ex: 'webswing')
+        :param kwargs: WebApp fields to update, ex: server_credentials_ref, tls_cipher_suites
+        :raises ValueError: if the WebApp with the given identifier is not found.
+        """
+        web_app = self.get_web_app_by_identifier(webapp_name)
+        if not web_app:
+            raise ValueError(f"WebApp with identifier {webapp_name} not found.")
+        for ref_key in ("server_credentials_ref", "tls_cipher_suites"):
+            if ref_key in kwargs:
+                kwargs[ref_key] = element_resolver(kwargs[ref_key])
+        web_app.data.update(kwargs)
+        self.update()
+
+    def configure_saml_on_web_app(self, webapp_name: str,
+                                   saml_settings_entries: Optional[list[Any]]) -> None:
+        """
+        Configure SAML settings on a WebApp by its identifier.
+        :param str webapp_name: the identifier of the WebApp
+        :param list of SamlSettings saml_settings or None: the list of SAML Settings to configure.
+        If None, it will disable the SAML settings for the WebApp.
+        :return: None
+        :raises ValueError: if the WebApp with the given identifier is not found.
+        """
+        web_app = self.get_web_app_by_identifier(webapp_name)
+        if not web_app:
+            raise ValueError(f"WebApp with identifier {webapp_name} not found.")
+        saml_usage = "web_access"
+        new_saml_settings_entries = [s for s in web_app.data.get("saml_settings", []) if
+                                     s.get("usage") != saml_usage]
+
+        if saml_settings_entries:
+            for entry in saml_settings_entries:
+                entry["saml_setting_usage"] = saml_usage
+                new_saml_settings_entries.append(entry)
+        web_app.data["enable_saml_for_web_access"] = (saml_settings_entries is not None
+                                                      and len(saml_settings_entries) > 0)
+        web_app.data["saml_settings"] = new_saml_settings_entries
+        self.update()
+
     @property
-    def alert_server(self):
+    def alert_server(self) -> Any:
         """
         Specify the Log Server to which you want the Web Access Server to send its logs
         rtype LogServer
@@ -2310,11 +2410,11 @@ class AbstractWebServer(Element, MultiContactServer, ExternalPki):
         return Element.from_href(self.data.get("alert_server"))
 
     @property
-    def uiid(self):
+    def uiid(self) -> Optional[str]:
         return self.data.get("uiid")
 
     @property
-    def external_pki_certificate_settings(self):
+    def external_pki_certificate_settings(self) -> PkiCertificateSettings:
         """
         Certificate Settings for External PKI mode.
         return PkiCertificateSettings
@@ -2322,7 +2422,7 @@ class AbstractWebServer(Element, MultiContactServer, ExternalPki):
         return PkiCertificateSettings(self)
 
     @property
-    def announcement_message(self):
+    def announcement_message(self) -> Optional[str]:
         return self.data.get("announcement_message")
 
 
@@ -2341,46 +2441,6 @@ class WebAccessServer(AbstractWebServer):
     """
     typeof = "web_access_server"
 
-    @property
-    def web_app(self):
-        """
-        Represents a Web Application parameter.
-        :rtype: list(WebApp):
-        """
-        return [WebApp(data) for data in self.data.get("web_app")]
-
-    def get_web_app_by_identifier(self, webapp_name):
-        """
-        Retrieves the WebApp by its identifier. None otherwise.
-        """
-        return next((w for w in self.web_app if w.web_app_identifier == webapp_name), None)
-
-    def configure_saml_on_web_app(self, webapp_name, saml_settings_entries):
-        """
-        Configure SAML settings on a WebApp by its identifier.
-        :param str webapp_name: the identifier of the WebApp
-        :param list of SamlSettings saml_settings or None: the list of SAML Settings to configure.
-        If None, it will disable the SAML settings for the WebApp.
-        :return: None
-        :raises ValueError: if the WebApp with the given identifier is not found.
-        """
-        web_app = self.get_web_app_by_identifier(webapp_name)
-        if web_app:
-            saml_usage = "web_access"
-            new_saml_settings_entries = [s for s in web_app.data.get("saml_settings", []) if
-                                         s.get("usage") != saml_usage]
-
-            if saml_settings_entries:
-                for entry in saml_settings_entries:
-                    entry["saml_setting_usage"] = saml_usage
-                    new_saml_settings_entries.append(entry)
-            web_app.data["enable_saml_for_web_access"] = (saml_settings_entries is not None
-                                                          and len(saml_settings_entries) > 0)
-            web_app.data["saml_settings"] = new_saml_settings_entries
-            web_app.update()
-        else:
-            raise ValueError(f"WebApp with identifier {webapp_name} not found.")
-
 
 class TacacsServer(AuthenticationServerMixin, ContactAddressMixin):
     """
@@ -2397,7 +2457,7 @@ class TacacsServer(AuthenticationServerMixin, ContactAddressMixin):
     typeof = "tacacs_server"
 
     @property
-    def clear_text(self):
+    def clear_text(self) -> Optional[bool]:
         """
         Select Accepted by Firewall if you want the Firewall to accept unencrypted replies from the
             TACACS+ authentication server.
@@ -2431,23 +2491,23 @@ class IcapServer(Element, MultiContactServer):
     @classmethod
     def create(
             cls,
-            name,
-            address=None,
-            ipv6_address=None,
-            icap_include_xhdrs=False,
-            icap_path=None,
-            icap_port=1344,
-            icap_secure=False,
-            icap_xhdr_clientip=None,
-            icap_xhdr_serverip=None,
-            icap_xhdr_username=None,
-            tls_profile_ref=None,
-            location_ref=None,
-            secondary=None,
-            third_party_monitoring=None,
-            tools_profile_ref=None,
-            comment=None
-    ):
+            name: str,
+            address: Optional[str] = None,
+            ipv6_address: Optional[str] = None,
+            icap_include_xhdrs: bool = False,
+            icap_path: Optional[str] = None,
+            icap_port: int = 1344,
+            icap_secure: bool = False,
+            icap_xhdr_clientip: Optional[str] = None,
+            icap_xhdr_serverip: Optional[str] = None,
+            icap_xhdr_username: Optional[str] = None,
+            tls_profile_ref: Optional[Any] = None,
+            location_ref: Optional[Any] = None,
+            secondary: Optional[list[str]] = None,
+            third_party_monitoring: Optional[Any] = None,
+            tools_profile_ref: Optional[Any] = None,
+            comment: Optional[str] = None,
+    ) -> IcapServer:
         """
         :param str name: Name of the IcapServer.
         :param str address: Single valid IPv4 address. Required.
@@ -2498,7 +2558,7 @@ class IcapServer(Element, MultiContactServer):
         return ElementCreator(cls, json)
 
     @property
-    def icap_port(self):
+    def icap_port(self) -> Optional[int]:
         """
         The port on which the ICAP server is listening.
         :rtype int
@@ -2506,7 +2566,7 @@ class IcapServer(Element, MultiContactServer):
         return self.data.get("icap_port")
 
     @property
-    def icap_include_xhdrs(self):
+    def icap_include_xhdrs(self) -> Optional[bool]:
         """
         Include X-Headers or not.
         :rtype bool
@@ -2514,14 +2574,14 @@ class IcapServer(Element, MultiContactServer):
         return self.data.get("icap_include_xhdrs")
 
     @property
-    def icap_path(self):
+    def icap_path(self) -> Optional[str]:
         """
         The path to the service. Not Required. Defaults to "reqmod".
         """
         return self.data.get("icap_path")
 
     @property
-    def icap_secure(self):
+    def icap_secure(self) -> Optional[bool]:
         """
         Secure ICAP Enabled.
         :rtype bool
@@ -2529,7 +2589,7 @@ class IcapServer(Element, MultiContactServer):
         return self.data.get("icap_secure")
 
     @property
-    def icap_xhdr_clientip(self):
+    def icap_xhdr_clientip(self) -> Optional[str]:
         """
         X-Header Client IP.
         :rtype str
@@ -2537,7 +2597,7 @@ class IcapServer(Element, MultiContactServer):
         return self.data.get("icap_xhdr_clientip")
 
     @property
-    def icap_xhdr_serverip(self):
+    def icap_xhdr_serverip(self) -> Optional[str]:
         """
         X-Header Server IP.
         :rtype str
@@ -2545,7 +2605,7 @@ class IcapServer(Element, MultiContactServer):
         return self.data.get("icap_xhdr_serverip")
 
     @property
-    def icap_xhdr_username(self):
+    def icap_xhdr_username(self) -> Optional[str]:
         """
         X-Header Username.
         :rtype str
@@ -2553,7 +2613,7 @@ class IcapServer(Element, MultiContactServer):
         return self.data.get("icap_xhdr_username")
 
     @property
-    def tls_profile_ref(self):
+    def tls_profile_ref(self) -> Any:
         """
         Represents a TLS Profile Contains common parameters for establishing TLS based connections.
         :rtype TLSProfile
@@ -2571,18 +2631,18 @@ class SmtpServer(Element, ContactAddressMixin, MultiContactServer):
     @classmethod
     def create(
             cls,
-            name,
-            address=None,
-            ipv6_address=None,
-            port=25,
-            email_sender_address=None,
-            email_sender_name=None,
-            location_ref=None,
-            secondary=None,
-            third_party_monitoring=None,
-            tools_profile_ref=None,
-            comment=None
-    ):
+            name: str,
+            address: Optional[str] = None,
+            ipv6_address: Optional[str] = None,
+            port: int = 25,
+            email_sender_address: Optional[str] = None,
+            email_sender_name: Optional[str] = None,
+            location_ref: Optional[Any] = None,
+            secondary: Optional[list[str]] = None,
+            third_party_monitoring: Optional[Any] = None,
+            tools_profile_ref: Optional[Any] = None,
+            comment: Optional[str] = None,
+    ) -> SmtpServer:
         """
         This represents a Simple Mail Transfer Protocol (SMTP) server. Server used to process
         notifications by e-mails.
@@ -2626,7 +2686,7 @@ class SmtpServer(Element, ContactAddressMixin, MultiContactServer):
         return ElementCreator(cls, json)
 
     @property
-    def port(self):
+    def port(self) -> Optional[int]:
         """
         The port on which the SMTP server is listening.
         :rtype int
@@ -2634,7 +2694,7 @@ class SmtpServer(Element, ContactAddressMixin, MultiContactServer):
         return self.data.get("port")
 
     @property
-    def email_sender_address(self):
+    def email_sender_address(self) -> Optional[str]:
         """
         E-mail address to be used in the From field of the e-mail.
         :rtype str
@@ -2642,7 +2702,7 @@ class SmtpServer(Element, ContactAddressMixin, MultiContactServer):
         return self.data.get("email_sender_address")
 
     @property
-    def email_sender_name(self):
+    def email_sender_name(self) -> Optional[str]:
         """
         Name to be used in the From field of the e-mail.
         :rtype str
@@ -2659,18 +2719,18 @@ class EpoServer(Element, ContactAddressMixin, IPv6Node):
     @classmethod
     def create(
             cls,
-            name,
-            address=None,
-            ipv6_address=None,
-            epo_password=None,
-            epo_login=None,
-            epo_port=8444,
-            location_ref=None,
-            secondary=None,
-            third_party_monitoring=None,
-            tools_profile_ref=None,
-            comment=None
-    ):
+            name: str,
+            address: Optional[str] = None,
+            ipv6_address: Optional[str] = None,
+            epo_password: Optional[str] = None,
+            epo_login: Optional[str] = None,
+            epo_port: int = 8444,
+            location_ref: Optional[Any] = None,
+            secondary: Optional[list[str]] = None,
+            third_party_monitoring: Optional[Any] = None,
+            tools_profile_ref: Optional[Any] = None,
+            comment: Optional[str] = None,
+    ) -> EpoServer:
         """
         This represents an ePO server: A Network Element that represents an ePO instance of server.
         :param str name: Name of the EpoServer.
@@ -2712,7 +2772,7 @@ class EpoServer(Element, ContactAddressMixin, IPv6Node):
         return ElementCreator(cls, json)
 
     @property
-    def epo_port(self):
+    def epo_port(self) -> Optional[int]:
         """
         The ePO port.
         :rtype: int
@@ -2720,7 +2780,7 @@ class EpoServer(Element, ContactAddressMixin, IPv6Node):
         return self.data.get("epo_port")
 
     @property
-    def epo_login(self):
+    def epo_login(self) -> Optional[str]:
         """
         The ePO login user name.
         :rtype: str
@@ -2735,20 +2795,19 @@ class SamlSettings(NestedDict):
     From SMC >= 7.4.0
     """
 
-    def __init__(self, data):
+    def __init__(self, data: Any) -> None:
         super(SamlSettings, self).__init__(data=data)
 
     @classmethod
     def create(cls,
-               saml_method_ref,
-               saml_service_provider_id,
-               saml_tls_credentials_ref=None,
-               saml_name_id_policy_format=None,
-               saml_user_attribute=None,
-               saml_metadata_file=None,
-               saml_acs_url=None,
-
-               ):
+               saml_method_ref: Any,
+               saml_service_provider_id: str,
+               saml_tls_credentials_ref: Optional[Any] = None,
+               saml_name_id_policy_format: Optional[str] = None,
+               saml_user_attribute: Optional[str] = None,
+               saml_metadata_file: Optional[str] = None,
+               saml_acs_url: Optional[str] = None,
+               ) -> SamlSettings:
         """
         :param AuthenticationMethod saml_method_ref: the SAML Method
         :param str saml_service_provider_id: the SAML Service Provider Identifier.
@@ -2774,7 +2833,7 @@ class SamlSettings(NestedDict):
         return cls(saml_settings_data)
 
     @property
-    def usage(self):
+    def usage(self) -> Optional[str]:
         """
         Return SAML Setting Usage:
         either 'bba' for user authentication settings,
@@ -2784,28 +2843,28 @@ class SamlSettings(NestedDict):
         return self.data.get("saml_setting_usage")
 
     @property
-    def authentication_method(self):
+    def authentication_method(self) -> Any:
         """
         Return the SAML Authentication Method.
         """
         return ElementRef(self.data.get("saml_method_ref"))
 
     @property
-    def service_provider_id(self):
+    def service_provider_id(self) -> Optional[str]:
         """
         Return the SAML Service Provider Identifier.
         """
         return self.data.get("saml_service_provider_id")
 
     @property
-    def tls_credentials(self):
+    def tls_credentials(self) -> Optional[Any]:
         """
         Return the TLS Server Credentials linked to the SAML Settings.
         """
         return ElementRef(self.data.get("saml_tls_credentials_ref")) if self.data.get("saml_tls_credentials_ref") else None
 
     @property
-    def name_id_policy_format(self):
+    def name_id_policy_format(self) -> Optional[str]:
         """
         Return the SAML NameID Policy Format:
         - persistent
@@ -2816,21 +2875,21 @@ class SamlSettings(NestedDict):
         return self.data.get("saml_name_id_policy_format")
 
     @property
-    def user_attribute(self):
+    def user_attribute(self) -> Optional[str]:
         """
         Return the SAML User Attribute.
         """
         return self.data.get("saml_user_attribute")
 
     @property
-    def metadata_file(self):
+    def metadata_file(self) -> Optional[str]:
         """
         Return the SAML Settings specific metadata.
         """
         return self.data.get("saml_metadata_file")
 
     @property
-    def acs_url(self):
+    def acs_url(self) -> Optional[str]:
         """
         Return the SAML Assertion Consumer Service URL.
         """

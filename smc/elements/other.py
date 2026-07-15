@@ -17,6 +17,10 @@ used by API functions or methods.
 For example, blocklist can be applied to an engine directly or system wide. This class
 will define the format when calling blocklist functions.
 """
+from __future__ import annotations
+
+from typing import Any, Optional, Union, Iterator
+
 import base64
 from smc.base.decorators import cached_property
 from smc.base.model import Element, ElementCreator, ElementList
@@ -45,7 +49,7 @@ class Category(Element):
     categories = ElementList("category_parent_ref")
 
     @classmethod
-    def create(cls, name, comment=None):
+    def create(cls, name: str, comment: Optional[str] = None) -> Category:
         """
         Add a category element
 
@@ -57,7 +61,7 @@ class Category(Element):
 
         return ElementCreator(cls, json)
 
-    def search_elements(self):
+    def search_elements(self) -> list[Any]:
         """
         Find all elements assigned to this category tag. You can also find
         category tags assigned directly to an element also::
@@ -74,7 +78,7 @@ class Category(Element):
             for tag in self.make_request(resource="search_elements_from_category_tag")
         ]
 
-    def add_element(self, element):
+    def add_element(self, element: Any) -> None:
         """
         Element can be href or type :py:class:`smc.base.model.Element`
         ::
@@ -96,7 +100,7 @@ class Category(Element):
             json={"value": element},
         )
 
-    def remove_element(self, element):
+    def remove_element(self, element: Any) -> None:
         """
         Remove an element from this category tag. Find elements assigned
         by :func:`~search_elements`. Element can be str href or type
@@ -120,7 +124,7 @@ class Category(Element):
             json={"value": element},
         )
 
-    def add_category_tag(self, tags, append_lists=True):
+    def add_category_tag(self, tags: list, append_lists: bool = True) -> None:
         """
         Add this category to a category tag (group). This provides drop down
         filters in the SMC by category tag.
@@ -134,7 +138,7 @@ class Category(Element):
         tags = element_resolver(tags)
         self.update(category_parent_ref=tags, append_lists=append_lists)
 
-    def add_category(self, tags):
+    def add_category(self, tags: Any) -> None:
         pass
 
 
@@ -153,7 +157,7 @@ class CategoryTag(Element):
     parent_categories = ElementList("parent_categories")
 
     @classmethod
-    def create(cls, name, comment=None):
+    def create(cls, name: str, comment: Optional[str] = None) -> CategoryTag:
         """
         Create a CategoryTag. A category tag represents a group of categories
         or a group of category tags (nested groups). These are used to provide
@@ -169,7 +173,7 @@ class CategoryTag(Element):
         json = {"name": name, "comment": comment}
         return ElementCreator(cls, json)
 
-    def remove_category(self, categories):
+    def remove_category(self, categories: list) -> None:
         """
         Remove a category from this Category Tag (group).
 
@@ -229,7 +233,7 @@ class Location(Element):
     typeof = "location"
 
     @classmethod
-    def create(cls, name, comment=None):
+    def create(cls, name: str, comment: Optional[str] = None) -> Location:
         """
         Create a location element
 
@@ -243,7 +247,7 @@ class Location(Element):
         return ElementCreator(cls, json)
 
     @property
-    def used_on(self):
+    def used_on(self) -> list[Any]:
         """
         Return all NAT'd elements using this location.
 
@@ -266,7 +270,7 @@ class LogoFile(Element):
     typeof = "logo_file"
 
     @classmethod
-    def create(cls, name, logo_file):
+    def create(cls, name: str, logo_file: str) -> LogoFile:
         with open(logo_file, 'rb') as image_object:
             binary_content = base64.b64encode(image_object.read()).decode()
             json = {
@@ -286,7 +290,14 @@ class Geolocation(Element):
     typeof = "geolocation"
 
     @classmethod
-    def create(cls, name, latitude, longitude, country_code="US", **kw):
+    def create(
+        cls,
+        name: str,
+        latitude: Any,
+        longitude: Any,
+        country_code: str = "US",
+        **kw: Any,
+    ) -> Geolocation:
         json = {
             "name": name,
             "latitude": latitude,
@@ -311,7 +322,7 @@ class LogicalInterface(Element):
     typeof = "logical_interface"
 
     @classmethod
-    def create(cls, name, comment=None):
+    def create(cls, name: str, comment: Optional[str] = None) -> LogicalInterface:
         """
         Create the logical interface
 
@@ -340,7 +351,7 @@ class MacAddress(Element):
     typeof = "mac_address"
 
     @classmethod
-    def create(cls, name, mac_address, comment=None):
+    def create(cls, name: str, mac_address: str, comment: Optional[str] = None) -> MacAddress:
         """
         Create the Mac Address
 
@@ -363,7 +374,7 @@ class ContactAddress(NestedDict):
     """
 
     @property
-    def addresses(self):
+    def addresses(self) -> Any:
         """
         List of addresses set as contact address
 
@@ -372,11 +383,11 @@ class ContactAddress(NestedDict):
         return self.data.get("addresses") or self.data.get("address")
 
     @property
-    def location_ref(self):
+    def location_ref(self) -> Any:
         return self.data["location_ref"]
 
     @property
-    def name(self):
+    def name(self) -> str:
         """
         Location name for this contact address
 
@@ -385,7 +396,7 @@ class ContactAddress(NestedDict):
         return self.location.name
 
     @cached_property
-    def location(self):
+    def location(self) -> Any:
         """
         Location name for contact address
 
@@ -393,7 +404,7 @@ class ContactAddress(NestedDict):
         """
         return Element.from_href(self.location_ref)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "{}(location={},addresses={})".format(
             self.__class__.__name__, self.name, self.addresses
         )
@@ -408,21 +419,21 @@ class Blocklist(object):
     .. note:: This method requires SMC version >= 7.0
     """
 
-    def __init__(self):
-        self.entries = {}
+    def __init__(self) -> None:
+        self.entries: dict = {}
 
     def add_entry(
         self,
-        src,
-        dst,
-        duration=3600,
-        src_port1=None,
-        src_port2=None,
-        src_proto="predefined_tcp",
-        dst_port1=None,
-        dst_port2=None,
-        dst_proto="predefined_tcp",
-    ):
+        src: str,
+        dst: str,
+        duration: int = 3600,
+        src_port1: Optional[int] = None,
+        src_port2: Optional[int] = None,
+        src_proto: str = "predefined_tcp",
+        dst_port1: Optional[int] = None,
+        dst_port2: Optional[int] = None,
+        dst_proto: str = "predefined_tcp",
+    ) -> None:
         """
         Create a blocklist entry.
 
@@ -479,21 +490,21 @@ class Blacklist(object):
     since this version, "blacklist" is renamed "block_list"
     """
 
-    def __init__(self):
-        self.entries = {}
+    def __init__(self) -> None:
+        self.entries: dict = {}
 
     def add_entry(
             self,
-            src,
-            dst,
-            duration=3600,
-            src_port1=None,
-            src_port2=None,
-            src_proto="predefined_tcp",
-            dst_port1=None,
-            dst_port2=None,
-            dst_proto="predefined_tcp",
-    ):
+            src: str,
+            dst: str,
+            duration: int = 3600,
+            src_port1: Optional[int] = None,
+            src_port2: Optional[int] = None,
+            src_proto: str = "predefined_tcp",
+            dst_port1: Optional[int] = None,
+            dst_port2: Optional[int] = None,
+            dst_proto: str = "predefined_tcp",
+    ) -> None:
         """
         Create a blacklist entry.
 
@@ -563,12 +574,23 @@ class RuleValidityTime(Element):
     typeof = "rule_validity_time"
 
     @classmethod
-    def create(cls, name, rule_time_active='always', rule_time_zone='utc', rule_time_start=None,
-               rule_time_end=None, rule_time_repeat_start=None, rule_time_repeat_end=None,
-               week_day=None, month_day=None,
-               yearly_day_start=None, yearly_day_end=None,
-               yearly_month_start=None, yearly_month_end=None,
-               comment=None):
+    def create(
+        cls,
+        name: str,
+        rule_time_active: str = 'always',
+        rule_time_zone: str = 'utc',
+        rule_time_start: Optional[str] = None,
+        rule_time_end: Optional[str] = None,
+        rule_time_repeat_start: Optional[str] = None,
+        rule_time_repeat_end: Optional[str] = None,
+        week_day: Optional[str] = None,
+        month_day: Optional[str] = None,
+        yearly_day_start: Optional[str] = None,
+        yearly_day_end: Optional[str] = None,
+        yearly_month_start: Optional[str] = None,
+        yearly_month_end: Optional[str] = None,
+        comment: Optional[str] = None,
+    ) -> RuleValidityTime:
         """
         Create a Validity Time element::
 
@@ -626,16 +648,27 @@ class UpdateServerProfile(Element):
     typeof = "update_service"
 
     @classmethod
-    def create(cls, name, retry=0, timeout=0, urls=None, tls_profile_ref=None, comment=None):
+    def create(
+        cls,
+        name: str,
+        retry: int = 0,
+        timeout: int = 0,
+        urls: Optional[list] = None,
+        tls_profile_ref: Optional[Any] = None,
+        tls_identity: Optional[Any] = None,
+        comment: Optional[str] = None,
+    ) -> UpdateServerProfile:
         """
-        Create a UpdateServerProfile. A Update Server Profile represents a update service.
+        Create a UpdateServerProfile. A Update Server Profile represents an update service.
         These are used to provide server providing the updates within the SMC.
 
         :param str name: name of category tag.
         :param int retry: number of retries.
         :param int timeout: connection timeout.
-        :param list urls: list of URL, at least one is mandatory.
+        :param list urls: list of URLs, ordered by ascending rank(rank 0, rank 1, etc).
+        At least one is mandatory.
         :param str tls_profile_ref: TLS profile used to connect to the server(s).
+        :param str tls_identity: TLS identity used to connect to the server(s).
         :param str comment: optional comment.
         :raises CreateElementFailed: problem creating tag.
         :return: instance with meta.
@@ -652,24 +685,26 @@ class UpdateServerProfile(Element):
                     "url": url
                 })
             json.update(ordered_url=ordered_url)
+        if tls_identity:
+            json.update(TLSIdentity=tls_identity)
         return ElementCreator(cls, json)
 
     @property
-    def retry(self):
+    def retry(self) -> Optional[int]:
         """
         number of retries
         """
         return self.data.get("retry")
 
     @property
-    def timeout(self):
+    def timeout(self) -> Optional[int]:
         """
         It is connection timeout
         """
         return self.data.get("timeout")
 
     @property
-    def ordered_url(self):
+    def ordered_url(self) -> Any:
         """
         The list of url used by update service.
         :rtype List(url)
@@ -677,25 +712,33 @@ class UpdateServerProfile(Element):
         return self.data.get("ordered_url")
 
     @property
-    def tls_profile(self):
+    def tls_profile(self) -> Any:
         """
         TLS profile used to connect to the server(s).
         :rtype TLSProfile
         """
         return Element.from_href(self.data.get("tls_profile_ref"))
 
+    @property
+    def tls_identity(self) -> Any:
+        """
+        TLS identity used to connect to the server(s): field + value.
+        :rtype TLSIdentity
+        """
+        return Element.from_href(self.data.get("TLSIdentity"))
+
 
 def prepare_blacklist(
-    src,
-    dst,
-    duration=3600,
-    src_port1=None,
-    src_port2=None,
-    src_proto="predefined_tcp",
-    dst_port1=None,
-    dst_port2=None,
-    dst_proto="predefined_tcp",
-):
+    src: str,
+    dst: str,
+    duration: int = 3600,
+    src_port1: Optional[int] = None,
+    src_port2: Optional[int] = None,
+    src_proto: str = "predefined_tcp",
+    dst_port1: Optional[int] = None,
+    dst_port2: Optional[int] = None,
+    dst_proto: str = "predefined_tcp",
+) -> dict:
     """
     Create a blacklist entry.
 
@@ -765,16 +808,16 @@ def prepare_blacklist(
 
 
 def prepare_block_list(
-        src,
-        dst,
-        duration=3600,
-        src_port1=None,
-        src_port2=None,
-        src_proto="predefined_tcp",
-        dst_port1=None,
-        dst_port2=None,
-        dst_proto="predefined_tcp",
-):
+        src: str,
+        dst: str,
+        duration: int = 3600,
+        src_port1: Optional[int] = None,
+        src_port2: Optional[int] = None,
+        src_proto: str = "predefined_tcp",
+        dst_port1: Optional[int] = None,
+        dst_port2: Optional[int] = None,
+        dst_proto: str = "predefined_tcp",
+) -> dict:
     """
     Create a block_list entry.
 

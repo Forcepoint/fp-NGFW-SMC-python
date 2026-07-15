@@ -90,6 +90,8 @@ Examples of rule operations::
 
 .. note:: SMC version >= 6.6.0 requires the use of a list of strings for rule actions
 """
+from __future__ import annotations
+from typing import Any, Optional, Union, Iterator
 from smc.base.model import Element, SubElement, ElementCreator
 from smc.elements.other import LogicalInterface
 from smc.api.exceptions import (
@@ -125,14 +127,14 @@ class Rule(object):
     """
 
     @property
-    def name(self):
+    def name(self) -> str:
         """
         Name attribute of rule element
         """
         return self._meta.name if self._meta.name else "Rule @%s" % self.tag
 
     @property
-    def history(self):
+    def history(self) -> Any:
         """
         .. versionadded:: 0.6.3
             Requires SMC version >= 6.5
@@ -147,7 +149,7 @@ class Rule(object):
         """
         return History(**self.make_request(resource="history"))
 
-    def move_rule_after(self, other_rule):
+    def move_rule_after(self, other_rule: Any) -> None:
         """
         Add this rule after another. This process will make a copy of
         the existing rule and add after the specified rule. If this
@@ -165,7 +167,7 @@ class Rule(object):
         )
         self.delete()
 
-    def move_rule_before(self, other_rule):
+    def move_rule_before(self, other_rule: Any) -> None:
         """
         Move this rule after another. This process will make a copy of
         the existing rule and add after the specified rule. If this
@@ -184,7 +186,7 @@ class Rule(object):
         self.delete()
 
     @cacheable_resource
-    def action(self):
+    def action(self) -> Any:
         """
         Action for this rule.
 
@@ -193,7 +195,7 @@ class Rule(object):
         return Action(self)
 
     @cacheable_resource
-    def options(self):
+    def options(self) -> Any:
         """
         Options for this rule.
 
@@ -202,7 +204,7 @@ class Rule(object):
         return LogOptions(self)
 
     @cacheable_resource
-    def authentication_options(self):
+    def authentication_options(self) -> Any:
         """
         Read only authentication options field
 
@@ -211,7 +213,7 @@ class Rule(object):
         return AuthenticationOptions(self)
 
     @cacheable_resource
-    def match_vpn_options(self):
+    def match_vpn_options(self) -> Any:
         """
         Read only match vpn options field
 
@@ -220,7 +222,7 @@ class Rule(object):
         return SourceVpn(self)
 
     @property
-    def comment(self):
+    def comment(self) -> Optional[str]:
         """
         Optional comment for this rule.
 
@@ -230,11 +232,11 @@ class Rule(object):
         return self.data.get("comment")
 
     @comment.setter
-    def comment(self, value):
+    def comment(self, value: str) -> None:
         self.data["comment"] = value
 
     @property
-    def is_rule_section(self):
+    def is_rule_section(self) -> bool:
         """
         Is this rule considered a rule section
 
@@ -243,7 +245,7 @@ class Rule(object):
         return not any(field for field in ("sources", "destinations") if field in self.data)
 
     @property
-    def is_disabled(self):
+    def is_disabled(self) -> Optional[bool]:
         """
         Whether the rule is enabled or disabled
 
@@ -252,20 +254,20 @@ class Rule(object):
         """
         return self.data.get("is_disabled")
 
-    def disable(self):
+    def disable(self) -> None:
         """
         Disable this rule
         """
         self.data["is_disabled"] = True
 
-    def enable(self):
+    def enable(self) -> None:
         """
         Enable this rule
         """
         self.data["is_disabled"] = False
 
     @cacheable_resource
-    def sources(self):
+    def sources(self) -> Any:
         """
         Sources assigned to this rule
 
@@ -274,7 +276,7 @@ class Rule(object):
         return Source(self)
 
     @cacheable_resource
-    def destinations(self):
+    def destinations(self) -> Any:
         """
         Destinations for this rule
 
@@ -283,7 +285,7 @@ class Rule(object):
         return Destination(self)
 
     @cacheable_resource
-    def services(self):
+    def services(self) -> Any:
         """
         Services assigned to this rule
 
@@ -292,7 +294,7 @@ class Rule(object):
         return Service(self)
 
     @property
-    def parent_policy(self):
+    def parent_policy(self) -> Any:
         """
         Read-only name of the parent policy
 
@@ -300,7 +302,7 @@ class Rule(object):
         """
         return Element.from_href(self.data.get("parent_policy"))
 
-    def save(self):
+    def save(self) -> str:
         """
         After making changes to a rule element, you must call save
         to apply the changes. Rule changes are made to cache before
@@ -312,13 +314,14 @@ class Rule(object):
         """
         return self.update()
 
-    def update(self,
-               validate=True,
-               sources=None,
-               destinations=None,
-               services=None,
-               action=None,
-               **kwargs):
+    def update(  # type: ignore[override]
+               self,
+               validate: bool = True,
+               sources: Any = None,
+               destinations: Any = None,
+               services: Any = None,
+               action: Any = None,
+               **kwargs: Any) -> str:
         """
         update a rule
 
@@ -369,7 +372,7 @@ class Rule(object):
         return result
 
     @property
-    def tag(self):
+    def tag(self) -> Optional[str]:
         """
         Value of rule tag. Read only.
 
@@ -384,8 +387,10 @@ class RuleCommon(object):
     Functionality common to all rules
     """
 
-    def create_rule_section(self, name, add_pos=None, insert_point=None,
-                            after=None, before=None, background_color=None):
+    def create_rule_section(self, name: str, add_pos: Optional[int] = None,
+                            insert_point: Optional[str] = None,
+                            after: Optional[str] = None, before: Optional[str] = None,
+                            background_color: Optional[str] = None) -> Any:
         """
         Create a rule section in a Firewall Policy. To specify a specific numbering
         position for the rule section, use the `add_pos` field. If no position or
@@ -440,8 +445,11 @@ class RuleCommon(object):
             json=json,
         )
 
-    def create_insert_point(self, name, insert_point_type="normal", add_pos=None,
-                            insert_point=None, after=None, before=None, background_color=None):
+    def create_insert_point(self, name: str, insert_point_type: str = "normal",
+                            add_pos: Optional[int] = None,
+                            insert_point: Optional[str] = None,
+                            after: Optional[str] = None, before: Optional[str] = None,
+                            background_color: Optional[str] = None) -> Any:
         """
         Create an insert point in a Template Firewall Policy. If no position or
         before/after is specified, the insert point will be placed at the top
@@ -494,7 +502,7 @@ class RuleCommon(object):
             json=json
         )
 
-    def add_at_position(self, pos):
+    def add_at_position(self, pos: int) -> str:
         if pos <= 0:
             pos = 1
         rules = self.make_request(href=self.href)
@@ -508,7 +516,7 @@ class RuleCommon(object):
                 return self.__class__(**last_rule).get_relation("add_after")
         return self.href
 
-    def add_before_after(self, before=None, after=None):
+    def add_before_after(self, before: Optional[str] = None, after: Optional[str] = None) -> dict[str, Any]:
         params = {}
 
         if after:
@@ -518,7 +526,8 @@ class RuleCommon(object):
 
         return params
 
-    def update_targets(self, sources=None, destinations=None, services=None, situations=None):
+    def update_targets(self, sources: Any = None, destinations: Any = None,
+                       services: Any = None, situations: Any = None) -> dict[str, Any]:
 
         if isinstance(sources, Source):
             source = sources
@@ -603,7 +612,7 @@ class RuleCommon(object):
             e.update(situations=situation.data)
         return e
 
-    def update_logical_if(self, logical_interfaces):
+    def update_logical_if(self, logical_interfaces: Any) -> dict[str, Any]:
         e = {}
         if logical_interfaces is None:
             e.update(logical_interfaces={"any": True})
@@ -620,14 +629,14 @@ class RuleCommon(object):
                 )
         return e
 
-    def get_action(self):
+    def get_action(self) -> Any:
         """
         Return action instance.
         rtype: Action
         """
         return Action()
 
-    def _get_action(self, action):
+    def _get_action(self, action: Any) -> Any:
         """
         Get the action field for a rule. In SMC 6.6 actions have to be in list
         format whereas in SMC < 6.6 they were string.
@@ -641,7 +650,7 @@ class RuleCommon(object):
         )
         return versioned_method(action)
 
-    def _get_action_6_6(self, action):
+    def _get_action_6_6(self, action: Any) -> Any:
         if isinstance(action, ActionMixin):
             rule_action = action
             if isinstance(action.action, str):
@@ -667,7 +676,7 @@ class RuleCommon(object):
 
         return rule_action
 
-    def _get_action_6_5(self, action):
+    def _get_action_6_5(self, action: Any) -> Any:
         """
         Get the action field for a rule. In SMC 6.6 actions have to be in list
         format whereas in SMC < 6.6 they were string.
@@ -706,20 +715,20 @@ class RuleCommon(object):
         return rule_action
 
     @property
-    def background_color(self):
+    def background_color(self) -> Optional[str]:
         """
         Background color in hexadecimal format (#RRGGBB).
         Applicable for rule section and insert point.
         """
         return self.data.get("background_color", None)
 
-    def is_locked(self):
+    def is_locked(self) -> Optional[bool]:
         """
         Locked flag for this rule.
         """
         return self.data.get("locked", None)
 
-    def lock(self, reason_for=None):
+    def lock(self, reason_for: Optional[str] = None) -> Any:
         """
         .. Requires SMC version >= 6.10.10 or >= 7.0.2 or >= 7.1.0
 
@@ -734,7 +743,7 @@ class RuleCommon(object):
         else:
             return self.make_request(method="update", resource="lock")
 
-    def unlock(self):
+    def unlock(self) -> Any:
         """
         .. Requires SMC version >= 6.10.10 or >= 7.0.2 or >= 7.1.0
 
@@ -819,27 +828,27 @@ class IPv4Rule(RuleCommon, Rule, SubElement):
 
     def create(
         self,
-        name,
-        sources=None,
-        destinations=None,
-        services=None,
-        action="allow",
-        log_options=None,
-        authentication_options=None,
-        match_vpn_options=None,
-        connection_tracking=None,
-        is_disabled=False,
-        vpn_policy=None,
-        mobile_vpn=False,
-        add_pos=None,
-        insert_point=None,
-        after=None,
-        before=None,
-        sub_policy=None,
-        comment=None,
-        validate=True,
-        **kw
-    ):
+        name: str,
+        sources: Any = None,
+        destinations: Any = None,
+        services: Any = None,
+        action: Any = "allow",
+        log_options: Any = None,
+        authentication_options: Any = None,
+        match_vpn_options: Any = None,
+        connection_tracking: Any = None,
+        is_disabled: bool = False,
+        vpn_policy: Any = None,
+        mobile_vpn: bool = False,
+        add_pos: Optional[int] = None,
+        insert_point: Optional[str] = None,
+        after: Optional[str] = None,
+        before: Optional[str] = None,
+        sub_policy: Any = None,
+        comment: Optional[str] = None,
+        validate: bool = True,
+        **kw: Any
+    ) -> IPv4Rule:
         """
         Create a layer 3 firewall rule
 
@@ -986,22 +995,22 @@ class IPv4Layer2Rule(RuleCommon, Rule, SubElement):
 
     def create(
         self,
-        name,
-        sources=None,
-        destinations=None,
-        services=None,
-        action="allow",
-        is_disabled=False,
-        logical_interfaces=None,
-        add_pos=None,
-        insert_point=None,
-        after=None,
-        before=None,
-        comment=None,
-        validate=True,
-        sub_policy=None,
-        **kw
-    ):
+        name: str,
+        sources: Any = None,
+        destinations: Any = None,
+        services: Any = None,
+        action: Any = "allow",
+        is_disabled: bool = False,
+        logical_interfaces: Any = None,
+        add_pos: Optional[int] = None,
+        insert_point: Optional[str] = None,
+        after: Optional[str] = None,
+        before: Optional[str] = None,
+        comment: Optional[str] = None,
+        validate: bool = True,
+        sub_policy: Any = None,
+        **kw: Any
+    ) -> IPv4Layer2Rule:
         """
         Create an IPv4 Layer 2 Engine rule
 
@@ -1115,21 +1124,21 @@ class EthernetRule(RuleCommon, Rule, SubElement):
 
     def create(
         self,
-        name,
-        sources=None,
-        destinations=None,
-        services=None,
-        action="allow",
-        is_disabled=False,
-        logical_interfaces=None,
-        add_pos=None,
-        insert_point=None,
-        after=None,
-        before=None,
-        comment=None,
-        validate=True,
-        **kw
-    ):
+        name: str,
+        sources: Any = None,
+        destinations: Any = None,
+        services: Any = None,
+        action: Any = "allow",
+        is_disabled: bool = False,
+        logical_interfaces: Any = None,
+        add_pos: Optional[int] = None,
+        insert_point: Optional[str] = None,
+        after: Optional[str] = None,
+        before: Optional[str] = None,
+        comment: Optional[str] = None,
+        validate: bool = True,
+        **kw: Any
+    ) -> EthernetRule:
         """
         Create an Ethernet rule
 

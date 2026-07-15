@@ -12,6 +12,10 @@
 """
 Alert element types that can be used as a matching criteria in the rules of an Alert Policy.
 """
+from __future__ import annotations
+
+from typing import Any, Optional, Union, Iterator
+
 from smc.api.exceptions import AlertChainError, UnsupportedAlertChannel, AlertPolicyError
 from smc.base.model import Element, ElementCreator, SubElement
 from smc.base.util import element_resolver
@@ -40,7 +44,7 @@ class CustomAlert(AlertElement):
     typeof = "alert"
 
     @classmethod
-    def create(cls, name, comment=None):
+    def create(cls, name: str, comment: Optional[str] = None) -> CustomAlert:
         """
         Create the custom alert
 
@@ -82,7 +86,9 @@ class AlertChain(Element):
     typeof = "alert_chain"
 
     @classmethod
-    def create(cls, name, final_action=None, alert_chain_ref=None, comment=None):
+    def create(cls, name: str, final_action: Optional[str] = None,
+               alert_chain_ref: Optional[Any] = None,
+               comment: Optional[str] = None) -> AlertChain:
         """
         Create the custom alert
         :param str name: name of alert chain
@@ -105,30 +111,35 @@ class AlertChain(Element):
         return ElementCreator(cls, json)
 
     @property
-    def final_action(self):
+    def final_action(self) -> Optional[str]:
         return self.data.get("final_action", None)
 
     @property
-    def open(self):
+    def open(self) -> None:
         self.make_request(href=self.get_relation("open"), method="create")
 
     @property
-    def save(self):
+    def save(self) -> None:
         self.make_request(href=self.get_relation("save"), method="create")
 
     @property
-    def alert_chain_rules(self):
+    def alert_chain_rules(self) -> list[Any]:
         return [AlertChainRule(**rule) for rule in self.make_request(resource="alert_chain_rules")]
 
-    def add_rule_section(self, name, add_pos=None,
-                         after=None, before=None, background_color=None):
+    def add_rule_section(self, name: str, add_pos: Optional[int] = None,
+                         after: Optional[str] = None, before: Optional[str] = None,
+                         background_color: Optional[str] = None) -> Any:
         return AlertChainRule.create_rule_section(self, self.get_relation("alert_chain_rules"),
                                                           name, add_pos, after,
                                                           before, background_color)
 
-    def add_alert_chain_rule(self, name, alert_channel=None, destination=None, delay=0,
-                             admin_name=[], amount=None, notify_first_block=0, period=0,
-                             comment=None, add_pos=None, after=None, before=None, validate=False):
+    def add_alert_chain_rule(self, name: str, alert_channel: Optional[str] = None,
+                             destination: Optional[str] = None, delay: int = 0,
+                             admin_name: list = [], amount: Optional[int] = None,
+                             notify_first_block: int = 0, period: int = 0,
+                             comment: Optional[str] = None, add_pos: Optional[int] = None,
+                             after: Optional[str] = None, before: Optional[str] = None,
+                             validate: bool = False) -> Any:
         return AlertChainRule.create(self, name, alert_channel, destination, delay, admin_name,
                                              amount, notify_first_block, period, comment, add_pos,
                                              after, before, validate)
@@ -140,20 +151,20 @@ class AlertRuleCommon(object):
     """
 
     @property
-    def background_color(self):
+    def background_color(self) -> Optional[str]:
         """
         Background color in hexadecimal format (#RRGGBB).
         Applicable for rule section and insert point.
         """
         return self.data.get("background_color", None)
 
-    def is_locked(self):
+    def is_locked(self) -> Optional[Any]:
         """
         Locked flag for this rule.
         """
         return self.data.get("locked", None)
 
-    def lock(self, reason_for=None):
+    def lock(self, reason_for: Optional[str] = None) -> Any:
         """
         .. Requires SMC version >= 6.10.10 or >= 7.0.2 or >= 7.1.0
 
@@ -168,7 +179,7 @@ class AlertRuleCommon(object):
         else:
             return self.make_request(method="update", resource="lock")
 
-    def unlock(self):
+    def unlock(self) -> Any:
         """
         .. Requires SMC version >= 6.10.10 or >= 7.0.2 or >= 7.1.0
 
@@ -186,8 +197,10 @@ class AlertChainRule(AlertRuleCommon, SubElement):
     typeof = "alert_chain_rule"
 
     @staticmethod
-    def create_rule_section(self, rules_href, name, add_pos=None,
-                            after=None, before=None, background_color=None):
+    def create_rule_section(self: Any, rules_href: str, name: str,
+                            add_pos: Optional[int] = None,
+                            after: Optional[str] = None, before: Optional[str] = None,
+                            background_color: Optional[str] = None) -> Any:
         """
         Create an alert rule section in an Alert Chain or Alert Policy.
         To specify a specific numbering position for the rule section, use the `add_pos` field.
@@ -233,9 +246,12 @@ class AlertChainRule(AlertRuleCommon, SubElement):
         )
 
     @staticmethod
-    def create(self, name, alert_channel=None, destination=None, delay=0, admin_name=[],
-               amount=None, notify_first_block=0, period=0, comment=None, add_pos=None,
-               after=None, before=None, validate=False):
+    def create(self: Any, name: str, alert_channel: Optional[str] = None,
+               destination: Optional[str] = None, delay: int = 0, admin_name: list = [],
+               amount: Optional[int] = None, notify_first_block: int = 0, period: int = 0,
+               comment: Optional[str] = None, add_pos: Optional[int] = None,
+               after: Optional[str] = None, before: Optional[str] = None,
+               validate: bool = False) -> Any:
         """
         :param object self: object of AlertChain.
         :param str name: name of alert chain rule.
@@ -302,7 +318,9 @@ class AlertChainRule(AlertRuleCommon, SubElement):
         )
 
     @staticmethod
-    def set_up_positions(self, params, href, add_pos, after, before):
+    def set_up_positions(self: Any, params: dict, href: str,
+                         add_pos: Optional[int], after: Optional[str],
+                         before: Optional[str]) -> str:
         if add_pos is not None and is_smc_version_more_than_or_equal("7.1.9"):
             if add_pos <= 0:
                 add_pos = 1
@@ -330,7 +348,7 @@ class AlertPolicy(Element):
     typeof = "alert_policy"
 
     @classmethod
-    def create(cls, name, comment=None):
+    def create(cls, name: str, comment: Optional[str] = None) -> AlertPolicy:
         """
         Create the custom alert
         :param str name: name of alert policy
@@ -343,18 +361,23 @@ class AlertPolicy(Element):
         return ElementCreator(cls, json)
 
     @property
-    def alert_rules(self):
+    def alert_rules(self) -> list[Any]:
         return [AlertRule(**rule) for rule in self.make_request(resource="alert_rules")]
 
-    def add_rule_section(self, name, add_pos=None,
-                         after=None, before=None, background_color=None):
+    def add_rule_section(self, name: str, add_pos: Optional[int] = None,
+                         after: Optional[str] = None, before: Optional[str] = None,
+                         background_color: Optional[str] = None) -> Any:
         return AlertRule.create_rule_section(self, self.get_relation("alert_rules"), name,
                                                add_pos, after, before, background_color)
 
-    def add_alert_rule(self, name, alert_chain_ref=None, match_sender_ref=[],
-                       alert_and_situation_ref=[], min_severity=1, max_severity=10,
-                       rule_validity_times=[], comment=None, add_pos=None,
-                       after=None, before=None, validate=False):
+    def add_alert_rule(self, name: str, alert_chain_ref: Optional[Any] = None,
+                       match_sender_ref: list = [],
+                       alert_and_situation_ref: list = [], min_severity: int = 1,
+                       max_severity: int = 10,
+                       rule_validity_times: list = [], comment: Optional[str] = None,
+                       add_pos: Optional[int] = None,
+                       after: Optional[str] = None, before: Optional[str] = None,
+                       validate: bool = False) -> Any:
         """
         creation of the element of type alert_rule.
         :param object self: object of AlertPolicy.
@@ -395,8 +418,10 @@ class AlertRule(AlertRuleCommon, SubElement):
     typeof = "alert_rule"
 
     @staticmethod
-    def create_rule_section(self, rules_href, name, add_pos=None,
-                            after=None, before=None, background_color=None):
+    def create_rule_section(self: Any, rules_href: str, name: str,
+                            add_pos: Optional[int] = None,
+                            after: Optional[str] = None, before: Optional[str] = None,
+                            background_color: Optional[str] = None) -> Any:
         """
         Create an alert rule section in an Alert Chain or Alert Policy.
         To specify a specific numbering position for the rule section, use the `add_pos` field.
@@ -442,9 +467,12 @@ class AlertRule(AlertRuleCommon, SubElement):
         )
 
     @staticmethod
-    def create(self, name, alert_chain_ref=None, match_sender_ref=[], alert_and_situation_ref=[],
-               min_severity=1, max_severity=10, rule_validity_times=[], comment=None, add_pos=None,
-               after=None, before=None, validate=False):
+    def create(self: Any, name: str, alert_chain_ref: Optional[Any] = None,
+               match_sender_ref: list = [], alert_and_situation_ref: list = [],
+               min_severity: int = 1, max_severity: int = 10, rule_validity_times: list = [],
+               comment: Optional[str] = None, add_pos: Optional[int] = None,
+               after: Optional[str] = None, before: Optional[str] = None,
+               validate: bool = False) -> Any:
         """
         creation of the element of type alert_rule.
         :param object self: object of AlertPolicy.
@@ -506,7 +534,9 @@ class AlertRule(AlertRuleCommon, SubElement):
         )
 
     @staticmethod
-    def set_up_positions(self, params, href, add_pos, after, before):
+    def set_up_positions(self: Any, params: dict, href: str,
+                         add_pos: Optional[int], after: Optional[str],
+                         before: Optional[str]) -> str:
         if add_pos is not None and is_smc_version_more_than_or_equal("7.1.9"):
             if add_pos <= 0:
                 add_pos = 1
