@@ -29,6 +29,8 @@ column names in the Management Client monitoring views.
 
 """
 import copy
+from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Sequence, Type, TypeVar, Union
+
 from smc_monitoring.wsocket import SMCSocketProtocol
 from smc_monitoring.models.filters import (
     TranslatedFilter,
@@ -36,10 +38,16 @@ from smc_monitoring.models.filters import (
     AndFilter,
     OrFilter,
     NotFilter,
-    DefinedFilter, ExistingFilter,
+    DefinedFilter, ExistingFilter, QueryFilter,
 )
-from smc_monitoring.models.formats import TextFormat, DetailedFormat
+from smc_monitoring.models.formats import TextFormat, DetailedFormat, FormatFieldMixin, CombinedFormat
 from smc_monitoring.models.formatters import TableFormat
+
+if TYPE_CHECKING:
+    from smc.base.model import Element
+    from smc_monitoring.models.values import Value
+
+QueryType = TypeVar("QueryType", bound="Query")
 
 
 class Query(object):
@@ -54,7 +62,12 @@ class Query(object):
     :ivar TextFormat format: format settings for query
     """
 
-    def __init__(self, definition=None, target=None, format=None, **sockopt):  # @ReservedAssignment
+    location: str
+    field_ids: List[int]
+
+    def __init__(self, definition: Optional[str] = None, target: Optional[str] = None,
+                 format: Optional[Union[FormatFieldMixin, CombinedFormat]] = None,  # @ReservedAssignment
+                 **sockopt: Any) -> None:
         """
         Create a query.
 
@@ -64,13 +77,13 @@ class Query(object):
             This identifies the engine/cluster to run the query against.
         :param format: optional format from :py:mod:`smc_monitoring.monitors`
         """
-        self.request = {
+        self.request: Dict[str, Any] = {
             "query": {},
             "fetch": {},
             "format": {"type": "texts", "field_format": "pretty"},
         }
 
-        self.format = format if format is not None else TextFormat()
+        self.format: Any = format if format is not None else TextFormat()
         self.request.update(format=self.format.data)
 
         if target is not None:
@@ -81,13 +94,13 @@ class Query(object):
 
         self.sockopt = sockopt if sockopt else {}  # Optional socket options
 
-    def copy(self):
+    def copy(self: QueryType) -> QueryType:
         return copy.deepcopy(self)
 
-    def update_query(self, **kw):
+    def update_query(self, **kw: Any) -> None:
         self.request["query"].update(**kw)
 
-    def update_format(self, format):
+    def update_format(self, format: Union[FormatFieldMixin, CombinedFormat]) -> None:
         """
         Update the format for this query.
 
@@ -97,7 +110,7 @@ class Query(object):
         self.format = format
         self.request.update(format=self.format.data)
 
-    def update_filter(self, filt):
+    def update_filter(self, filt: QueryFilter) -> None:
         """
         Update the query with a new filter.
 
@@ -106,7 +119,7 @@ class Query(object):
         """
         self.update_query(filter=filt.filter)
 
-    def add_translated_filter(self):
+    def add_translated_filter(self) -> TranslatedFilter:
         """
         Add a translated filter to the query. A translated filter syntax
         uses the SMC expression syntax to build the filter. The simplest way to
@@ -133,7 +146,7 @@ class Query(object):
         self.update_filter(filt)
         return filt
 
-    def add_existing_filter(self, *values):
+    def add_existing_filter(self, *values: 'Element') -> ExistingFilter:
         """
         Add existing reference to an existing filter expression in monitoring filter.
         >>> query = LogQuery(fetch_size=10)
@@ -145,7 +158,7 @@ class Query(object):
         self.update_filter(filt)
         return filt
 
-    def add_in_filter(self, *values):
+    def add_in_filter(self, *values: Any) -> InFilter:
         """
         Add a filter using "IN" logic. This is typically the primary filter
         that will be used to find a match and generally combines other
@@ -163,7 +176,7 @@ class Query(object):
         self.update_filter(filt)
         return filt
 
-    def add_and_filter(self, *values):
+    def add_and_filter(self, *values: Sequence[QueryFilter]) -> AndFilter:
         """
         Add a filter using "AND" logic. This filter is useful when requiring
         multiple matches to evaluate to true. For example, searching for
@@ -181,7 +194,7 @@ class Query(object):
         self.update_filter(filt)
         return filt
 
-    def add_or_filter(self, *values):
+    def add_or_filter(self, *values: Sequence[QueryFilter]) -> OrFilter:
         """
         Add a filter using "OR" logic. This filter is useful when matching
         on one or more criteria. For example, searching for IP 1.1.1.1 and
@@ -200,7 +213,7 @@ class Query(object):
         self.update_filter(filt)
         return filt
 
-    def add_not_filter(self, *value):
+    def add_not_filter(self, *value: Sequence[QueryFilter]) -> NotFilter:
         """
         Add a filter using "NOT" logic. Typically this filter is used in
         conjunction with and AND or OR filters, but can be used by itself
@@ -219,7 +232,7 @@ class Query(object):
         self.update_filter(filt)
         return filt
 
-    def add_defined_filter(self, *value):
+    def add_defined_filter(self, *value: 'Value') -> DefinedFilter:
         """
         Add a DefinedFilter expression to the query. This filter will be
         considered true if the :class:`smc.monitoring.values.Value` instance
@@ -237,7 +250,7 @@ class Query(object):
         return filt
 
     @staticmethod
-    def resolve_field_ids(ids, **kw):
+    def resolve_field_ids(ids: List[int], **kw: Any) -> List[Dict[str, Any]]:
         """
         Retrieve the log field details based on the LogField constant IDs.
         This provides a helper to view the fields representation when using
@@ -265,7 +278,7 @@ class Query(object):
                 return fields["fields"]
         return []
 
-    def _get_field_schema(self):
+    def _get_field_schema(self) -> Optional[List[Dict[str, Any]]]:
         """
         Get a list of all of the default fields for this query type.
         If data is available in the monitor type, a list of field definitions
@@ -279,8 +292,9 @@ class Query(object):
         for fields in self.execute():
             if "fields" in fields:
                 return fields["fields"]
+        return None
 
-    def execute(self):
+    def execute(self) -> Iterator[Dict[str, Any]]:
         """
         Execute the query with optional timeout. The response to the execute
         query is the raw payload received from the websocket and will contain
@@ -298,11 +312,12 @@ class Query(object):
             for result in protocol.receive():
                 yield result
 
-    def get_record(self, results):
+    def get_record(self, results: Dict[str, Any]) -> Optional[List[Dict[str, Any]]]:
         if "records" in results and results["records"].get("added"):
             return results["records"]["added"]
+        return None
 
-    def fetch_raw(self, **kw):
+    def fetch_raw(self, **kw: Any) -> Iterator[List[Dict[str, Any]]]:
         """
         Fetch the records for this query. This fetch type will return the
         results in raw dict format. It is possible to limit the number of
@@ -328,7 +343,7 @@ class Query(object):
                 if "records" in result and result["records"].get("added"):
                     yield result["records"]["added"]
 
-    def fetch_batch(self, formatter=TableFormat, **kw):
+    def fetch_batch(self, formatter: Type[Any] = TableFormat, **kw: Any) -> Iterator[Any]:
         """
         Fetch and return in the specified format. Output format is a formatter
         class in :py:mod:`smc_monitoring.models.formatters`. This fetch type will
@@ -354,7 +369,7 @@ class Query(object):
         for result in self.fetch_raw(**kw):
             yield fmt.formatted(result)
 
-    def fetch_live(self, formatter=TableFormat):
+    def fetch_live(self, formatter: Type[Any] = TableFormat) -> Iterator[Any]:
         """
         Fetch a live stream query. This is the equivalent of selecting
         the "Play" option for monitoring fields within the Management Client.
@@ -369,7 +384,7 @@ class Query(object):
             if "records" in results and results["records"].get("added"):
                 yield fmt.formatted(results["records"]["added"])
 
-    def fetch_as_element(self):
+    def fetch_as_element(self) -> Iterator[Any]:
         """
         Each inheriting class will override this method if supported.
         """

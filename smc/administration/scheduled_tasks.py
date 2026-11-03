@@ -99,9 +99,12 @@ date::
     for obtaining millisecond times for scheduled tasks.
 """
 from __future__ import annotations
-from typing import Any, Optional, Union, Iterator
+from typing import Any, Optional, Union, Iterator, TYPE_CHECKING, cast, Callable
 
 from smc.base.model import Element, SubElement, ElementCreator, ElementRef
+
+if TYPE_CHECKING:
+    from smc.base.model import ElementCache
 from smc.api.exceptions import ActionCommandFailed, UnsupportedEngineFeature, InvalidEngineNode
 from smc.administration.tasks import Task
 from smc.base.structs import NestedDict
@@ -338,6 +341,10 @@ class ScheduledTaskMixin(object):
     Actions common to all scheduled tasks.
     """
 
+    if TYPE_CHECKING:
+        data: ElementCache
+        make_request: Callable[..., Any]
+
     def start(self) -> Task:
         """
         Start the scheduled task now. Task can then be tracked by
@@ -430,7 +437,7 @@ class ScheduledTaskMixin(object):
         :return: list of Elements
         :rtype: list
         """
-        return [Element.from_href(href) for href in self.data.get("resources")]
+        return [Element.from_href(href) for href in cast(list, self.data.get("resources"))]
 
 
 class RefreshPolicyTask(ScheduledTaskMixin, Element):

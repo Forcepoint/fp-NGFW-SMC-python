@@ -10,7 +10,7 @@
 #  License for the specific language governing permissions and limitations
 #  under the License.
 from __future__ import annotations
-from typing import Any, Optional, Union, Iterator
+from typing import Any, Optional, Union, Iterator, cast
 
 from smc.policy.rule import Rule, RuleCommon
 from smc.base.model import Element, SubElement, ElementCreator
@@ -65,7 +65,7 @@ class NATRule(Rule):
         """
         original_value = source_or_dest.all_as_href()
         if original_value:
-            nat_element = None
+            nat_element: Optional[NATElement] = None
             if "src" in source_or_dest.typeof and self.static_src_nat.has_nat:
                 nat_element = self.static_src_nat
             elif "dst" in source_or_dest.typeof and self.static_dst_nat.has_nat:
@@ -122,7 +122,7 @@ class NATRule(Rule):
                     static_dst_nat_automatic_proxy: Optional[bool] = None
                     ) -> dict[str, Any]:
         if dynamic_src_nat:
-            nat = DynamicSourceNAT()
+            nat: Union[DynamicSourceNAT, StaticSourceNAT, StaticDestNAT] = DynamicSourceNAT()
             start_port, end_port = dynamic_src_nat_ports
             nat.update_field(dynamic_src_nat, start_port=start_port, end_port=end_port)
             nat.automatic_proxy = dynamic_src_nat_automatic_proxy
@@ -224,7 +224,8 @@ class NATRule(Rule):
 
         if not validate:
             rule_values.update(params={"validate": False})
-        result = super(Rule, self).update(PolicyCommandFailed, **rule_values)
+        result = super(Rule, self).update(  # type: ignore[misc]  # mixin, resolved on SubElement
+            PolicyCommandFailed, **rule_values)
         try:
             del self._cache
         except AttributeError:
@@ -251,7 +252,7 @@ class NATValue(NestedDict):
     @property
     def as_element(self) -> Any:
         if "element" in self:
-            return Element.from_href(self.get("element"))
+            return Element.from_href(cast(str, self.get("element")))
 
     def _update_field(self, natvalue: NATValue) -> bool:
         """
@@ -397,7 +398,7 @@ class NATElement(NestedDict):
         return {"translated_value": src_dict}
 
     @property
-    def translated_value(self) -> Optional[NATValue]:
+    def translated_value(self) -> Optional[NATValue]:  # type: ignore[return]  # implicit None
         """
         The translated value for this NAT type. If this rule
         does not have a NAT value defined, this will return
@@ -511,7 +512,8 @@ class StaticDestNAT(NATElement):
                 updated = True
 
             if original_port:
-                if self.original_value._update_field(NATValue(_extract_ports(original_port))):
+                if cast(NATValue, self.original_value)._update_field(
+                        NATValue(_extract_ports(original_port))):
                     updated = True
 
         if automatic_proxy is not None and self.automatic_proxy != automatic_proxy:
@@ -521,7 +523,7 @@ class StaticDestNAT(NATElement):
         return updated
 
     @property
-    def original_value(self) -> Optional[NATValue]:
+    def original_value(self) -> Optional[NATValue]:  # type: ignore[return]  # implicit None
         if self.typeof in self:
             return NATValue(self.get(self.typeof, {}).get("original_value"))
 
@@ -540,30 +542,30 @@ class DynamicSourceNAT(NATElement):
         pass
 
     @property
-    def start_port(self) -> Optional[int]:
+    def start_port(self) -> Optional[int]:  # type: ignore[return]  # implicit None
         """
         Start port for dynamic source NAT (PAT)
 
         :rtype: int
         """
         if self.has_nat:
-            return self.translated_value.min_port
+            return cast(NATValue, self.translated_value).min_port
 
     @property
-    def end_port(self) -> Optional[int]:
+    def end_port(self) -> Optional[int]:  # type: ignore[return]  # implicit None
         """
         Ending port specified for outbound dynamic source NAT (PAT)
 
         :rtype: int
         """
         if self.has_nat:
-            return self.translated_value.max_port
+            return cast(NATValue, self.translated_value).max_port
 
     def _translated_value(self, src_dict: dict[str, Any]) -> dict[str, Any]:
         return {"translation_values": [src_dict]}
 
     @property
-    def translated_value(self) -> Optional[NATValue]:
+    def translated_value(self) -> Optional[NATValue]:  # type: ignore[return]  # implicit None
         """
         The translated value for this NAT type. If this rule
         does not have a NAT value defined, this will return
@@ -611,7 +613,7 @@ def _extract_ports(port_string: Any) -> dict[str, Any]:
     return {"min_port": _ports, "max_port": _ports}
 
 
-class IPv4NATRule(RuleCommon, NATRule, SubElement):
+class IPv4NATRule(RuleCommon, NATRule, SubElement):  # type: ignore[misc]  # NATRule.update differs
     """
     Create NAT Rules for relevant policy types. Rule requirements are
     similar to a normal rule with exception of the NAT field and no action
@@ -758,7 +760,7 @@ class IPv4NATRule(RuleCommon, NATRule, SubElement):
         if "options" not in rule_values:  # No NAT
             rule_values.update(options=LogOptions())
 
-        params = {"validate": False} if not validate else {}
+        params: dict[str, Any] = {"validate": False} if not validate else {}
 
         href = self.href
         if add_pos is not None:
@@ -770,7 +772,8 @@ class IPv4NATRule(RuleCommon, NATRule, SubElement):
             params.update(insert_point=insert_point)
 
         return ElementCreator(
-            self.__class__, exception=CreateRuleFailed, href=href, params=params, json=rule_values
+            cast(Any, self.__class__), exception=CreateRuleFailed, href=href, params=params,
+            json=rule_values
         )
 
 

@@ -34,6 +34,8 @@ Execute query and return as a :class:`.User` element::
 
 """
 
+from typing import Any, Iterator, Optional
+
 from smc_monitoring.models.query import Query
 from smc_monitoring.models.constants import LogField
 from smc_monitoring.models.formats import TextFormat
@@ -60,10 +62,10 @@ class UserQuery(Query):
         LogField.IDSERVICE,
     ]
 
-    def __init__(self, target, **kw):
+    def __init__(self, target: str, **kw: Any) -> None:
         super(UserQuery, self).__init__("USERS", target, **kw)
 
-    def fetch_as_element(self, **kw):
+    def fetch_as_element(self, **kw: Any) -> Iterator["User"]:
         """
         Fetch the results and return as a User element. The original
         query is not modified.
@@ -96,11 +98,11 @@ class User(object):
     :meth:`~UserQuery.fetch_as_element`.
     """
 
-    def __init__(self, **data):
+    def __init__(self, **data: Any) -> None:
         self.user = data
 
     @property
-    def first_fetch(self):
+    def first_fetch(self) -> Optional[bool]:
         """
         first fetch
         True means entry is part of initial data at first fetch
@@ -110,7 +112,7 @@ class User(object):
         return self.user.get("first_fetch")
 
     @property
-    def timestamp(self):
+    def timestamp(self) -> Optional[str]:
         """
         Timestamp of this connection. It is recommended to set the timezone
         on the query to view this timestamp in the systems local time.
@@ -124,7 +126,7 @@ class User(object):
         return self.user.get(str(LogField.TIMESTAMP))
 
     @property
-    def engine(self):
+    def engine(self) -> Optional[str]:
         """
         The engine/cluster for this state table entry
 
@@ -134,7 +136,7 @@ class User(object):
         return self.user.get(str(LogField.NODEID))
 
     @property
-    def username(self):
+    def username(self) -> Optional[str]:
         """
         Username for entry
 
@@ -144,7 +146,7 @@ class User(object):
         return self.user.get(str(LogField.USERNAME))
 
     @property
-    def ipaddress(self):
+    def ipaddress(self) -> Optional[str]:
         """
         IP address for the entry
 
@@ -153,7 +155,7 @@ class User(object):
         return self.user.get(str(LogField.SRC))
 
     @property
-    def domain(self):
+    def domain(self) -> Optional[str]:
         """
         SMC Domain that this user record belongs to
 
@@ -163,7 +165,7 @@ class User(object):
         return self.user.get(str(LogField.SENDERDOMAIN))
 
     @property
-    def expiration(self):
+    def expiration(self) -> Optional[str]:
         """
         Expiration time for this user entry. It is recommended to add
         a timezone to the query to display this field in the client local
@@ -174,9 +176,9 @@ class User(object):
         """
         return self.user.get(str(LogField.EXPIRATIONTIME))
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "{}(id={},ipaddress={},expiration={})".format(
             self.__class__.__name__, self.username, self.ipaddress, self.expiration)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)

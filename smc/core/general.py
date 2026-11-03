@@ -14,7 +14,7 @@ General configuration areas for an engine. This correlates to service level
 settings such as DNSRelay, SNMP, etc.
 """
 from __future__ import annotations
-from typing import Any, Optional, Union, Iterator
+from typing import Any, Optional, Union, Iterator, cast
 import collections
 from smc.base.model import Element
 from smc.base.util import element_resolver
@@ -170,7 +170,7 @@ class NTPSettings(object):
     def __init__(self, engine: Optional[Any] = None) -> None:
         self.engine = engine
         if engine is None:
-            self.data = {}
+            self.data: dict[str, Any] = {}
 
     @classmethod
     def create(cls, ntp_enable: bool, ntp_servers: list) -> "NTPSettings":
@@ -180,11 +180,17 @@ class NTPSettings(object):
         :param list(NTPServer) ntp_servers: define one or more NTP Servers.
         """
         list_ntp_server_href = [server.href for server in ntp_servers]
-        cls.data = {"ntp_settings": {
+        ntp_settings = cls()
+        ntp_settings.data = {"ntp_settings": {
                         "ntp_enable": ntp_enable,
                         "ntp_server_ref": list_ntp_server_href
                         }}
-        return cls
+        return ntp_settings
+
+    @property
+    def _settings(self) -> dict[str, Any]:
+        return self.engine.data.get("ntp_settings", {}) if self.engine is not None \
+            else self.data.get("ntp_settings", {})
 
     @property
     def ntp_enable(self) -> Optional[bool]:
@@ -193,8 +199,7 @@ class NTPSettings(object):
 
         :rtype: bool
         """
-        return self.engine.data["ntp_settings"].ntp_enable \
-            if self.engine is not None else self.data.get("ntp_enable")
+        return self._settings.get("ntp_enable")
 
     @property
     def ntp_servers(self) -> list[Any]:
@@ -203,9 +208,7 @@ class NTPSettings(object):
 
         :rtype: list(NTPServer)
         """
-        return [Element.from_href(ntp) for ntp in self.engine.data["ntp_settings"].ntp_server_ref] \
-            if self.engine is not None else \
-            [Element.from_href(ntp) for ntp in self.data["ntp_settings"].ntp_server_ref]
+        return [Element.from_href(ntp) for ntp in self._settings.get("ntp_server_ref", [])]
 
 
 class DNSRelay(object):
@@ -537,7 +540,7 @@ class Layer2Settings(NestedDict):
 
         :rtype: InterfacePolicy
         """
-        return InterfacePolicy.from_href(self.get("l2_interface_policy_ref"))
+        return InterfacePolicy.from_href(cast(str, self.get("l2_interface_policy_ref")))
 
     def __repr__(self) -> str:
         return "{0}(policy={1})".format(self.__class__.__name__, self.policy)

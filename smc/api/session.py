@@ -13,7 +13,7 @@
 Session module for tracking existing connection state to SMC
 """
 from __future__ import annotations
-from typing import Any, Optional, Union, Iterator
+from typing import Any, Collection, Optional, Union, Iterator, cast
 import copy
 import json
 import logging
@@ -93,7 +93,7 @@ class SessionManager(object):
     _session_hook = None
 
     def __init__(self, sessions: Optional[list] = None) -> None:
-        self._sessions = collections.OrderedDict()
+        self._sessions: collections.OrderedDict[Optional[str], Session] = collections.OrderedDict()
         sessions = sessions or []
         for session in sessions:
             self._register(session)
@@ -203,7 +203,7 @@ class SessionManager(object):
             self._sessions[admin_session].logout()
         self._sessions.clear()
 
-    def _get_session_key(self, session: Any) -> Optional[str]:
+    def _get_session_key(self, session: Any) -> Optional[str]:  # type: ignore[return]  # implicit None
         for name, _session in self._sessions.items():
             if _session == session:
                 return name
@@ -228,7 +228,7 @@ class SessionManager(object):
 
 class SSLAdapter(HTTPAdapter):
 
-    def init_poolmanager(self, connections: int, maxsize: int, block: bool = False) -> None:
+    def init_poolmanager(self, connections: int, maxsize: int, block: bool = False) -> None:  # type: ignore[override]  # no **pool_kwargs
         """
         :param maxsize:
         Number of connections to save that can be reused. More than 1 is useful
@@ -268,26 +268,26 @@ class Session(object):
     DEFAULT_POOL_MAXSIZE = requests.adapters.DEFAULT_POOLSIZE
 
     def __init__(self, manager: Optional[Any] = None) -> None:
-        self._params = {}  # Retrieved from login
-        self._session = None  # requests.Session
+        self._params: dict[str, Any] = {}  # Retrieved from login
+        self._session: Any = None  # requests.Session
 
         self._resource = None  # smc.api.entry_point.Resource
 
         self._manager = manager  # Session Manager that tracks this session
 
-        self._connpool = None  # default is 10 connections
+        self._connpool: Any = None  # default is 10 connections
 
-        self._connection = None  # the connection retrieved from the pool
+        self._connection: Any = None  # the connection retrieved from the pool
 
-        self._current_user = None
-        self._token = None  # Used un https to retrieve session on server
+        self._current_user: Any = None  # Element, or login name as fallback
+        self._token: Optional[str] = None  # Used un https to retrieve session on server
 
         # Transactions are supported in version 0.6.2 and beyond. When
         # run with atomic, this session parameter indicates whether the
         # operation in process is within an atomic block or not
         self.in_atomic_block = False
         # Transactions that are within the given atomic block
-        self.transactions = []
+        self.transactions: list[Any] = []
         smc.session_name = None
 
     @property
@@ -427,7 +427,7 @@ class Session(object):
 
         :rtype: str
         """
-        return "Shared Domain" if not self._params.get("domain") else self._params.get("domain")
+        return "Shared Domain" if not self._params.get("domain") else self._params.get("domain")  # type: ignore[return-value]  # truthy value checked
 
     @property
     def name(self) -> Any:
@@ -577,7 +577,7 @@ class Session(object):
                 "An attempt to log in occurred when a session already "
                 "exists, bypassing login for session: %s" % self
             )
-            return
+            return  # type: ignore[return-value]  # implicit None
 
         self._params = {k: v for k, v in params.items() if v is not None}
 
@@ -622,7 +622,7 @@ class Session(object):
             response = self._session.get(url=self.entry_points.get("current_user"), headers=headers)
             if response.status_code in (200, 201):
                 admin_href = response.json().get("value")
-                request = SMCRequest(href=admin_href)
+                request = SMCRequest(href=admin_href)  # type: ignore[assignment]  # reuses the auth dict name
                 smcresult = send_request(self, "get", request)
                 self._current_user = ElementFactory(admin_href, smcresult)
         except SMCOperationFailure:
@@ -645,18 +645,14 @@ class Session(object):
         """
         Build the authentication request to SMC
         """
-        json = {"domain": self.domain}
+        json: dict[str, Any] = {"domain": self.domain}
 
         credential = self.credential
-        params = {}
 
-        if credential.provider_name.startswith("lms"):
-            if self.domain:
-                params = dict(login=credential._login, pwd=credential._pwd, domain=self.domain)
-            else:
-                params = dict(login=credential._login, pwd=credential._pwd)
-        else:
+        if credential._api_key:
             json.update(authenticationkey=credential._api_key)
+        else:
+            json.update(login=credential._login, pwd=credential._pwd)
 
         if kwargs:
             json.update(**kwargs)
@@ -664,14 +660,30 @@ class Session(object):
             self._extra_args.update(**kwargs)
 
         request = dict(
-            url=self.credential.get_provider_entry_point(self.url, self.api_version),
+            url=self.credential.get_provider_entry_point(self.url, cast(str, self.api_version)),
             json=json,
-            params=params,
             headers={"content-type": "application/json"},
             verify=verify,
         )
 
         return request
+
+    def _build_legacy_auth_request(self, request: dict) -> dict:
+        """
+        Same login/pwd authentication, on the lms_login entry point with the
+        credentials as query parameters, for an SMC that rejects them in the
+        login body
+        """
+        legacy_json = dict(request["json"])
+        params = dict(login=legacy_json.pop("login"), pwd=legacy_json.pop("pwd"))
+        if self.domain:
+            params.update(domain=self.domain)
+        return dict(
+            request,
+            url=request["url"].rsplit("/", 1)[0] + "/lms_login",
+            json=legacy_json,
+            params=params,
+        )
 
     def _get_session(self, request: dict) -> Any:
         """
@@ -700,11 +712,25 @@ class Session(object):
             _session.mount("https://", ssladapter)
         else:
             _session = self.session
+            ssladapter = _session.get_adapter("https://")
 
         response = _session.post(**request)
+        credential = self.credential
+        if (
+            response.status_code == 400
+            and not credential._api_key
+            and credential._login
+            and credential._pwd
+        ):
+            # Only an SMC or API version predating login/pwd in the login body (SMC-56442)
+            # answers 400 to a complete login/pwd. Without lms_login (SMC-69274) the SMC answers
+            # 401 there, as an old one does to a bad password, so the 401 is kept as is
+            legacy_response = _session.post(**self._build_legacy_auth_request(request))
+            if legacy_response.status_code != 404:
+                response = legacy_response
         logger.info("Using SMC API version: %s", self.api_version)
         if not self._connpool:
-            self._connpool = ssladapter.get_connection(request.get("url"))
+            self._connpool = ssladapter.get_connection(cast(str, request.get("url")))
 
         if response.status_code != 200:
             raise SMCConnectionError(
@@ -733,6 +759,16 @@ class Session(object):
                 logger.info(
                     "Logged out admin: %s of domain: %s successfully", self.name, self.domain
                 )
+            elif r.status_code in (401, 404):
+                # Session was already invalidated server-side (timed out or
+                # already logged out) -- 404 is the documented response for
+                # this case, 401 can also be seen depending on where the
+                # session was rejected. Nothing left to do on the SMC, but
+                # still fall through to `finally` to clear local state.
+                logger.info(
+                    "Session for admin: %s of domain: %s was already expired on logout "
+                    "(HTTP %s)", self.name, self.domain, r.status_code
+                )
             else:
                 logger.error(
                     "Logout status was unexpected. Received response " "with status code: %s",
@@ -755,6 +791,35 @@ class Session(object):
                 pass
 
         logger.debug("Call counters: %s" % counters)
+
+    def refresh_token(self) -> str:
+        """
+        Request a new SMC API session token bound to the current session and
+        replace the stored one (SMC-67368). The SMC invalidates the previous
+        token, so every subsequent request transparently uses the new token.
+
+        This targets the ``system/refresh_token`` API service.
+
+        :raises SMCConnectionError: if there is no active session or the SMC
+            rejects the refresh (for instance when the current token has
+            already expired).
+        :return: the new token.
+        :rtype: str
+        """
+        if not self.session:
+            raise SMCConnectionError("No active session to refresh the token for.")
+        # The token must be sent explicitly: this bypasses send_request(), which is what normally
+        # injects the Authorization header on API calls. Without it the request is unauthenticated.
+        headers = {"Authorization": self._token} if self._token else {}
+        response = self.session.post(self.entry_points.get("refresh_token"), headers=headers)
+        if response.status_code != 200:
+            raise SMCConnectionError(
+                "Token refresh failed, HTTP status code: %s and reason: %s"
+                % (response.status_code, response.reason)
+            )
+        self._token = response.headers.get("Authorization")
+        logger.info("SMC API session token refreshed.")
+        return self._token
 
     def refresh(self) -> None:
         """
@@ -805,7 +870,7 @@ class Session(object):
             params.update(domain=domain)
             self.login(**params)
 
-    def set_retry_on_busy(self, total: int = 5, backoff_factor: float = 0.1, status_forcelist: Optional[list] = None, **kwargs: Any) -> None:
+    def set_retry_on_busy(self, total: int = 5, backoff_factor: float = 0.1, status_forcelist: Optional[Collection[int]] = None, **kwargs: Any) -> None:
         """
         Mount a custom retry object on the current session that allows service level
         retries when the SMC might reply with a Service Unavailable (503) message.
@@ -845,7 +910,7 @@ class Session(object):
         params.update(**kwargs)
         return params
 
-    def _get_log_schema(self) -> Optional[dict]:
+    def _get_log_schema(self) -> Optional[dict]:  # type: ignore[return]  # implicit None
         """
         Get the log schema for this SMC version.
 
@@ -864,14 +929,10 @@ class Session(object):
 
 class Credential(object):
     """
-    Provider for authenticating the user. LMS Login is a user created within
-    the SMC as a normal administrative account. Login is the standard way of
-    using an API client and key as password.
-    The key of the CredentialMap also indicates the entry point for which to
-    POST the authentication.
+    Provider for authenticating the user, either an API client with its key
+    or an administrator with its login and password. Both are POSTed to the
+    login entry point, in the JSON body.
     """
-
-    CredentialMap = {"lms_login": ("login", "pwd"), "login": ("api_key",)}
 
     def __init__(self, api_key: Optional[str] = None, login: Optional[str] = None, pwd: Optional[str] = None) -> None:
         self._api_key = api_key
@@ -880,7 +941,7 @@ class Credential(object):
 
     @property
     def provider_name(self) -> str:
-        return "login" if self._api_key else "lms_login"
+        return "login"
 
     def get_provider_entry_point(self, url: str, api_version: str) -> str:
         return "{url}/{api_version}/{provider_name}".format(
@@ -894,12 +955,8 @@ class Credential(object):
 
         :rtype: bool
         """
-        return all(
-            [
-                getattr(self, "_%s" % field, None) is not None
-                for field in self.CredentialMap.get(self.provider_name)
-            ]
-        )
+        fields = ("api_key",) if self._api_key else ("login", "pwd")
+        return all(getattr(self, "_%s" % field, None) is not None for field in fields)
 
 
 def load_entry_points(self: Any) -> None:

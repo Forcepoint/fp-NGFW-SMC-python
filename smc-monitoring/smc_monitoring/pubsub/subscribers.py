@@ -10,6 +10,8 @@
 #  License for the specific language governing permissions and limitations
 #  under the License.
 
+from typing import Any, Callable, Dict, Iterator, List, Optional, Union
+
 from smc.base.model import Element
 from smc_monitoring.wsocket import SMCSocketProtocol
 from smc.compat import is_api_version_less_than_or_equal
@@ -88,23 +90,23 @@ class Notification(object):
 
     location = "/notification/socket"
 
-    def __init__(self, request, **kw):
+    def __init__(self, request: str, **kw: Any) -> None:
         self.request = {"context": request}
-        self.subscriptions = []
-        self.subscription_map = {}
+        self.subscriptions: List[Notification] = []
+        self.subscription_map: Dict[str, Any] = {}
         self.sockopt = kw
 
-    def subscribe(self, entry_point):
+    def subscribe(self, entry_point: str) -> None:
         self.subscriptions.append(Notification(entry_point))
 
-    def run_forever(self):
+    def run_forever(self) -> Iterator[Dict[str, Any]]:
         with SMCSocketProtocol(self, **self.sockopt) as sock:
             for subscription in self.subscriptions:
                 sock.send_message(subscription)
             for result in sock.receive():
                 yield result
 
-    def notify(self, as_type=None):
+    def notify(self, as_type: Optional[Callable[..., Any]] = None) -> Iterator[Any]:
         for result in self.run_forever():
             if "success" in result:
                 self.subscription_map.update(
@@ -141,20 +143,20 @@ class Event(object):
     :ivar subscription_id: id mapping this event
     """
 
-    def __init__(self, type, element, **kw):
+    def __init__(self, type: str, element: str, **kw: Any) -> None:
         self.action = type
         self._element = element
         self.subscription_id = kw.pop("subscription_id", 0)
 
     @property
-    def element(self):
+    def element(self) -> Union[Element, str]:
         element = Element.from_href(self._element)
         if element:
             return element
         else:
             return self._element
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "%s(subscription_id=%s,action=%s,element=%s)" % (
             self.__class__.__name__,
             self.subscription_id,

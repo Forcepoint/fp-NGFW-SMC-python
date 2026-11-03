@@ -70,6 +70,9 @@ class DNSRule(object):
 
     __slots__ = "profile"
 
+    #: defined by each subclass
+    _attr: tuple[str, ...]
+
     def __init__(self, profile: Any) -> None:
         self.profile = profile
 
@@ -101,7 +104,7 @@ class FixedDomainAnswer(DNSRule):
 
     _attr = ("fixed_domain_answer", "domain_name", "translated_domain_name")
 
-    def add(self, answers: Any) -> None:
+    def add(self, answers: Any) -> None:  # type: ignore[override]  # parent add() is the shared helper
         """
         Add a fixed domain answer. This should be a list of
         two-tuples, the first entry is the domain name, and
@@ -131,7 +134,7 @@ class HostnameMapping(DNSRule):
 
     _attr = ("hostname_mapping", "hostnames", "ipaddress")
 
-    def add(self, answers: Any) -> None:
+    def add(self, answers: Any) -> None:  # type: ignore[override]  # parent add() is the shared helper
         """
         Map specific hostname to specified IP address. Provide a list
         of two-tuples. The first entry is the hostname/s to translate
@@ -158,7 +161,7 @@ class DomainSpecificDNSServer(DNSRule):
 
     _attr = ("domain_specific_dns_server", "domain_name", "dns_server_addresses")
 
-    def add(self, answers: Any) -> None:
+    def add(self, answers: Any) -> None:  # type: ignore[override]  # parent add() is the shared helper
         """
         Relay specific domains to a specified DNS server. Provide
         a list of two-tuple with first entry the domain name to relay
@@ -185,7 +188,7 @@ class DNSAnswerTranslation(DNSRule):
 
     _attr = ("dns_answer_translation", "original_ipaddress", "translated_ipaddress")
 
-    def add(self, answers: Any) -> None:
+    def add(self, answers: Any) -> None:  # type: ignore[override]  # parent add() is the shared helper
         """
         Takes an IPv4 address and translates to a specified IPv4 value.
         Provide a list of two-tuple with the first entry providing the

@@ -145,7 +145,7 @@ Create a no-encryption GRE route based VPN between two managed NGFWs::
 """
 from __future__ import annotations
 
-from typing import Any, Optional, Union, Iterator
+from typing import Any, Optional, Union, Iterator, cast
 
 from smc.base.model import Element, ElementCreator, ElementRef, SubElement
 from smc.base.collection import sub_collection
@@ -686,7 +686,7 @@ class RouteVPN(Element):
         return sub_collection(self.get_relation("gateway_endpoint_tunnel"), EndpointTunnel)
 
     @property
-    def ppk(self) -> Optional[Any]:
+    def ppk(self) -> Optional[Any]:  # type: ignore[return]  # implicit None
         """
         Get the ppk for this RBVPN
 
@@ -768,10 +768,10 @@ class TunnelEndpoint(object):
         """
         if self.endpoint_ref and self.tunnel_interface_ref:
             return InternalEndpoint(href=self.endpoint_ref)
-        return Element.from_href(self.endpoint_ref)
+        return Element.from_href(cast(str, self.endpoint_ref))
 
     @property
-    def tunnel_interface(self) -> Optional[Any]:
+    def tunnel_interface(self) -> Optional[Any]:  # type: ignore[return]  # implicit None
         """
         Show the tunnel interface for this TunnelEndpoint.
 

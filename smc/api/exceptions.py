@@ -78,7 +78,7 @@ class SMCOperationFailure(SMCException):
 
     def __init__(self, response: Optional[Any] = None) -> None:
         # Response is type <class 'requests.models.Response'>
-        self.response = response
+        self.response: Any = response
         self.code = None
         self.smcresult = smc.api.web.SMCResult()
         if response is not None:

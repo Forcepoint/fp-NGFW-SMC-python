@@ -39,6 +39,8 @@ Delete a VPN SA::
 .. seealso:: :class:`smc_monitoring.models.filters` for more information on creating filters
 
 """
+from typing import Any, Iterator, Optional
+
 from smc_monitoring.models.query import Query
 from smc_monitoring.models.constants import LogField
 from smc.base.model import prepared_request
@@ -76,10 +78,10 @@ class VPNSAQuery(Query):
         LogField.EXPIRATIONTIME,
     ]
 
-    def __init__(self, target, **kw):
+    def __init__(self, target: str, **kw: Any) -> None:
         super(VPNSAQuery, self).__init__("VPN_SA", target, **kw)
 
-    def fetch_as_element(self, **kw):
+    def fetch_as_element(self, **kw: Any) -> Iterator["VPNSecurityAssoc"]:
         """
         Fetch the results and return as a VPNSecurityAssoc element.
         The original query is not modified.
@@ -112,11 +114,11 @@ class VPNSecurityAssoc(object):
     using :meth:`~VPNSAQuery.fetch_as_element`.
     """
 
-    def __init__(self, **data):
+    def __init__(self, **data: Any) -> None:
         self.vpn = data
 
     @property
-    def first_fetch(self):
+    def first_fetch(self) -> Optional[bool]:
         """
         first fetch
         True means entry is part of initial data at first fetch
@@ -126,14 +128,14 @@ class VPNSecurityAssoc(object):
         return self.vpn.get("first_fetch")
 
     @property
-    def href(self):
+    def href(self) -> Optional[str]:
         return self.vpn.get("vpn_sa_href")
 
-    def delete(self):
+    def delete(self) -> None:
         return prepared_request(DeleteElementFailed, href=self.href).delete()
 
     @property
-    def timestamp(self):
+    def timestamp(self) -> Optional[str]:
         """
         Timestamp of this connection. It is recommended to set the timezone
         on the query to view this timestamp in the systems local time.
@@ -146,7 +148,7 @@ class VPNSecurityAssoc(object):
         return self.vpn.get(str(LogField.TIMESTAMP))
 
     @property
-    def engine(self):
+    def engine(self) -> Optional[str]:
         """
         The engine/cluster for this VPN
 
@@ -155,7 +157,7 @@ class VPNSecurityAssoc(object):
         return self.vpn.get(str(LogField.NODEID))
 
     @property
-    def local_gateway(self):
+    def local_gateway(self) -> Optional[str]:
         """
         Local gateway for this VPN.
 
@@ -164,7 +166,7 @@ class VPNSecurityAssoc(object):
         return self.vpn.get(str(LogField.SECURITYGATEWAY))
 
     @property
-    def peer_gateway(self):
+    def peer_gateway(self) -> Optional[str]:
         """
         Peer gateway for this VPN.
 
@@ -173,7 +175,7 @@ class VPNSecurityAssoc(object):
         return self.vpn.get(str(LogField.PEERSECURITYGATEWAY))
 
     @property
-    def local_endpoint(self):
+    def local_endpoint(self) -> Optional[str]:
         """
         Local endpoint (IP address) for this VPN tunnel.
 
@@ -182,7 +184,7 @@ class VPNSecurityAssoc(object):
         return self.vpn.get(str(LogField.ENDPOINT))
 
     @property
-    def peer_endpoint(self):
+    def peer_endpoint(self) -> Optional[str]:
         """
         Peer endpoint element and IP Address for this tunnel.
 
@@ -191,7 +193,7 @@ class VPNSecurityAssoc(object):
         return self.vpn.get(str(LogField.PEERENDPOINT))
 
     @property
-    def local_networks(self):
+    def local_networks(self) -> Optional[str]:
         """
         Local protected networks
 
@@ -200,7 +202,7 @@ class VPNSecurityAssoc(object):
         return self.vpn.get(str(LogField.SRCADDRS))
 
     @property
-    def peer_networks(self):
+    def peer_networks(self) -> Optional[str]:
         """
         Remote protected networks
 
@@ -209,11 +211,11 @@ class VPNSecurityAssoc(object):
         return self.vpn.get(str(LogField.DSTADDRS))
 
     @property
-    def vpn_id(self):
+    def vpn_id(self) -> Optional[str]:
         return self.vpn.get(str(LogField.VPNID))
 
     @property
-    def sa_type(self):
+    def sa_type(self) -> Optional[str]:
         """
         SA Type for this VPN tunnel. Each VPN tunnel will typically have
         at least two entries, one for IPSEC and another for IKE.
@@ -223,7 +225,7 @@ class VPNSecurityAssoc(object):
         return self.vpn.get(str(LogField.SACLASS))
 
     @property
-    def protocol(self):
+    def protocol(self) -> Optional[str]:
         """
         WHich protocol is associated with this tunnel entry.
 
@@ -233,7 +235,7 @@ class VPNSecurityAssoc(object):
         return self.vpn.get(str(LogField.PROTOCOL))
 
     @property
-    def negotiation_role(self):
+    def negotiation_role(self) -> Optional[str]:
         """
         Role for this tunnel entry.
 
@@ -243,7 +245,7 @@ class VPNSecurityAssoc(object):
         return self.vpn.get(str(LogField.NEGOTIATIONROLE))
 
     @property
-    def bytes_sent(self):
+    def bytes_sent(self) -> int:
         """
         Number of bytes sent.
 
@@ -252,7 +254,7 @@ class VPNSecurityAssoc(object):
         return int(self.vpn.get(str(LogField.NUMBYTESSENT), 0))
 
     @property
-    def bytes_received(self):
+    def bytes_received(self) -> int:
         """
         Number of bytes received.
 
@@ -261,7 +263,7 @@ class VPNSecurityAssoc(object):
         return int(self.vpn.get(str(LogField.NUMBYTESRECEIVED), 0))
 
     @property
-    def expiration(self):
+    def expiration(self) -> Optional[str]:
         """
         Expiration time for this tunnel Security Association
 
@@ -269,7 +271,7 @@ class VPNSecurityAssoc(object):
         """
         return self.vpn.get(str(LogField.EXPIRATIONTIME))
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "{}(local={},peer={},localip={},peerip={},satype={})".format(
             self.__class__.__name__,
             self.local_gateway,
@@ -279,5 +281,5 @@ class VPNSecurityAssoc(object):
             self.sa_type,
         )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)

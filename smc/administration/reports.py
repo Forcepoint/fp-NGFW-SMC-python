@@ -237,7 +237,7 @@ class Report(Element):
             headers={"accept": "application/pdf"},
         )
 
-    def export_text(self, filename: Optional[str] = None) -> Optional[Any]:
+    def export_text(self, filename: Optional[str] = None) -> Optional[Any]:  # type: ignore[return]  # implicit None
         """
         Export in text format. Optionally provide a filename to
         save to.

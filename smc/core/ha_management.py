@@ -38,7 +38,7 @@ To get the HA Diagnostics, do::
 """
 from __future__ import annotations
 
-from typing import Any, Optional, Union, Iterator
+from typing import Any, Optional, Union, Iterator, cast
 import time
 
 from smc.api.common import fetch_entry_point, SMCRequest, _get_session
@@ -62,11 +62,11 @@ class HAInfo(NestedDict):
         :return: Connected server
         :rtype: Server
         """
-        return Element.from_href(self.data.get("connected_server"))
+        return Element.from_href(cast(str, self.data.get("connected_server")))
 
     @connected_server.setter
     def connected_server(self, value: Any) -> None:
-        self.data.set("connected_server", value)
+        self.data["connected_server"] = value
 
     @property
     def active_server(self) -> Any:
@@ -74,11 +74,11 @@ class HAInfo(NestedDict):
         :return: Active server
         :rtype: Server
         """
-        return Element.from_href(self.data.get("active_server"))
+        return Element.from_href(cast(str, self.data.get("active_server")))
 
     @active_server.setter
     def active_server(self, value: Any) -> None:
-        self.data.set("active_server", value)
+        self.data["active_server"] = value
 
     @property
     def standby_servers(self) -> list[Any]:
@@ -87,12 +87,12 @@ class HAInfo(NestedDict):
         :rtype: list(Server)
         """
         if self.data.get("standby_servers"):
-            return [Element.from_href(server) for server in self.data.get("standby_servers")]
+            return [Element.from_href(server) for server in cast(list, self.data.get("standby_servers"))]
         return []
 
     @standby_servers.setter
     def standby_servers(self, values: Any) -> None:
-        self.data.set("standby_servers", values)
+        self.data["standby_servers"] = values
 
     def __str__(self) -> str:
         lst_stdby = ""
@@ -120,7 +120,7 @@ class InfoBlock(NestedDict):
 
     @title.setter
     def title(self, value: Any) -> None:
-        self.data.set("title", value)
+        self.data["title"] = value
 
     @property
     def message(self) -> Optional[Any]:
@@ -132,7 +132,7 @@ class InfoBlock(NestedDict):
 
     @message.setter
     def message(self, value: Any) -> None:
-        self.data.set("message", value)
+        self.data["message"] = value
 
 
 class HADiagnostic(NestedDict):
@@ -152,7 +152,7 @@ class HADiagnostic(NestedDict):
 
     @status.setter
     def status(self, value: Any) -> None:
-        self.data.set("status", value)
+        self.data["status"] = value
 
     @property
     def execution_message(self) -> Optional[Any]:
@@ -164,7 +164,7 @@ class HADiagnostic(NestedDict):
 
     @execution_message.setter
     def execution_message(self, value: Any) -> None:
-        self.data.set("execution_message", value)
+        self.data["execution_message"] = value
 
     @property
     def errors_warnings(self) -> InfoBlock:
@@ -176,7 +176,7 @@ class HADiagnostic(NestedDict):
 
     @errors_warnings.setter
     def errors_warnings(self, value: Any) -> None:
-        self.data.set("errors_warnings", InfoBlock(value))
+        self.data["errors_warnings"] = InfoBlock(value)
 
     @property
     def durations(self) -> InfoBlock:
@@ -188,7 +188,7 @@ class HADiagnostic(NestedDict):
 
     @durations.setter
     def durations(self, value: Any) -> None:
-        self.data.set("durations", InfoBlock(value))
+        self.data["durations"] = InfoBlock(value)
 
     @property
     def message(self) -> list[Any]:
@@ -196,11 +196,11 @@ class HADiagnostic(NestedDict):
         :return: messages
         :rtype: list(InfoBlock)
         """
-        return [InfoBlock(message) for message in self.data.get("message")]
+        return [InfoBlock(message) for message in cast(list, self.data.get("message"))]
 
     @message.setter
     def message(self, value: Any) -> None:
-        self.data.set("message", [InfoBlock(message) for message in value])
+        self.data["message"] = [InfoBlock(message) for message in value]
 
 
 class HAManagement(object):
@@ -209,7 +209,7 @@ class HAManagement(object):
     """
 
     def __init__(self) -> None:
-        self.entry = fetch_entry_point("ha")
+        self.entry: str = cast(str, fetch_entry_point("ha"))
 
     @staticmethod
     def check_status(response: Any, valid_status_codes: Any = (200,)) -> None:
@@ -247,8 +247,9 @@ class HAManagement(object):
         with existing replication issues.
         If such a server is present, it must be excluded before using this method.
 
-        Therefore, this method must be called on the Standby Management Server to activate.
-        This method is available only for SMC ≥ 7.3.0.
+        This method must be called on the Standby Management Server to activate.
+        This method has been introduced for the native replication (SMC ≥ 7.3.0). It does work on
+        a legacy setup, but using it there is not coherent: use set_active instead.
 
         If the system state is considered suspicious, the activation request is rejected.
         In such cases, you must run database_replication_diagnostic on each server and act according to the reported state.
@@ -317,7 +318,8 @@ class HAManagement(object):
         If such a server is present, it must be excluded before using this method.
 
         Therefore, this method must be called on the Standby Management Server to activate.
-        This method is available only for SMC ≥ 7.3.0.
+        This method has been introduced for the native replication (SMC ≥ 7.3.0). It does work on
+        a legacy setup, but using it there is not coherent: use full_replication instead.
 
         If the system state is considered suspicious, the initialization request is rejected.
         In such cases, you must run database_replication_diagnostic on each server and act according to the reported state.
@@ -394,8 +396,12 @@ class HAManagement(object):
         """
         Launch activation of the specified management server or the connected management server
         if not specified. ( Since SMC 7.3, activation should be requested on target server to
-        activate, before SMC 7.3, activation was managed by the current active server unless
-        PostgreSQL native replication has been enabled ).
+        activate, before SMC 7.3, activation was managed by the current active server ).
+
+        Since SMC 7.3, this method is only an asynchronous request: once executed, the operation
+        is in progress with no means to follow it. Use set_activation instead for a synchronous
+        behaviour. On a legacy setup, the method was synchronous: once executed, the operation
+        was done.
 
         If system state is suspicious, activation will be rejected **unless force mode** is used.
         **For example:**
@@ -410,8 +416,7 @@ class HAManagement(object):
            (and also, if specified server is not accessible).
 
         WARNING: if force mode is used, system integrity is not guarantee.
-        :param Server server: the specified management server ( optional since SMC 7.3 or if
-        PostgreSQL native replication has been enabled ).
+        :param Server server: the specified management server ( optional since SMC 7.3 ).
         :param bool force: force mode, default False
         :return: the return data.
         :rtype: requests.Response
@@ -436,6 +441,12 @@ class HAManagement(object):
         if not specified
         (Note: the system may have no Active management server once applied.
          If SMC API is not enabled on standby server, SMC API may be not more available at all).
+
+        <b>Warning:</b> since SMC 7.3, calling this method is not recommended unless all standby
+        servers have been excluded from replication. Calling set_standby on a standby server may
+        break the system: the standby server must be excluded instead (see exclude).
+        Prior to SMC 7.3, no such limitation existed, but set_standby on a standby server did
+        nothing.
 
         Deactivation may be rejected if applied on active server and if it will stop the SMC API
         (API disabled on standby management server).
@@ -464,7 +475,11 @@ class HAManagement(object):
         """
         Launch full replication of the specified standby management server.
 
-        Full replication will be rejected if applied on active server
+        Since SMC 7.3, this call performs init_standby: refer to the init_standby documentation
+        for the applicable behaviour and constraints. This method remains the way to go for a
+        legacy setup.
+
+        On a legacy setup, full replication will be rejected if applied on active server
         or not requested through Active Server.
         :param Server server: the specified management server
         :param bool force: force mode, default False
@@ -487,6 +502,13 @@ class HAManagement(object):
 
         Exclusion will be rejected if applied on active server
         or not requested through Active Server.
+
+        The API entry point is the same for the legacy and the native replication systems, even
+        though the implementations differ completely.
+
+        <b>Note:</b> to be fully effective, the exclusion requires both servers to be up and
+        running. If the excluded server is down, the exclusion is still declared on the active
+        server, but the excluded server may not detect it properly on startup.
         :param Server server: the specified management server
         :param bool force: force mode, default False
         :return: the confirmation message.
@@ -548,6 +570,9 @@ class HAManagement(object):
         replication states in the high availability management servers.
 
         SMC API entry point for this method is only available for SMC 7.3.4+, 7.4.2+ or higher.
+        The version guard cannot enforce it: it compares the API version, which carries no patch
+        level. On an older 7.3.x or 7.4.x, the guard passes and the call fails, so the caller must
+        handle that failure.
 
         :return: Replication diagnostic information containing:
                  - active_server_state: Current state of the active server's database replication
@@ -586,7 +611,10 @@ class HAManagement(object):
         Provides information about the database replication state including server details,
         license validity, replication configuration, and active connections.
 
-        SMC API entry point for this method is only available for SMC 7.3 or higher.
+        SMC API entry point for this method is only available for SMC 7.3.4+, 7.4.2+ or higher.
+        The version guard cannot enforce it: it compares the API version, which carries no patch
+        level. On an older 7.3.x or 7.4.x, the guard passes and the call fails, so the caller must
+        handle that failure.
 
         :return: Database replication diagnostic information containing:
                  - server_name: Name of the server
@@ -635,6 +663,9 @@ class HAManagement(object):
 
         Provides information about the audit replication state including server details,
         replication status, and file counts.
+
+        Only the database moved to native PostgreSQL replication in SMC 7.3: audit replication
+        remains file-based.
 
         SMC API entry point for this method is only available for SMC 7.3 or higher.
 
@@ -712,3 +743,4 @@ class HAManagement(object):
             return response
         else:
             raise HaCommandException("This method is only available for SMC 7.3 or higher.")
+

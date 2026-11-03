@@ -75,7 +75,7 @@ class EcaClientConfig(Element):
 
         if filename is not None:
             save_to_file(filename, result.content)
-            return
+            return  # type: ignore[return-value]  # implicit None
 
         return result.content
 

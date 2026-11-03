@@ -11,7 +11,7 @@
 #  under the License.
 from __future__ import annotations
 
-from typing import Any, Optional, Union, Iterator
+from typing import Any, Optional, Union, Iterator, cast
 
 """
 Module that controls aspects of the System itself, such as updating dynamic
@@ -404,7 +404,7 @@ class System(SubElement):
             properties.append(prop)
         return properties
 
-    def update_system_property(self, system_key: Any, new_value: str, **kwargs) -> Any:
+    def update_system_property(self, system_key: Any, new_value: str, **kwargs: Any) -> Any:
         """
         Update the global system property from its system key (unique id integer)
         with:
@@ -418,6 +418,112 @@ class System(SubElement):
             new_ref=["https://192.0.2.2:8082/7.5/elements/tls_server_credentials/6"])
         """
         return self.system_property(system_key=system_key).update(value=new_value, **kwargs)
+
+    def configure_private_install_server(
+        self,
+        enabled: bool,
+        host_name: Optional[str] = None,
+        port: Optional[int] = None,
+        tls_credentials: Optional[Any] = None,
+        tls_cipher_suite: Optional[Any] = None,
+    ) -> Any:
+        """
+        Enable or disable the private Install Server and set its whole configuration in one
+        call, instead of one :func:`update_system_property` call per property.
+
+        Enabling validates every value -- including the cross-check between the advertised
+        hostname and the Subject Alternative Names of the TLS credentials -- before any of
+        them is persisted, so an invalid value cannot leave the others already applied.
+        Disabling resets the advertised hostname and the TLS configuration (credentials and
+        cipher suite) and keeps the port.
+
+            system = System()
+            system.configure_private_install_server(
+                True,
+                host_name="install.example.com",
+                port=8086,
+                tls_credentials=TLSServerCredential("install.example.com"),
+                tls_cipher_suite=TLSCryptographySuite("NIST (SP 800-52 Rev2) Compatible SuiteSet"))
+            system.configure_private_install_server(False)
+
+        :param bool enabled: True to enable the private Install Server with the given
+            configuration, False to disable and reset it. The other arguments are ignored
+            when disabling.
+        :param str host_name: hostname or IP address advertised to the engines, mandatory
+            when enabling.
+        :param int port: TCP port the private Install Server listens on, mandatory when
+            enabling.
+        :param TLSServerCredential tls_credentials: TLS server credentials, or their href.
+            Omit for plain (non-TLS) mode.
+        :param TLSCryptographySuite tls_cipher_suite: TLS cryptography suite set, or its
+            href. Mandatory when tls_credentials is given.
+        :raises UnsupportedEntryPoint: the SMC is older than 7.6.0.
+        :raises ActionCommandFailed: the configuration is invalid or could not be applied.
+        :return: None
+        """
+        if is_smc_version_less_than("7.6.0"):
+            raise UnsupportedEntryPoint("Need at least 7.6.0 version of the SMC")
+        json: dict[str, Any] = {"enabled": enabled}
+        if enabled:
+            json.update(host_name=host_name, port=port)
+            if tls_credentials is not None:
+                json.update(tls_credentials_ref=element_resolver(tls_credentials))
+            if tls_cipher_suite is not None:
+                json.update(tls_cipher_suite_ref=element_resolver(tls_cipher_suite))
+        return self.make_request(
+            ActionCommandFailed,
+            method="create",
+            resource="configure_private_install_server",
+            json=json,
+        )
+
+    def common_engine_properties(
+        self,
+        engines: list[Any],
+        unset: Optional[list[str]] = None,
+        **properties: Any,
+    ) -> None:
+        """
+        Set the same properties on a whole list of engines at once, the way the Common Engine
+        Properties dialog does, instead of editing each engine in turn.
+
+        This is a partial update: a property that is absent, or None, is left as it is on every
+        engine. Name a property in ``unset`` to reset it to no value. A property the listed
+        engines do not all have, or a value out of its limits, fails the whole call.
+
+            system = System()
+            system.common_engine_properties(
+                [Engine("Plano"), Engine("Santa Clara")],
+                comment="Set by the common engine properties API",
+                boot_delay=42,
+                location_ref=Location("Helsinki"))
+            system.common_engine_properties([Engine("Plano")], unset=["location_ref"])
+
+        :param list engines: the engines to change, as Element instances or hrefs. At least
+            one is required.
+        :param list unset: names of the properties to reset to no value, for example
+            ["tools_profile_ref"]. A property named here must not also carry a value.
+        :param properties: the properties to set, by their SMC API name -- comment,
+            boot_delay, cluster_mode, ... A property whose name ends in "_ref" takes an
+            Element or its href.
+        :raises UnsupportedEntryPoint: the SMC is older than 7.6.0.
+        :raises ActionCommandFailed: the payload names no engine, carries a property the
+            listed engines do not all have, or a value the engines refuse.
+        :return: None
+        """
+        if is_smc_version_less_than("7.6.0"):
+            raise UnsupportedEntryPoint("Need at least 7.6.0 version of the SMC")
+        json: dict[str, Any] = {"resource": element_resolver(engines)}
+        if unset:
+            json.update(unset=unset)
+        for name, value in properties.items():
+            json[name] = element_resolver(value) if name.endswith("_ref") else value
+        self.make_request(
+            ActionCommandFailed,
+            method="create",
+            resource="common_engine_properties",
+            json=json,
+        )
 
     @property
     def uncommitted(self) -> Any:
@@ -781,7 +887,7 @@ class System(SubElement):
         :raises: ActionCommandFailed
         :return: None
         """
-        params = {
+        params: dict[str, Any] = {
             "import_only_new": import_only_new,
             "restoration": restoration
         }
@@ -882,24 +988,27 @@ class System(SubElement):
             time.sleep(1)
             counter += 1
 
-        # Proceed tracking the rest of the import task
-        in_progress = import_follower.update_status().data.in_progress
-        progress = import_follower.update_status().progress
-        counter = 0
-        while in_progress is True and counter <= timeout:
-            if counter == timeout:
-                raise ActionCommandFailed("Import elements is taking too long, is there any problem?")
-            logger.info("XML import task progress: {}%".format(progress))
-            in_progress = import_follower.update_status().data.in_progress
-            progress = import_follower.update_status().progress
-            succeed = import_follower.update_status().success
-            last_message = import_follower.update_status().last_message
-            time.sleep(1)
-            counter += 1
-
-        if not succeed:
+        # The answer to the last continue request can already tell that the import failed
+        if data.get("success") is False:
+            last_message = data.get("last_message")
             logger.error("XML Import task failed: {}".format(last_message))
             raise ActionCommandFailed(last_message)
+
+        # Proceed tracking the rest of the import task
+        status = import_follower.update_status()
+        counter = 0
+        while status.data.in_progress is True and counter <= timeout:
+            if counter == timeout:
+                raise ActionCommandFailed("Import elements is taking too long, is there any problem?")
+            logger.info("XML import task progress: {}%".format(status.progress))
+            time.sleep(1)
+            counter += 1
+            status = import_follower.update_status()
+
+        # success and last_message read while the task waited for the conflicts say nothing about the import
+        if not status.success:
+            logger.error("XML Import task failed: {}".format(status.last_message))
+            raise ActionCommandFailed(status.last_message)
 
         logger.info("XML import task succeeded")
 
@@ -979,7 +1088,7 @@ class System(SubElement):
 
     @staticmethod
     def create_upcoming_event_policy_payload(upcoming_event_policy: Any) -> dict[str, Any]:
-        json = {"entries": []}
+        json: dict[str, Any] = {"entries": []}
         entries = []
         for entry in upcoming_event_policy.upcoming_event_policy:
             entries.append(entry.data)
@@ -1010,7 +1119,7 @@ class System(SubElement):
 
     @staticmethod
     def create_upcoming_event_ignore_settings_payload(situations_to_ignore: list[Any]) -> dict[str, Any]:
-        json = {"entries": []}
+        json: dict[str, Any] = {"entries": []}
         entries = []
         for situation in situations_to_ignore:
             entries.append(situation.href)
@@ -1314,7 +1423,7 @@ class ConnectivityRow(NestedDict):
         The peer A.
         :rtype: Element
         """
-        return Element.from_href(self.data.get("peerA"))
+        return Element.from_href(cast(str, self.data.get("peerA")))
 
     @property
     def peerB(self) -> Any:
@@ -1322,7 +1431,7 @@ class ConnectivityRow(NestedDict):
         The peer B.
         :rtype: Element
         """
-        return Element.from_href(self.data.get("peerB"))
+        return Element.from_href(cast(str, self.data.get("peerB")))
 
     @property
     def type(self) -> Optional[str]:

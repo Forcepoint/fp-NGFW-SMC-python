@@ -42,10 +42,10 @@ to view or modify specific aspects of a VLAN, such as addresses, etc.
 """
 from __future__ import annotations
 
-from typing import Any, Iterator, Optional, Union
+from typing import Any, Iterator, Optional, Union, cast
 import copy
 from smc.base.model import Element, SubElement, lookup_class, ElementCache
-from smc.api.exceptions import InterfaceNotFound
+from smc.api.exceptions import InterfaceNotFound, UpdateElementFailed
 from smc.core.advanced_settings import LogModeration
 from smc.core.route import del_invalid_routes
 from smc.core.sub_interfaces import (
@@ -311,8 +311,8 @@ class DHCPRelay(NestedDict):
         super(DHCPRelay, self).__init__(data=data)
 
     @classmethod
-    def create(cls, enabled: bool = True, dhcp_servers: list[DHCPServer] = None,
-               max_packet_size: int = None, trusted_circuit: bool = False) -> DHCPRelay:
+    def create(cls, enabled: bool = True, dhcp_servers: Optional[list[DHCPServer]] = None,
+               max_packet_size: Optional[int] = None, trusted_circuit: bool = False) -> DHCPRelay:
         """
         :param str siit_eam_mapping_ipv6_prefix: the IPv6 prefix.
         :param str siit_eam_mapping_ipv4_network: the IPv4 network.
@@ -343,10 +343,10 @@ class DHCPRelay(NestedDict):
         The DHCP servers relayed in DHCP Relay protocol.
         :rtype: list of DHCPServer
         """
-        return [Element.from_href(href) for href in self.data.get("element", [])]
+        return cast("list[DHCPServer]", [Element.from_href(href) for href in self.data.get("element", [])])
 
     @property
-    def max_packet_size(self) -> int:
+    def max_packet_size(self) -> Optional[int]:
         """
         The DHCP Maximum Packet Size.
         :rtype: int
@@ -886,7 +886,7 @@ class Interface(SubElement):
 
         def process_interfaces(current: Any, interface: Any) -> tuple[bool, list[Any]]:
             updated = False
-            invalid_routes = []
+            invalid_routes: list[Any] = []
 
             # Ignore interfaces with multiple addresses
             if current.has_multiple_addresses:
@@ -982,7 +982,7 @@ class Interface(SubElement):
 
         :return: Zone or None
         """
-        return Zone.from_href(self.zone_ref)
+        return Zone.from_href(cast(str, self.zone_ref))
 
     @property
     def zone_ref(self) -> Optional[str]:
@@ -1343,7 +1343,7 @@ class ModemInterface(Interface):
         Add an APN interface to this modem interface. This will create a new APN interface with the provided settings and associate it with this modem interface.
         """
         if is_smc_version_more_than_or_equal("7.5"):
-            apn_content = {}
+            apn_content: dict[str, Any] = {}
 
             apn_content["apn"] = apn
             if zone_ref:
@@ -1366,7 +1366,7 @@ class ModemInterface(Interface):
             self.data["apnInterfaces"] = self.data.get("apnInterfaces", []) + [apn_content]
 
             for interface in interfaces:
-                interface_content = {}
+                interface_content: dict[str, Any] = {}
                 interface_content["nodeid"] = 1
                 interface_content["nicid"] = apn_content["interface_id"]
                 interface_content["dynamic"] = True
@@ -1389,7 +1389,8 @@ class ModemInterface(Interface):
                     self.data["qos_policy_ref"] = qos_policy_helper(qos_policy_ref) if qos_policy_ref else None
 
             if len(interfaces) > 0 and len(self.data.get("interfaces", [])) > 0:
-                raise UpdateElementFailed("APN interfaces are only supported on modem interfaces without existing interfaces. Please remove existing interfaces before adding APN interfaces.")
+                raise UpdateElementFailed(
+                    "APN interfaces are only supported on modem interfaces without existing interfaces. Please remove existing interfaces before adding APN interfaces.")
             elif len(interfaces) > 0:
                 # we consider only the first one since in smc < 7.5.0, there is no support for multiple APN interfaces
                 first_set_interface = interfaces[0]
@@ -1533,7 +1534,7 @@ class ModemInterface(Interface):
             if updated:
                 self.data["apnInterfaces"] = existing
 
-        interface = self
+        interface: Interface = self
         if updated or base_updated:
             interface = self.update()
 
@@ -1629,7 +1630,7 @@ class SwitchPhysicalInterface(Interface):
         for interface in port_group_interfaces:
             interfaces = interface.pop("interfaces", [])
 
-            sub_interface = {}
+            sub_interface: dict[str, Any] = {}
             zone_ref = interface.pop("zone_ref", None)
             if zone_ref:
                 sub_interface.update(zone_ref=zone_helper(zone_ref))
@@ -1641,7 +1642,7 @@ class SwitchPhysicalInterface(Interface):
                 if_mgt = {k: str(v) == str(interface_id) for k, v in mgt.items()}
 
                 for node in _interface.get("nodes", []):
-                    _node = if_mgt.copy()
+                    _node: dict[str, Any] = if_mgt.copy()
                     # Override management if set within interface
                     _node.update(node)
                     sni = SingleNodeInterface.create(interface_id, **_node)
@@ -1749,7 +1750,7 @@ class SwitchPhysicalInterface(Interface):
                                         invalid_routes.append(this)
 
             except InterfaceNotFound:
-                self.data.setdefault("port_group_interface", []).append(other)
+                self.data.setdefault("port_group_interface", []).append(other.data)
                 updated = True
 
         if updated:
@@ -1896,6 +1897,38 @@ class PhysicalInterface(Interface):
         :rtype: bool
         """
         return self.get_boolean("relayed_by_dhcp")
+
+    @property
+    def wol_relay(self) -> bool:
+        """
+        Does any address of this physical interface relay Wake-on-LAN
+        packets to its network. Supported on SMC >= 7.6.0; an older SMC never
+        sends the attribute, so this reads False there.
+
+        :rtype: bool
+        """
+        return self.get_boolean("wol_relay")
+
+    @property
+    def wol_relay_port(self) -> Optional[int]:
+        """
+        UDP port the Wake-on-LAN relay listens on, for the first address of
+        this physical interface that sets one. None when no address sets an
+        explicit port: the engine then applies its own default port, and an
+        SMC older than 7.6.0 never sends the attribute at all.
+
+        :rtype: int or None
+        """
+        for interface in self.all_interfaces:
+            sub_interfaces = (
+                interface.interfaces
+                if isinstance(interface, VlanInterface)
+                else [interface]
+            )
+            for sub_interface in sub_interfaces:
+                if sub_interface.wol_relay_port:
+                    return int(sub_interface.wol_relay_port)
+        return None
 
     @property
     def is_backup_heartbeat(self) -> bool:
@@ -2185,7 +2218,7 @@ class PhysicalInterface(Interface):
         return self.data.get("second_interface_id")
 
     @property
-    def virtual_mapping(self) -> Optional[int]:
+    def virtual_mapping(self) -> Optional[int]:  # type: ignore[return]  # implicit None fall-through
         """
         The virtual mapping id. Required if Virtual Resource chosen.
         See :py:class:`smc.core.engine.VirtualResource.vfw_id`
@@ -2438,7 +2471,7 @@ class Layer3PhysicalInterface(PhysicalInterface):
     :param str comment: comment for interface
     """
 
-    def _add_interface(self, interface_id: Any, interface: str = "node_interface", **kw: Any) -> None:
+    def _add_interface(self, interface_id: Any, interface: Any = "node_interface", **kw: Any) -> None:
         if "dhcp_relay" in kw:
             if isinstance(kw["dhcp_relay"], DHCPRelay):
                 self.data["dhcp_relay"] = kw.pop("dhcp_relay").data
@@ -2479,7 +2512,7 @@ class Layer3PhysicalInterface(PhysicalInterface):
             if_mgt = {k: str(v) == str(_interface_id) for k, v in mgt.items()}
 
             for node in interface.pop("nodes", []):
-                _node = if_mgt.copy()  # Each node should be treated independently
+                _node: dict[str, Any] = if_mgt.copy()  # Each node should be treated independently
                 _node.update(
                     outgoing=True if if_mgt.get("primary_mgt") else False,
                     auth_request=if_mgt.get("auth_request", False),
@@ -2657,7 +2690,7 @@ class ClusterPhysicalInterface(PhysicalInterface):
                     _interface.append({cvi.typeof: cvi.data})
 
             for node in interface.pop("nodes", []):
-                _node = if_mgt.copy()
+                _node: dict[str, Any] = if_mgt.copy()
                 _node.update(outgoing=True if if_mgt.get("primary_mgt") else False)
                 # Add node specific key/value pairs set on the node. This can
                 # also be used to override management settings
@@ -2749,6 +2782,13 @@ class PortGroupInterface(object):
             ...
     """
 
+    # Provided by the Interface class this mixin is combined with at runtime
+    data: Any
+    interface_id: Any
+    interfaces: Any
+    has_interfaces: Any
+    sub_interfaces: Any
+
     @property
     def switch_physical_interface_port(self) -> list[Any]:
         """
@@ -2787,6 +2827,14 @@ class VlanInterface(object):
     is dependent on the parent interface.
     """
 
+    # Provided by the Interface class this mixin is combined with at runtime
+    data: Any
+    name: Any
+    _parent: Any
+    interface_id: Any
+    interfaces: Any
+    has_interfaces: Any
+
     def __eq__(self, other: Any) -> bool:
         return bool(other.name == self.name)
 
@@ -2794,7 +2842,7 @@ class VlanInterface(object):
         return not self.__eq__(other)
 
     @property
-    def qos(self) -> Optional[QoS]:
+    def qos(self) -> Optional[QoS]:  # type: ignore[return]  # implicit None fall-through
         """
         QoS on VLANs is only supported for Layer3PhysicalInterface
         types.
@@ -3061,6 +3109,7 @@ class InterfaceEditor(object):
         for interface in self.engine.data.get("physicalInterfaces", []):
             for typeof, data in interface.items():
                 subif_type = extract_sub_interface(data)
+                clz: Any
                 if isinstance(subif_type, (InlineInterface, CaptureInterface)):
                     clz = Layer2PhysicalInterface
                 else:
@@ -3070,7 +3119,7 @@ class InterfaceEditor(object):
                         else:
                             clz = Layer3PhysicalInterface
                     else:
-                        clz = lookup_class(typeof, Interface)
+                        clz = lookup_class(typeof, Interface)  # type: ignore[arg-type]  # base annotation too narrow
 
                 clazz = clz(
                     meta=dict(
@@ -3090,7 +3139,7 @@ class InterfaceEditor(object):
     def __len__(self) -> int:
         return len(self.engine.data.get("physicalInterfaces"))
 
-    def find_mgmt_interface(self, mgmt: str) -> Optional[str]:
+    def find_mgmt_interface(self, mgmt: str) -> Optional[str]:  # type: ignore[return]  # implicit None fall-through
         """
         Find the management interface specified and return
         either the string representation of the interface_id.
@@ -3159,10 +3208,12 @@ class InterfaceEditor(object):
             if the interface is not supported for this management role (i.e. you
             cannot set primary mgt to a CVI interface with no nodes).
         """
-        interface = self.get(interface_id) if interface_id is not None else None
+        interface: Any = self.get(interface_id) if interface_id is not None else None
         if address is not None:
             target_network = None
-            sub_interface = interface.all_interfaces.get(address=address)
+            sub_interface = (
+                interface.all_interfaces.get(address=address) if interface is not None else None
+            )
             if sub_interface:
                 target_network = sub_interface.network_value
 

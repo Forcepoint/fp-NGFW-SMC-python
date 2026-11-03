@@ -13,8 +13,8 @@
 from __future__ import annotations
 
 from collections import namedtuple
-from typing import Any, Iterator, List, Optional, Union
-import pytz
+from typing import TYPE_CHECKING, Any, Iterator, List, Optional, Union, cast
+import pytz  # type: ignore[import-untyped]  # no types-pytz stubs installed
 
 from smc.base.util import save_to_file
 from smc.core.advanced_settings import LogModeration
@@ -30,7 +30,7 @@ from smc.api.exceptions import (
     EngineCommandFailed,
     SMCConnectionError, CreateElementFailed, UpdateElementFailed, CertificateExportError,
     CertificateImportError, UnsupportedSidewinderType, SnortConfigurationImportError,
-    SnortConfigurationExportError
+    SnortConfigurationExportError, MissingRequiredInput
 )
 from smc.core.node import Node, HardwareStatus
 from smc.core.resource import Snapshot, PendingChanges
@@ -109,7 +109,7 @@ class TestEntry(NestedDict):
         By default: 60s.
         :rtype: int
         """
-        return int(self.data.get("test_interval"))
+        return int(cast(Any, self.data.get("test_interval")))
 
     @property
     def online_state(self) -> bool:
@@ -151,7 +151,7 @@ class TestEntry(NestedDict):
            port. Correct and reliable operation requires identical settings.
         :rtype: str
         """
-        return self.data.get("test_action")
+        return cast(str, self.data.get("test_action"))
 
     @property
     def alert_notification(self) -> bool:
@@ -183,7 +183,7 @@ class FileSystemTest(TestEntry):
 
     @classmethod
     def create(cls, test_active: bool, test_interval: int, online_state: bool, test_action: str,
-               on_partition: str, free_space: int, **kw) -> FileSystemTest:
+               on_partition: str, free_space: int, **kw: Any) -> FileSystemTest:
         """
         :param bool test_active: Flag to know if the test is active?
         :param int test_interval: Represents the time in seconds to specify how often the test is run.
@@ -211,7 +211,7 @@ class FileSystemTest(TestEntry):
         The partition name to be monitored. A directory name may also be used instead of a partition name.
         :rtype: str
         """
-        return self.data.get("on_partition")
+        return cast(str, self.data.get("on_partition"))
 
     @property
     def free_space(self) -> int:
@@ -220,7 +220,7 @@ class FileSystemTest(TestEntry):
         this amount, the engine executes the chosen action.
         :rtype: int
         """
-        return int(self.data.get("free_space"))
+        return int(cast(Any, self.data.get("free_space")))
 
 
 class ExternalTest(TestEntry):
@@ -238,7 +238,7 @@ class ExternalTest(TestEntry):
 
     @classmethod
     def create(cls, test_active: bool, test_interval: int, online_state: bool, test_action: str,
-               retry_count: int, test_timeout: int, command_line: str, **kw) -> ExternalTest:
+               retry_count: int, test_timeout: int, command_line: str, **kw: Any) -> ExternalTest:
         """
         :param bool test_active: Flag to know if the test is active?
         :param int test_interval: Represents the time in seconds to specify how often the test is run.
@@ -270,7 +270,7 @@ class ExternalTest(TestEntry):
          overly sensitive tests that burden the system unnecessarily.
         :rtype: int
         """
-        return int(self.data.get("retry_count"))
+        return int(cast(Any, self.data.get("retry_count")))
 
     @property
     def test_timeout(self) -> int:
@@ -280,7 +280,7 @@ class ExternalTest(TestEntry):
          - Avoid overly short timeout values. We recommend a timeout of 500 - 1000 ms depending on the external test script.
         :rtype: int
         """
-        return int(self.data.get("test_timeout"))
+        return int(cast(Any, self.data.get("test_timeout")))
 
     @property
     def command_line(self) -> str:
@@ -293,7 +293,7 @@ class ExternalTest(TestEntry):
          Engines to run arbitrary commands in the Engine operating system.
         :rtype: str
         """
-        return self.data.get("command_line")
+        return cast(str, self.data.get("command_line"))
 
 
 class InlinePairlinkSpeedTest(TestEntry):
@@ -315,7 +315,7 @@ class InlinePairlinkSpeedTest(TestEntry):
 
     @classmethod
     def create(cls, test_active: bool, test_interval: int, online_state: bool, test_action: str,
-               test_timeout: int, **kw) -> InlinePairlinkSpeedTest:
+               test_timeout: int, **kw: Any) -> InlinePairlinkSpeedTest:
         """
         :param bool test_active: Flag to know if the test is active?
         :param int test_interval: Represents the time in seconds to specify how often the test is run.
@@ -341,7 +341,7 @@ class InlinePairlinkSpeedTest(TestEntry):
         Represents Test Timeout in milliseconds. Default value is 30 seconds.
         :rtype: int
         """
-        return int(self.data.get("test_timeout"))
+        return int(cast(Any, self.data.get("test_timeout")))
 
 
 class SwapFreeTest(TestEntry):
@@ -356,7 +356,7 @@ class SwapFreeTest(TestEntry):
 
     @classmethod
     def create(cls, test_active: bool, test_interval: int, online_state: bool, test_action: str,
-               free_space: int, **kw) -> SwapFreeTest:
+               free_space: int, **kw: Any) -> SwapFreeTest:
         """
         :param bool test_active: Flag to know if the test is active?
         :param int test_interval: Represents the time in seconds to specify how often the test is run.
@@ -383,7 +383,7 @@ class SwapFreeTest(TestEntry):
         this amount, the engine executes the chosen action.
         :rtype: int
         """
-        return int(self.data.get("free_space"))
+        return int(cast(Any, self.data.get("free_space")))
 
 
 class InterfaceTest(TestEntry):
@@ -414,7 +414,7 @@ class InterfaceTest(TestEntry):
          interfaces in the Aggregated Link.
         :rtype: int
         """
-        return self.data.get("nicid")
+        return cast(str, self.data.get("nicid"))
 
 
 class EnabledInterfaceEntry(NestedDict):
@@ -460,7 +460,7 @@ class LinkStatusTest(InterfaceTest):
 
     @classmethod
     def create(cls, test_active: bool, test_interval: int, online_state: bool, test_action: str,
-               nicid: str, down_ratio: int, **kw) -> LinkStatusTest:
+               nicid: str, down_ratio: int, **kw: Any) -> LinkStatusTest:
         """
         :param bool test_active: Flag to know if the test is active?
         :param int test_interval: Represents the time in seconds to specify how often the test is run.
@@ -492,7 +492,7 @@ class LinkStatusTest(InterfaceTest):
           balancing mode is considered as down when x % of its interfaces are down
         :rtype: int
         """
-        return int(self.data.get("down_ratio"))
+        return int(cast(Any, self.data.get("down_ratio")))
 
 
 class MultipingTest(InterfaceTest):
@@ -509,7 +509,7 @@ class MultipingTest(InterfaceTest):
     @classmethod
     def create(cls, test_active: bool, test_interval: int, online_state: bool, test_action: str,
                nicid: str, retry_count: int, test_timeout: int, target_addresses: list[str],
-               enabled_interfaces: list[EnabledInterfaceEntry], **kw) -> MultipingTest:
+               enabled_interfaces: list[EnabledInterfaceEntry], **kw: Any) -> MultipingTest:
         """
         :param bool test_active: Flag to know if the test is active?
         :param int test_interval: Represents the time in seconds to specify how often the test is run.
@@ -546,7 +546,7 @@ class MultipingTest(InterfaceTest):
         tests that burden the system unnecessarily.
         :rtype: int
         """
-        return int(self.data.get("retry_count"))
+        return int(cast(Any, self.data.get("retry_count")))
 
     @property
     def test_timeout(self) -> int:
@@ -555,7 +555,7 @@ class MultipingTest(InterfaceTest):
         specified time, the test is considered to have failed. Avoid overly short timeout values. By default 500ms.
         :rtype: int
         """
-        return int(self.data.get("test_timeout"))
+        return int(cast(Any, self.data.get("test_timeout")))
 
     @property
     def target_addresses(self) -> list[str]:
@@ -564,11 +564,11 @@ class MultipingTest(InterfaceTest):
         is considered failed if none of the target addresses responds.
         :rtype: list[str]
         """
-        return self.data.get("value")
+        return cast("list[str]", self.data.get("value"))
 
     @target_addresses.setter
     def target_addresses(self, value: list[str]) -> None:
-        self.data.set("value", value)
+        self.data["value"] = value
 
     @property
     def enabled_interfaces(self) -> list[EnabledInterfaceEntry]:
@@ -590,12 +590,12 @@ class MultipingTest(InterfaceTest):
 
     @enabled_interfaces.setter
     def enabled_interfaces(self, value: list[EnabledInterfaceEntry]) -> None:
-        self.data.set("enabled_interface", None)
+        self.data["enabled_interface"] = None
         if value:
             enabled_interfaces = []
             for enabled_interface in value:
                 enabled_interfaces.append(enabled_interface.data)
-            self.data.set("enabled_interface", enabled_interfaces)
+            self.data["enabled_interface"] = enabled_interfaces
 
 
 class LinkUsageExceptionRules(NestedDict):
@@ -627,7 +627,7 @@ class LinkUsageExceptionRules(NestedDict):
             for val in sources:
                 v = element_resolver(val)
                 value_list.append(v)
-            sources_json = {}
+            sources_json: dict[str, Any] = {}
             sources_json.update(src=value_list)
             sources = sources_json
         if type(services) is list:
@@ -635,7 +635,7 @@ class LinkUsageExceptionRules(NestedDict):
             for val in services:
                 v = element_resolver(val)
                 value_list.append(v)
-            services_json = {}
+            services_json: dict[str, Any] = {}
             services_json.update(service=value_list)
             services = services_json
         if type(destinations) is list:
@@ -643,7 +643,7 @@ class LinkUsageExceptionRules(NestedDict):
             for val in destinations:
                 v = element_resolver(val)
                 value_list.append(v)
-            destinations_json = {}
+            destinations_json: dict[str, Any] = {}
             destinations_json.update(dst=value_list)
             destinations = destinations_json
         dc = dict(
@@ -695,8 +695,8 @@ class LinkUsageExceptionRules(NestedDict):
             for val in value:
                 v = element_resolver(val)
                 value_list.append(v)
-            destinations_json = {}
-            destinations_json(dst=value_list)
+            destinations_json: dict[str, Any] = {}
+            destinations_json.update(dst=value_list)
             self.update(destinations=destinations_json)
 
     @property
@@ -744,13 +744,13 @@ class CloudGroup(Element):
         :param is_monitored: Flag to specify if the Cloud Auto-Scaled Group needs to be monitored
         :param comment: comment of the Cloud Auto-Scaled Group
         """
-        json = {
+        json: dict[str, Any] = {
             "name": name,
         }
         cloud_fw_uris = []
         if elements:
             for element in elements:
-                cloud_fw_uris.append(element.href if isinstance(Engine, element)
+                cloud_fw_uris.append(element.href if isinstance(element, Engine)
                                      else element)
 
         json.update(is_monitored=is_monitored,
@@ -996,17 +996,26 @@ class Engine(Element):
 
                 domain_server_list.append(domain_server)
 
-        # Set log server reference, if not explicitly provided
-        if not log_server_ref and node_type != "virtual_fw_node":
-            log_server_ref = LogServer.objects.first().href
-
-        base_cfg = {
+        base_cfg: dict[str, Any] = {
             "name": name,
             "nodes": node_list,
             "domain_server_address": domain_server_list,
             "log_server_ref": log_server_ref,
             "physicalInterfaces": physical_interfaces,
         }
+
+        # Set log server reference, if not explicitly provided. An API client without a granted
+        # Log Server sees none: since SMC 7.5.1 (SMC-68183), omit the reference and let the SMC
+        # assign its default one.
+        if not log_server_ref and node_type != "virtual_fw_node":
+            log_server = LogServer.objects.first()
+            if log_server is not None:
+                base_cfg.update(log_server_ref=log_server.href)
+            elif is_smc_version_more_than_or_equal("7.5.1"):
+                del base_cfg["log_server_ref"]
+            else:
+                raise MissingRequiredInput(
+                    "No Log Server is visible to this API client: pass log_server_ref")
 
         if enable_antivirus:
             antivirus = {
@@ -1058,7 +1067,7 @@ class Engine(Element):
             base_cfg.update(ospf)
 
         if link_usage_profile:
-            if isinstance(LinkUsageProfile, link_usage_profile):
+            if isinstance(link_usage_profile, LinkUsageProfile):
                 base_cfg.update(link_usage_profile_ref=link_usage_profile.href)
             # is already a href
             else:
@@ -1073,8 +1082,8 @@ class Engine(Element):
         if timezone is not None:
             # check timezone is valid
             if timezone in pytz.all_timezones:
-                timezone = {"timezone": timezone}
-                base_cfg.update(timezone)
+                timezone = cast(Any, {"timezone": timezone})
+                base_cfg.update(cast(Any, timezone))
             else:
                 raise CreateElementFailed(
                     "Timezone is invalid:" + timezone
@@ -1149,7 +1158,7 @@ class Engine(Element):
         return getattr(self, "engine_version", None)
 
     @property
-    def installed_policy(self) -> Optional[str]:
+    def installed_policy(self) -> Optional[str]:  # type: ignore[return]  # implicit None without nodes
         """
         Return the name of the policy installed on this engine. If
         no policy, None will be returned.
@@ -1230,7 +1239,7 @@ class Engine(Element):
             href or type Geolocation element.
         :rtype: Geolocation or None
         """
-        return self.from_href(getattr(self, "geolocation_ref", None))  # type: ignore[return-value]
+        return self.from_href(cast(str, getattr(self, "geolocation_ref", None)))  # type: ignore[return-value]
 
     @geolocation.setter
     def geolocation(self, value: Any) -> None:
@@ -1450,16 +1459,17 @@ class Engine(Element):
         )
 
     @property
-    def known_host_lists(self) -> SSHKnownHostsLists:
+    def known_host_lists(self) -> list[SSHKnownHostsLists]:
         """
-        Configure SSH known host lists on the engine. Can only be set
+        SSH known host lists configured on the engine. Can only be set
         if Sidewinder Proxy is enabled.
 
         :raises MissingRequiredInput: requires sidewinder proxy to be enabled
-        :rtype: KnownHostLists
+        :rtype: list(SSHKnownHostsLists)
         """
-        if self.data["sidewinder_proxy_enabled"] and "known_host_lists_ref" in self.data:
-            return SSHKnownHostsLists(self)
+        if self.data.get("sidewinder_proxy_enabled") and "known_host_lists_ref" in self.data:
+            return [cast(SSHKnownHostsLists, Element.from_href(href))
+                    for href in self.data["known_host_lists_ref"]]
         raise MissingRequiredInput(
             "SSH Known Host Lists require Sidewinder Proxy to be enabled."
         )
@@ -1539,7 +1549,7 @@ class Engine(Element):
         Represents the list of TestEntry.
         """
         tests = self.data.get("tests", [])
-        result = []
+        result: list[TestEntry] = []
         for test in tests:
             if "multiping_test" in test:
                 result.append(MultipingTest(test["multiping_test"]))
@@ -1729,7 +1739,7 @@ class Engine(Element):
                 if elem.href == elem_href:
                     return elem
             return None
-        for acl in self.permissions.granted_access_control_list:
+        for acl in self.permissions.granted_access_control_list():
             yield (acl_map(acl))
 
     @property
@@ -1858,7 +1868,7 @@ class Engine(Element):
                 "Available only for cluster engine"
             )
 
-    def alias_resolving(self) -> Iterator[Alias]:
+    def alias_resolving(self) -> Iterator[Optional[Alias]]:
         """
         Alias definitions with resolved values as defined on this engine.
         Aliases can be used in rules to simplify multiple object creation
@@ -2027,7 +2037,7 @@ class Engine(Element):
         except ImportError:
             pass
         else:
-            query = BlockListQuery(self.name)
+            query = BlockListQuery(cast(str, self.name))
             for record in query.fetch_as_element(**kw):
                 yield record
 
@@ -2067,9 +2077,13 @@ class Engine(Element):
             pass
         else:
             if is_api_version_less_than("7.0"):
-                query = BlacklistQuery(self.name)
+                query: Any = BlacklistQuery(cast(str, self.name))
             else:
-                query = BlockListQuery(self.name)
+                try:
+                    from smc_monitoring.monitors.block_list import BlockListQuery
+                except ImportError:
+                    return
+                query = BlockListQuery(cast(str, self.name))
 
             for record in query.fetch_as_element(**kw):
                 yield record
@@ -2154,7 +2168,7 @@ class Engine(Element):
         :param str destination_ip: destination ip address
         :return list(Routing): the result pages containing the result routing.
         """
-        json = {}
+        json: dict[str, Any] = {}
         if source_ref:
             json.update(source_ref=source_ref)
         if destination_ref:
@@ -2463,7 +2477,7 @@ class Engine(Element):
         :return: None
         :rtype: None
         """
-        json = {"name": name}
+        json: dict[str, Any] = {"name": name}
         if antivirus:
             json.update(antivirus=antivirus)
 
@@ -2786,7 +2800,7 @@ class Engine(Element):
         :raises UpdateElementFailed: failure to update element
         :return: LLDPProfile element or None
         """
-        return Element.from_href(self.lldp_profile_ref)
+        return cast("Optional[LLDPProfile]", Element.from_href(self.lldp_profile_ref))
 
     @lldp_profile.setter
     def lldp_profile(self, value: Any) -> None:
@@ -2805,7 +2819,7 @@ class Engine(Element):
         :raises UpdateElementFailed: failure to update element
         :return: LinkUsageProfile element or None
         """
-        return Element.from_href(self.link_usage_profile_ref)
+        return cast("Optional[LinkUsageProfile]", Element.from_href(self.link_usage_profile_ref))
 
     @link_usage_profile.setter
     def link_usage_profile(self, value: Any) -> None:
@@ -2878,13 +2892,13 @@ class Engine(Element):
                 and not is_smc_version_equal("7.2.0")
                 and not is_smc_version_less_than("7.1.4"))
 
-    @administrator_authentication_method.setter
+    @administrator_authentication_method.setter  # type: ignore[no-redef, attr-defined]  # setter not adjacent to its property
     def administrator_authentication_method(self, value: Any) -> None:
         if not self.type.startswith("virtual"):
             if Engine.supports_radius_authentication_settings():
                 self.data["admin_auth_method"] = value
 
-    @allow_root_login.setter
+    @allow_root_login.setter  # type: ignore[no-redef, attr-defined]  # setter not adjacent to its property
     def allow_root_login(self, value: Any) -> None:
         """
         Administrator Authentication: root password login
@@ -2896,7 +2910,7 @@ class Engine(Element):
             if Engine.supports_radius_authentication_settings():
                 self.data["allow_root_login"] = value
 
-    @ssh_passwordless_login.setter
+    @ssh_passwordless_login.setter  # type: ignore[no-redef, attr-defined]  # setter not adjacent to its property
     def ssh_passwordless_login(self, value: Any) -> None:
         """
         Administrator Authentication: SSH Passwordless Logins
@@ -3136,7 +3150,7 @@ class Engine(Element):
             raw_result=True
         )
 
-    def generate_and_sign_user_authentication_certificate(self, subject_alt_name: Optional[str] = None, key_length: Optional[int] = None) -> Task:
+    def generate_and_sign_user_authentication_certificate(self, subject_alt_name: Optional[str] = None, key_length: Optional[int] = None) -> TaskOperationPoller:
         """
         Generate and internally sign User Authentication certificate.
         :param subject_alt_name: Subject Alternative Name to be included in the certificate.
@@ -3186,7 +3200,7 @@ class Engine(Element):
 
         if filename is not None:
             save_to_file(filename, result.content)
-            return
+            return  # type: ignore[return-value]  # bare return means None
 
         return result.content
 
@@ -3221,7 +3235,7 @@ class Engine(Element):
 
         if filename is not None:
             save_to_file(filename, result.content)
-            return
+            return  # type: ignore[return-value]  # bare return means None
 
         return result.content
 
@@ -3337,7 +3351,7 @@ class Engine(Element):
 
         :rtype: dict
         """
-        json_result = {}
+        json_result: dict[str, Any] = {}
 
         for node in self.nodes:
             json_result[node.name] = {}
@@ -3621,7 +3635,7 @@ class VPN(object):
 
     @property
     def name(self) -> str:
-        return self.internal_gateway.name
+        return cast(str, self.internal_gateway.name)
 
     @property
     def vpn_client(self) -> InternalGateway:
@@ -3758,7 +3772,7 @@ class VPN(object):
         :rtype: list
         """
         return [
-            GatewayCertificate.from_href(cert.get('href'))
+            GatewayCertificate.from_href(cert.get('href'))  # type: ignore[misc]  # from_href is bound to Element, SubElement here
             for cert in self.internal_gateway.make_request(resource="gateway_certificate")
         ]
 
@@ -3772,7 +3786,7 @@ class VPN(object):
         :rtype: list
         """
         return [
-            GatewayCertificateRequest.from_href(cert.get('href'))
+            GatewayCertificateRequest.from_href(cert.get('href'))  # type: ignore[misc]  # from_href is bound to Element, SubElement here
             for cert in self.internal_gateway.make_request(resource="gateway_certificate_request")
         ]
 
@@ -3808,7 +3822,7 @@ class VPN(object):
         :return: GatewayCertificate
         """
         if certificate:
-            return GatewayCertificate._create_from_cert(self, signing_ca, certificate)
+            return GatewayCertificate._create_from_cert(self, certificate, signing_ca)
         else:
             return GatewayCertificate._create(
                 self, common_name, organization, public_key_algorithm, signature_algorithm,
@@ -3973,6 +3987,32 @@ class InternalGateway(SubElement):
         :rtype: SSLVPNPortal
         """
         return self.data.get("ssl_vpn_tunneling")
+
+    @property
+    def backup_gateways(self) -> List["InternalGateway"]:
+        """
+        Internal Gateways the VPN Client fails over to, in failover order: the
+        first one is tried first. Empty before API 7.6, which does not expose
+        them.
+
+        :rtype: list(InternalGateway)
+        """
+        return [cast("InternalGateway", Element.from_href(href))
+                for href in self.data.get("backup_gateways", [])]
+
+    def update_backup_gateways(self, gateways: List[Union["InternalGateway", str]]) -> None:
+        """
+        Replace the backup gateways with the given ones, in failover order: the
+        first one is tried first. An empty list removes them all. Only other
+        Internal Gateways are accepted, each listed once.
+
+        :param gateways: InternalGateway elements or their hrefs
+        :raises UnsupportedEngineFeature: API older than 7.6
+        :raises UpdateElementFailed: refused by the SMC
+        """
+        if is_api_version_less_than("7.6"):
+            raise UnsupportedEngineFeature("Backup gateways require API version 7.6 or later.")
+        self.update(backup_gateways=element_resolver(gateways))
 
 
 class InternalEndpoint(SubElement):
@@ -4277,7 +4317,7 @@ class VirtualResource(SubElement):
             show_master_nic: bool = False,
             connection_limit: int = 0,
             comment: Optional[str] = None,
-    ) -> str:
+    ) -> VirtualResource:
         """
         Create a new virtual resource. Called through engine
         reference::
@@ -4292,7 +4332,7 @@ class VirtualResource(SubElement):
         :param int connection_limit: whether to limit number of connections for
             this instance
         :return: href of new virtual resource
-        :rtype: str
+        :rtype: VirtualResource
         """
         allocated_domain = domain_helper(domain)
         json = {
@@ -4304,7 +4344,7 @@ class VirtualResource(SubElement):
             "allocated_domain_ref": allocated_domain,
         }
 
-        return ElementCreator(self.__class__, json=json, href=self.href)
+        return ElementCreator(self.__class__, json=json, href=self.href)  # type: ignore[type-var]  # ElementT bound to Element, SubElement here
 
     @property
     def allocated_domain_ref(self) -> Any:
@@ -4394,7 +4434,7 @@ class LBFilter(NestedDict):
         possible values are: none, replace, node, select_none, replace_offset
         :rtype: str
         """
-        return self.get("action")
+        return cast(str, self.get("action"))
 
     @action.setter
     def action(self, value: str) -> None:
@@ -4407,7 +4447,7 @@ class LBFilter(NestedDict):
 
         :rtype: str
         """
-        return self.get("ip_descriptor")
+        return cast(str, self.get("ip_descriptor"))
 
     @ip_descriptor.setter
     def ip_descriptor(self, value: str) -> None:
@@ -4420,7 +4460,7 @@ class LBFilter(NestedDict):
 
         :rtype: str
         """
-        return self.get("replace_ip")
+        return cast(str, self.get("replace_ip"))
 
     @replace_ip.setter
     def replace_ip(self, value: str) -> None:
@@ -4434,7 +4474,7 @@ class LBFilter(NestedDict):
 
         :rtype: bool
         """
-        return self.get("use_ipsec")
+        return cast(bool, self.get("use_ipsec"))
 
     @use_ipsec.setter
     def use_ipsec(self, value: bool) -> None:
@@ -4448,7 +4488,7 @@ class LBFilter(NestedDict):
 
         :rtype: bool
         """
-        return self.get("use_ports")
+        return cast(bool, self.get("use_ports"))
 
     @use_ports.setter
     def use_ports(self, value: bool) -> None:
@@ -4462,7 +4502,7 @@ class LBFilter(NestedDict):
 
         :rtype: bool
         """
-        return self.get("nat_enforce")
+        return cast(bool, self.get("nat_enforce"))
 
     @nat_enforce.setter
     def nat_enforce(self, value: bool) -> None:
@@ -4475,7 +4515,7 @@ class LBFilter(NestedDict):
 
         :rtype: bool
         """
-        return self.get("ignore_other")
+        return cast(bool, self.get("ignore_other"))
 
     @ignore_other.setter
     def ignore_other(self, value: bool) -> None:
@@ -4505,6 +4545,7 @@ class IdleTimeout(NestedDict):
     def __init__(self, engine: Engine) -> None:
         ars = {"connection_timeout": engine.data.get("connection_timeout", {})}
         super(IdleTimeout, self).__init__(data=ars)
+        self._engine = engine
 
     def add(self, name: str, timeout: Optional[int] = None) -> None:
         """
@@ -4515,16 +4556,21 @@ class IdleTimeout(NestedDict):
         if name in self.default_protocol_values:
             if not timeout:
                 timeout = self.default_protocol_values[name]
-            self.data.get('connection_timeout').append({'protocol': name, 'timeout': timeout})
+            timeouts = self.data.get('connection_timeout')
+            if not isinstance(timeouts, list):
+                # engine without connection_timeout yet: attach a new list, as add() does in place
+                timeouts = self._engine.data['connection_timeout'] = []
+                self.data['connection_timeout'] = timeouts
+            timeouts.append({'protocol': name, 'timeout': timeout})
         else:
-            raise ("Invalid protocol found : {}".format(name))
+            raise ValueError("Invalid protocol found : {}".format(name))
 
     def remove(self, name: str) -> None:
         """
         Remove the timeout setting for specific protocols on the engine.
         :param str name: namr of the protocol to be removed.
         """
-        for protocol in self.data.get('connection_timeout'):
+        for protocol in cast(Any, self.data.get('connection_timeout')):
             if name == protocol['protocol']:
                 self.data['connection_timeout'].remove(protocol)
                 break
@@ -4534,7 +4580,7 @@ class IdleTimeout(NestedDict):
         Check if specific protocol settings are present in the engine.
         :param str name: name of protocol.
         """
-        for protocol in self.data.get('connection_timeout'):
+        for protocol in cast(Any, self.data.get('connection_timeout')):
             if name == protocol['protocol']:
                 return True
         return False
@@ -5021,7 +5067,7 @@ class Nat64Settings(NestedDict):
         IPv6 prefix element.
         :rtype: Network
         """
-        return Element.from_href(self.data.get("clat_local_ipv6_prefix_ref"))
+        return Element.from_href(cast(str, self.data.get("clat_local_ipv6_prefix_ref")))
 
     @property
     def clat_remote_ipv6_prefix_ip(self) -> Optional[str]:
@@ -5039,7 +5085,7 @@ class Nat64Settings(NestedDict):
         IPv6 prefix element.
         :rtype: Network
         """
-        return Element.from_href(self.data.get("clat_remote_ipv6_prefix_ref"))
+        return Element.from_href(cast(str, self.data.get("clat_remote_ipv6_prefix_ref")))
 
     @property
     def nat64_local_pools_ref(self) -> list[Any]:
@@ -5049,7 +5095,7 @@ class Nat64Settings(NestedDict):
 
         :return: list of Network
         """
-        return [Element.from_href(e) for e in self.data.get("nat64_local_pools_ref")]
+        return [Element.from_href(e) for e in cast("list[str]", self.data.get("nat64_local_pools_ref"))]
 
     @property
     def nat64_ipv6_prefix_ip(self) -> Optional[str]:
@@ -5065,7 +5111,7 @@ class Nat64Settings(NestedDict):
         For NAT64 mode, the IPv6 prefix element.
         :rtype: Network
         """
-        return Element.from_href(self.data.get("nat64_ipv6_prefix_ref"))
+        return Element.from_href(cast(str, self.data.get("nat64_ipv6_prefix_ref")))
 
     @property
     def siit_eam_ipv6_pool_ip(self) -> Optional[str]:
@@ -5081,7 +5127,7 @@ class Nat64Settings(NestedDict):
         For SIIT EAM mode, the default IPv6 pool element.
         :rtype: Network
         """
-        return Element.from_href(self.data.get("siit_eam_ipv6_pool_ref"))
+        return Element.from_href(cast(str, self.data.get("siit_eam_ipv6_pool_ref")))
 
     @property
     def mode(self) -> Optional[str]:
@@ -5160,7 +5206,7 @@ class Nat64Mapping(NestedDict):
         the port for IPv6 part.
         :rtype: int
         """
-        return int(self.data.get("nat64_mapping_ipv6_port"))
+        return int(cast(Any, self.data.get("nat64_mapping_ipv6_port")))
 
     @property
     def nat64_mapping_protocol_ref(self) -> Any:
@@ -5168,7 +5214,7 @@ class Nat64Mapping(NestedDict):
         the Protocol, as a referenced ServiceIP element.
         :rtype: int
         """
-        return Element.from_href(self.data.get("nat64_mapping_protocol_ref"))
+        return Element.from_href(cast(str, self.data.get("nat64_mapping_protocol_ref")))
 
     @property
     def nat64_mapping_ipv4_address(self) -> Optional[str]:
@@ -5184,7 +5230,7 @@ class Nat64Mapping(NestedDict):
         the port for IPv4 part.
         :rtype: int
         """
-        return int(self.data.get("nat64_mapping_ipv4_port"))
+        return int(cast(Any, self.data.get("nat64_mapping_ipv4_port")))
 
     @property
     def rank(self) -> int:
@@ -5192,7 +5238,7 @@ class Nat64Mapping(NestedDict):
         the rank for ordering mappings.
         :rtype: int
         """
-        return int(self.data.get("rank"))
+        return int(cast(Any, self.data.get("rank")))
 
     @property
     def comment(self) -> Optional[str]:
@@ -5252,7 +5298,7 @@ class SiitMapping(NestedDict):
         the rank for ordering mappings.
         :rtype: int
         """
-        return int(self.data.get("rank"))
+        return int(cast(Any, self.data.get("rank")))
 
     @property
     def comment(self) -> Optional[str]:
@@ -5325,7 +5371,7 @@ class DHCPClientConfiguration(NestedDict):
          - 2: Relay
         :rtype: int
         """
-        return self.data.get("dhcp_client_mode")
+        return cast(int, self.data.get("dhcp_client_mode"))
 
     @property
     def dhcp_servers(self) -> list[DHCPServer]:
@@ -5333,7 +5379,7 @@ class DHCPClientConfiguration(NestedDict):
         the DHCP Servers for Direct mode.
         :rtype: list of DHCPServer
         """
-        return [Element.from_href(href) for href in self.data.get("dhcp_server_ref", [])]
+        return [cast(DHCPServer, Element.from_href(href)) for href in self.data.get("dhcp_server_ref", [])]
 
     @property
     def dhcp_client_interfaces(self) -> list[str]:
@@ -5360,7 +5406,7 @@ class DHCPClientConfiguration(NestedDict):
         The format is: x.x.x.x-x.x.x.x; x.x.x.x-x.x.x.x
         :rtype: list of string representing address ranges
         """
-        return bool(self.data.get("restricted_address_list", []))
+        return cast("list[str]", self.data.get("restricted_address_list", []))
 
     @property
     def proxy_arp_enabled(self) -> bool:
@@ -5379,7 +5425,7 @@ class DHCPClientConfiguration(NestedDict):
         The format is: x.x.x.x-x.x.x.x; x.x.x.x-x.x.x.x
         :rtype: list of string representing address ranges
         """
-        return bool(self.data.get("proxy_arp_address_list", []))
+        return cast("list[str]", self.data.get("proxy_arp_address_list", []))
 
     @property
     def dhcp_add_info(self) -> int:
@@ -5390,4 +5436,4 @@ class DHCPClientConfiguration(NestedDict):
           - 2: Add Group information
         :rtype: int
         """
-        return self.data.get("dhcp_add_info")
+        return cast(int, self.data.get("dhcp_add_info"))

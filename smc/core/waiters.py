@@ -88,14 +88,16 @@ class NodeWaiter(threading.Thread):
     a nodes status and wait for a specific response.
     """
 
+    value: tuple[str, ...]  # defined by subclasses
+
     def __init__(self, resource: Any, status: str, timeout: int = 5, max_wait: int = 36, **kw: Any) -> None:
         threading.Thread.__init__(self)
         self._desired_status = status
         self._resource = resource  # node resource
-        self._status = None
+        self._status: Any = None
         self._max_wait = max_wait
         self._timeout = timeout
-        self.callbacks = []
+        self.callbacks: list[Any] = []
         self._done = threading.Event()
         self.daemon = True
         self.start()
@@ -122,7 +124,7 @@ class NodeWaiter(threading.Thread):
         if self._desired_status in latest:
             return self._desired_status
         else:
-            return latest[0] or None
+            return latest[0] if latest else None
 
     def finished(self) -> bool:
         return self._done.is_set() or self._status == self._desired_status or self._max_wait == 0
@@ -149,7 +151,7 @@ class NodeWaiter(threading.Thread):
         # isAlive() is removed since python3.9
         return self._done.is_set() or \
             (PYTHON_v3_9 and not self.is_alive()) or \
-            (not PYTHON_v3_9 and not self.isAlive())
+            (not PYTHON_v3_9 and not self.isAlive())  # type: ignore[attr-defined]  # Python < 3.9 only
 
     def result(self, timeout: Optional[float] = None) -> Any:
         """
@@ -171,7 +173,7 @@ class NodeWaiter(threading.Thread):
         """
         Stop thread if it's still running
         """
-        if (not PYTHON_v3_9 and self.isAlive()) or (PYTHON_v3_9 and self.is_alive()):
+        if (not PYTHON_v3_9 and self.isAlive()) or (PYTHON_v3_9 and self.is_alive()):  # type: ignore[attr-defined]  # Python < 3.9 only
             self._done.set()
 
 

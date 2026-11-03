@@ -17,7 +17,7 @@ is identical to creating Layer 2 Rules for layer 2 or IPS engines.
 
 """
 from __future__ import annotations
-from typing import Any, Optional, Union, Iterator
+from typing import TYPE_CHECKING, Any, Optional, Union, Iterator
 from smc.base.collection import rule_collection
 from smc.policy.policy import Policy
 from smc.policy.rule import IPv4Layer2Rule, IPv6Layer2Rule, EthernetRule
@@ -34,6 +34,10 @@ class InterfaceRule(object):
     """
     Layer 2 Interface Rules are the same as Layer 2 Engine/IPS rules.
     """
+
+    if TYPE_CHECKING:
+        def get_relation(self: InterfaceRule, rel: str,
+                         exception: Optional[type[Exception]] = None) -> str: ...
 
     @property
     def layer2_ipv4_access_rules(self) -> Any:

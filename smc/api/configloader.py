@@ -24,7 +24,7 @@ from smc.api.exceptions import ConfigLoadError
 try:
     import configparser
 except ImportError:
-    import ConfigParser as configparser  # @UnusedImport
+    import ConfigParser as configparser  # type: ignore[no-redef]  # py2 fallback  # @UnusedImport
 
 
 def load_from_environ() -> dict:
@@ -52,7 +52,7 @@ def load_from_environ() -> dict:
     try:
         from urllib.parse import urlparse
     except ImportError:
-        from urlparse import urlparse
+        from urlparse import urlparse  # type: ignore[no-redef]  # py2 fallback
 
     smc_address = os.environ.get("SMC_ADDRESS", "")
     smc_apikey = os.environ.get("SMC_API_KEY", "")
@@ -85,7 +85,7 @@ def load_from_environ() -> dict:
 
     config_dict.update(smc_address=url.hostname)
 
-    port = url.port
+    port: Union[int, str, None] = url.port
     if not port:
         port = "8082"
 
@@ -180,7 +180,7 @@ def load_from_file(alt_filepath: Optional[str] = None) -> dict:
         full_path = os.path.expanduser(ex_path)
 
     section = "smc"
-    config_dict = {}
+    config_dict: dict[str, Any] = {}
     try:
         with io.open(full_path, "rt", encoding="UTF-8") as f:
             parser.read_file(f)
@@ -203,7 +203,7 @@ def load_from_file(alt_filepath: Optional[str] = None) -> dict:
     except (configparser.NoSectionError, configparser.MissingSectionHeaderError) as e:
         raise ConfigLoadError(
             "Failed loading credential file from: {}, check the "
-            "path and verify contents are correct.".format(path, e)
+            "path and verify contents are correct; {}".format(path, e)
         )
     except IOError as e:
         raise ConfigLoadError("Failed loading configuration file: {}".format(e))
@@ -238,7 +238,7 @@ def transform_login(config: dict) -> dict:
         config.pop("ssl_cert_file", None)
         verify = False
 
-    transformed = {}
+    transformed: dict[str, Any] = {}
     url = "{}://{}:{}".format(scheme, config.pop("smc_address", None), config.pop("smc_port", None))
 
     timeout = config.pop("timeout", None)

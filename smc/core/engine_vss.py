@@ -33,7 +33,7 @@ class VSSContainer(MasterEngine):
         super(VSSContainer, self).__init__(name, **meta)
 
     @classmethod
-    def create(cls, name: str, vss_def: Optional[dict] = None) -> VSSContainer:
+    def create(cls, name: str, vss_def: Optional[dict] = None) -> VSSContainer:  # type: ignore[override]  # intentionally different signature
         """
         Create a VSS Container. This maps to the Service Manager
         within NSX.
@@ -197,7 +197,7 @@ class VSSContainerNode(Node):
         :raises CreateElementFailed: created failed with reason
         :rtype: VSSContainerNode
         """
-        element = ElementCreator(
+        element = ElementCreator(  # type: ignore[type-var]  # ElementCreator accepts SubElement classes
             cls,
             href=vss_container.get_relation("vss_container_node"),
             json={"name": name, "vss_node_isc": vss_node_def, "comment": comment},

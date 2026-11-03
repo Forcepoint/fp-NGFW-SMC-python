@@ -10,7 +10,7 @@
 #  License for the specific language governing permissions and limitations
 #  under the License.
 from __future__ import annotations
-from typing import Any, Optional, Union, Iterator
+from typing import Any, Optional, Union, Iterator, cast
 
 """
 Engine feature add on functionality such as default NAT, Antivirus,
@@ -218,7 +218,7 @@ class FileReputation(NestedDict):
         :return: list of http proxy instances
         :rtype: list(HttpProxy)
         """
-        return [Element.from_href(proxy) for proxy in self.get("http_proxy")]
+        return [Element.from_href(proxy) for proxy in cast(list, self.get("http_proxy"))]
 
     def enable(self, http_proxy: Any = None) -> None:
         """
@@ -305,7 +305,7 @@ class UrlFiltering(NestedDict):
         :return: list of http proxy instances
         :rtype: list(HttpProxy)
         """
-        return [Element.from_href(proxy) for proxy in self.get("http_proxy")]
+        return [Element.from_href(proxy) for proxy in cast(list, self.get("http_proxy"))]
 
     def enable(self, http_proxy: Any = None) -> None:
         """
@@ -465,7 +465,7 @@ class Sandbox(NestedDict):
         :return: list of http proxy instances
         :rtype: list(HttpProxy)
         """
-        return [Element.from_href(proxy) for proxy in self.get("http_proxy")]
+        return [Element.from_href(proxy) for proxy in cast(list, self.get("http_proxy"))]
 
     @staticmethod
     def get_permalink(engine_key: str, file_id: str) -> str:
@@ -816,7 +816,7 @@ class EndpointIntegration(NestedDict):
         :rtype: object(eca_client_config)
         """
         config = self.get("eca_client_config")
-        return Element.from_href(config)
+        return Element.from_href(cast(str, config))
 
     def __repr__(self) -> str:
         return "{0}(enabled={1})".format(self.__class__.__name__, self.status)

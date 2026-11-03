@@ -89,10 +89,13 @@ filtering for only HIGH alerts with a source address of 192.168.4.84::
     combine filters for a query.
 
 """
+from typing import Any, Iterator, Optional, Union
+
 from smc.base.util import element_resolver
 from smc_monitoring.models.calendar import TimeFormat
 from smc_monitoring.models.query import Query
 from smc_monitoring.models.constants import LogField
+from smc_monitoring.models.formats import CombinedFormat, FormatFieldMixin
 from smc_monitoring.models.formatters import TableFormat
 import logging
 
@@ -137,13 +140,13 @@ class LogQuery(Query):
 
     def __init__(
         self,
-        fetch_type="stored",
-        fetch_size=None,
-        backwards=True,
-        format=None,
-        time_range=None,
-        **kw
-    ):  # @ReservedAssignment
+        fetch_type: str = "stored",
+        fetch_size: Optional[int] = None,
+        backwards: bool = True,
+        format: Optional[Union[FormatFieldMixin, CombinedFormat]] = None,
+        time_range: Optional[TimeFormat] = None,
+        **kw: Any
+    ) -> None:  # @ReservedAssignment
         super(LogQuery, self).__init__(format=format, **kw)
 
         fetch = {"quantity": fetch_size} if fetch_size is not None else {}
@@ -160,7 +163,7 @@ class LogQuery(Query):
         self.request.update(fetch=fetch, query=query)
 
     @property
-    def fetch_size(self):
+    def fetch_size(self) -> Optional[int]:
         """
         Return the fetch size for this query. If fetch size is set
         to 0, the query will be aborted after the first response message.
@@ -176,12 +179,14 @@ class LogQuery(Query):
         """
         if "quantity" in self.request["fetch"]:
             return self.request["fetch"]["quantity"]
+        return None
 
-    def get_record(self, results):
+    def get_record(self, results: dict[str, Any]) -> Optional[list[dict[str, Any]]]:
         if "records" in results and results["records"]:
             return results["records"]
+        return None
 
-    def fetch_raw(self):
+    def fetch_raw(self) -> Iterator[list[dict[str, Any]]]:  # type: ignore[override]  # no **kw, unchanged API
         """
         Execute the query and return by batches.
         Optional keyword arguments are passed to Query.execute(). Whether
@@ -194,7 +199,7 @@ class LogQuery(Query):
             if "records" in results and results["records"]:
                 yield results["records"]
 
-    def fetch_statistics(self):
+    def fetch_statistics(self) -> Iterator[Any]:
         """
         Execute the query and return entries based on statistics.
         Optional keyword arguments are passed to Query.execute(). Whether
@@ -207,7 +212,7 @@ class LogQuery(Query):
             if "statistics" in results and results["statistics"]:
                 yield results["statistics"]
 
-    def fetch_batch(self, formatter=TableFormat):
+    def fetch_batch(self, formatter: type[Any] = TableFormat) -> Iterator[Any]:  # type: ignore[override]  # no **kw, unchanged API
         """
         Fetch a batch of logs and return using the specified formatter.
         Formatter is class type defined in :py:mod:`smc_monitoring.models.formatters`.
@@ -228,7 +233,7 @@ class LogQuery(Query):
         for result in clone.fetch_raw():
             yield fmt.formatted(result)
 
-    def fetch_live(self, formatter=TableFormat):
+    def fetch_live(self, formatter: type[Any] = TableFormat) -> Iterator[Any]:
         """
         View logs in real-time. If previous filters were already set on
         this query, they will be preserved on the original instance (this

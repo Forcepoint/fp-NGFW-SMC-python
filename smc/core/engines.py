@@ -159,8 +159,9 @@ class Layer3Firewall(Engine):
 
         See :class:`smc.core.interfaces.Layer3PhysicalInterface` for more advanced examples
         """
-        physical_interfaces = []
-        for interface in interfaces:
+        physical_interfaces: list[dict[str, Any]] = []
+        interface: Any  # reassigned below to its Layer3PhysicalInterface
+        for interface in interfaces or []:
             if "interface_id" not in interface:
                 raise CreateEngineFailed(
                     "Interface definitions must contain the interface_id "
@@ -207,7 +208,7 @@ class Layer3Firewall(Engine):
                 snmp_location=snmp.get("snmp_location", ""),
             )
 
-            snmp_agent.update(snmp_interface=add_snmp(interfaces, snmp.get("snmp_interface", [])))
+            snmp_agent.update(snmp_interface=add_snmp(interfaces or [], snmp.get("snmp_interface", [])))
 
         # convert ntp_settings from extra_opts to parameter for _create function
         if extra_opts is not None and "ntp_settings" in extra_opts:
@@ -226,7 +227,7 @@ class Layer3Firewall(Engine):
 
         # convert link_usage profile from extra_opts to parameter for _create function
         if extra_opts is not None and "link_usage_profile_ref" in extra_opts:
-            link_usage_profile = extra_opts['link_usage_profile']
+            link_usage_profile = extra_opts['link_usage_profile_ref']
             del extra_opts['link_usage_profile_ref']
 
         # convert known_host_list from extra_opts to parameter for _create function
@@ -243,7 +244,7 @@ class Layer3Firewall(Engine):
                 domain_server_address=domain_server_address,
                 log_server_ref=log_server_ref,
                 nodes=nodes,
-                nodes_definition=nodes_definition,
+                nodes_definition=nodes_definition,  # type: ignore[arg-type]  # Engine._create accepts None
                 enable_gti=enable_gti,
                 enable_antivirus=enable_antivirus,
                 sidewinder_proxy_enabled=sidewinder_proxy_enabled,
@@ -565,7 +566,7 @@ class Layer3Firewall(Engine):
             self.data["quic_enabled"] = value
 
     @property
-    def ha_settings(self) -> Optional[HAForSingleEngine]:
+    def ha_settings(self) -> Optional[HAForSingleEngine]:  # type: ignore[return]  # implicit None
         """
         HA settings for the engine
 
@@ -588,7 +589,7 @@ class CloudSGSingleFW(Layer3Firewall):
     typeof = "cloud_single_fw"
 
     @classmethod
-    def create_dynamic(
+    def create_dynamic(  # type: ignore[override]  # intentionally different signature
         cls,
         name: str,
         interface_id: int,
@@ -609,7 +610,7 @@ class CloudSGSingleFW(Layer3Firewall):
         extra_opts: Optional[dict[str, Any]] = None,
         **kw: Any,
     ) -> CloudSGSingleFW:
-        return Layer3Firewall.create_dynamic(
+        return Layer3Firewall.create_dynamic(  # type: ignore[return-value]  # returns an instance of engine_type=cls
             name,
             interface_id,
             dynamic_index,
@@ -633,7 +634,7 @@ class CloudSGSingleFW(Layer3Firewall):
         )
 
     @classmethod
-    def create(
+    def create(  # type: ignore[override]  # intentionally different signature
         cls,
         name: str,
         mgmt_ip: str,
@@ -724,7 +725,7 @@ class Layer2Firewall(Engine):
         :raises CreateEngineFailed: Failure to create with reason
         :return: :py:class:`smc.core.engine.Engine`
         """
-        interfaces = []
+        interfaces: list[dict[str, Any]] = []
         interface_id, second_interface_id = inline_interface.split("-")
         l2 = {
             "interface_id": interface_id,
@@ -841,7 +842,7 @@ class IPS(Engine):
         :raises CreateEngineFailed: Failure to create with reason
         :return: :py:class:`smc.core.engine.Engine`
         """
-        interfaces = []
+        interfaces: list[dict[str, Any]] = []
         interface_id, second_interface_id = inline_interface.split("-")
         l2 = {
             "interface_id": interface_id,
@@ -898,7 +899,7 @@ class VirtualIPS(IPS):
     typeof = "virtual_ips"
 
     @classmethod
-    def create(
+    def create(  # type: ignore[override]  # intentionally different signature
         cls,
         name: str,
         inline_interface: str = "1-2",
@@ -1062,9 +1063,9 @@ class Layer3VirtualEngine(Engine):
         :return: :py:class:`smc.core.engine.Engine`
         """
         virt_resource_href = None  # need virtual resource reference
-        master_engine = Engine(master_engine)
+        master_engine = Engine(master_engine)  # type: ignore[assignment]  # param rebound to its Engine
 
-        for virt_resource in master_engine.virtual_resource.all():
+        for virt_resource in master_engine.virtual_resource.all():  # type: ignore[attr-defined]  # Engine, see above
             if virt_resource.name == virtual_resource:
                 virt_resource_href = virt_resource.href
                 break
@@ -1212,8 +1213,8 @@ class FirewallCluster(Engine):
         """
         primary_heartbeat = primary_mgt if not primary_heartbeat else primary_heartbeat
 
-        physical_interfaces = []
-        for interface in interfaces:
+        physical_interfaces: list[dict[str, Any]] = []
+        for interface in interfaces or []:
             if "interface_id" not in interface:
                 raise CreateEngineFailed(
                     "Interface definitions must contain the interface_id "
@@ -1237,7 +1238,7 @@ class FirewallCluster(Engine):
                 snmp_location=snmp.get("snmp_location", ""),
             )
 
-            snmp_agent.update(snmp_interface=add_snmp(interfaces, snmp.get("snmp_interface", [])))
+            snmp_agent.update(snmp_interface=add_snmp(interfaces or [], snmp.get("snmp_interface", [])))
 
         # convert ntp_settings from extra_opts to parameter for _create function
         if extra_opts is not None and "ntp_settings" in extra_opts:
@@ -1251,12 +1252,12 @@ class FirewallCluster(Engine):
 
         # convert lldp_profile_ref from extra_opts to parameter for _create function
         if extra_opts is not None and "lldp_profile_ref" in extra_opts:
-            lldp_profile = extra_opts['lldp_profile_res']
+            lldp_profile = extra_opts['lldp_profile_ref']
             del extra_opts['lldp_profile_ref']
 
         # convert link_usage_profile_ref from extra_opts to parameter for _create function
         if extra_opts is not None and "link_usage_profile_ref" in extra_opts:
-            lldp_profile = extra_opts['link_usage_profile_ref']
+            link_usage_profile = extra_opts['link_usage_profile_ref']
             del extra_opts['link_usage_profile_ref']
 
         try:
@@ -1668,7 +1669,7 @@ class MasterEngine(Engine):
         :raises CreateEngineFailed: Failure to create with reason
         :return: :py:class:`smc.core.engine.Engine`
         """
-        interface = {
+        interface: Any = {
             "interface_id": mgmt_interface,
             "interfaces": [{"nodes": [{"address": mgmt_ip,
                                        "network_value": mgmt_network,
@@ -1783,7 +1784,7 @@ class MasterEngineCluster(Engine):
         """
         primary_mgt = primary_heartbeat = mgmt_interface
 
-        interface = {
+        interface: Any = {
             "interface_id": mgmt_interface,
             "interfaces": [{"nodes": nodes, "reverse_connection": reverse_connection}],
             "macaddress": macaddress,
@@ -1801,7 +1802,7 @@ class MasterEngineCluster(Engine):
             log_server_ref=log_server_ref,
             enable_gti=enable_gti,
             nodes=len(nodes),
-            nodes_definition=nodes_definition,
+            nodes_definition=nodes_definition,  # type: ignore[arg-type]  # Engine._create accepts None
             enable_antivirus=enable_antivirus,
             comment=comment,
             lldp_profile=lldp_profile,

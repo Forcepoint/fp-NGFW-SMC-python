@@ -125,14 +125,15 @@ from smc.core.interfaces import (
 from smc.core.sub_interfaces import LoopbackClusterInterface, LoopbackInterface
 from smc.base.structs import BaseIterable
 from smc.api.exceptions import UnsupportedInterfaceType, InterfaceNotFound
-from smc.compat import get_best_version, is_api_version_less_than_or_equal, min_smc_version
+from smc.compat import get_best_version, is_api_version_less_than_or_equal, min_smc_version, \
+    supported_parameter_check
 
 
 def get_all_loopbacks(engine: Any) -> list:
     """
     Get all loopback interfaces for a given engine
     """
-    data = []
+    data: list[Any] = []
     if "fw_cluster" in engine.type:
         for cvi in engine.data.get("loopback_cluster_virtual_interface", []):
             data.append(LoopbackClusterInterface(cvi, engine))
@@ -1128,7 +1129,8 @@ class PhysicalInterfaceCollection(InterfaceCollection):
 
     def add_layer3_interface(
             self, interface_id: Any, address: str, network_value: str, zone_ref: Optional[str] = None, comment: Optional[str] = None, lldp_mode: Optional[str] = None,
-            relayed_by_dhcp: Optional[Any] = None, **kw: Any
+            relayed_by_dhcp: Optional[Any] = None, wol_relay: Optional[bool] = None,
+            wol_relay_port: Optional[int] = None, **kw: Any
     ) -> Any:
         """
         Add a layer 3 interface on a non-clustered engine.
@@ -1142,6 +1144,10 @@ class PhysicalInterfaceCollection(InterfaceCollection):
         :param str zone_ref: zone reference, can be name, href or Zone
         :param str lldp_mode: disabled, receive_only, send_and_receive, send_only
         :param str comment: optional comment
+        :param bool wol_relay: relay Wake-on-LAN packets on this address
+        :param int wol_relay_port: UDP port the Wake-on-LAN relay listens on, between 1 and
+            65535. Leave it out to let the engine apply its own default port. Both are
+            supported from SMC 7.6 on, and are left out of the payload when not set.
         :param kw: keyword arguments are passed to the sub-interface during
             create time. If it is a single engine, the sub-interface type
             is :class:`smc.core.sub_interfaces.SingleNodeInterface`. For all
@@ -1154,10 +1160,24 @@ class PhysicalInterfaceCollection(InterfaceCollection):
         .. note:: If an existing ip address exists on the interface and zone_ref is
             provided, this value will overwrite any previous zone definition.
         """
+        node = {"address": address, "network_value": network_value,
+                "relayed_by_dhcp": relayed_by_dhcp}
+
+        if wol_relay is not None:
+            node.update(wol_relay=wol_relay)
+        if wol_relay_port is not None:
+            node.update(wol_relay_port=wol_relay_port)
+
+        supported_parameter_check(
+            ["wol_relay", "wol_relay_port"],
+            node,
+            "7.6.0",
+            "wol_relay and wol_relay_port are only supported on SMC >= 7.6.0",
+        )
+
         interfaces = {
             "interface_id": interface_id,
-            "interfaces": [{"nodes": [{"address": address, "network_value": network_value,
-                                       "relayed_by_dhcp": relayed_by_dhcp}]}],
+            "interfaces": [{"nodes": [node]}],
             "zone_ref": zone_ref,
             "comment": comment,
         }

@@ -16,7 +16,7 @@ located under the SMC Advanced Settings.
 """
 from __future__ import annotations
 
-from typing import Any, Optional, Union, Iterator
+from typing import Any, Optional, Union, Iterator, cast
 
 from smc.base.structs import NestedDict
 
@@ -51,10 +51,10 @@ class LogModeration(NestedDict):
         """
         if self.contains(log_event):
             self.remove(log_event)
-        self.data.get('log_moderation').append(
+        cast(list, self.data.get('log_moderation')).append(
             {'burst': burst, 'log_event': log_event, 'rate': rate})
 
-    def get(self, log_event: Optional[int]) -> Optional[dict]:
+    def get(self, log_event: Optional[int]) -> Optional[dict]:  # type: ignore[override]  # intentional: lookup by log_event
         """
         Return log_moderation entry with specific log_event
         :param str log_event: Log Moderation Event Type:
@@ -62,7 +62,7 @@ class LogModeration(NestedDict):
                             2. discard: discard entry.
         :rtype dict
         """
-        for log_setting in self.data.get('log_moderation'):
+        for log_setting in cast(list, self.data.get('log_moderation')):
             if log_setting['log_event'] == log_event:
                 return log_setting
         return None
@@ -74,7 +74,7 @@ class LogModeration(NestedDict):
                             1. antispoofing: Antispoofing entry (L3 engine only)
                             2. discard: discard entry.
         """
-        for log_setting in self.data.get('log_moderation'):
+        for log_setting in cast(list, self.data.get('log_moderation')):
             if log_setting['log_event'] == log_event:
                 self.data['log_moderation'].remove(log_setting)
                 break
@@ -86,7 +86,7 @@ class LogModeration(NestedDict):
                             1. antispoofing: Antispoofing entry (L3 engine only)
                             2. discard: discard entry.
         """
-        for log_setting in self.data.get('log_moderation'):
+        for log_setting in cast(list, self.data.get('log_moderation')):
             if log_setting['log_event'] == log_event:
                 return True
         return False

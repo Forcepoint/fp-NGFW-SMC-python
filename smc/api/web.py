@@ -43,6 +43,17 @@ GET = "GET"
 PUT = "PUT"
 POST = "POST"
 DELETE = "DELETE"
+
+REDACTED = "********"
+# Attributes whose value never reaches the logs, whichever element carries them.
+SECRET_KEYS = frozenset(
+    {
+        "authenticationkey",
+        "authentication_password",
+        "oauth_client_secret",
+        "password",
+    }
+)
 OPTIONS = "OPTIONS"
 PATCH = "PATCH"
 
@@ -344,6 +355,35 @@ class SMCResult(object):
         return ", ".join(sb)
 
 
+def mask_secrets(value: Any) -> None:
+    """Replace, in place, the value of every secret attribute of a decoded JSON body.
+
+    The caller owns the body: it is the one decoded for the logs, never an element's data.
+    """
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if key in SECRET_KEYS:
+                value[key] = REDACTED
+            else:
+                mask_secrets(item)
+    elif isinstance(value, list):
+        for item in value:
+            mask_secrets(item)
+
+
+def redacted_body(body: Any) -> Any:
+    """Return a body for the logs only: a JSON one has its secrets masked."""
+    if body is None:
+        return None
+    text = body.decode("utf-8", "replace") if isinstance(body, bytes) else body
+    try:
+        decoded = json.loads(text)
+    except (TypeError, ValueError):
+        return text
+    mask_secrets(decoded)
+    return json.dumps(decoded)
+
+
 def debug(response: Any) -> None:
     logger.debug("Request method: %s", response.request.method)
     logger.debug("Request URL: %s", response.url)
@@ -351,13 +391,13 @@ def debug(response: Any) -> None:
     for k, v in response.request.headers.items():
         logger.debug("\t%r: %r", k, v)
     logger.debug("Request body:")
-    logger.debug("%s", response.request.body)
+    logger.debug("%s", redacted_body(response.request.body))
     logger.debug("Response status: %s", response.status_code)
     logger.debug("Response headers:")
     for k, v in response.headers.items():
         logger.debug("\t%r: %r", k, v)
     logger.debug("Response content:")
-    logger.debug("%s", response.text)
+    logger.debug("%s", redacted_body(response.text))
 
 
 counters = collections.Counter({"read": 0, "create": 0, "update": 0, "delete": 0, "cache": 0})

@@ -33,9 +33,10 @@ Set up a query with a time format::
 """
 import time
 from datetime import datetime, timedelta
+from typing import Any, Dict, Optional, Union
 
 
-def datetime_to_ms(dt):
+def datetime_to_ms(dt: datetime) -> int:
     """
     Convert an unaware datetime object to milliseconds.
     This datetime should be the time you would expect to see
@@ -48,7 +49,7 @@ def datetime_to_ms(dt):
     return int(time.mktime(dt.timetuple()) * 1000)
 
 
-def datetime_from_ms(ms):
+def datetime_from_ms(ms: Union[int, float]) -> datetime:
     """
     Convenience to return datetime from milliseconds
 
@@ -58,7 +59,7 @@ def datetime_from_ms(ms):
     return datetime.fromtimestamp(ms / 1000.0)
 
 
-def subtract_from_now(td):
+def subtract_from_now(td: timedelta) -> int:
     """
     Subtract timedelta from current time
     """
@@ -66,7 +67,7 @@ def subtract_from_now(td):
     return int((now - td).timestamp() * 1000)
 
 
-def current_millis(): return int(round(time.time() * 1000))
+def current_millis() -> int: return int(round(time.time() * 1000))
 
 
 class TimeFormat(object):
@@ -83,71 +84,71 @@ class TimeFormat(object):
         end the query in time.
     """
 
-    def __init__(self, start_ms=0, end_ms=0):
+    def __init__(self, start_ms: int = 0, end_ms: int = 0) -> None:
         """
         Create new time format instance.
         """
-        self.data = {"start_ms": start_ms, "end_ms": end_ms}
+        self.data: Dict[str, Any] = {"start_ms": start_ms, "end_ms": end_ms}
 
     @property
-    def start_time(self):
+    def start_time(self) -> Union[datetime, int]:
         """
         Return the start time in datetime format. Will return
         0 if start time is not specified.
 
         :rtype: datetime
         """
-        return datetime_from_ms(
-            self.data.get("start_ms")) if self.data.get("start_ms") != 0 else 0
+        start_ms = self.data.get("start_ms")
+        return datetime_from_ms(start_ms) if start_ms else 0
 
     @property
-    def end_time(self):
+    def end_time(self) -> Union[datetime, int]:
         """
         Return the end time in datetime format. Will return
         0 if end time is not specified.
 
         :rtype: datetime
         """
-        return datetime_from_ms(
-            self.data.get("end_ms")) if self.data.get("start_ms") != 0 else 0
+        end_ms = self.data.get("end_ms")
+        return datetime_from_ms(end_ms) if end_ms else 0
 
-    def last_five_minutes(self):
+    def last_five_minutes(self) -> 'TimeFormat':
         """
         Add time from current time back 5 minutes
         """
         return self.custom_range(subtract_from_now(timedelta(minutes=5)))
 
-    def last_fifteen_minutes(self):
+    def last_fifteen_minutes(self) -> 'TimeFormat':
         """
         Add time from current time back 15 minutes
         """
         return self.custom_range(subtract_from_now(timedelta(minutes=15)))
 
-    def last_thirty_minutes(self):
+    def last_thirty_minutes(self) -> 'TimeFormat':
         """
         Add time from current time back 30 minutes
         """
         return self.custom_range(subtract_from_now(timedelta(minutes=30)))
 
-    def last_hour(self):
+    def last_hour(self) -> 'TimeFormat':
         """
         Add time from current time back 1 hour
         """
         return self.custom_range(subtract_from_now(timedelta(minutes=60)))
 
-    def last_day(self):
+    def last_day(self) -> 'TimeFormat':
         """
         Add time filter from current time back 1 day
         """
         return self.custom_range(subtract_from_now(timedelta(days=1)))
 
-    def last_week(self):
+    def last_week(self) -> 'TimeFormat':
         """
         Add time filter from current time back 7 days.
         """
         return self.custom_range(subtract_from_now(timedelta(days=7)))
 
-    def custom_range(self, start_time, end_time=None):
+    def custom_range(self, start_time: int, end_time: Optional[int] = None) -> 'TimeFormat':
         """
         Provide a custom range for the search query. Start time and end
         time are expected to be naive ``datetime`` objects converted to

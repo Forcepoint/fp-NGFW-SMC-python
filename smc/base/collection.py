@@ -84,7 +84,7 @@ class SubElementCollection(object):
     def __init__(self, href: str, cls: type) -> None:
         self.href = href
         self.cls = cls
-        self._result_cache = None
+        self._result_cache: Any = None  # list once fetched
 
     def __iter__(self) -> Iterator[Any]:
         self._fetch_all()
@@ -126,7 +126,7 @@ class SubElementCollection(object):
         """
         return len(self)
 
-    def get(self, index: int) -> Optional[Any]:
+    def get(self, index: int) -> Optional[Any]:  # type: ignore[return]  # implicit None
         """
         Get the element by index. If index is out of bounds for
         the internal list, None is returned. Indexes cannot be
@@ -138,7 +138,7 @@ class SubElementCollection(object):
         if self and (index <= len(self) - 1):
             return self._result_cache[index]
 
-    def get_exact(self, value: str) -> Optional[Any]:
+    def get_exact(self, value: str) -> Optional[Any]:  # type: ignore[return]  # implicit None
         """
         Get an element using an exact match based on the elements meta
         `name` field. The SMC is case sensitive so the name will need to
@@ -154,7 +154,7 @@ class SubElementCollection(object):
             if element.name == value:
                 return element
 
-    def get_contains(self, value: str, case_sensitive: bool = True) -> Optional[Any]:
+    def get_contains(self, value: str, case_sensitive: bool = True) -> Optional[Any]:  # type: ignore[return]  # implicit None
         """
         A partial match on the name field. Does an `in` comparsion to
         elements by the meta `name` field. Sub elements created by SMC
@@ -598,7 +598,7 @@ class ElementCollection(object):
                 return
             yield chunk
 
-    def first(self) -> Optional[Any]:
+    def first(self) -> Optional[Any]:  # type: ignore[return]  # implicit None
         """
         Returns the first object matched or None if there is no
         matching object.
@@ -629,7 +629,7 @@ class ElementCollection(object):
                 if result:
                     return result[0]
 
-    def last(self) -> Optional[Any]:
+    def last(self) -> Optional[Any]:  # type: ignore[return]  # implicit None
         """
         Returns the last object matched or None if there is no
         matching object.
@@ -880,7 +880,7 @@ class Search(ElementCollection):
         """
         :rtype: Search
         """
-        return self()
+        return self()  # type: ignore[operator]  # classproperty: self is the class
 
     def entry_point(self, entry_point: str) -> Search:
         """

@@ -58,20 +58,20 @@ class CertificateAuthority(Element):
 
         if filename is not None:
             save_to_file(filename, result.content)
-            return
+            return  # type: ignore[return-value]  # implicit None
 
         return result.content
 
     def duplicate(self, name: Any) -> Any:
         raise NotImplementedError(f"This method is not supported for {self.__class__.__name__}")
 
-    def export(self, name: Any) -> Any:
+    def export(self, name: Any) -> Any:  # type: ignore[override]  # unsupported, signature differs
         raise NotImplementedError(f"This method is not supported for {self.__class__.__name__}")
 
     def add_category(self, name: Any) -> Any:
         raise NotImplementedError(f"This method is not supported for {self.__class__.__name__}")
 
-    def categories(self, name: Any) -> Any:
+    def categories(self, name: Any) -> Any:  # type: ignore[override]  # unsupported, overrides a property
         raise NotImplementedError(f"This method is not supported for {self.__class__.__name__}")
 
     def rename(self, name: Any) -> Any:

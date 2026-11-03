@@ -11,7 +11,7 @@
 #  under the License.
 from __future__ import annotations
 
-from typing import Any, Optional, Union, Iterator
+from typing import Any, Optional, Union, Iterator, cast
 
 """
 BGP Module representing BGP settings for Forcepoint NGFW layer 3 engines. BGP can be
@@ -300,7 +300,7 @@ class BGP(object):
                 updated = True
 
         if announced_ne is not None:
-            s = self.data.get("announced_ne_setting")
+            s = cast(list, self.data.get("announced_ne_setting"))
             ne = self._unwrap(announced_ne)
 
             if len(announced_ne) != len(s) or not self._equal(ne, s):
@@ -317,7 +317,7 @@ class BGP(object):
     def _unwrap(self, network: list[Any]) -> list[Any]:
         _announced = []
         for net in network:
-            d = dict()
+            d: dict[str, Any] = dict()
             if isinstance(net, tuple):
                 _network, _routemap = net
                 d.update(announced_ne_ref=_network.href)
@@ -347,7 +347,7 @@ class BGP(object):
                 Element.from_href(ne.get("announced_ne_ref")),
                 Element.from_href(ne.get("announced_rm_ref")),
             )
-            for ne in self.data.get("announced_ne_setting")
+            for ne in cast(list, self.data.get("announced_ne_setting"))
         ]
 
 
@@ -419,7 +419,7 @@ class AutonomousSystem(Element):
         return int(self.data.get("as_number"))
 
     @classmethod
-    def update_or_create(cls, with_status: bool = False, **kwargs: Any) -> Any:
+    def update_or_create(cls, with_status: bool = False, **kwargs: Any) -> Any:  # type: ignore[override]  # no filter_key param
         if "." in str(kwargs.get("as_number")):
             kwargs.update(as_number=int(as_dotted(kwargs["as_number"])))
         return super(AutonomousSystem, cls).update_or_create(with_status=with_status, **kwargs)

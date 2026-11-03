@@ -42,6 +42,8 @@ Execute query and return as an :class:`.RoutingView` element::
 
 """
 
+from typing import Any, Iterator, Optional
+
 from smc_monitoring.models.query import Query
 from smc_monitoring.models.constants import LogField
 
@@ -69,10 +71,10 @@ class RoutingQuery(Query):
         LogField.ROUTEMETRIC,
     ]
 
-    def __init__(self, target, **kw):
+    def __init__(self, target: str, **kw: Any) -> None:
         super(RoutingQuery, self).__init__("ROUTING", target, **kw)
 
-    def fetch_as_element(self, **kw):
+    def fetch_as_element(self, **kw: Any) -> Iterator["RoutingView"]:
         """
         Fetch the results and return as a RoutingView element. The original
         query is not modified.
@@ -105,11 +107,11 @@ class RoutingView(object):
     :meth:`~RoutingQuery.fetch_as_element`.
     """
 
-    def __init__(self, **data):
+    def __init__(self, **data: Any) -> None:
         self.rt = data
 
     @property
-    def first_fetch(self):
+    def first_fetch(self) -> Optional[bool]:
         """
         first fetch
         True means entry is part of initial data at first fetch
@@ -119,7 +121,7 @@ class RoutingView(object):
         return self.rt.get("first_fetch")
 
     @property
-    def timestamp(self):
+    def timestamp(self) -> Optional[str]:
         """
         Timestamp of this connection. It is recommended to set the timezone
         on the query to view this timestamp in the systems local time.
@@ -133,7 +135,7 @@ class RoutingView(object):
         return self.rt.get(str(LogField.RECEPTIONTIME))
 
     @property
-    def engine(self):
+    def engine(self) -> Optional[str]:
         """
         The engine/cluster for this route
 
@@ -142,7 +144,7 @@ class RoutingView(object):
         return self.rt.get(str(LogField.NODEID))
 
     @property
-    def dest_if(self):
+    def dest_if(self) -> Optional[str]:
         """
         Destination interface for this route
 
@@ -151,7 +153,7 @@ class RoutingView(object):
         return self.rt.get(str(LogField.DSTIF))
 
     @property
-    def dest_vlan(self):
+    def dest_vlan(self) -> Optional[str]:
         """
         Destination VLAN for this route, if any.
 
@@ -160,7 +162,7 @@ class RoutingView(object):
         return self.rt.get(str(LogField.DSTVLAN))
 
     @property
-    def dest_zone(self):
+    def dest_zone(self) -> Optional[str]:
         """
         Destination zone for this route, if any.
 
@@ -169,7 +171,7 @@ class RoutingView(object):
         return self.rt.get(str(LogField.DSTZONE))
 
     @property
-    def route_gw(self):
+    def route_gw(self) -> Optional[str]:
         """
         The route gateway for this route.
 
@@ -178,7 +180,7 @@ class RoutingView(object):
         return self.rt.get(str(LogField.ROUTEGATEWAY))
 
     @property
-    def route_network(self):
+    def route_network(self) -> Optional[str]:
         """
         The route network for this route.
 
@@ -187,7 +189,7 @@ class RoutingView(object):
         return self.rt.get(str(LogField.ROUTENETWORK))
 
     @property
-    def route_type(self):
+    def route_type(self) -> Optional[str]:
         """
         The type of route.
 
@@ -197,16 +199,16 @@ class RoutingView(object):
         return self.rt.get(str(LogField.ROUTETYPE))
 
     @property
-    def route_metric(self):
+    def route_metric(self) -> int:
         """
         Metric for this route.
 
         :return: route metric
         :rtype: int
         """
-        return int(self.rt.get(str(LogField.ROUTEMETRIC)), 0)
+        return int(self.rt.get(str(LogField.ROUTEMETRIC), 0))
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "{}(dest_if={}, gateway={}, network={},type={})".format(
             self.__class__.__name__,
             self.dest_if,
@@ -214,5 +216,5 @@ class RoutingView(object):
             self.route_network,
             self.route_type)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)

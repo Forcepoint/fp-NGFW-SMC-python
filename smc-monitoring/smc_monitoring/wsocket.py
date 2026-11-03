@@ -18,12 +18,17 @@ import logging
 import threading
 import time
 from pprint import pformat
+from types import TracebackType
+from typing import TYPE_CHECKING, Any, Callable, Dict, Iterator, NoReturn, Optional, Type, Union
 from smc import session
-from smc.compat import PYTHON_v3_9
 from smc_monitoring.models.formatters import TableFormat, ElementFormat
 
 import websocket
 from websocket import WebSocketApp, ABNF, WebSocketProtocolException
+
+if TYPE_CHECKING:
+    from smc_monitoring.models.query import Query
+    from smc_monitoring.pubsub.subscribers import Notification
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +36,7 @@ BUFFER_ERROR = b"The decoded text message was too big for the output buffer and 
                b"the endpoint does not support partial messages"
 
 
-def websocket_debug():
+def websocket_debug() -> None:
     websocket.enableTrace(True)
 
 
@@ -47,7 +52,7 @@ class SessionNotFound(Exception):
     pass
 
 
-def _get_ca_bundle():
+def _get_ca_bundle() -> Optional[str]:
     """
     If verify=True, then requests is using the built in
     certifi CA database. Attempt to get that path for
@@ -58,11 +63,11 @@ def _get_ca_bundle():
 
         return certifi.where()
     except ImportError:
-        pass
+        return None
 
 
-def get_ssl_opt(**kw):
-    sslopt = {}
+def get_ssl_opt(**kw: Any) -> Dict[str, Any]:
+    sslopt: Dict[str, Any] = {}
     if session.is_ssl:
         # SSL verification is based on the session settings since the
         # session must be made before calling this class. If verify=True,
@@ -91,7 +96,7 @@ def get_ssl_opt(**kw):
     return sslopt
 
 
-def get_sock_from_session():
+def get_sock_from_session() -> Any:
     sock = None
     if session.session_id is None:
         sock = session.sock
@@ -133,7 +138,9 @@ class SMCSocketAsyncProtocol:
 
     """
 
-    def __init__(self, query, on_message_fct, formatter=TableFormat, element_name=None, **kw):
+    def __init__(self, query: 'Query', on_message_fct: Callable[[WebSocketApp, Any], Any],
+                 formatter: Type[Any] = TableFormat, element_name: Optional[Callable[..., Any]] = None,
+                 **kw: Any) -> None:
         """
         Initialize the web socket.
 
@@ -147,8 +154,8 @@ class SMCSocketAsyncProtocol:
         self.on_message_fct = on_message_fct
         self.formatter = formatter
         self.element_name = element_name
-        self.thread = None
-        self.fetch_id = None
+        self.thread: Optional[threading.Thread] = None
+        self.fetch_id: Optional[int] = None
 
         if formatter is ElementFormat:
             query.format.field_format("id")
@@ -175,7 +182,7 @@ class SMCSocketAsyncProtocol:
                                cookie=session.session_id,
                                socket=self.sock)
 
-    def run(self, background=False):
+    def run(self, background: bool = False) -> None:
         """
         Start listening from the websocket on the callback method
         """
@@ -192,32 +199,32 @@ class SMCSocketAsyncProtocol:
             # and in this context, we do not need to have cors filtering
             self.ws.run_forever(sslopt=self.sslopt, suppress_origin=True)
 
-    def _on_open_ws(self, ws):
+    def _on_open_ws(self, ws: WebSocketApp) -> None:
         logger.debug("WS:{} open".format(ws))
         ws.send(json.dumps(self.query.request))
 
-    def _on_message_ws(self, ws, message):
+    def _on_message_ws(self, ws: WebSocketApp, message: Union[str, bytes]) -> None:
         data = json.loads(message)
         self.fetch_id = data.get("fetch")
         records = self.query.get_record(results=data)
         if records:
             if self.formatter is ElementFormat:
-                for message in records:
-                    self.on_message_fct(ws, self.element_name(**message))
+                for record in records:
+                    self.on_message_fct(ws, self.element_name(**record))  # type: ignore[misc]  # required with ElementFormat
             else:
                 fmt = self.formatter(self.query)
                 self.on_message_fct(ws, fmt.formatted(records))
 
-    def _on_error(self, ws, err):
+    def _on_error(self, ws: WebSocketApp, err: Exception) -> None:
         ws.close()
         logger.error("WS:{} error: {}".format(ws, err))
 
-    def _on_close(self, ws, close_status_code, close_msg):
+    def _on_close(self, ws: WebSocketApp, close_status_code: Optional[int], close_msg: Optional[str]) -> None:
         logger.debug("WS:{} closed status={} message={} ! ".format(ws,
                                                                    close_status_code,
                                                                    close_msg))
 
-    def abort(self):
+    def abort(self) -> bool:
         """
         Abort
         End listening for new messages and let server close the websocket
@@ -233,12 +240,13 @@ class SMCSocketAsyncProtocol:
         logger.debug("WS connection aborted !")
         return True
 
-    def close(self):
+    def close(self) -> None:
         """
         Close the websocket
         """
         logger.info("Close WS:{}".format(self))
-        self.ws.close()
+        if self.ws.sock is not None:
+            self.ws.close()
 
 
 class SMCSocketProtocol(websocket.WebSocket):
@@ -248,7 +256,8 @@ class SMCSocketProtocol(websocket.WebSocket):
     results and yield them back to the caller as a context manager.
     """
 
-    def __init__(self, query, query_timeout=None, sock_timeout=3, inactivity_timeout=None, **kw):
+    def __init__(self, query: Union['Query', 'Notification'], query_timeout: Optional[int] = None,
+                 sock_timeout: int = 3, inactivity_timeout: Optional[int] = None, **kw: Any) -> None:
         """
         Initialize the web socket.
 
@@ -291,13 +300,13 @@ class SMCSocketProtocol(websocket.WebSocket):
         self.query_timeout = query_timeout
         self.inactivity_timeout = inactivity_timeout
         self.query = query
-        self.fetch_id = None
+        self.fetch_id: Optional[int] = None
         # Inner thread used to keep socket select alive
-        self.thread = None
+        self.thread: Optional[threading.Thread] = None
         self.event = threading.Event()
         self.sock_timeout = sock_timeout
 
-    def __enter__(self):
+    def __enter__(self) -> 'SMCSocketProtocol':
         if session.session_id is None:
             # we disable Origin header because it conflicts with Tomcat Cors Filter
             # and in this context, we do not need to have cors filtering
@@ -318,21 +327,22 @@ class SMCSocketProtocol(websocket.WebSocket):
             self.on_open()
         return self
 
-    def __exit__(self, exctype, value, traceback):
+    def __exit__(self, exctype: Optional[Type[BaseException]], value: Optional[BaseException],
+                 traceback: Optional[TracebackType]) -> bool:
         if exctype in (SystemExit, GeneratorExit):
             return False
         elif exctype in (InvalidFetch, WebSocketProtocolException):
             raise FetchAborted(value)
         return True
 
-    def on_open(self):
+    def on_open(self) -> None:
         """
         Once the connection is made, start the query off and
         start an event loop to wait for a signal to
         stop. Results are yielded within receive().
         """
 
-        def event_loop():
+        def event_loop() -> None:
             logger.debug(pformat(self.query.request))
             self.send(json.dumps(self.query.request))
             while not self.event.is_set():
@@ -345,7 +355,7 @@ class SMCSocketProtocol(websocket.WebSocket):
         self.thread.setDaemon(True)
         self.thread.start()
 
-    def send_message(self, message):
+    def send_message(self, message: Union['Query', 'Notification']) -> None:
         """
         Send a message down the socket. The message is expected
         to have a `request` attribute that holds the message to
@@ -354,14 +364,14 @@ class SMCSocketProtocol(websocket.WebSocket):
         if self.connected:
             self.send(json.dumps(message.request))
 
-    def abort(self):
+    def abort(self) -> NoReturn:
         """
         Abort the connection
         """
         logger.info("Abort called, cleaning up.")
         raise FetchAborted
 
-    def recv(self):
+    def recv(self) -> Union[str, bytes]:
         """
         Receive string data(byte array) from the server.
         :rtype: string (byte array) value.
@@ -377,7 +387,7 @@ class SMCSocketProtocol(websocket.WebSocket):
         else:
             return ''
 
-    def receive(self):
+    def receive(self) -> Iterator[Dict[str, Any]]:
         """
         Generator yielding results from the web socket. Results
         will come as they are received. Even though socket select
@@ -452,8 +462,7 @@ class SMCSocketProtocol(websocket.WebSocket):
 
             if self.thread:
                 self.event.set()
-                while (not PYTHON_v3_9 and self.thread.isAlive()) or \
-                      (PYTHON_v3_9 and self.thread.is_alive()):
+                while self.thread.is_alive():
                     self.event.wait(1)
 
             logger.info("Closed web socket connection normally:{}.".format(self))

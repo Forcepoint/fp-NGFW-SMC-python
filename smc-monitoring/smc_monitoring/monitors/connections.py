@@ -47,6 +47,8 @@ Retrieving live streaming results::
 .. seealso:: :class:`smc_monitoring.models.filters` for more information on creating filters
 
 """
+from typing import Any, Iterator, Optional
+
 from smc_monitoring.models.query import Query
 from smc_monitoring.models.constants import LogField
 
@@ -77,10 +79,10 @@ class ConnectionQuery(Query):
         LogField.STATE,
     ]
 
-    def __init__(self, target, **kw):
+    def __init__(self, target: str, **kw: Any) -> None:
         super(ConnectionQuery, self).__init__("CONNECTIONS", target, **kw)
 
-    def fetch_as_element(self, **kw):
+    def fetch_as_element(self, **kw: Any) -> Iterator["Connection"]:
         """
         Fetch the results and return as a Connection element. The original
         query is not modified.
@@ -113,21 +115,21 @@ class Connection(object):
     :meth:`~ConnectionQuery.fetch_as_element`.
     """
 
-    def __init__(self, **data):
+    def __init__(self, **data: Any) -> None:
         self.cxn = data
 
     @property
-    def first_fetch(self):
+    def first_fetch(self) -> Optional[bool]:
         """
         first fetch
         True means entry is part of initial data at first fetch
 
         :rtype: bool
         """
-        return self.cnx.get("first_fetch")
+        return self.cxn.get("first_fetch")
 
     @property
-    def timestamp(self):
+    def timestamp(self) -> Optional[str]:
         """
         Timestamp of this connection. It is recommended to set the timezone
         on the query to view this timestamp in the systems local time.
@@ -141,7 +143,7 @@ class Connection(object):
         return self.cxn.get(str(LogField.TIMESTAMP))
 
     @property
-    def engine(self):
+    def engine(self) -> Optional[str]:
         """
         The engine/cluster for this state table entry
 
@@ -151,7 +153,7 @@ class Connection(object):
         return self.cxn.get(str(LogField.NODEID))
 
     @property
-    def source_addr(self):
+    def source_addr(self) -> Optional[str]:
         """
         Source address for this entry
 
@@ -160,7 +162,7 @@ class Connection(object):
         return self.cxn.get(str(LogField.SRC))
 
     @property
-    def dest_addr(self):
+    def dest_addr(self) -> Optional[str]:
         """
         Destination address for this entry
 
@@ -169,7 +171,7 @@ class Connection(object):
         return self.cxn.get(str(LogField.DST))
 
     @property
-    def service(self):
+    def service(self) -> Optional[str]:
         """
         Service for this entry
 
@@ -179,7 +181,7 @@ class Connection(object):
         return self.cxn.get(str(LogField.SERVICE))
 
     @property
-    def protocol(self):
+    def protocol(self) -> str:
         """
         Protocol for this entry
 
@@ -189,7 +191,7 @@ class Connection(object):
         return self.cxn.get(str(LogField.PROTOCOL), "ANY")
 
     @property
-    def source_port(self):
+    def source_port(self) -> int:
         """
         Source port for the entry.
 
@@ -198,7 +200,7 @@ class Connection(object):
         return int(self.cxn.get(str(LogField.SPORT), 0))
 
     @property
-    def dest_port(self):
+    def dest_port(self) -> int:
         """
         Destination port for the entry.
 
@@ -207,7 +209,7 @@ class Connection(object):
         return int(self.cxn.get(str(LogField.DPORT), 0))
 
     @property
-    def state(self):
+    def state(self) -> Optional[str]:
         """
         State of the connection.
 
@@ -216,7 +218,7 @@ class Connection(object):
         """
         return self.cxn.get(str(LogField.STATE))
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "{}(src={},dst={},proto={},dst_port={},state={})".format(
             self.__class__.__name__,
             self.source_addr,
@@ -226,5 +228,5 @@ class Connection(object):
             self.state,
         )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)

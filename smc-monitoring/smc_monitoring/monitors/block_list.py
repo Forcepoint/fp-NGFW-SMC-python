@@ -52,11 +52,14 @@ Delete any block_list entries with a source IP within a network range of 3.3.3.0
 .. seealso:: :class:`smc_monitoring.models.filters` for more information on creating filters
 
 """
+from typing import Any, Dict, Iterator, Optional, cast
+
 from smc_monitoring.models.query import Query
 from smc_monitoring.models.formats import TextFormat, CombinedFormat, DetailedFormat
 from smc_monitoring.models.constants import LogField
 from smc.base.model import prepared_request
 from smc.api.exceptions import DeleteElementFailed
+from smc.api.web import SMCResult
 from smc.compat import is_api_version_less_than_or_equal
 
 
@@ -88,13 +91,13 @@ class BlockListQuery(Query):
         LogField.BLOCK_LISTENTRYID,
     ]
 
-    def __init__(self, target, timezone=None, **kw):
+    def __init__(self, target: str, timezone: Optional[str] = None, **kw: Any) -> None:
         super(BlockListQuery, self).__init__("BLOCK_LIST", target, **kw)
 
         if timezone is not None:
             self.format.set_resolving(timezone=timezone)
 
-    def fetch_as_element(self, **kw):
+    def fetch_as_element(self, **kw: Any) -> Iterator["BlockListEntry"]:
         """
         Fetch the block_list and return as an instance of Element.
         :param int query_timeout: length of time to wait on recieving web
@@ -122,8 +125,8 @@ class BlockListQuery(Query):
 
         for list_of_results in clone.fetch_raw(**kw):
             for entry in list_of_results:
-                data = entry.get("bldata")
-                data.update(**entry.get("blid"))
+                data = cast(Dict[str, Any], entry.get("bldata"))
+                data.update(**cast(Dict[str, Any], entry.get("blid")))
                 first_fetch = entry.get("first_fetch")
                 first_fetch = first_fetch if first_fetch else False
                 data.update({"first_fetch": first_fetch})
@@ -143,11 +146,11 @@ class BlockListEntry(object):
     as InFilter definitions on the query.
     """
 
-    def __init__(self, **kw):
+    def __init__(self, **kw: Any) -> None:
         self.block_list = kw
 
     @property
-    def block_list_id(self):
+    def block_list_id(self) -> Optional[str]:
         """
         Block_list entry ID. Useful if you want to locate the entry
         within the Management Client.
@@ -157,7 +160,7 @@ class BlockListEntry(object):
         return self.block_list.get("Blacklist Entry ID")
 
     @property
-    def block_list_entry_key(self):
+    def block_list_entry_key(self) -> Optional[str]:
         """
         Block_list entry Key.
         Needed to remove the entry
@@ -167,7 +170,7 @@ class BlockListEntry(object):
         return self.block_list.get("BlacklistEntryId")
 
     @property
-    def first_fetch(self):
+    def first_fetch(self) -> Optional[bool]:
         """
         first fetch
         True means entry is part of initial data at first fetch
@@ -177,7 +180,7 @@ class BlockListEntry(object):
         return self.block_list.get("first_fetch")
 
     @property
-    def timestamp(self):
+    def timestamp(self) -> Optional[str]:
         """
         Timestamp when this block_list entry was added.
 
@@ -186,7 +189,7 @@ class BlockListEntry(object):
         return self.block_list.get("Timestamp")
 
     @property
-    def engine(self):
+    def engine(self) -> Optional[str]:
         """
         The engine for this block_list entry.
 
@@ -195,7 +198,7 @@ class BlockListEntry(object):
         return self.block_list.get("NodeId")
 
     @property
-    def href(self):
+    def href(self) -> Optional[str]:
         """
         The href for this block_list entry. This is the reference to the
         entry for deleting the entry.
@@ -208,7 +211,7 @@ class BlockListEntry(object):
             return self.block_list.get("block_list_href")
 
     @property
-    def source(self):
+    def source(self) -> str:
         """
         Source address/netmask for this block_list entry.
 
@@ -220,7 +223,7 @@ class BlockListEntry(object):
         )
 
     @property
-    def destination(self):
+    def destination(self) -> str:
         """
         Destination network/netmask for this block_list entry.
 
@@ -232,7 +235,7 @@ class BlockListEntry(object):
         )
 
     @property
-    def protocol(self):
+    def protocol(self) -> str:
         """
         Specified protocol for the block_list entry. If none is specified,
         'ANY' is returned.
@@ -245,7 +248,7 @@ class BlockListEntry(object):
         return proto
 
     @property
-    def source_ports(self):
+    def source_ports(self) -> str:
         """
         Source ports for this block_list entry. If no ports are specified (i.e. ALL
         ports), 'ANY' is returned.
@@ -259,7 +262,7 @@ class BlockListEntry(object):
         return "ANY"
 
     @property
-    def dest_ports(self):
+    def dest_ports(self) -> str:
         """
         Destination ports for this block_list entry. If no ports are specified,
         'ANY' is returned.
@@ -273,15 +276,15 @@ class BlockListEntry(object):
         return "ANY"
 
     @property
-    def duration(self):
+    def duration(self) -> int:
         """
         Duration for the block_list entry.
 
         :rtype: int
         """
-        return int(self.block_list.get("BlacklistEntryDuration"))
+        return int(self.block_list.get("BlacklistEntryDuration", 0))
 
-    def delete(self):
+    def delete(self) -> SMCResult:
         """
         Delete the entry from the engine where the entry is applied.
 
@@ -290,12 +293,12 @@ class BlockListEntry(object):
         """
         return prepared_request(DeleteElementFailed, href=self.href).delete()
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "{0}(id={1},src={2},dst={3})".format(
             self.__class__.__name__,
             self.block_list_id,
             self.source,
             self.destination)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)

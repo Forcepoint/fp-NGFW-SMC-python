@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Optional, Union, Iterator
+from typing import Any, Optional, Union, Iterator, TYPE_CHECKING, cast, Callable
 
 from smc.base.model import Element, ElementCreator, lookup_class
 from smc.base.structs import NestedDict
@@ -719,7 +719,7 @@ class ApplicationAccessWebService(Element):
         self.data.update({"visible_in_portal": value})
 
 
-class ApplicationAccessRule(RuleCommon, Rule, SubElement):
+class ApplicationAccessRule(RuleCommon, Rule, SubElement):  # type: ignore[misc]  # Rule.update signature differs by design
     """
     An Application Access Policy Rule
     """
@@ -760,7 +760,7 @@ class ApplicationAccessRule(RuleCommon, Rule, SubElement):
         if name:
             json["name"] = name
         json.update(**kw)
-        return ElementCreator(self.__class__, exception=CreateRuleFailed, href=href, json=json)
+        return ElementCreator(cast(Any, self.__class__), exception=CreateRuleFailed, href=href, json=json)
 
     @property
     def name(self) -> str:
@@ -831,13 +831,14 @@ class ApplicationAccessRule(RuleCommon, Rule, SubElement):
         self.data["is_disabled"] = False
 
     @cacheable_resource
-    def application_access_web_service(self) -> ApplicationAccessWebService:
+    def application_access_web_service(self) -> list[ApplicationAccessWebService]:
         """
         Services assigned to this rule
 
-        :rtype: application_access_portal_service
+        :rtype: list(ApplicationAccessWebService)
         """
-        return ApplicationAccessWebService(self)
+        return [cast(ApplicationAccessWebService, Element.from_href(href))
+                for href in self.data.get("application_access_web_service", [])]
 
     @property
     def parent_policy(self) -> Any:
@@ -846,7 +847,7 @@ class ApplicationAccessRule(RuleCommon, Rule, SubElement):
 
         :return: :class:`smc.base.model.Element` of type policy
         """
-        return Element.from_href(self.data.get("parent_policy"))
+        return Element.from_href(cast(str, self.data.get("parent_policy")))
 
     def save(self) -> str:
         """
@@ -896,6 +897,9 @@ class ApplicationAccessPolicyRule(object):
     """
     An Application Access Policy Rule collector.
     """
+    if TYPE_CHECKING:
+        get_relation: Callable[..., str]
+
     @property
     def application_access_rules(self) -> Any:
         return rule_collection(self.get_relation("application_access_rules"), ApplicationAccessRule)

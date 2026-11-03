@@ -15,7 +15,7 @@ Module representing network elements used within the SMC
 from __future__ import annotations
 
 import copy
-from typing import Any, Optional, Union
+from typing import Any, Iterator, Optional, Union, cast
 
 from smc.base.model import Element, ElementCreator
 from smc.api.exceptions import (
@@ -135,7 +135,7 @@ class AddressRange(Element):
 
     @classmethod
     def any(cls) -> Optional[AddressRange]:
-        return Element.from_href(fetch_entry_point("address_range")+'/0')  # type: ignore[return-value]
+        return Element.from_href(cast(str, fetch_entry_point("address_range"))+'/0')  # type: ignore[return-value]
 
 
 class Router(Element, IPv6Node):
@@ -295,7 +295,7 @@ class DomainName(Element):
         :return: instance with meta
         :rtype: DomainName
         """
-        json = {"name": name, "comment": comment}
+        json: dict[str, Any] = {"name": name, "comment": comment}
         if not is_smc_version_less_than_or_equal("6.10"):
             json.update(domain_name_entry=domain_name_entry)
         return ElementCreator(cls, json)
@@ -368,7 +368,7 @@ class Expression(Element):
         :return: instance with meta
         :rtype: Expression
         """
-        sub_expression = [] if sub_expression is None else [sub_expression]
+        sub_expression = [] if sub_expression is None else [sub_expression]  # type: ignore[assignment]  # param rebound to a list
         json = {
             "name": name,
             "operator": operator,
@@ -525,7 +525,7 @@ class URLListApplication(Element):
         :return: instance with meta
         :rtype: URLListApplication
         """
-        json = {"name": name, "url_entry": url_entry, "comment": comment}
+        json: dict[str, Any] = {"name": name, "url_entry": url_entry, "comment": comment}
 
         if application_ports:
             json.update({"application_port": []})
@@ -560,7 +560,7 @@ class URLListApplication(Element):
         :param application_port_list: url list to add
         :type application_port_list: list(ApplicationPort)
         """
-        self.data["application_port"] = {}
+        self.data["application_port"] = []
         for app in application_port_list:
             self.data["application_port"].append(app.data)
 
@@ -645,7 +645,7 @@ class IPList(Element):
 
     typeof = "ip_list"
 
-    def download(self, filename: Optional[str] = None, as_type: str = "zip") -> Optional[Any]:
+    def download(self, filename: Optional[str] = None, as_type: str = "zip") -> Optional[Any]:  # type: ignore[return]  # implicit None
         """
         Download the IPList. List format can be either zip, text or
         json. For large lists, it is recommended to use zip encoding.
@@ -716,7 +716,7 @@ class IPList(Element):
         )
 
     @classmethod
-    def update_or_create(cls, append_lists: bool = True, with_status: bool = False,
+    def update_or_create(cls, append_lists: bool = True, with_status: bool = False,  # type: ignore[override]  # intentionally differs
                          **kwargs: Any) -> Union[IPList, tuple[IPList, bool, bool]]:
         """
         Update or create an IPList.
@@ -727,9 +727,9 @@ class IPList(Element):
         :raises FetchElementFailed: Reason for retrieval failure
         """
         was_created, was_modified = False, False
-        element = None
+        element: Any = None
         try:
-            element = cls.get(kwargs.get("name"))
+            element = cls.get(cast(str, kwargs.get("name")))
             if append_lists:
                 iplist = element.iplist
                 diff = [i for i in kwargs.get("iplist", []) if i not in iplist]
@@ -745,7 +745,7 @@ class IPList(Element):
                 was_modified = True
 
         except ElementNotFound:
-            element = cls.create(kwargs.get("name"), iplist=kwargs.get("iplist", []))
+            element = cls.create(cast(str, kwargs.get("name")), iplist=kwargs.get("iplist", []))
             was_created = True
 
         if with_status:
@@ -762,7 +762,7 @@ class IPList(Element):
         :raises FetchElementFailed: Reason for retrieval failure
         :rtype: list
         """
-        return self.download(as_type="json").get("ip", [])
+        return cast(Any, self.download(as_type="json")).get("ip", [])
 
     @classmethod
     def create(cls, name: str, iplist: Optional[list[str]] = None,
@@ -891,7 +891,7 @@ class Alias(Element):
         :raises CreateElementFailed: create failed with reason
         :rtype: Alias
         """
-        alias_json_content = {"name": name,
+        alias_json_content: dict[str, Any] = {"name": name,
                               "comment": comment}
         if default_values:
             d_values = cls.__convert_default_values(default_values=default_values)
@@ -924,7 +924,7 @@ class Alias(Element):
         return parsed_alias_values
 
     @classmethod
-    def update_or_create(cls, name: str, engine: Optional[Any] = None,
+    def update_or_create(cls, name: str, engine: Optional[Any] = None,  # type: ignore[override]  # intentionally differs
                          translation_values: Optional[list[Any]] = None,
                          with_status: bool = False,
                          default_values: Optional[list[Any]] = None,
@@ -996,7 +996,7 @@ class Alias(Element):
         return alias
 
     @classmethod
-    def _from_engine(cls, data: dict[str, Any], alias_list: list[Any]) -> Optional[Alias]:
+    def _from_engine(cls, data: dict[str, Any], alias_list: list[Any]) -> Optional[Alias]:  # type: ignore[return]  # implicit None
         """
         Return an alias for the engine. The data is dict provided
         when calling engine.alias_resolving(). The alias list is
@@ -1058,6 +1058,6 @@ class Alias(Element):
                     # filter NONE
                     filter(lambda resolved_element: resolved_element.name != 'NONE',
                            # resolve Element from href
-                           map(lambda element: Element.from_href(element),
+                           cast("Iterator[Any]", map(lambda element: Element.from_href(element),
                                # consider 'translated_element' if there is
-                               result.get("translated_element", []))))}
+                               result.get("translated_element", [])))))}

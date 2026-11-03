@@ -12,7 +12,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, Union, cast
 
 from smc.base.model import Element, ElementCreator
 from smc.base.structs import NestedDict
@@ -27,6 +27,18 @@ class RuleElement(object):
     Rule Element encapsulates actions for source, destination and
     service fields.
     """
+
+    # Mixin: concrete subclasses also inherit NestedDict and set these
+    typeof: str
+    rule: Any
+    data: dict[Any, Any]
+
+    if TYPE_CHECKING:
+        def __getitem__(self: RuleElement, key: Any) -> Any: ...
+        def __contains__(self: RuleElement, key: object) -> bool: ...
+        def clear(self: RuleElement) -> None: ...
+        def update(self: RuleElement, *args: Any, **kwargs: Any) -> None: ...
+        def get(self: RuleElement, key: Any, default: Any = None) -> Any: ...
 
     @property
     def is_any(self) -> bool:
@@ -323,7 +335,7 @@ class ActionMixin(NestedDict):
     def __init__(self, rule: Any = None) -> None:
         if rule is None:
             if is_api_version_less_than_or_equal("6.5"):
-                action = dict(action="allow")
+                action: dict[str, Any] = dict(action="allow")
             else:
                 action = dict(action=["allow"])
             conn_tracking = ConnectionTracking()
@@ -440,14 +452,14 @@ class Action(ActionMixin):
             self.update(forced_next_hop_ip=value)
 
     @property
-    def forced_next_hop_element(self) -> Optional[Any]:
+    def forced_next_hop_element(self) -> Optional[Any]:  # type: ignore[return]  # implicit None
         """
         If action includes forced_next_hop, specify the forced next hop element.
 
         :rtype: NetworkElement
         """
         if "forced_next_hop_element" in self:
-            return Element.from_href(self.get("forced_next_hop_element"))
+            return Element.from_href(cast(str, self.get("forced_next_hop_element")))
 
     @forced_next_hop_element.setter
     def forced_next_hop_element(self, value: Any) -> None:
@@ -529,35 +541,35 @@ class Action(ActionMixin):
         self.update(snort=value)
 
     @property
-    def sub_policy(self) -> Optional[Any]:
+    def sub_policy(self) -> Optional[Any]:  # type: ignore[return]  # implicit None
         """
         Sub policy is used when ``action=jump``.
 
         :rtype: FirewallSubPolicy
         """
         if "sub_policy" in self:
-            return Element.from_href(self.get("sub_policy"))
+            return Element.from_href(cast(str, self.get("sub_policy")))
 
     @sub_policy.setter
     def sub_policy(self, value: Any) -> None:
         self.update(sub_policy=element_resolver(value))
 
     @property
-    def explicit_proxy_sub_policy(self) -> Optional[Any]:
+    def explicit_proxy_sub_policy(self) -> Optional[Any]:  # type: ignore[return]  # implicit None
         """
         Explicit Proxy Sub policy is used when ``action=explicit_proxy_jump``.
 
         :rtype: FirewallSubPolicy
         """
-        if "sub_policy" in self:
-            return Element.from_href(self.get("explicit_proxy_sub_policy"))
+        if "explicit_proxy_sub_policy" in self:
+            return Element.from_href(cast(str, self.get("explicit_proxy_sub_policy")))
 
     @explicit_proxy_sub_policy.setter
     def explicit_proxy_sub_policy(self, value: Any) -> None:
         self.update(explicit_proxy_sub_policy=element_resolver(value))
 
     @property
-    def valid_block_lister(self) -> Optional[list[Any]]:
+    def valid_block_lister(self) -> Optional[list[Any]]:  # type: ignore[return]  # implicit None
         """
         Used when ``action=block_list``.
         If specified with block_list action, you want to restrict
@@ -571,14 +583,15 @@ class Action(ActionMixin):
         .. note:: This method requires SMC version >= 7.0
         """
         if "valid_block_lister" in self:
-            return [Element.from_href(element) for element in self.data.get("valid_block_lister")]
+            return [Element.from_href(element)
+                    for element in cast(list[Any], self.data.get("valid_block_lister"))]
 
     @valid_block_lister.setter
     def valid_block_lister(self, values: Any) -> None:
         self.update(valid_block_lister=values)
 
     @property
-    def valid_blacklister(self) -> Optional[list[Any]]:
+    def valid_blacklister(self) -> Optional[list[Any]]:  # type: ignore[return]  # implicit None
         """
         Used when ``action=blacklist``.
         If specified with blacklist action, you want to restrict
@@ -592,7 +605,8 @@ class Action(ActionMixin):
         .. note:: This method requires SMC version < 7.0
         """
         if "valid_blacklister" in self:
-            return [Element.from_href(element) for element in self.data.get("valid_blacklister")]
+            return [Element.from_href(element)
+                    for element in cast(list[Any], self.data.get("valid_blacklister"))]
 
     @valid_blacklister.setter
     def valid_blacklister(self, values: Any) -> None:
@@ -606,7 +620,7 @@ class Action(ActionMixin):
         """
         Read-only user response setting
         """
-        return Element.from_href(self.get("user_response"))
+        return Element.from_href(cast(str, self.get("user_response")))
 
     @user_response.setter
     def user_response(self, user_response: Any) -> None:
@@ -619,7 +633,7 @@ class Action(ActionMixin):
         self.update(user_response=element_resolver(user_response))
 
     @property
-    def vpn(self) -> Optional[Any]:
+    def vpn(self) -> Optional[Any]:  # type: ignore[return]  # implicit None
         """
         Return vpn reference. Only used if 'enforce_vpn', 'apply_vpn',
         or 'forward_vpn' is the action type.
@@ -628,7 +642,7 @@ class Action(ActionMixin):
         :rtype: PolicyVPN
         """
         if "vpn" in self:
-            return Element.from_href(self.get("vpn"))
+            return Element.from_href(cast(str, self.get("vpn")))
 
     @vpn.setter
     def vpn(self, value: Any) -> None:
@@ -1189,7 +1203,7 @@ class AuthenticationOptions(NestedDict):
 
         :return: list value: auth methods enabled
         """
-        return [Element.from_href(method) for method in self.get("methods")]
+        return [Element.from_href(method) for method in cast(list[Any], self.get("methods"))]
 
     @property
     def require_auth(self) -> Optional[bool]:
@@ -1351,7 +1365,7 @@ class MatchExpression(Element):
         if service:
             ref_list.append(service.href)
 
-        json = {"name": name, "ref": ref_list}
+        json: dict[str, Any] = {"name": name, "ref": ref_list}
 
         if service:
             try:

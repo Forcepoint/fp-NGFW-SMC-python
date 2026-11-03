@@ -20,7 +20,7 @@ from smc.base.util import import_submodules
 
 from .__version__ import  __version__
 
-session_name = None
+session_name: Optional[str] = None
 manager = SessionManager.create()
 session = manager.get_default_session()
 
@@ -42,7 +42,7 @@ try:  # Python 2.7+
     from logging import NullHandler
 except ImportError:
 
-    class NullHandler(logging.Handler):
+    class NullHandler(logging.Handler):  # type: ignore[no-redef]  # py2 fallback
         def emit(self, record: Any) -> None:
             pass
 

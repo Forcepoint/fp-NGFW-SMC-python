@@ -88,6 +88,7 @@ def callback_neighbor_element_fct(wso, element):
 
 def main():
     return_code = 0
+    ws1 = async_ws1 = async_ws2 = async_ws3 = async_ws4 = async_ws5 = None
     try:
         arguments = parse_command_line_arguments()
         session.login(url=arguments.api_url, api_key=arguments.api_key,
@@ -193,12 +194,10 @@ def main():
         logging.info(f"routing element={nb_routing_element}")
         logging.info(f"routing table={nb_routing_table}")
         logging.info(f"neighbor element={nb_neighbor_element}")
-        # close all the web socket connections
-        async_ws1.close()
-        async_ws2.close()
-        async_ws3.close()
-        async_ws4.close()
-        async_ws5.close()
+        # close all the web socket connections that were actually opened
+        for ws in (ws1, async_ws1, async_ws2, async_ws3, async_ws4, async_ws5):
+            if ws is not None:
+                ws.close()
 
         assert nb_log_table_serial > 0 \
                and nb_alert_element > 0 \

@@ -14,7 +14,7 @@ Alert element types that can be used as a matching criteria in the rules of an A
 """
 from __future__ import annotations
 
-from typing import Any, Optional, Union, Iterator
+from typing import Any, Callable, Optional, Union, Iterator
 
 from smc.api.exceptions import AlertChainError, UnsupportedAlertChannel, AlertPolicyError
 from smc.base.model import Element, ElementCreator, SubElement
@@ -150,6 +150,10 @@ class AlertRuleCommon(object):
     Functionality common to all alert rules
     """
 
+    #: provided by the concrete rule class (ElementBase)
+    data: Any
+    make_request: Callable[..., Any]
+
     @property
     def background_color(self) -> Optional[str]:
         """
@@ -228,7 +232,7 @@ class AlertChainRule(AlertRuleCommon, SubElement):
         :return: the created ipv4 rule
         :rtype: IPv4Rule
         """
-        params = {}
+        params: dict[str, Any] = {}
         href = AlertChainRule.set_up_positions(self, params, rules_href, add_pos, after, before)
 
         json = {"comment": name, "alert_channel": None}
@@ -309,7 +313,7 @@ class AlertChainRule(AlertRuleCommon, SubElement):
                                                self.get_relation("alert_chain_rules"),
                                                add_pos, after, before)
 
-        return ElementCreator(
+        return ElementCreator(  # type: ignore[type-var]  # ElementT is bound to Element, SubElement works
             AlertChainRule,
             exception=AlertChainError,
             href=href,
@@ -449,7 +453,7 @@ class AlertRule(AlertRuleCommon, SubElement):
         :return: the created ipv4 rule
         :rtype: IPv4Rule
         """
-        params = {}
+        params: dict[str, Any] = {}
         href = AlertChainRule.set_up_positions(self, params, rules_href, add_pos, after, before)
 
         json = {"comment": name}
@@ -525,7 +529,7 @@ class AlertRule(AlertRuleCommon, SubElement):
                                           self.get_relation("alert_rules"),
                                           add_pos, after, before)
 
-        return ElementCreator(
+        return ElementCreator(  # type: ignore[type-var]  # ElementT is bound to Element, SubElement works
             AlertRule,
             exception=AlertPolicyError,
             href=href,

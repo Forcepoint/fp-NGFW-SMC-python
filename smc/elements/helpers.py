@@ -15,7 +15,7 @@ constructors.
 """
 from __future__ import annotations
 
-from typing import Any, Optional, Union, Iterator
+from typing import Any, Optional, Union, Iterator, cast
 
 from smc.elements.network import Zone
 from smc.policy.qos import QoSPolicy
@@ -25,7 +25,7 @@ from smc.api.exceptions import ElementNotFound
 from smc.base.collection import Search
 
 
-def location_helper(name: Any, search_only: bool = False) -> Optional[str]:
+def location_helper(name: Any, search_only: bool = False) -> Optional[str]:  # type: ignore[return]  # implicit None
     """
     Location finder by name. If location doesn't exist, create it
     and return the href
@@ -71,7 +71,7 @@ def zone_helper(zone: Any) -> Optional[str]:
         return zone.href
     elif zone.startswith("http"):
         return zone
-    return Zone.get_or_create(name=zone).href
+    return cast(Zone, Zone.get_or_create(name=zone)).href
 
 
 def qos_policy_helper(qos_policy: Any) -> Optional[str]:
@@ -88,7 +88,7 @@ def qos_policy_helper(qos_policy: Any) -> Optional[str]:
         return qos_policy.href
     elif qos_policy.startswith("http"):
         return qos_policy
-    return QoSPolicy.get_or_create(name=qos_policy).href
+    return cast(QoSPolicy, QoSPolicy.get_or_create(name=qos_policy)).href
 
 
 def logical_intf_helper(interface: Any) -> Optional[str]:
@@ -101,15 +101,15 @@ def logical_intf_helper(interface: Any) -> Optional[str]:
     :return str href: href of logical interface
     """
     if interface is None:
-        return LogicalInterface.get_or_create(name="default_eth").href
+        return cast(LogicalInterface, LogicalInterface.get_or_create(name="default_eth")).href
     elif isinstance(interface, LogicalInterface):
         return interface.href
     elif interface.startswith("http"):
         return interface
-    return LogicalInterface.get_or_create(name=interface).href
+    return cast(LogicalInterface, LogicalInterface.get_or_create(name=interface)).href
 
 
-def domain_helper(name: Any) -> Optional[str]:
+def domain_helper(name: Any) -> Optional[str]:  # type: ignore[return]  # implicit None
     """
     Find a domain based on name
 

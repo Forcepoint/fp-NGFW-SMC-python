@@ -32,6 +32,9 @@ class RequestAction(object):
     :param bool raw_result: Return the raw SMCResult
     """
 
+    #: element cache, provided by ElementBase
+    data: Any
+
     def make_request(self, *exception: Any, **kwargs: Any) -> Any:
         raw_result = kwargs.pop("raw_result", False)
         method = kwargs.pop("method", "read")

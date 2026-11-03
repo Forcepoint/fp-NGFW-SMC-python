@@ -88,7 +88,7 @@ def main():
             assert next_update.state.lower() == "imported", NOT_IMPORTED_ERR
 
             logging.info(f"activate update package:{next_update}")
-            poller = next_update.activate(wait_for_finish=True, timeout=5)
+            poller = next_update.activate(wait_for_finish=True, timeout=40)
             while not poller.done():
                 poller.wait(10)
                 logging.info(f'Percentage complete {poller.task.progress}')

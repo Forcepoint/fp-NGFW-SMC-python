@@ -33,6 +33,8 @@ Execute query and return as an :class:`.SSLVPNUser` element::
 .. seealso:: :class:`smc_monitoring.models.filters` for more information on creating filters
 
 """
+from typing import Any, Iterator, Optional
+
 from smc_monitoring.models.query import Query
 from smc_monitoring.models.constants import LogField
 
@@ -56,10 +58,10 @@ class SSLVPNQuery(Query):
         LogField.USERNAME,
     ]
 
-    def __init__(self, target, **kw):
+    def __init__(self, target: str, **kw: Any) -> None:
         super(SSLVPNQuery, self).__init__("SSLVPNV2", target, **kw)
 
-    def fetch_as_element(self, **kw):
+    def fetch_as_element(self, **kw: Any) -> Iterator["SSLVPNUser"]:
         """
         Fetch the results and return as an SSLVPNUser element. The original
         query is not modified.
@@ -92,11 +94,11 @@ class SSLVPNUser(object):
     :meth:`~SSLVPNQuery.fetch_as_element`.
     """
 
-    def __init__(self, **data):
+    def __init__(self, **data: Any) -> None:
         self.user = data
 
     @property
-    def first_fetch(self):
+    def first_fetch(self) -> Optional[bool]:
         """
         first fetch
         True means entry is part of initial data at first fetch
@@ -106,7 +108,7 @@ class SSLVPNUser(object):
         return self.user.get("first_fetch")
 
     @property
-    def engine(self):
+    def engine(self) -> Optional[str]:
         """
         The engine/cluster for this state table entry
 
@@ -116,7 +118,7 @@ class SSLVPNUser(object):
         return self.user.get(str(LogField.NODEID))
 
     @property
-    def source_addr(self):
+    def source_addr(self) -> Optional[str]:
         """
         Source IP address for the SSL VPN user
 
@@ -125,7 +127,7 @@ class SSLVPNUser(object):
         return self.user.get(str(LogField.SRC))
 
     @property
-    def username(self):
+    def username(self) -> Optional[str]:
         """
         Username for this SSL VPN user
 
@@ -134,7 +136,7 @@ class SSLVPNUser(object):
         return self.user.get(str(LogField.USERNAME))
 
     @property
-    def session_start(self):
+    def session_start(self) -> Optional[str]:
         """
         Time the session started. It is recommended that you add a
         timezone to the query to present this in human readable format::
@@ -146,7 +148,7 @@ class SSLVPNUser(object):
         return self.user.get(str(LogField.SSLVPNSESSIONMONRECEIVED))
 
     @property
-    def session_expiration(self):
+    def session_expiration(self) -> Optional[str]:
         """
         Time the session expires. It is recommended that you add a
         timezone to the query to present this in human readable format::
@@ -157,9 +159,9 @@ class SSLVPNUser(object):
         """
         return self.user.get(str(LogField.SSLVPNSESSIONMONTIMEOUT))
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "{}(user={},ipaddress={},session_start={})".format(
             self.__class__.__name__, self.username, self.source_addr, self.session_start)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)

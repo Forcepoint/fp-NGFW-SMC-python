@@ -49,28 +49,13 @@ class LinkSelection(object):
         self.latency = latency
         self.packet_loss = packet_loss
         self.stability = stability
-        link_selection_json = {}
+        link_selection_json: dict[str, Any] = {}
         link_selection_json.update(jitter=jitter)
         link_selection_json.update(latency=latency)
         link_selection_json.update(bandwidth=bandwidth)
         link_selection_json.update(packet_loss=packet_loss)
         link_selection_json.update(stability=stability)
         self.link_selection = link_selection_json
-
-    def jitter(self) -> int:
-        return self.jitter
-
-    def latency(self) -> int:
-        return self.latency
-
-    def bandwidth(self) -> int:
-        return self.bandwidth
-
-    def packet_loss(self) -> int:
-        return self.packet_loss
-
-    def stability(self) -> int:
-        return self.stability
 
 
 class QoSClass(Element):
@@ -97,7 +82,7 @@ class QoSClass(Element):
         :return: instance with meta
         :rtype: QoSClass
         """
-        json = {"name": name, "comment": comment}
+        json: dict[str, Any] = {"name": name, "comment": comment}
         link_selection = link_selection
         if lsv_override:
             json.update(lsv_override=lsv_override)

@@ -14,7 +14,7 @@ Module that represents server based configurations
 """
 from __future__ import annotations
 
-from typing import Any, Iterator, Optional, Union
+from typing import Any, Callable, Iterator, Optional, Union, cast
 
 from smc.api.common import SMCRequest, _get_session
 from smc.api.exceptions import CreateElementFailed, SMCOperationFailure, CertificateImportError, \
@@ -87,7 +87,7 @@ class MultiContactAddress(SubElement):
                     return location
         return None
 
-    def delete(self, location_name: str) -> bool:
+    def delete(self, location_name: str) -> bool:  # type: ignore[override]  # removes a location, not the element
         """
         Remove a given location by location name. This operation is
         performed only if the given location is valid, and if so,
@@ -162,6 +162,11 @@ class ContactAddressMixin(object):
     Contact addresses on servers can contain multiple IP's for a single
     location.
     """
+
+    #: provided by the concrete element class (Element)
+    name: Any
+    typeof: Any
+    get_relation: Callable[..., str]
 
     @property
     def contact_addresses(self) -> MultiContactAddress:
@@ -297,7 +302,7 @@ class WebApp(NestedDict):
 
     @property
     def server_credentials_ref(self) -> Any:
-        return Element.from_href(self.data.get("server_credentials_ref"))
+        return Element.from_href(cast(str, self.data.get("server_credentials_ref")))
 
     @property
     def session_timeout(self) -> Optional[int]:
@@ -305,7 +310,7 @@ class WebApp(NestedDict):
 
     @property
     def tls_cipher_suites(self) -> Any:
-        return Element.from_href(self.data.get("tls_cipher_suites"))
+        return Element.from_href(cast(str, self.data.get("tls_cipher_suites")))
 
     @property
     def eca_enabled(self) -> Optional[bool]:
@@ -369,10 +374,13 @@ class TlsSettings(NestedDict):
 
     @property
     def tls_credentials(self) -> Any:
-        return Element.from_href(self.data.get("tls_credentials"))
+        return Element.from_href(cast(str, self.data.get("tls_credentials")))
 
 
 class ExternalPki:
+    #: provided by the concrete element class (ElementBase)
+    data: Any
+    make_request: Callable[..., Any]
 
     def pki_certificate_settings(self) -> PkiCertificateSettings:
         """
@@ -401,7 +409,7 @@ class ExternalPki:
 
         if filename is not None:
             save_to_file(filename, result.content)
-            return
+            return  # type: ignore[return-value]  # returns None when saved to file
 
         return result.content
 
@@ -725,7 +733,8 @@ class ManagementServer(ContactAddressMixin, Element, ManagementLogServerMixin):
         :param str script_path: The custom alert script path.
         :param list sms_http_channel: The SMS HTTP channels.
         :param list sms_smtp_channel: The SMS SMTP channels.
-        :param list sms_script_channel: The SMS Script channels.
+        :param list sms_script_channel: The SMS Script channels. Give the script timeout as
+            "script_timeout" (ms); it is sent as "proxy_port" to API versions below 7.6.
         :param str radius_method: Radius Method used in authentication when using Radius Server for
             authenticating administrators. One of the following values:
             "pap","chap", "mschap", "mschap2", "eap-md5" Default is eap-md5.
@@ -766,7 +775,7 @@ class ManagementServer(ContactAddressMixin, Element, ManagementLogServerMixin):
             "script_path": script_path,
             "sms_http_channel": sms_http_channel if sms_http_channel else [],
             "sms_smtp_channel": sms_smtp_channel if sms_smtp_channel else [],
-            "sms_script_channel": sms_script_channel if sms_script_channel else [],
+            "sms_script_channel": _sms_script_channel_compat(sms_script_channel),
             "radius_method": radius_method,
             "tacacs_method": tacacs_method,
             "announcement_enabled": announcement_enabled,
@@ -784,6 +793,9 @@ class ManagementServer(ContactAddressMixin, Element, ManagementLogServerMixin):
         return ElementCreator(cls, json)
 
     def update(self, *exception: Any, **kwargs: Any) -> None:  # type: ignore[override]
+        if "sms_script_channel" in kwargs:
+            kwargs["sms_script_channel"] = _sms_script_channel_compat(
+                kwargs["sms_script_channel"])
         super().update(*exception,
                        **_ElasticsearchCompatibility.update_helper(
                            "elasticsearch_authentication_settings",
@@ -1009,10 +1021,13 @@ class ManagementServer(ContactAddressMixin, Element, ManagementLogServerMixin):
     @property
     def sms_script_channel(self) -> Any:
         """
-        The SMS Script channels.
+        The SMS Script channels, their script timeout always under "script_timeout", whatever
+        the API version (see SMC-69480).
         :rtype: list
         """
-        return self.data.get("sms_script_channel")
+        channels = self.data.get("sms_script_channel")
+        return (None if channels is None
+                else _rename_script_timeout(channels, "proxy_port", "script_timeout"))
 
     def restart_web_access(self) -> None:
         """
@@ -1093,7 +1108,7 @@ class NetflowCollector(NestedDict):
         :rtype: DataContext
         """
         return (
-            Element.from_href(self.get("data_context"))
+            Element.from_href(self.get("data_context"))  # type: ignore[arg-type]  # None filtered by the condition
             if self.get("data_context") is not None
             else None
         )
@@ -1106,7 +1121,7 @@ class NetflowCollector(NestedDict):
         Forwarding rule.
         :rtype: FilterExpression
         """
-        return Element.from_href(self.get("filter")) if self.get("filter") is not None else None
+        return Element.from_href(self.get("filter")) if self.get("filter") is not None else None  # type: ignore[arg-type]  # None filtered by the condition
 
     @property
     def host(self) -> Optional[Any]:
@@ -1115,7 +1130,7 @@ class NetflowCollector(NestedDict):
         data is forwarded.
         :rtype: Host
         """
-        return Element.from_href(self.get("host")) if self.get("host") is not None else None
+        return Element.from_href(self.get("host")) if self.get("host") is not None else None  # type: ignore[arg-type]  # None filtered by the condition
 
     @property
     def netflow_collector_port(self) -> int:
@@ -1166,8 +1181,8 @@ class NetflowCollector(NestedDict):
         *Mandatory* when service is "tcp_with_tls"
         :rtype: TlSProfile
         """
-        return Element.from_href(self.get("tls_profile")) \
-            if self.get("tls_profile") is not None else None
+        return (Element.from_href(self.get("tls_profile"))  # type: ignore[arg-type]  # None filtered by the condition
+                if self.get("tls_profile") is not None else None)
 
     @property
     def tlsIdentity(self) -> Any:
@@ -1187,17 +1202,6 @@ class NetflowCollector(NestedDict):
         :rtype str
         """
         return self.data["kafkaTopic"]
-
-
-class DataContext(Element):
-    """
-    This represents the Data Context.
-    """
-    typeof = "data_context"
-
-    @property
-    def info_data_tag(self) -> Any:
-        return self.data.get("info_data_tag")
 
 
 class LogServer(ContactAddressMixin, Element, ManagementLogServerMixin):
@@ -1704,7 +1708,7 @@ class ProxyServer(ContactAddressMixin, Element, MultiContactServer):
         return self.data.get("fp_proxy_user_id", None)
 
     @classmethod
-    def update_or_create(cls, with_status: bool = False, **kwargs: Any) -> Union[ProxyServer, tuple[ProxyServer, bool, bool]]:
+    def update_or_create(cls, with_status: bool = False, **kwargs: Any) -> Union[ProxyServer, tuple[ProxyServer, bool, bool]]:  # type: ignore[override]  # intentionally differs
         element, updated, created = super(ProxyServer, cls).update_or_create(
             defer_update=True, **kwargs
         )
@@ -1922,6 +1926,29 @@ class ElasticsearchCluster(ContactAddressMixin, Element):
         return self.data.get("es_enable_cluster_sniffer")
 
 
+def _rename_script_timeout(channels: Optional[list[Any]], old: str, new: str) -> list[Any]:
+    """Copies the SMS Script channels, renaming their script timeout key from old to new."""
+    result = []
+    for channel in channels or []:
+        if isinstance(channel, dict) and old in channel and new not in channel:
+            channel = dict(channel)
+            channel[new] = channel.pop(old)
+        result.append(channel)
+    return result
+
+
+def _sms_script_channel_compat(channels: Optional[list[Any]]) -> list[Any]:
+    """
+    Names the script timeout of each SMS Script channel as the session's API version expects it:
+    up to API 7.5 the SMC API publishes it under the misnamed "proxy_port" (SMC-69480), from API
+    7.6 (served by SMC 7.6.0 and later) it is "script_timeout". Either key is accepted from the
+    caller.
+    """
+    if is_api_version_less_than("7.6"):
+        return _rename_script_timeout(channels, "script_timeout", "proxy_port")
+    return _rename_script_timeout(channels, "proxy_port", "script_timeout")
+
+
 class _ElasticsearchCompatibility:
     @staticmethod
     def _supports_authentication_settings() -> bool:
@@ -2015,7 +2042,7 @@ class _ElasticsearchCompatibility:
                 if method == "none":
                     kwargs.update(es_tls_settings=None)
                 elif method == "certificate":
-                    credentials = authentication_settings.pop("tls_credentials")
+                    credentials = authentication_settings.pop("tls_credentials")  # type: ignore[union-attr]  # set when method is certificate
                     kwargs.update(
                         es_tls_settings=TlsSettings.create(credentials is None, credentials))
         if not cls._support_product() and "product" in kwargs:
@@ -2642,6 +2669,16 @@ class SmtpServer(Element, ContactAddressMixin, MultiContactServer):
             third_party_monitoring: Optional[Any] = None,
             tools_profile_ref: Optional[Any] = None,
             comment: Optional[str] = None,
+            protocol: Optional[str] = None,
+            tls_profile: Optional[Any] = None,
+            tls_identity: Optional[Any] = None,
+            authentication_method: Optional[str] = None,
+            authentication_username: Optional[str] = None,
+            authentication_password: Optional[str] = None,
+            oauth_client_id: Optional[str] = None,
+            oauth_client_secret: Optional[str] = None,
+            oauth_token_endpoint: Optional[str] = None,
+            oauth_scope: Optional[str] = None,
     ) -> SmtpServer:
         """
         This represents a Simple Mail Transfer Protocol (SMTP) server. Server used to process
@@ -2652,7 +2689,7 @@ class SmtpServer(Element, ContactAddressMixin, MultiContactServer):
         :param int port: The port on which the SMTP server is listening. default port 25.Required
         :param str email_sender_address: E-mail address to be used in the From field of the e-mail.
             This default value can be overridden in the properties of the element where the SMTP
-            Server is used.Not Required.
+            Server is used. Required.
         :param str email_sender_name: Name to be used in the From field of the e-mail. This default
             value can be overridden in the properties of the element where the SMTP Server is used.
             Not Required.
@@ -2666,6 +2703,23 @@ class SmtpServer(Element, ContactAddressMixin, MultiContactServer):
         :param DeviceToolsProfile tools_profile_ref: Allows you to add commands to the element’s
             right-click menu. Not Required.
         :param str comment: optional comment.
+        The transport and authentication options below require SMC 7.6 or newer; omit them
+        when connecting to an older server, which rejects them even with a null value.
+
+        :param str protocol: Protocol used to talk to the SMTP server: "smtp" (default, unencrypted),
+            "smtps" (implicit TLS) or "start_tls". Not Required.
+        :param TLSProfile tls_profile: TLS Profile used for the TLS connection. Required when
+            protocol is "smtps" or "start_tls".
+        :param str,Element tls_identity: TLS identity element, by href or Element, used to check
+            the server identity. Ignored when protocol is "smtp". Not Required.
+        :param str authentication_method: "none" (default), "plain", "login" or "xoauth2" (OAuth 2.0
+            client-credentials grant, requires a TLS profile).
+        :param str authentication_username: Username. Required when an authentication method is used.
+        :param str authentication_password: Password. Required for "plain" and "login".
+        :param str oauth_client_id: OAuth 2.0 client ID. Required for "xoauth2".
+        :param str oauth_client_secret: OAuth 2.0 client secret. Required for "xoauth2".
+        :param str oauth_token_endpoint: OAuth 2.0 token endpoint URL. Required for "xoauth2".
+        :param str oauth_scope: OAuth 2.0 scope. Not Required.
         """
 
         json = {
@@ -2680,6 +2734,21 @@ class SmtpServer(Element, ContactAddressMixin, MultiContactServer):
             "secondary": secondary,
             "comment": comment
         }
+
+        # Only sent when set: an SMC that does not know them (before 7.6) rejects the attribute,
+        # even with a null value.
+        json.update({key: value for key, value in {
+            "protocol": protocol,
+            "tls_profile": element_resolver(tls_profile),
+            "tls_identity": element_resolver(tls_identity),
+            "authentication_method": authentication_method,
+            "authentication_username": authentication_username,
+            "authentication_password": authentication_password,
+            "oauth_client_id": oauth_client_id,
+            "oauth_client_secret": oauth_client_secret,
+            "oauth_token_endpoint": oauth_token_endpoint,
+            "oauth_scope": oauth_scope,
+        }.items() if value is not None})
 
         if third_party_monitoring:
             json.update(third_party_monitoring=third_party_monitoring.data)
@@ -2708,6 +2777,72 @@ class SmtpServer(Element, ContactAddressMixin, MultiContactServer):
         :rtype str
         """
         return self.data.get("email_sender_name")
+
+    @property
+    def protocol(self) -> Optional[str]:
+        """
+        Protocol used to talk to the SMTP server: smtp, smtps or start_tls.
+        :rtype str
+        """
+        return self.data.get("protocol")
+
+    @property
+    def tls_profile(self) -> Optional[Any]:
+        """
+        TLS Profile used for the TLS connection, if any.
+        :rtype TLSProfile
+        """
+        href = self.data.get("tls_profile")
+        return Element.from_href(href) if href else None
+
+    @property
+    def tls_identity(self) -> Optional[Any]:
+        """
+        TLS identity element used to check the server identity, if any.
+        :rtype Element
+        """
+        href = self.data.get("tls_identity")
+        return Element.from_href(href) if href else None
+
+    @property
+    def authentication_method(self) -> Optional[str]:
+        """
+        Authentication method: none, plain, login or xoauth2.
+        :rtype str
+        """
+        return self.data.get("authentication_method")
+
+    @property
+    def authentication_username(self) -> Optional[str]:
+        """
+        Username used for authentication.
+        :rtype str
+        """
+        return self.data.get("authentication_username")
+
+    @property
+    def oauth_client_id(self) -> Optional[str]:
+        """
+        OAuth 2.0 client ID (xoauth2).
+        :rtype str
+        """
+        return self.data.get("oauth_client_id")
+
+    @property
+    def oauth_token_endpoint(self) -> Optional[str]:
+        """
+        OAuth 2.0 token endpoint URL (xoauth2).
+        :rtype str
+        """
+        return self.data.get("oauth_token_endpoint")
+
+    @property
+    def oauth_scope(self) -> Optional[str]:
+        """
+        OAuth 2.0 scope (xoauth2).
+        :rtype str
+        """
+        return self.data.get("oauth_scope")
 
 
 class EpoServer(Element, ContactAddressMixin, IPv6Node):

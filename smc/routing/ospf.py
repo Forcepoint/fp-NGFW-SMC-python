@@ -288,7 +288,7 @@ class OSPFArea(Element):
         return ElementCreator(cls, json)
 
     @classmethod
-    def update_or_create(cls, with_status: bool = False, **kwargs: Any) -> Any:
+    def update_or_create(cls, with_status: bool = False, **kwargs: Any) -> Any:  # type: ignore[override]  # no filter_key param
         if "inbound_filters" in kwargs:
             kwargs.update(inbound_filters_ref=element_resolver(kwargs.pop("inbound_filters")))
         if "outbound_filters" in kwargs:

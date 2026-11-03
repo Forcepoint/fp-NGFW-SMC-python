@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Optional, Union, Iterator
+from typing import Any, Callable, Optional, Union, Iterator, cast
 
 from smc.base.model import Element
 from smc.base.structs import NestedDict
@@ -8,6 +8,9 @@ from smc.base.util import element_resolver
 
 
 class ElementWithLocation:
+    #: provided by the concrete element class (ElementBase)
+    data: Any
+
 
     @property
     def location_ref(self) -> Any:
@@ -19,6 +22,9 @@ class ElementWithLocation:
 
 
 class NodeElement(ElementWithLocation):
+    #: provided by the concrete element class (ElementBase)
+    update: Callable[..., Any]
+
     @property
     def tools_profile_ref(self) -> Any:
         """
@@ -146,7 +152,7 @@ class ThirdPartyMonitoring(NestedDict):
         Activates syslog reception from this device.
         :rtype LoggingProfile
         """
-        return Element.from_href(self.data.get("logging_profile_ref"))
+        return Element.from_href(cast(str, self.data.get("logging_profile_ref")))
 
     @property
     def monitoring_log_server_ref(self) -> Any:
@@ -154,7 +160,7 @@ class ThirdPartyMonitoring(NestedDict):
         Monitoring Log Server that monitors this device (third-party monitoring)
         :rtype LogServer
         """
-        return Element.from_href(self.data.get("monitoring_log_server_ref"))
+        return Element.from_href(cast(str, self.data.get("monitoring_log_server_ref")))
 
     @property
     def probing_profile_ref(self) -> Any:
@@ -162,10 +168,12 @@ class ThirdPartyMonitoring(NestedDict):
         Probing Profile that contains the definitions for the monitoring.
         :rtype ProbingProfile
         """
-        return Element.from_href(self.data.get("probing_profile_ref"))
+        return Element.from_href(cast(str, self.data.get("probing_profile_ref")))
 
 
 class IpAddressMixin:
+    #: provided by the concrete element class (ElementBase)
+    data: Any
 
     @property
     def address(self) -> Optional[str]:

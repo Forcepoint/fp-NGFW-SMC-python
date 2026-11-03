@@ -256,8 +256,8 @@ class EthernetService(Element):
         json = {
             "frame_type": frame_type,
             "name": name,
-            "value1": int(value1, 16),
-            "value2": int(value2, 16),
+            "value1": int(value1, 16) if value1 is not None else None,
+            "value2": int(value2, 16) if value2 is not None else None,
             "protocol_agent_ref": element_resolver(protocol_agent_ref),
             "comment": comment,
         }
@@ -265,7 +265,7 @@ class EthernetService(Element):
         return ElementCreator(cls, json)
 
     @property
-    def value1(self) -> Optional[str]:
+    def value1(self) -> Optional[str]:  # type: ignore[return]  # implicit None
         if "value1" in self.data:
             return hex(int(self.data.get("value1")))
 
@@ -275,7 +275,7 @@ class EthernetService(Element):
             self.data["value1"] = int(value, 16)
 
     @property
-    def value2(self) -> Optional[str]:
+    def value2(self) -> Optional[str]:  # type: ignore[return]  # implicit None
         if "value2" in self.data:
             return hex(int(self.data.get("value2")))
 
@@ -357,6 +357,9 @@ class ICMPServiceMixin:
     Represents ICMPService and ICMPIPv6Service common operation.
     """
 
+    #: provided by the concrete element class (ElementBase)
+    data: Any
+
     @property
     def icmp_type(self) -> Optional[Any]:
         """
@@ -413,7 +416,7 @@ class ICMPService(Element, ICMPServiceMixin):
         :return: instance with meta
         :rtype: ICMPService
         """
-        icmp_code = icmp_code if icmp_code else ""
+        icmp_code = icmp_code if icmp_code else ""  # type: ignore[assignment]  # "" means no code
         json = {"name": name, "icmp_type": icmp_type, "icmp_code": icmp_code, "comment": comment}
 
         return ElementCreator(cls, json)

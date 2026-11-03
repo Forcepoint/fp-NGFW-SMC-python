@@ -67,7 +67,7 @@ Then create the multilink specifying the multilink members::
 """
 from __future__ import annotations
 
-from typing import Any, Optional, Union, Iterator
+from typing import Any, Optional, Union, Iterator, cast
 
 from smc.base.model import Element, ElementCreator, ElementCache, ElementRef, ElementList
 from smc.base.structs import NestedDict
@@ -206,7 +206,7 @@ class StaticNetlink(Element):
         return ElementCreator(cls, json)
 
     @classmethod
-    def update_or_create(cls, with_status: bool = False, **kwargs: Any) -> Any:
+    def update_or_create(cls, with_status: bool = False, **kwargs: Any) -> Any:  # type: ignore[override]  # no positional filter_key
         """
         Update or create static netlink. DNS entry differences are not
         resolved, instead any entries provided will be the final state
@@ -483,7 +483,7 @@ class Multilink(Element):
         return cls.create(name, multilink_members, **kwargs)
 
     @classmethod
-    def update_or_create(cls, with_status: bool = False, **kwargs: Any) -> Any:
+    def update_or_create(cls, with_status: bool = False, **kwargs: Any) -> Any:  # type: ignore[override]  # no positional filter_key
         element, updated, created = super(Multilink, cls).update_or_create(
             with_status=True, defer_update=True, **kwargs
         )
@@ -687,6 +687,8 @@ class IpNetLinkWeight(NestedDict):
             "weight": 1 if status else 0
         }
         if not network:
+            if netlink is None:
+                raise ValueError("IpNetLinkWeight requires a netlink or a network.")
             json.update(network_ref=netlink.data.get("network_ref")[0])
         else:
             json.update(network_ref=element_resolver(network))
@@ -714,7 +716,7 @@ class IpNetLinkWeight(NestedDict):
         NetLink to use.
         :rtype: StaticNetlink
         """
-        return Element.from_href(self.data.get("netlink_ref"))
+        return Element.from_href(cast(str, self.data.get("netlink_ref")))
 
     @property
     def weight(self) -> Optional[int]:
@@ -730,7 +732,7 @@ class IpNetLinkWeight(NestedDict):
         Network element that is used for the Server Pool's external NATed address
         :rtype: list(Network)
         """
-        return [Element.from_href(network) for network in self.data.get("network_ref")]
+        return [Element.from_href(network) for network in cast("list[Any]", self.data.get("network_ref"))]
 
 
 class ServerPoolMember(NestedDict):
@@ -843,8 +845,8 @@ class ServerPool(Element):
 
         json = {
             "name": name,
-            "ip_netlink_weight": [ip_netlink.data for ip_netlink in ip_netlink_weight],
-            "members_list": [member.data for member in members_list],
+            "ip_netlink_weight": [ip_netlink.data for ip_netlink in ip_netlink_weight or []],
+            "members_list": [member.data for member in members_list or []],
             "monitoring_frequency": monitoring_frequency,
             "monitoring_mode": monitoring_mode,
             "monitoring_port": monitoring_port,

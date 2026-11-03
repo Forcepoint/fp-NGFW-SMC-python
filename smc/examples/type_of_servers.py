@@ -32,7 +32,7 @@ from smc.administration.user_auth.servers import AuthenticationMethod, DomainCon
 from smc.elements.common import ThirdPartyMonitoring  # noqa
 from smc.elements.network import Host  # noqa
 from smc.compat import is_smc_version_less_than_or_equal, is_api_version_less_than,  \
-    is_api_version_more_than_or_equal  # noqa
+    is_api_version_more_than_or_equal, is_smc_version_less_than  # noqa
 from smc.elements.other import Location  # noqa
 from smc.elements.servers import TacacsServer, LogServer, RadiusServer, IcapServer, SmtpServer, \
     ProxyServer, ManagementServer, WebApp, NetflowCollector, DataContext, \
@@ -69,6 +69,7 @@ CREATE_ICAP_SERVER_ERROR = "Failed to create RadiusServer."
 SMTP_SERVER_NAME = "test_smtp_server"
 CREATE_SMTP_SERVER_ERROR = "Failed to create SmtpServer."
 UPDATE_SMTP_SERVER_ERROR = "Failed to update SmtpServer."
+SMTP_TLS_SERVER_NAME = "test_smtp_tls_server"
 
 # ProxyServer
 PROXY_SERVER_NAME = "test_proxy_server"
@@ -291,6 +292,32 @@ def main():
         smtp_server = SmtpServer(SMTP_SERVER_NAME)
         assert smtp_server.email_sender_name == "changed_name" and smtp_server. \
             email_sender_address == "change@forcepoint.com", UPDATE_SMTP_SERVER_ERROR
+        logging.info("SmtpServer created and updated successfully.")
+
+        # protocol and authentication method: SMC 7.6 and later, once the server returns them
+        if is_api_version_more_than_or_equal("7.6") and "protocol" in smtp_server.data:
+            assert smtp_server.protocol == "smtp" and \
+                   smtp_server.authentication_method == "none", CREATE_SMTP_SERVER_ERROR
+
+            # SmtpServer with start_tls and login authentication
+            smtp_tls_server = SmtpServer.create(
+                SMTP_TLS_SERVER_NAME,
+                address=PRIMARY_ADDRESS2,
+                port=587,
+                email_sender_address="test@forcepoint.com",
+                protocol="start_tls",
+                tls_profile=tl_profile,
+                authentication_method="login",
+                authentication_username="smtp_user",
+                authentication_password="smtp_password",
+                comment="This is to test SMTP Server with start_tls and login"
+            )
+            assert smtp_tls_server.protocol == "start_tls" and \
+                   smtp_tls_server.tls_profile.href == tl_profile.href and \
+                   smtp_tls_server.authentication_method == "login" and \
+                   smtp_tls_server.authentication_username == "smtp_user", \
+                CREATE_SMTP_SERVER_ERROR
+            logging.info("SmtpServer with start_tls and login created successfully.")
 
         # ProxyServer
         inspected_service = [
@@ -379,8 +406,6 @@ def main():
         ad_server_args = {
             "name": ACTIVE_DIRECTORY_SERVER,
             "address": PRIMARY_ADDRESS1,
-            "auth_ipaddress": PRIMARY_ADDRESS2,
-            "auth_port": 1812,
             "base_dn": 'dc=domain,dc=net',
             "bind_password": SHARE_SECRET,
             "bind_user_id": "cn=admin,cn=users,dc=domain,dc=net",
@@ -393,14 +418,12 @@ def main():
             "group_object_class": [
                 "sggroup", "country", "group", "groupOfNames", "organization", "organizationalUnit"
             ],
-            "internet_auth_service_enabled": True,
             "job_title_attr_name": "title",
             "office_location_attr_name": "physicalDeliveryOfficeName",
             "photo_attr_name": "photo",
             "port": 389,
             "protocol": "ldap",
             "secondary": [SECONDARY_ADDRESS1],
-            "shared_secret": SHARE_SECRET,
             "supported_method": [authentication_method],
             "timeout": 10,
             "user_object_class": [
@@ -414,27 +437,31 @@ def main():
         else:
             ad_server_args["user_id_attr"] = "sAMAccountName"
             ad_server_args["user_principal_name"] = "userPrincipalName"
+        if is_smc_version_less_than("7.6"):
+            ad_server_args["internet_auth_service_enabled"] = True
+            ad_server_args["shared_secret"] = SHARE_SECRET
+            ad_server_args["auth_ipaddress"] = PRIMARY_ADDRESS2
+            ad_server_args["auth_port"] = 1812
         ActiveDirectoryServer.create(**ad_server_args)
         active_directory_server = ActiveDirectoryServer(ACTIVE_DIRECTORY_SERVER)
         if is_api_version_more_than_or_equal("7.4"):
             assert active_directory_server.address == PRIMARY_ADDRESS1 and \
-                   active_directory_server.auth_ipaddress == PRIMARY_ADDRESS2 and \
-                   active_directory_server.auth_port == 1812 and \
                    active_directory_server.base_dn == 'dc=domain,dc=net' and \
-                   active_directory_server.internet_auth_service_enabled and \
                    active_directory_server.short_user_id_attr == "sAMAccountName" and \
                    active_directory_server.long_user_id_attr == "userPrincipalName", \
                 ACTIVE_DIRECTORY_SERVER_CREATE_ERROR
         else:
             assert active_directory_server.address == PRIMARY_ADDRESS1 and \
-                   active_directory_server.auth_ipaddress == PRIMARY_ADDRESS2 and \
-                   active_directory_server.auth_port == 1812 and \
                    active_directory_server.base_dn == 'dc=domain,dc=net' and \
-                   active_directory_server.internet_auth_service_enabled and \
                    active_directory_server.user_id_attr == "sAMAccountName" and \
                    active_directory_server.user_principal_name == "userPrincipalName", \
                 ACTIVE_DIRECTORY_SERVER_CREATE_ERROR
 
+        if is_smc_version_less_than("7.6.0"):
+            assert active_directory_server.auth_ipaddress == PRIMARY_ADDRESS2 and \
+                   active_directory_server.auth_port == 1812 and \
+                   active_directory_server.internet_auth_service_enabled, \
+                ACTIVE_DIRECTORY_SERVER_CREATE_ERROR
         logging.info("ActiveDirectoryServer created successfully.")
 
         if is_api_version_more_than_or_equal("7.4"):
@@ -579,7 +606,7 @@ def main():
                 "conn_timeout": 10000,
                 "debug": False,
                 "name": "test script",
-                "proxy_port": 10000,
+                "script_timeout": 10000,
                 "rank": 1.0,
                 "script_execution_path": ".",
                 "script_path": ".",
@@ -800,6 +827,9 @@ def main():
         logging.info("ManagementServer deleted successfully.")
         delete(SmtpServer, SMTP_SERVER_NAME)
         logging.info("SmtpServer deleted successfully.")
+        if is_api_version_more_than_or_equal("7.6"):
+            delete(SmtpServer, SMTP_TLS_SERVER_NAME)
+            logging.info("SmtpServer with start_tls deleted successfully.")
         try:
             delete(EpoServer, EPO_SERVER_NAME)
             logging.info("EpoServer deleted successfully.")

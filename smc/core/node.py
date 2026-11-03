@@ -27,7 +27,7 @@ For example, to load an engine and run node level commands::
 """
 from __future__ import annotations
 
-from typing import Any, Optional, Union, Iterator
+from typing import Any, Optional, Union, Iterator, cast
 import collections
 import logging
 import time
@@ -364,7 +364,7 @@ class Node(SubElement):
             this node
         :rtype: ApplianceInfo
         """
-        result = self.from_href(self.href)
+        result = cast(Any, self).from_href(self.href)
         if "appliance_info" in result.data:
             return ApplianceInfo(**result.data["appliance_info"])
         else:
@@ -619,7 +619,7 @@ class Node(SubElement):
         """
         return self.make_request(resource="certificate_info")
 
-    def pki_certificate_settings(self) -> Optional[Any]:
+    def pki_certificate_settings(self) -> Optional[Any]:  # type: ignore[return]  # implicit None
         """
         Get the certificate info of this node when working with External PKI.
         This can return None if the engine type does not directly have a certificate,
@@ -646,7 +646,7 @@ class Node(SubElement):
 
         if filename is not None:
             save_to_file(filename, result.content)
-            return
+            return  # type: ignore[return-value]  # implicit None
 
         return result.content
 
@@ -807,7 +807,7 @@ class ApplianceStatus(NestedDict):
         :return: MasterNode: the master node or None
         """
         return (
-            Element.from_href(self.get("master_node"))
+            Element.from_href(self.get("master_node"))  # type: ignore[arg-type]  # guarded by the not-None test below
             if self.get("master_node") is not None
             else None
         )
@@ -844,7 +844,7 @@ has made initial contact and when initial policy upload was made.
 """
 ApplianceInfo.__new__.__defaults__ = (None,) * len(ApplianceInfo._fields)
 
-InternalInterfaceStatus = collections.namedtuple(
+InternalInterfaceStatus = collections.namedtuple(  # type: ignore[name-match]  # public typename kept
     "InterfaceStatus",
     "aggregate_is_active capability flow_control interface_id mtu name port speed_duplex "
     "status aggregate_mode aggregate_slaves aggregate_master aggregate_master_status",
@@ -904,10 +904,10 @@ def item_status_6_7(item: Any) -> Iterator[Any]:
                 yield (item_status, Status_6_7(**status))
 
 
-label_6_7 = collections.namedtuple("Label", "name status items")
-label_6_6 = collections.namedtuple("Label", "name items")
-Status_6_7 = collections.namedtuple("Status", "label param sub_system value")
-Status_6_6 = collections.namedtuple("Status", "label param status sub_system value")
+label_6_7 = collections.namedtuple("Label", "name status items")  # type: ignore[name-match]  # public typename kept
+label_6_6 = collections.namedtuple("Label", "name items")  # type: ignore[name-match]  # public typename kept
+Status_6_7 = collections.namedtuple("Status", "label param sub_system value")  # type: ignore[name-match]  # public typename kept
+Status_6_6 = collections.namedtuple("Status", "label param status sub_system value")  # type: ignore[name-match]  # public typename kept
 
 """
 Status fields for hardware status. These fields have generic titles which
@@ -1060,7 +1060,7 @@ class HardwareStatus(SerializedIterable):
                     yield s
 
     @property
-    def cloud_sync(cls) -> Optional[Iterator[Any]]:
+    def cloud_sync(cls) -> Optional[Iterator[Any]]:  # type: ignore[return]  # implicit None
         """
         A collection of Connection Synchronisation related statuses
 
@@ -1076,7 +1076,7 @@ class HardwareStatus(SerializedIterable):
                     yield s
 
     @property
-    def single_ip_ha(cls) -> Optional[Iterator[Any]]:
+    def single_ip_ha(cls) -> Optional[Iterator[Any]]:  # type: ignore[return]  # implicit None
         """
         A collection of Single IP High Availability related statuses
 
@@ -1125,7 +1125,7 @@ class Debug(object):
             >>> node.set_debug(debug)
     """
 
-    _attr_map = {}
+    _attr_map: dict[str, Any] = {}
 
     def __init__(self, diag: Any) -> None:
         for diagnostic in diag:

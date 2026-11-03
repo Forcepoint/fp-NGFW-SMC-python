@@ -83,7 +83,7 @@ Or by the name::
 """
 from __future__ import annotations
 
-from typing import Any, Optional, Union, Iterator
+from typing import Any, Optional, Union, Iterator, cast
 
 import collections
 from smc.base.model import Element, ElementCreator, SubElement
@@ -137,7 +137,7 @@ class MatchCondition(object):
         for condition in self.conditions:
             condition_type = condition.get("type")
             if "element" in condition_type:
-                entry = Element.from_href(condition.get("access_list_ref"))
+                entry: Any = Element.from_href(condition.get("access_list_ref"))
                 condition_type = "access_list"
             elif "metric" in condition_type:
                 entry = Metric(condition.get("metric"))
@@ -316,7 +316,7 @@ class RouteMapRule(RuleCommon, SubElement):
             params = self.add_before_after(before, after)
 
         return ElementCreator(
-            self.__class__, exception=CreateRuleFailed, href=href, params=params, json=json
+            cast(Any, self.__class__), exception=CreateRuleFailed, href=href, params=params, json=json
         )
 
     @property
@@ -343,7 +343,7 @@ class RouteMapRule(RuleCommon, SubElement):
 
         :return: RouteMap or None
         """
-        return Element.from_href(self.data.get("goto"))
+        return Element.from_href(cast(str, self.data.get("goto")))
 
     def goto_rule_section(self, rule_section: Any) -> None:
         """

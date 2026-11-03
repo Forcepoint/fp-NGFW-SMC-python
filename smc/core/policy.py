@@ -33,7 +33,7 @@ class AutomaticRulesSettings(NestedDict):
         Return Allow Auth Traffic Setting.
         :rtype Boolean:
         """
-        return self.data.allow_auth_traffic
+        return self.data.get("allow_auth_traffic")
 
     @property
     def allow_connections_to_dns_resolvers(self) -> Optional[bool]:
@@ -41,7 +41,7 @@ class AutomaticRulesSettings(NestedDict):
         Return Allow connections to dns resolvers
         :rtype Boolean:
         """
-        return self.data.allow_connections_to_dns_resolvers
+        return self.data.get("allow_connections_to_dns_resolvers")
 
     @property
     def allow_connections_to_remote_dhcp_server(self) -> Optional[bool]:
@@ -49,14 +49,14 @@ class AutomaticRulesSettings(NestedDict):
         Return Allow connections to remote dhcp server
         :rtype Boolean:
         """
-        return self.data.allow_connections_to_remote_dhcp_server
+        return self.data.get("allow_connections_to_remote_dhcp_server")
 
     def allow_icmp_traffic_for_route_probing(self) -> Optional[bool]:
         """
         Return Allow icmp traffic for route probing setting
         :rtype Boolean:
         """
-        return self.data.allow_icmp_traffic_for_route_probing
+        return self.data.get("allow_icmp_traffic_for_route_probing")
 
     @property
     def allow_listening_interfaces_to_dns_relay_port(self) -> Optional[bool]:
@@ -64,7 +64,7 @@ class AutomaticRulesSettings(NestedDict):
         Return Allow listening interfaces to dns relay port setting
         :rtype Boolean:
         """
-        return self.data.allow_listening_interfaces_to_dns_relay_port
+        return self.data.get("allow_listening_interfaces_to_dns_relay_port")
 
     @property
     def allow_no_nat(self) -> Optional[bool]:
@@ -72,7 +72,7 @@ class AutomaticRulesSettings(NestedDict):
         Return Allow no nat setting
         :rtype Boolean:
         """
-        return self.data.allow_no_nat
+        return self.data.get("allow_no_nat")
 
     @property
     def log_level(self) -> Optional[str]:
@@ -80,4 +80,4 @@ class AutomaticRulesSettings(NestedDict):
         Return Log Level
         :rtype str: Log level
         """
-        return self.data.log_level
+        return self.data.get("log_level")

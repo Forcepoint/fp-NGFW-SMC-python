@@ -64,7 +64,7 @@ container functionality may inherit from object.
 from __future__ import annotations
 
 import collections
-from typing import Any, Iterator, Optional, TypeVar, Union, TYPE_CHECKING
+from typing import Any, Iterator, Optional, TypeVar, Union, TYPE_CHECKING, cast
 
 import smc.base.collection
 from smc.compat import string_types
@@ -151,7 +151,7 @@ def ElementCreator(cls: type[ElementT], json: dict[str, Any], **kwargs: Any) -> 
     return element
 
 
-def ElementFactory(href: str, smcresult: Any = None, raise_exc: Optional[type[Exception]] = None) -> Optional[Element]:
+def ElementFactory(href: str, smcresult: Any = None, raise_exc: Optional[type[Exception]] = None) -> Optional[Element]:  # type: ignore[return]  # implicit None
     """
     Factory returns an object of type Element when only
     the href is provided.
@@ -197,7 +197,7 @@ class ElementCache(NestedDict):
         return {link["rel"]: link["href"] for link in self["link"]}
 
     @property
-    def type(self) -> Optional[str]:
+    def type(self) -> Optional[str]:  # type: ignore[return]  # implicit None
         for link in self.get("link", []):
             if link.get("rel") == "self":
                 return link.get("type")
@@ -327,9 +327,9 @@ class ElementMeta(type):
     attribute into a registry for later lookups.
     """
 
-    _map = {}
+    _map: dict[Optional[str], Any] = {}
 
-    def __new__(meta: type, name: str, bases: tuple[type, ...], clsdict: dict[str, Any]) -> type:  # @NoSelf
+    def __new__(meta: type[ElementMeta], name: str, bases: tuple[type, ...], clsdict: dict[str, Any]) -> type:  # @NoSelf
         cls = super(ElementMeta, meta).__new__(meta, name, bases, clsdict)
         if "typeof" in clsdict:
             meta._map[clsdict["typeof"]] = cls
@@ -363,15 +363,18 @@ class ElementBase(RequestAction, UnicodeMixin):
     If meta is not provided, the meta attribute will be None
     """
 
+    #: SMC API entry point, defined by each concrete subclass
+    typeof: str
+
     def __init__(self, **meta: Any) -> None:
         meta_as_kw = meta.pop("meta", None)
         if meta_as_kw:
             self._meta = Meta(**meta_as_kw)
         else:
-            self._meta = Meta(**meta) if meta else None
+            self._meta = Meta(**meta) if meta else None  # type: ignore[assignment]  # kept Meta for callers
 
     @classmethod
-    def from_href(cls: type[ElementT], href: str) -> Optional[ElementT]:
+    def from_href(cls: type[ElementT], href: str) -> Optional[ElementT]:  # type: ignore[misc]  # used on Element subclasses
         """
         Return an instance of an Element based on the href
 
@@ -480,9 +483,9 @@ class ElementBase(RequestAction, UnicodeMixin):
             raise ModificationFailed("Cannot modify system element: %s" % self.name)
 
         if not exception:
-            exception = UpdateElementFailed
+            exception = UpdateElementFailed  # type: ignore[assignment]  # *args tuple rebound to a class
         else:
-            exception = exception[0]
+            exception = exception[0]  # type: ignore[assignment]  # *args tuple rebound to a class
 
         params = {
             "href": self.href,
@@ -514,7 +517,7 @@ class ElementBase(RequestAction, UnicodeMixin):
         params.update(json=json)
 
         request = SMCRequest(**params)
-        request.exception = exception
+        request.exception = exception  # type: ignore[assignment]  # rebound to a class above
         result = request.update()
 
         if name:  # Reset instance name
@@ -634,7 +637,7 @@ class Element(ElementBase):
             element = elements.first() if elements.exists() else None
         else:
             try:
-                element = cls.get(kwargs.get("name"))
+                element = cls.get(cast(str, kwargs.get("name")))
             except ElementNotFound:
                 if not hasattr(cls, "create"):
                     raise CreateElementFailed(
@@ -646,7 +649,7 @@ class Element(ElementBase):
         if not element:
             params = {k: v() if callable(v) else v for k, v in kwargs.items()}
             try:
-                element = cls.create(**params)
+                element = cls.create(**params)  # type: ignore[attr-defined]  # create defined by subclasses (hasattr checked)
                 was_created = True
             except TypeError:
                 raise CreateElementFailed(
@@ -703,7 +706,7 @@ class Element(ElementBase):
         if defer_update:
             with_status = True
 
-        element, created = cls.get_or_create(filter_key=filter_key, with_status=True, **kwargs)
+        element, created = cast("tuple[Element, bool]", cls.get_or_create(filter_key=filter_key, with_status=True, **kwargs))
         if not created:
             for key, value in kwargs.items():
                 # Callable, Element or string
@@ -810,12 +813,12 @@ class Element(ElementBase):
         from smc.elements.other import Category
 
         for tag in category:
-            category = Category(tag)
+            category = Category(tag)  # type: ignore[assignment]  # param list reused as loop variable
             try:
-                category.add_element(self.href)
+                category.add_element(self.href)  # type: ignore[attr-defined]  # see above
             except ElementNotFound:
                 Category.create(name=tag)
-                category.add_element(self.href)
+                category.add_element(self.href)  # type: ignore[attr-defined]  # see above
 
     @property
     def categories(self) -> list[Any]:
@@ -1006,14 +1009,14 @@ class UserElement(Element):
 
 def lookup_class(typeof: Optional[str], default: type[Element] = Element) -> type[Element]:
     cls = ElementMeta._map.get(typeof, None)
-    if cls is None:  # Create a dynamic class from meta type field
+    if cls is None and typeof is not None:  # Create a dynamic class from meta type field
         attrs = {"typeof": typeof}
         # There are multiple entry points for specific aliases
         # that should derive from the smc.elements.network.Alias
         # class so it has access to Alias class methods like ``resolve``.
-        if "alias" in typeof:
-            default = ElementMeta._map.get("alias")
-        cls_name = "{0}Dynamic".format(typeof.title())
+        if "alias" in cast(str, typeof):
+            default = cast("type[Element]", ElementMeta._map.get("alias"))
+        cls_name = "{0}Dynamic".format(cast(str, typeof).title())
         return type(cls_name.replace("_", ""), (default,), attrs)
 
     return ElementMeta._map.get(typeof, default)

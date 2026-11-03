@@ -15,7 +15,7 @@ access permissions to either Engines, Policies or Domains.
 """
 from __future__ import annotations
 
-from typing import Any, Iterator, Optional, Union
+from typing import Any, Iterator, Optional, Union, cast
 
 from smc.base.model import Element, ElementCreator
 from smc.base.structs import NestedDict
@@ -156,7 +156,7 @@ class Permission(NestedDict):
 
         :rtype: list(Element)
         """
-        return [Element.from_href(element) for element in self.get("granted_elements")]
+        return [Element.from_href(element) for element in cast(list, self.get("granted_elements"))]
 
     @property
     def role(self) -> Any:
@@ -166,7 +166,7 @@ class Permission(NestedDict):
 
         :rtype: Role
         """
-        return Element.from_href(self.get("role_ref"))
+        return Element.from_href(cast(str, self.get("role_ref")))
 
     @property
     def domain(self) -> Any:
@@ -230,7 +230,7 @@ class GrantedElementPermissions(NestedDict):
         """
         Granted Role containers.
         """
-        return [AdminRoleContainer(container) for container in self.data.get("role_containers")]
+        return [AdminRoleContainer(container) for container in cast(list, self.data.get("role_containers"))]
 
 
 class AdminRoleContainer(NestedDict):

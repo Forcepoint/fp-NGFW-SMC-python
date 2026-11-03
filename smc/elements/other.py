@@ -19,7 +19,7 @@ will define the format when calling blocklist functions.
 """
 from __future__ import annotations
 
-from typing import Any, Optional, Union, Iterator
+from typing import Any, Optional, Union, Iterator, cast
 
 import base64
 from smc.base.decorators import cached_property
@@ -781,11 +781,11 @@ def prepare_blacklist(
         .. note:: This method requires SMC version < 7.0
     """
 
-    json = {}
+    json: dict[str, Any] = {}
 
-    directions = {src: "end_point1", dst: "end_point2"}
+    directions = (("end_point1", src), ("end_point2", dst))
 
-    for direction, key in directions.items():
+    for key, direction in directions:
         json[key] = (
             {"address_mode": "any"}
             if "any" in direction.lower()
@@ -793,12 +793,12 @@ def prepare_blacklist(
         )
 
     if src_port1:
-        json.setdefault("end_point1").update(
+        cast(Any, json.setdefault("end_point1")).update(
             port1=src_port1, port2=src_port2 or src_port1, port_mode=src_proto
         )
 
     if dst_port1:
-        json.setdefault("end_point2").update(
+        cast(Any, json.setdefault("end_point2")).update(
             port1=dst_port1, port2=dst_port2 or dst_port1, port_mode=dst_proto
         )
 

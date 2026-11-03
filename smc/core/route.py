@@ -242,7 +242,7 @@ class RoutingTree(SubElement):
         return (
             None
             if self.dynamic_nicid or (self.nicid and "." in self.nicid)
-            else Element.from_href(self.data.get("href")).typeof
+            else Element.from_href(self.data.get("href")).typeof  # type: ignore[union-attr]  # href present on routing nodes
         )  # pre-6.4
 
     @property
@@ -748,12 +748,12 @@ class Routing(RoutingTree):
         for network in _networks:
             # Short circuit for dynamic interfaces
             if getattr(network, "dynamic_classid", None):
-                network.data.setdefault("routing_node", []).append(routing_node_gateway)
+                network.data.setdefault("routing_node", []).append(routing_node_gateway)  # type: ignore[union-attr]  # loop var shadows the str param
                 modified = True
                 break
 
             # Used for comparison to
-            this_network_node = network.routing_node_element
+            this_network_node = network.routing_node_element  # type: ignore[union-attr]  # loop var shadows the str param
 
             if routing_node and any(
                 netwk
@@ -764,13 +764,13 @@ class Routing(RoutingTree):
 
                 # A gateway exists on this network
                 for gw in network:
-                    if gw.routing_node_element == gateway_element_type:
-                        existing_dests = [node.routing_node_element for node in gw]
+                    if gw.routing_node_element == gateway_element_type:  # type: ignore[union-attr]  # loop var shadows the str param
+                        existing_dests = [node.routing_node_element for node in gw]  # type: ignore[union-attr]  # loop var shadows the str param
                         for destination in routing_node_gateway.destinations:
                             is_valid_destination = False
                             if destination not in existing_dests:
                                 dest_ipv4, dest_ipv6 = _which_ip_protocol(destination)
-                                if len(network.ip.split(":")) > 1:  # IPv6
+                                if len(network.ip.split(":")) > 1:  # type: ignore[union-attr]  # IPv6; loop var shadows the str param
                                     if dest_ipv6:
                                         is_valid_destination = True
                                 else:
@@ -778,7 +778,7 @@ class Routing(RoutingTree):
                                         is_valid_destination = True
 
                                 if is_valid_destination:
-                                    gw.data.setdefault("routing_node", []).append(
+                                    gw.data.setdefault("routing_node", []).append(  # type: ignore[union-attr]  # loop var shadows the str param
                                         {
                                             "level": "any",
                                             "href": destination.href,
@@ -789,13 +789,13 @@ class Routing(RoutingTree):
 
             else:  # Gateway doesn't exist
                 gw_ipv4, gw_ipv6 = _which_ip_protocol(gateway_element_type)  # ipv4, ipv6 or both
-                if len(network.ip.split(":")) > 1:
+                if len(network.ip.split(":")) > 1:  # type: ignore[union-attr]  # loop var shadows the str param
                     if gw_ipv6:
-                        network.data.setdefault("routing_node", []).append(routing_node_gateway)
+                        network.data.setdefault("routing_node", []).append(routing_node_gateway)  # type: ignore[union-attr]  # loop var shadows the str param
                         modified = True
                 else:  # IPv4
                     if gw_ipv4:
-                        network.data.setdefault("routing_node", []).append(routing_node_gateway)
+                        network.data.setdefault("routing_node", []).append(routing_node_gateway)  # type: ignore[union-attr]  # loop var shadows the str param
                         modified = True
 
         if modified:
@@ -836,13 +836,13 @@ class Routing(RoutingTree):
         element = element_resolver(element)
         for network in self:
             # Tunnel Interface binds gateways to the interface
-            if network.level == "gateway" and network.data.get("href") == element:
-                network.delete()
+            if network.level == "gateway" and network.data.get("href") == element:  # type: ignore[union-attr]  # loop var shadows the str param
+                network.delete()  # type: ignore[union-attr]  # loop var shadows the str param
                 node_changed = True
                 break
             for gateway in network:
-                if gateway.data.get("href") == element:
-                    gateway.delete()
+                if gateway.data.get("href") == element:  # type: ignore[union-attr]  # loop var shadows the str param
+                    gateway.delete()  # type: ignore[union-attr]  # loop var shadows the str param
                     node_changed = True
         return node_changed
 
@@ -1001,7 +1001,7 @@ def route_level(root: Any, level: str) -> list[Any]:
             else:
                 recurse(node)
 
-    routing_node = []
+    routing_node: list[Any] = []
     recurse(root)
     return routing_node
 
@@ -1182,7 +1182,7 @@ class RouteIterable(object):
         return self._routes[index]
 
 
-policy_route = collections.namedtuple("PolicyRoute", "source destination gateway_ip comment")
+policy_route = collections.namedtuple("PolicyRoute", "source destination gateway_ip comment")  # type: ignore[name-match]  # public typename kept
 policy_route.__new__.__defaults__ = (None,) * len(policy_route._fields)
 
 

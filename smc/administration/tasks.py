@@ -29,7 +29,7 @@ An example of using a task poller when uploading an engine policy
 
 """
 from __future__ import annotations
-from typing import Any, Optional, Union, Iterator
+from typing import Any, Optional, Union, Iterator, cast
 import re
 import time
 import threading
@@ -337,10 +337,10 @@ class TaskOperationPoller(object):
 
     def __init__(self, task: Any, timeout: int = 5, max_tries: int = 36, wait_for_finish: bool = False) -> None:
         self._task = Task(task)
-        self._thread = None
-        self._done = None
-        self._exception = None
-        self.callbacks = []  # Call after operation completes
+        self._thread: Optional[threading.Thread] = None
+        self._done: Optional[threading.Event] = None
+        self._exception: Optional[Exception] = None
+        self.callbacks: list[Any] = []  # Call after operation completes
         if wait_for_finish:
             self._max_tries = max_tries
             self._timeout = timeout
@@ -359,12 +359,12 @@ class TaskOperationPoller(object):
                 self._exception = e
                 break
 
-        self._done.set()
+        cast(threading.Event, self._done).set()
         for call in self.callbacks:
             call(self.task)
 
     def finished(self) -> bool:
-        return self._done.is_set() or not self._task.in_progress or self._max_tries == 0
+        return cast(threading.Event, self._done).is_set() or not self._task.in_progress or self._max_tries == 0
 
     def add_done_callback(self, callback: Any) -> None:
         """
@@ -416,7 +416,7 @@ class TaskOperationPoller(object):
         """
         # isAlive() is removed since python3.9
         return self._thread is None or \
-            (not PYTHON_v3_9 and not self._thread.isAlive()) or \
+            (not PYTHON_v3_9 and not cast(Any, self._thread).isAlive()) or \
             (PYTHON_v3_9 and not self._thread.is_alive())
 
     @property
@@ -432,8 +432,8 @@ class TaskOperationPoller(object):
         """
         Stop the running task
         """
-        if self._thread is not None and self._thread.isAlive():
-            self._done.set()
+        if self._thread is not None and self._thread.is_alive():
+            cast(threading.Event, self._done).set()
 
     def is_success(self) -> bool:
         """

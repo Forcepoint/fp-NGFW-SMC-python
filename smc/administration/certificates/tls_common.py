@@ -17,7 +17,7 @@ where the certificates/keys are stored, or providing in string format.
 """
 from __future__ import annotations
 
-from typing import Any, Optional, Union, Iterator
+from typing import Any, Optional, Union, Iterator, TYPE_CHECKING, Callable
 
 import re
 from smc.compat import unicode
@@ -94,6 +94,10 @@ class ImportExportCertificate(object):
     classes.
     """
 
+    if TYPE_CHECKING:
+        typeof: str
+        make_request: Callable[..., Any]
+
     def import_certificate(self, certificate: Any) -> None:
         """
         Import a valid certificate. Certificate can be either a file path
@@ -133,7 +137,7 @@ class ImportExportCertificate(object):
 
         if filename is not None:
             save_to_file(filename, result.content)
-            return
+            return  # type: ignore[return-value]  # implicit None
 
         return result.content
 
@@ -143,6 +147,9 @@ class ImportExportIntermediate(object):
     Mixin to provide import and export capabilities for intermediate
     certificates
     """
+
+    if TYPE_CHECKING:
+        make_request: Callable[..., Any]
 
     def import_intermediate_certificate(self, certificate: Any) -> None:
         """
@@ -181,7 +188,7 @@ class ImportExportIntermediate(object):
 
         if filename is not None:
             save_to_file(filename, result.content)
-            return
+            return  # type: ignore[return-value]  # implicit None
 
         return result.content
 
@@ -191,6 +198,9 @@ class ImportPrivateKey(object):
     Mixin to provide import capabilities to relevant classes that
     require private keys.
     """
+
+    if TYPE_CHECKING:
+        make_request: Callable[..., Any]
 
     def import_private_key(self, private_key: Any) -> None:
         """

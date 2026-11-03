@@ -58,7 +58,7 @@ Remove a contact address::
 """
 from __future__ import annotations
 
-from typing import Any, Optional, Union, Iterator
+from typing import Any, Optional, Union, Iterator, cast
 
 from smc.base.model import SubElement
 from smc.elements.helpers import location_helper
@@ -94,7 +94,7 @@ class ContactAddressNode(SubElement):
     def __init__(self, **meta: Any) -> None:
         meta.update(type="contact_addresses")
         super(ContactAddressNode, self).__init__(**meta)
-        self._name, self._address = self.name.split("_")
+        self._name, self._address = cast(str, self.name).rsplit("_", 1)
 
     @property
     def _cas(self) -> list[Any]:
@@ -110,7 +110,7 @@ class ContactAddressNode(SubElement):
                 return True
         return False
 
-    def delete(self, location_name: str) -> bool:
+    def delete(self, location_name: str) -> bool:  # type: ignore[override]  # intentionally different signature
         """
         Remove a given location by location name. This operation is
         performed only if the given location is valid, and if so,

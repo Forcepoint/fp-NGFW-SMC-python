@@ -47,7 +47,7 @@ Example rule deletion::
 """
 from __future__ import annotations
 
-from typing import Any, Optional, Union, Iterator
+from typing import TYPE_CHECKING, Any, Optional, Union, Iterator
 
 from smc.policy.policy import Policy
 from smc.policy.rule import IPv4Layer2Rule, IPv6Layer2Rule, EthernetRule, IPSRule
@@ -67,6 +67,10 @@ class IPSPolicyRule(object):
     points. This is referenced by multiple classes such as
     IPSPolicy and IPSPolicyTemplate.
     """
+
+    if TYPE_CHECKING:
+        def get_relation(self: IPSPolicyRule, rel: str,
+                         exception: Optional[type[Exception]] = None) -> str: ...
 
     @property
     def ips_ipv4_access_rules(self) -> Any:
@@ -198,5 +202,5 @@ class IPSTemplatePolicy(IPSPolicy):
 
     typeof = "ips_template_policy"
 
-    def upload(self) -> None:
+    def upload(self) -> None:  # type: ignore[override]
         pass

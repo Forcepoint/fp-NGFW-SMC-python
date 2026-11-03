@@ -132,7 +132,7 @@ class AuthenticationMethod(Element):
                 :raises CreateElementFailed: failed creating element
                 :rtype: AuthenticationMethod
         """
-        json = {
+        json: dict[str, Any] = {
             "name": name,
             "type": "saml",
             "saml_metadata_file": idp_metadata_url,
@@ -357,7 +357,7 @@ class AuthenticationMethod(Element):
                 :rtype: AuthenticationMethod
         """
         authentication_server = authentication_server if authentication_server else []
-        json = {
+        json: dict[str, Any] = {
             "name": name,
             "type": type,
             "comment": comment
@@ -425,12 +425,14 @@ class ActiveLdapServerMixin(Element, MultiContactServer):
          'organization', 'country', 'groupOfNames', 'sggroup']
      :param list user_object_class: LDAP classes used for user identification (default:
          ['inetOrgPerson','organizationalPerson', 'person', 'sguser'])
-     :param int auth_port: required when internet authentication service is enabled (default: 1812)
-     :param str auth_ipaddress: required when internet authentication service is enabled
-     :param str shared_secret: required when internet authentication service is enabled
+     :param int auth_port: required when internet authentication service is enabled (default: 1812).
+         Removed in SMC >= 7.6.0
+     :param str auth_ipaddress: required when internet authentication service is enabled. Removed in SMC >= 7.6.0
+     :param str shared_secret: required when internet authentication service is enabled. Removed in SMC >= 7.6.0
      :param int auth_attribute: Auth attribute name. (Removed in SMC >= 7.4.0)
      :param int retries: Used with IAS. Number of times firewall will try to connect to the
-            RADIUS or TACACS+ authentication server if the connection fails (default: 2)
+            RADIUS or TACACS+ authentication server if the connection fails (default: 2).
+            Removed in SMC >= 7.6.0
      """
 
     @classmethod
@@ -450,7 +452,6 @@ class ActiveLdapServerMixin(Element, MultiContactServer):
             timeout: int = 10,
             max_search_result: int = 0,
             page_size: int = 0,
-            internet_auth_service_enabled: bool = False,
             email: Optional[str] = None,
             client_cert_based_user_search: Optional[str] = None,
             display_name_attr_name: Optional[str] = None,
@@ -496,7 +497,7 @@ class ActiveLdapServerMixin(Element, MultiContactServer):
             of the LDAP response. (default: 0 for no limit)
         :param bool internet_auth_service_enabled: whether to attach an NPS service to this
             AD controller (default: False). If setting to true, provide kwargs values for
-            auth_ipaddress, auth_port and shared_secret
+            auth_ipaddress, auth_port and shared_secret. Removed in SMC >= 7.6.0
         :param str email: The name of the attribute for storing the users' e-mail address. This
             attribute is primarily used for linked Authentication Server Users. It can also be used
             to identify users by their e-mail address in certificate authentication.
@@ -584,10 +585,13 @@ class ActiveLdapServerMixin(Element, MultiContactServer):
 
         if cls.typeof == "active_directory_server":
 
-            json.update(domain_controller=[domain.data for domain in domain_controller] or [],
-                        internet_auth_service_enabled=internet_auth_service_enabled)
-            if internet_auth_service_enabled:
+            json.update(domain_controller=[domain.data for domain in domain_controller] or [])
+            ias_enabled = False
+            if "internet_auth_service_enabled" in kwargs:
+                ias_enabled = kwargs.pop("internet_auth_service_enabled")
+            if ias_enabled and is_smc_version_less_than("7.6"):
                 ias = {
+                    "internet_auth_service_enabled": ias_enabled,
                     "auth_port": kwargs.pop("auth_port", 1812),
                     "auth_ipaddress": kwargs.pop("auth_ipaddress", ""),
                     "shared_secret": kwargs.pop("shared_secret"),
@@ -818,16 +822,6 @@ class ActiveDirectoryServer(ContactAddressMixin, ActiveLdapServerMixin):
                 bind_user_id='cn=admin,cn=users,dc=domain,dc=net',
                 bind_password='somecrazypassword')
 
-        Configure NPS along with Active Directory::
-
-            ActiveDirectoryServer.create(name='somedirectory5',
-                address='10.10.10.10',
-                base_dn='dc=du,dc=net',
-                internet_auth_service_enabled=True,
-                retries=3,
-                auth_ipaddress='10.10.10.15',
-                auth_port=1900,
-                shared_secret='123456')
 
     At a minimum you must provide the name, address and base_dn for the connection.
     If you do not provide bind_user_id and bind_password, the connection type will
@@ -842,17 +836,20 @@ class ActiveDirectoryServer(ContactAddressMixin, ActiveLdapServerMixin):
         'organization', 'country', 'groupOfNames', 'sggroup']
     :param list user_object_class: LDAP classes used for user identification (default:
         ['inetOrgPerson','organizationalPerson', 'person', 'sguser'])
-    :param int auth_port: required when internet authentication service is enabled (default: 1812)
-    :param str auth_ipaddress: required when internet authentication service is enabled
-    :param str shared_secret: required when internet authentication service is enabled
+    :param bool internet_authentication_service_enabled: True to enable NPS authentication (default: False).
+        Removed in SMC >= 7.6.0
+    :param int auth_port: required when internet authentication service is enabled (default: 1812).
+        Removed in SMC >= 7.6.0
+    :param str auth_ipaddress: required when internet authentication service is enabled. Removed in SMC >= 7.6.0
+    :param str shared_secret: required when internet authentication service is enabled. Removed in SMC >= 7.6.0
     :param int retries: Used with IAS. Number of times firewall will try to connect to the
-            RADIUS or TACACS+ authentication server if the connection fails (default: 2)
+            RADIUS or TACACS+ authentication server if the connection fails (default: 2). Removed in SMC >= 7.6.0
     """
 
     typeof = "active_directory_server"
 
     @classmethod
-    def update_or_create(cls, with_status: bool = False, **kwargs: Any) -> Any:
+    def update_or_create(cls, with_status: bool = False, **kwargs: Any) -> Any:  # type: ignore[override]  # no filter_key param
         """
         Update or create active directory configuration.
 
@@ -884,6 +881,7 @@ class ActiveDirectoryServer(ContactAddressMixin, ActiveLdapServerMixin):
     def auth_ipaddress(self) -> Optional[str]:
         """
         Ip Address od internet authentication service.
+        Removed in SMC >= 7.6.0
         :rtype: str
         """
         return self.data.get("auth_ipaddress")
@@ -893,6 +891,7 @@ class ActiveDirectoryServer(ContactAddressMixin, ActiveLdapServerMixin):
         """
         whether to attach an NPS service to this AD controller (default: False). If setting to true,
             provide kwargs values for auth_ipaddress, auth_port and shared_secret
+            Removed in SMC >= 7.6.0
         :rtype: bool
         """
         return self.data.get("internet_auth_service_enabled")

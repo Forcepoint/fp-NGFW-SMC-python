@@ -61,7 +61,7 @@ the external gateway::
 
 from __future__ import annotations
 
-from typing import Any, Optional, Union, Iterator
+from typing import Any, Optional, Union, Iterator, cast
 from smc.api.exceptions import ElementNotFound
 from smc.base.model import SubElement, Element, ElementRef, ElementCreator
 from smc.base.collection import create_collection
@@ -256,7 +256,7 @@ class GatewayProfile(Element):
         """
         if capabilities:
             supported_parameter_check("aes_gcm_256_for_ike", capabilities, "7.3.0")
-        json = {'name': name, 'comment': comment}
+        json: dict[str, Any] = {'name': name, 'comment': comment}
         json.update(capabilities=capabilities)
         return ElementCreator(cls, json=json)
 
@@ -318,7 +318,7 @@ class ExternalGateway(Element):
         return ElementCreator(cls, json)
 
     @classmethod
-    def update_or_create(
+    def update_or_create(  # type: ignore[override]  # signature differs by design
             cls, name: str, external_endpoint: Optional[list] = None, vpn_site: Optional[list] = None, trust_all_cas: bool = True, with_status: bool = False
     ) -> Any:
         """
@@ -487,7 +487,7 @@ class ElementContactAddress(SerializedIterable):
         :param str location_name: name of the location to remove
         :raises ElementNotFound: location specified does not exist
         """
-        json = {"contact_addresses": []}
+        json: dict[str, Any] = {"contact_addresses": []}
 
         if location_name:
             location_ref = Location(location_name).href
@@ -563,7 +563,7 @@ class ExternalEndpoint(SubElement):
         :return: newly created element
         :rtype: ExternalEndpoint
         """
-        json = {
+        json: dict[str, Any] = {
             "name": name,
             "address": address,
             "dynamic": dynamic,
@@ -589,7 +589,7 @@ class ExternalEndpoint(SubElement):
             connection_type_ref=element_default(ConnectionType, "Active")
         )
 
-        return ElementCreator(self.__class__, href=self.href, json=json)
+        return ElementCreator(cast(Any, self.__class__), href=self.href, json=json)
 
     @classmethod
     def update_or_create(cls, external_gateway: Any, name: str, with_status: bool = False, **kw: Any) -> Any:
@@ -749,7 +749,7 @@ class VPNSite(SubElement):
         if vpn_references:
             json.update(vpn_references=vpn_references)
 
-        return ElementCreator(self.__class__, href=self.href, json=json)
+        return ElementCreator(cast(Any, self.__class__), href=self.href, json=json)
 
     @classmethod
     def update_or_create(cls, external_gateway: Any, name: str, site_element: Optional[list] = None, with_status: bool = False,
@@ -1044,7 +1044,9 @@ class VPNBrokerConfigFile(Element):
         :raises CreateElementFailed: reason for failure
         :rtype: VPNBrokerConfigFile
         """
-        kw.update(name=name, comment=comment)
+        kw.update(name=name)
+        if comment is not None:
+            kw.update(comment=comment)
         return ElementCreator(cls, json=kw)
 
 
@@ -1122,10 +1124,10 @@ class LinkUsageFEC(object):
     """
 
     def __init__(self, link_fec_threshold: Any, link_fec_percent: Any, link_fec_qos: Any, link_fec_type: Any) -> None:
-        self.link_fec_threshold = link_fec_threshold
-        self.link_fec_percent = link_fec_percent
-        self.link_fec_qos = link_fec_qos
-        self.link_fec_type = link_fec_type
+        self.link_fec_threshold = link_fec_threshold  # type: ignore[method-assign]  # attribute shadows method
+        self.link_fec_percent = link_fec_percent  # type: ignore[method-assign]  # attribute shadows method
+        self.link_fec_qos = link_fec_qos  # type: ignore[method-assign]  # attribute shadows method
+        self.link_fec_type = link_fec_type  # type: ignore[method-assign]  # attribute shadows method
 
     def link_fec_threshold(self) -> Any:
         return self.link_fec_threshold
@@ -1149,8 +1151,8 @@ class LinkUsageDUP(object):
     """
 
     def __init__(self, link_dup_qos: Any, link_dup_type: Any) -> None:
-        self.link_dup_qos = link_dup_qos
-        self.link_dup_type = link_dup_type
+        self.link_dup_qos = link_dup_qos  # type: ignore[method-assign]  # attribute shadows method
+        self.link_dup_type = link_dup_type  # type: ignore[method-assign]  # attribute shadows method
 
     def link_dup_qos(self) -> Any:
         return self.link_dup_qos
@@ -1171,10 +1173,10 @@ class LinkUsageException(object):
         self.data["link_usage_preference"] = link_usage_preferences_json
 
     def link_type(self) -> Any:
-        return self.data.link_type
+        return self.data["link_type"]
 
     def link_usage_preference(self) -> Any:
-        return self.data.link_usage_preference
+        return self.data["link_usage_preference"]
 
 
 class LinkUsageProfile(Element):
@@ -1196,7 +1198,7 @@ class LinkUsageProfile(Element):
         :raises ElementNotFound: specified element reference was not found
         :rtype: LinkUsageProfile
         """
-        link_usage_profile_json = {}
+        link_usage_profile_json: dict[str, Any] = {}
         link_usage_profile_json.update(name=name)
         link_usage_profile_json.update(
             default_link_balancing_preference=default_link_balancing_preference)
@@ -1243,7 +1245,7 @@ class LinkUsageProfile(Element):
         """
         List of exceptions
         """
-        return self.link_usage_exception.get("link_usage_exception")
+        return self.data.get("link_usage_exception")
 
 
 class PPK(Element):

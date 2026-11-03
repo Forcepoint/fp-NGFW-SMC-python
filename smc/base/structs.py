@@ -21,7 +21,7 @@ be more tolerant for abc in older collections / older python 2.7
 try:
     collectionsAbc = collections.abc
 except AttributeError:
-    collectionsAbc = collections
+    collectionsAbc = collections  # type: ignore[misc]  # py2 fallback
 
 
 class BaseIterable(object):

@@ -15,7 +15,7 @@ and other VPN related connections. Each gateway certificate is signed by
 a VPN CA and uses the default internal CA by default.
 """
 from __future__ import annotations
-from typing import Any, Optional, Union, Iterator
+from typing import Any, Optional, Union, Iterator, cast
 from smc.base.model import Element, ElementCreator, SubElement, ElementRef
 from smc.administration.certificates.tls_common import ImportExportCertificate
 from smc.api.exceptions import CertificateError, SMCOperationFailure, CertificateImportError
@@ -97,7 +97,7 @@ class GatewayCertificate(SubElement):
             cert_auth = element_resolver(signing_ca)
             json.update(certificate_authority_href=cert_auth)
         return ElementCreator(
-            GatewayCertificate,
+            cast(Any, GatewayCertificate),
             exception=CertificateError,
             href=self.internal_gateway.get_relation("generate_certificate"),
             json=json
@@ -119,7 +119,7 @@ class GatewayCertificate(SubElement):
         cert_auth = element_resolver(signing_ca)
 
         return ElementCreator(
-            GatewayCertificate,
+            cast(Any, GatewayCertificate),
             exception=CertificateError,
             href=self.internal_gateway.get_relation("generate_certificate"),
             json={
@@ -201,7 +201,7 @@ class GatewayCertificate(SubElement):
         return self.expiration_date
 
     def export_certificate(self, filename: Optional[str] = None) -> Any:
-        export_result = ImportExportCertificate.export_certificate(self, filename)
+        export_result = ImportExportCertificate.export_certificate(cast(Any, self), filename)
         return export_result
 
 
@@ -261,7 +261,7 @@ class GatewayCertificateRequest(SubElement):
         return self.data.public_key_algorithm
 
     def export_certificate_request(self, filename: Optional[str] = None) -> Any:
-        export_result = ImportExportCertificate.export_certificate(self, filename)
+        export_result = ImportExportCertificate.export_certificate(cast(Any, self), filename)
         return export_result
 
     def import_certificate_request(self, certificate: str) -> None:

@@ -34,7 +34,7 @@ routing configurations.
 PrefixListEntry.__new__.__defaults__ = (None,) * len(PrefixListEntry._fields)
 
 
-class IPPrefixList(AccessList, Element):
+class IPPrefixList(AccessList, Element):  # type: ignore[misc]  # update_or_create signature differs by design
     """
     An IP prefix list specifies a list of networks. When you apply an IP
     prefix list to a neighbor, the device sends or receives only a route
@@ -83,7 +83,7 @@ class IPPrefixList(AccessList, Element):
     _view = PrefixListEntry
 
 
-class IPv6PrefixList(AccessList, Element):
+class IPv6PrefixList(AccessList, Element):  # type: ignore[misc]  # update_or_create signature differs by design
     """
     An IP prefix list specifies a list of networks. When you apply an IP
     prefix list to a neighbor, the device sends or receives only a route

@@ -16,7 +16,7 @@ allow for modifications of existing groups and their members.
 """
 from __future__ import annotations
 
-from typing import Any, Optional, Union, Iterator
+from typing import Any, Callable, Optional, Union, Iterator, cast
 
 from smc.api.exceptions import ElementNotFound
 from smc.base.model import Element, ElementCreator
@@ -29,6 +29,10 @@ class GroupMixin(object):
     Methods associated with handling modification of Group
     objects for existing elements
     """
+
+    #: provided by the concrete element class (ElementBase)
+    data: Any
+    update: Callable[..., Any]
 
     @classmethod
     def update_or_create(
@@ -43,6 +47,9 @@ class GroupMixin(object):
         will be updated. Set append_lists=True to add new members to
         the list, or False to reset the list to the provided members. If
         setting remove_members, this will override append_lists if set.
+        ``members`` is optional: without it (or with an empty list) the
+        members are left untouched and only the other attributes are
+        updated. See :meth:`update_members`.
 
         :param bool append_lists: add to existing members, if any
         :param bool remove_members: remove specified members instead of appending
@@ -55,12 +62,12 @@ class GroupMixin(object):
         """
         was_created, was_modified = False, False
         try:
-            element = cls.get(kwargs.get("name"))
+            element = cast(Any, cls).get(kwargs.get("name"))
             was_modified = element.update_members(append_lists=append_lists,
                                                   remove_members=remove_members,
                                                   **kwargs)
         except ElementNotFound:
-            element = cls.create(**kwargs)
+            element = cast(Any, cls).create(**kwargs)
             was_created = True
 
         if with_status:
@@ -69,43 +76,67 @@ class GroupMixin(object):
 
     def update_members(
         self,
-        members: Any,
+        members: Any = None,
         append_lists: bool = False,
         remove_members: bool = False,
         **kwargs: Any,
     ) -> bool:
         """
-        Update group members with member list. Set append=True
-        to append to existing members, or append=False to overwrite.
+        Update group members with member list. Set append_lists=True
+        to append to existing members, or append_lists=False to overwrite.
+
+        The method is idempotent: the SMC is only updated, and True only
+        returned, when something really changes. Members are compared as
+        an unordered set of hrefs, so the order of ``members`` is irrelevant.
+
+        - overwrite (default): replace the members with ``members``
+        - ``append_lists=True``: only the members not already in the group
+          are added
+        - ``remove_members=True``: only the members present in the group are
+          removed (takes precedence over ``append_lists``)
+
+        If ``members`` is None or empty, the members are left untouched and
+        only the other attributes given in ``kwargs`` (comment, ...) that
+        differ from the current ones are updated. An empty list does **not**
+        clear the group, use :meth:`empty_members` for that.
 
         :param list members: new members for group by href or Element
         :type members: list[str, Element]
         :param bool append_lists: whether to append
         :param bool remove_members: remove members from the group
-        :return: bool was modified or not
+        :param kwargs: other attributes to update (e.g. comment)
+        :return: True if the group was modified on the SMC, False otherwise
+        :rtype: bool
         """
-        if members:
-            elements = [element_resolver(element) for element in members]
-            if remove_members:
-                element = [e for e in self.members if e not in elements]
-                if set(element) == set(self.members):
-                    remove_members = element = False
-                append_lists = False
-            elif append_lists:
-                element = [e for e in elements if e not in self.members]
-            else:
-                element = list(set(elements))
+        requested = {element_resolver(member) for member in members or []}
+        current = set(self.members)
 
-            if element or remove_members:
-                self.update(element=element, append_lists=append_lists, **kwargs)
-                return True
-            elif kwargs is not None:
-                self.update(**kwargs)
-            return True
-        elif kwargs is not None:
-            self.update(**kwargs)
+        # Group membership is unordered and a member can only occur once.
+        if not requested:
+            target, members_changed = requested, False
+        elif remove_members:
+            target, append_lists = current - requested, False
+            members_changed = target != current
+        elif append_lists:
+            target = requested - current
+            members_changed = bool(target)
+        else:
+            target = requested
+            members_changed = target != current
+
+        if members_changed:
+            self.update(element=list(target), append_lists=append_lists, **kwargs)
             return True
 
+        # Membership untouched or already satisfied: only send the other
+        # attributes that differ
+        changed = {
+            key: value for key, value in kwargs.items()
+            if (self.data.get(key) or None) != (value or None)
+        }
+        if changed:
+            self.update(**changed)
+            return True
         return False
 
     def obtain_members(self) -> list[Any]:
@@ -137,7 +168,7 @@ class GroupMixin(object):
         return self.data.get("element", [])
 
 
-class Group(GroupMixin, Element):
+class Group(GroupMixin, Element):  # type: ignore[misc]  # update_or_create intentionally differs from Element
     """
     Class representing a Group object used in access rules
     Groups can hold other network element types as well as
@@ -206,7 +237,7 @@ class ConnectionSynchronizationGroup(Element):
     typeof = "connection_sync_group"
 
     @classmethod
-    def create(
+    def create(  # type: ignore[return]  # implicit None on old SMC
         cls,
         name: str,
         comment: Optional[str] = None,
@@ -249,7 +280,7 @@ class ConnectionSynchronizationGroup(Element):
         return self.data.get("element", [])
 
 
-class ServiceGroup(GroupMixin, Element):
+class ServiceGroup(GroupMixin, Element):  # type: ignore[misc]  # update_or_create intentionally differs from Element
     """
     Represents a service group in SMC. Used for grouping
     objects by service. Services can be "mixed" TCP/UDP/ICMP/
@@ -293,7 +324,7 @@ class ServiceGroup(GroupMixin, Element):
         return ElementCreator(cls, json)
 
 
-class TCPServiceGroup(GroupMixin, Element):
+class TCPServiceGroup(GroupMixin, Element):  # type: ignore[misc]  # update_or_create intentionally differs from Element
     """
     Represents a TCP Service group
 
@@ -334,7 +365,7 @@ class TCPServiceGroup(GroupMixin, Element):
         return ElementCreator(cls, json)
 
 
-class UDPServiceGroup(GroupMixin, Element):
+class UDPServiceGroup(GroupMixin, Element):  # type: ignore[misc]  # update_or_create intentionally differs from Element
     """
     UDP Service Group
     Used for storing UDP Services or UDP Service Groups.
@@ -376,7 +407,7 @@ class UDPServiceGroup(GroupMixin, Element):
         return ElementCreator(cls, json)
 
 
-class IPServiceGroup(GroupMixin, Element):
+class IPServiceGroup(GroupMixin, Element):  # type: ignore[misc]  # update_or_create intentionally differs from Element
     """
     IP Service Group
     Used for storing IP Services or IP Service Groups
@@ -412,7 +443,7 @@ class IPServiceGroup(GroupMixin, Element):
         return ElementCreator(cls, json)
 
 
-class ICMPServiceGroup(GroupMixin, Element):
+class ICMPServiceGroup(GroupMixin, Element):  # type: ignore[misc]  # update_or_create intentionally differs from Element
     """
     IP Service Group
     Used for storing IP Services or IP Service Groups
@@ -452,7 +483,7 @@ class URLCategoryGroup(Element):
     typeof = "url_category_group"
 
 
-class EthernetServiceGroup(GroupMixin, Element):
+class EthernetServiceGroup(GroupMixin, Element):  # type: ignore[misc]  # update_or_create intentionally differs from Element
     """
     This represents an Ethernet Service Group, it groups a list of Ethernet Services.
 
@@ -492,7 +523,7 @@ class EthernetServiceGroup(GroupMixin, Element):
         return ElementCreator(cls, json)
 
 
-class RpcServiceGroup(GroupMixin, Element):
+class RpcServiceGroup(GroupMixin, Element):  # type: ignore[misc]  # update_or_create intentionally differs from Element
     """
     This represents a SUN-RPC Service Group, it groups a list of SUN-RPC Services.
     """

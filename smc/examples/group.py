@@ -23,6 +23,7 @@ import sys
 sys.path.append('../../')  # smc-python
 from smc import session  # noqa
 from smc.elements.group import Group  # noqa
+from smc.elements.network import Host  # noqa
 from smc.elements.servers import NTPServer  # noqa
 
 FIRST_UPDATE_CREATE_COMMENT = "my first update or created group"
@@ -32,6 +33,7 @@ FIRST_CREATE_COMMENT = "my first create group with members"
 REMOVED_MEMBERS = "myGroup3 removed members"
 WRONG_COMMENT = "Wrong comment in assert!"
 WRONG_MEMBERS = "Wrong members in assert!"
+WRONG_MODIFIED = "Wrong modified status in assert!"
 
 logging.getLogger()
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - '
@@ -103,6 +105,23 @@ def main():
         logging.info(f"comment={grp.comment}, members=>{grp.members}")
         assert grp.comment == REMOVED_MEMBERS, WRONG_COMMENT
         assert grp.members == [], WRONG_MEMBERS
+
+        # update_members is idempotent: False (no update) when nothing changes
+        host = Host().create(name="myHost", address="192.168.1.201")
+        both = [new_ntp_server.href, host.href]
+        grp = Group.create(name="myGroup4", members=[new_ntp_server])
+        assert grp.update_members(both) is True, WRONG_MODIFIED  # replace
+        assert grp.update_members(both[::-1]) is False, WRONG_MODIFIED  # same, other order
+        assert grp.update_members(both, append_lists=True) is False, WRONG_MODIFIED
+        assert grp.update_members([host], remove_members=True) is True, WRONG_MODIFIED
+        assert grp.update_members([host], remove_members=True) is False, WRONG_MODIFIED
+        # members None or [] leave the members untouched, only attributes are updated
+        assert grp.update_members([]) is False, WRONG_MODIFIED
+        assert grp.update_members(None, comment="myGroup4 comment") is True, WRONG_MODIFIED
+        assert grp.update_members(None, comment="myGroup4 comment") is False, WRONG_MODIFIED
+        grp = Group.update_or_create(name="myGroup4", comment="myGroup4 updated")
+        assert grp.comment == "myGroup4 updated", WRONG_COMMENT
+        assert grp.members == [new_ntp_server.href], WRONG_MEMBERS
     except BaseException as e:
         logging.error(f"Exception:{e}")
         return_code = 1
@@ -110,6 +129,8 @@ def main():
         Group("myGroup").delete()
         Group("myGroup2").delete()
         Group("myGroup3").delete()
+        Group("myGroup4").delete()
+        Host("myHost").delete()
         NTPServer("myNTPServer").delete()
         session.logout()
     return return_code

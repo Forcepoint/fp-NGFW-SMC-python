@@ -49,7 +49,7 @@ Example rule deletion::
             rule.delete()
 """
 from __future__ import annotations
-from typing import Any, Optional, Union, Iterator
+from typing import TYPE_CHECKING, Any, Optional, Union, Iterator
 from smc.base.model import ElementCreator, LoadElement
 from smc.api.exceptions import (
     CreatePolicyFailed,
@@ -69,6 +69,10 @@ class FirewallRule(object):
     points. This is referenced by multiple classes such as
     FirewallPolicy and FirewallPolicyTemplate.
     """
+
+    if TYPE_CHECKING:
+        def get_relation(self: FirewallRule, rel: str,
+                         exception: Optional[type[Exception]] = None) -> str: ...
 
     @property
     def fw_ipv4_access_rules(self) -> Any:

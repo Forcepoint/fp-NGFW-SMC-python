@@ -84,7 +84,7 @@ users and groups to delete a user named 'testuser'::
 """
 from __future__ import annotations
 
-from typing import Any, Optional, Union, Iterator
+from typing import Any, Optional, Union, Iterator, TYPE_CHECKING, Callable
 
 from smc.base.model import Element, ElementCreator, UserElement, ElementList, ElementRef
 from smc.base.structs import BaseIterable
@@ -148,6 +148,11 @@ class Browseable(object):
     Domain users represents common methods used by Internal and LDAP
     domains to fetch user accounts.
     """
+
+    if TYPE_CHECKING:
+        href: Any
+        name: Optional[str]
+        make_request: Callable[..., Any]
 
     def browse(self) -> list[Any]:
         """
@@ -484,7 +489,7 @@ class InternalUser(UserElement):
         :raises ElementNotFound: thrown if group specified does not exist
         :rtype: InternalUser
         """
-        json = {
+        json: dict[str, Any] = {
             "name": name,
             "unique_id": "cn={},{}".format(name, InternalUserDomain.user_dn),
             "comment": comment,

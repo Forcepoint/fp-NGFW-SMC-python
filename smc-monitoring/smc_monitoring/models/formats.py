@@ -35,6 +35,7 @@ Return only a specific set of fields by name::
 .. note:: If both field_ids and field_names are provided, they will be merged.
 
 """
+from typing import Any, Dict, List
 
 
 class FormatFieldMixin(object):
@@ -42,7 +43,9 @@ class FormatFieldMixin(object):
     Format field methods for modifying behavior of a query.
     """
 
-    def field_ids(self, ids):
+    data: Dict[str, Any]
+
+    def field_ids(self, ids: List[int]) -> None:
         """
         Add filter to show only fields with given field ID's. Field ID's
         can be mapped to the LogField constants in
@@ -54,7 +57,7 @@ class FormatFieldMixin(object):
         """
         self.data["field_ids"] = ids
 
-    def field_names(self, names):
+    def field_names(self, names: List[str]) -> None:
         """
         Show only fields with given name. The ``name`` is the name for the
         log field in the Management Client. The simplest way to obtain the
@@ -67,7 +70,7 @@ class FormatFieldMixin(object):
         """
         self.data["field_names"] = names
 
-    def field_format(self, name):
+    def field_format(self, name: str) -> None:
         """
         Specify how the field name are printed in the response.
 
@@ -90,7 +93,7 @@ class TextFormat(FormatFieldMixin):
     afterwards by calling :py:meth:`set_resolving`.
     """
 
-    def __init__(self, field_format="pretty", **kw):
+    def __init__(self, field_format: str = "pretty", **kw: Any) -> None:
         self.data = {
             "type": "texts",
             "field_format": field_format,
@@ -99,7 +102,7 @@ class TextFormat(FormatFieldMixin):
         for setting, value in kw.items():
             self.data["resolving"][setting] = value
 
-    def timezone(self, tz):
+    def timezone(self, tz: str) -> None:
         """
         Set timezone on the audit records. Timezone can be in formats:
         'US/Eastern', 'PST', 'Europe/Helsinki'
@@ -110,7 +113,7 @@ class TextFormat(FormatFieldMixin):
         """
         self.data["resolving"].update(timezone=tz, time_show_zone=True)
 
-    def set_resolving(self, **kw):
+    def set_resolving(self, **kw: Any) -> None:
         """
         Certain log fields can be individually resolved. Use this
         method to set these fields. Valid keyword arguments:
@@ -137,7 +140,7 @@ class DetailedFormat(TextFormat):
     debugging.
     """
 
-    def __init__(self, field_format="pretty", **kw):
+    def __init__(self, field_format: str = "pretty", **kw: Any) -> None:
         super(DetailedFormat, self).__init__(field_format, **kw)
         self.data["type"] = "detailed"
 
@@ -149,7 +152,7 @@ class RawFormat(FormatFieldMixin):
     not done.
     """
 
-    def __init__(self, field_format="pretty"):
+    def __init__(self, field_format: str = "pretty") -> None:
         self.data = {"type": "raw", "field_format": field_format}
 
 
@@ -191,7 +194,7 @@ class CombinedFormat(object):
         type in :py:mod:`smc.monitoring.formats`.
     """
 
-    def __init__(self, **kw):
-        self.data = {"type": "combined", "formats": {}}
+    def __init__(self, **kw: FormatFieldMixin) -> None:
+        self.data: Dict[str, Any] = {"type": "combined", "formats": {}}
         for format_key, format in kw.items():  # @ReservedAssignment
             self.data["formats"].update({format_key: format.data})

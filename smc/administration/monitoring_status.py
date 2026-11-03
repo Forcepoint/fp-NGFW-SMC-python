@@ -28,7 +28,7 @@ To get Monitoring Status for VPN and tunnels, do::
 """
 from __future__ import annotations
 
-from typing import Any, Optional, Union, Iterator
+from typing import Any, Optional, Union, Iterator, TYPE_CHECKING
 import logging
 from smc.api.common import fetch_entry_point, SMCRequest
 from smc.api.exceptions import NotMonitored
@@ -37,6 +37,11 @@ from smc.compat import min_smc_version
 from smc.core.resource import History
 
 logger = logging.getLogger(__name__)
+
+# Present on every status payload, on every API version, but not declared
+# as a property on any subclass - so __get_status_type()'s fallback must
+# ignore them, like base-class attributes.
+_ADDITIVE_ENVELOPE_FIELDS = frozenset({"element", "link"})
 
 
 class MonitoringStatus(object):
@@ -74,6 +79,9 @@ class MonitoringStatus(object):
     :ivar result: The API's links of the children or SDWAN Branch Status if exists
 
     """
+
+    if TYPE_CHECKING:
+        link: list[Any]
 
     def __init__(self, **data: Any) -> None:
         for d, v in data.items():
@@ -152,7 +160,7 @@ class MonitoringStatus(object):
         return self._result
 
     @property
-    def history(self) -> Optional[History]:
+    def history(self) -> Optional[History]:  # type: ignore[return]  # implicit None
         """
         This function returns a history object.
         :return: history object.
@@ -165,9 +173,23 @@ class MonitoringStatus(object):
                     result = SMCRequest(method="create", href=history_link).create()
                     return History(**result.json)
 
-    @result.setter
+    @result.setter  # type: ignore[no-redef,attr-defined]  # setter not adjacent to its getter
     def result(self, value: Any) -> None:
         self._result = value
+
+    @staticmethod
+    def __self_link_type(links: Any) -> Optional[str]:
+        """
+        :param links: the "link" list of the monitoring status payload, if
+            any (absent on older SMC versions)
+        :return: the "self" link's "type" token, or None if there is no
+            such link or its "type" is missing/null (some API versions)
+        :rtype: str
+        """
+        for link_dict in links or []:
+            if link_dict.get("rel") == "self":
+                return link_dict.get("type")
+        return None
 
     @staticmethod
     def __get_status_type(data: Any) -> Any:
@@ -175,14 +197,24 @@ class MonitoringStatus(object):
         :return: status class related to data
         :rtype: MonitoringStatus
         """
-        # status by default
+        # Explicit discriminator: the "self" link's "type" token identifies
+        # the concrete type regardless of any additive field. No match ->
+        # fall through to the attribute-matching fallback below unchanged.
+        # A match returns immediately, so every entry in
+        # status_type_by_link_type must be trustworthy, not a guess.
+        link_type = MonitoringStatus.__self_link_type(data.get("link"))
+        if link_type in status_type_by_link_type:
+            return status_type_by_link_type[link_type]
+        # Fallback: infer the type from which attributes are present.
+        # status by default.
         result = MonitoringStatus
         for st in status_type:
             find = True
             nb_found = 0
             for attr in data:
-                # don't check attributes from superclass
-                if hasattr(MonitoringStatus, attr):
+                # don't check attributes from superclass, nor the additive
+                # envelope fields (not diagnostic of the subclass either)
+                if hasattr(MonitoringStatus, attr) or attr in _ADDITIVE_ENVELOPE_FIELDS:
                     continue
                 # if attribute from data not in status type, we continue to next type
                 if not hasattr(st, attr):
@@ -214,10 +246,10 @@ class MonitoringStatus(object):
         return status(**result.json)
 
     def __str__(self) -> str:
-        result = "{}=>".format(self.__class__.__name__)
-        for attr in vars(self):
-            result += "{} = {}, ".format(attr, getattr(self, attr))
-        return result
+        attrs = ", ".join(
+            "{} = {!r}".format(attr, getattr(self, attr)) for attr in vars(self)
+        )
+        return "{}=>{}".format(self.__class__.__name__, attrs)
 
 
 class ServerStatus(MonitoringStatus):
@@ -270,16 +302,8 @@ class EngineNodeStatus(MonitoringStatus):
     state, version, current policy, ... of the specified Node.
     """
 
-    @property
-    def installed_policy(self) -> Optional[str]:
-        """
-        :return: The Last Uploaded Policy.
-        :rtype: str
-        """
-        return self._installed_policy
-
-    def installed_policy(self, value: Any) -> None:
-        self._installed_policy = value
+    #: The Last Uploaded Policy, None when the server does not send it.
+    installed_policy: Optional[str] = None
 
     @property
     def installed_policy_ref(self) -> Any:
@@ -739,3 +763,28 @@ class VPNEndpointTunnelStatus(VPNGatewayTunnelStatus):
 status_type = [ServerStatus, EngineNodeStatus, SDWANBranchStatus, SDWANBranchToBranchStatus,
                SDWANNetlinkElementStatus, VPNStatus, VPNGatewayTunnelStatus,
                VPNEndpointTunnelStatus]
+
+# Maps a monitoring status's "self" link "type" token (the server DTO's
+# @XmlRootElement name, not a snake_case class name) to its
+# MonitoringStatus subclass. Missing key -> safe, falls through to
+# status_type above. Wrong key -> not safe, __get_status_type() returns on
+# a hit and skips that fallback, so a wrong class misclassifies. Every
+# entry must be confirmed, not guessed.
+#
+# "application_health_status" is real but deliberately absent: no
+# ApplicationHealthStatus class exists, and callers read these payloads via
+# dict(vars(status)), which depends on the base class's plain attributes.
+#
+# "sdwan_branch_tunnel_status" -> SDWANBranchToBranchStatus is withheld:
+# real token, but the class was only inferred by elimination, not confirmed
+# live. Falls through to status_type until confirmed.
+status_type_by_link_type = {
+    "smc_server_status": ServerStatus,
+    "engine_node_status": EngineNodeStatus,
+    "sdwan_branch_status": SDWANBranchStatus,
+    # "sdwan_branch_tunnel_status": SDWANBranchToBranchStatus,  # unconfirmed, see note above
+    "netlink_element_status": SDWANNetlinkElementStatus,
+    "vpn_status": VPNStatus,
+    "gateway_tunnel_status": VPNGatewayTunnelStatus,
+    "endpoint_tunnel_status": VPNEndpointTunnelStatus,
+}

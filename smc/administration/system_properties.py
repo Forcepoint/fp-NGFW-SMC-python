@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from typing import Any, Optional, Union, Iterator
 
-from smc.base.model import SubElement
+from smc.base.model import Element, SubElement
 
 
 class SystemProperty(SubElement):

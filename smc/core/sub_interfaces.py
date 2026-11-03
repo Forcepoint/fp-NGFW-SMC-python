@@ -20,7 +20,7 @@ All sub interfaces are type dict.
 """
 from __future__ import annotations
 
-from typing import Any, Optional, Union, Iterator
+from typing import Any, Optional, Union, Iterator, cast
 
 import ipaddress
 
@@ -40,7 +40,7 @@ class SubInterfaceCollection(BaseIterable):
 
     def __init__(self, interface: Any) -> None:
         data = [
-            clsmembers.get(kind)(data)
+            cast(Any, clsmembers.get(kind))(data)
             for intf in interface.data.get("interfaces", [])
             for kind, data in intf.items()
         ]
@@ -101,6 +101,9 @@ class ClusterVirtualInterface(SubInterface):
     :ivar int nicid: nic interface identifier
     :ivar boolean relayed_by_dhcp: is the interface using DHCP
     :ivar str igmp_mode: IGMP mode (upstream/downstream/None)
+    :ivar boolean wol_relay: whether this address relays Wake-on-LAN packets to its network
+    :ivar int wol_relay_port: UDP port the Wake-on-LAN relay listens on, between 1 and 65535.
+        Leave it out to let the engine apply its own default port.
 
     """
 
@@ -131,7 +134,7 @@ class ClusterVirtualInterface(SubInterface):
         return cls(data)
 
     @property
-    def vlan_id(self) -> Optional[str]:
+    def vlan_id(self) -> Optional[str]:  # type: ignore[return]  # implicit None fall-through
         """
         VLAN ID for this interface, if any
 
@@ -246,7 +249,7 @@ class InlineInterface(SubInterface):
             self.update(nicid=newid)
 
     @property
-    def vlan_id(self) -> Optional[str]:
+    def vlan_id(self) -> Optional[str]:  # type: ignore[return]  # implicit None fall-through
         """
         VLAN ID for this interface, if any
 
@@ -304,9 +307,9 @@ class InlineL2FWInterface(InlineInterface):
         zone_ref: Optional[str] = None, **kwargs: Any
     ) -> InlineL2FWInterface:
         kwargs.pop("failure_mode", None)
-        return super(InlineL2FWInterface, cls).create(
+        return cast(InlineL2FWInterface, super(InlineL2FWInterface, cls).create(
             interface_id, logical_interface_ref, second_interface_id, zone_ref=zone_ref, **kwargs
-        )
+        ))
 
 
 class CaptureInterface(SubInterface):
@@ -347,7 +350,7 @@ class CaptureInterface(SubInterface):
         return cls(data)
 
     @property
-    def vlan_id(self) -> Optional[str]:
+    def vlan_id(self) -> Optional[str]:  # type: ignore[return]  # implicit None fall-through
         if "." in self.nicid:
             return self.nicid.split(".")[-1]
 
@@ -435,7 +438,7 @@ class NodeInterface(SubInterface):
         return cls(data)
 
     @property
-    def vlan_id(self) -> Optional[str]:
+    def vlan_id(self) -> Optional[str]:  # type: ignore[return]  # implicit None fall-through
         """
         VLAN ID for this interface, if any
 
@@ -472,6 +475,9 @@ class SingleNodeInterface(NodeInterface):
     :ivar int dynamic_index: dynamic interfaces index value
     :ivar boolean automatic_default_route: Flag to know if the dynamic default route will
         be automatically created for this dynamic interface. Used in DHCP interfaces only
+    :ivar boolean wol_relay: whether this address relays Wake-on-LAN packets to its network
+    :ivar int wol_relay_port: UDP port the Wake-on-LAN relay listens on, between 1 and 65535.
+        Leave it out to let the engine apply its own default port.
     """
 
     typeof = "single_node_interface"
@@ -537,21 +543,22 @@ class LoopbackClusterInterface(ClusterVirtualInterface):
         super(LoopbackClusterInterface, self).__init__(data)
 
     @classmethod
-    def create(cls, address: str, ospf_area: Any = None,
-               **kwargs: Any) -> LoopbackClusterInterface:
+    def create(  # type: ignore[override]  # intentionally different signature
+        cls, address: str, ospf_area: Any = None, **kwargs: Any
+    ) -> LoopbackClusterInterface:
         """
         Create a loopback interface. Uses parent constructor
 
         :rtype: LoopbackClusterInterface
         """
         mask = 32 if ipaddress.ip_address(address).version == 4 else 128
-        return super(LoopbackClusterInterface, cls).create(
+        return cast(LoopbackClusterInterface, super(LoopbackClusterInterface, cls).create(
             address=address,
             network_value="{}/{}".format(address, mask),
             interface_id="Loopback Interface",
             ospfv2_area_ref=ospf_area,
             **kwargs
-        )
+        ))
 
     def delete(self) -> None:
         """
@@ -631,10 +638,11 @@ class LoopbackInterface(NodeInterface):
         super(LoopbackInterface, self).__init__(data)
 
     @classmethod
-    def create(cls, address: str, rank: int = 1, nodeid: int = 1, ospf_area: Any = None,
-               **kwargs: Any) -> LoopbackInterface:
+    def create(  # type: ignore[override]  # intentionally different signature
+        cls, address: str, rank: int = 1, nodeid: int = 1, ospf_area: Any = None, **kwargs: Any
+    ) -> LoopbackInterface:
         mask = 32 if ipaddress.ip_address(address).version == 4 else 128
-        return super(LoopbackInterface, cls).create(
+        return cast(LoopbackInterface, super(LoopbackInterface, cls).create(
             interface_id="Loopback Interface",
             rank=rank,
             address=address,
@@ -642,7 +650,7 @@ class LoopbackInterface(NodeInterface):
             nodeid=nodeid,
             ospfv2_area_ref=ospf_area,
             **kwargs
-        )
+        ))
 
     def add_node_loopback(self, addresses: Any, **kwargs: Any) -> None:
         """

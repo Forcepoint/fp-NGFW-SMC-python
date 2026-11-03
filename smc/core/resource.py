@@ -144,7 +144,7 @@ class PendingChanges(SerializedIterable):
         self.engine.make_request(method="create", resource="disapprove_all_changes")
 
 
-_ChangeRecord = collections.namedtuple(
+_ChangeRecord = collections.namedtuple(  # type: ignore[name-match]  # public typename kept
     "ChangeRecord", "approved_on changed_on element element_name event_type modifier approver"
 )
 _ChangeRecord.__new__.__defaults__ = (None,) * len(_ChangeRecord._fields)
@@ -168,11 +168,11 @@ class ChangeRecord(_ChangeRecord):
     __slots__ = ()
 
     @property
-    def resolve_element(self) -> Element:
+    def resolve_element(self) -> Optional[Element]:
         return Element.from_href(self.element)
 
 
-_History = collections.namedtuple(
+_History = collections.namedtuple(  # type: ignore[name-match]  # public typename kept
     "History",
     "creation_time creator creator_name "
     "is_locked is_obsolete is_trashed last_modification_time modifier modifier_name follower "
@@ -195,7 +195,7 @@ class History(_History):
     __slots__ = ()
 
     @property
-    def created_by(self) -> Element:
+    def created_by(self) -> Optional[Element]:
         """
         The account that created this element. Returned as
         an Element.
@@ -205,7 +205,7 @@ class History(_History):
         return Element.from_href(self.creator)
 
     @property
-    def modified_by(self) -> Element:
+    def modified_by(self) -> Optional[Element]:
         """
         The account that last modified this element.
 

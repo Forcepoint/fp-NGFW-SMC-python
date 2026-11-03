@@ -64,3 +64,9 @@ Release History
 1.5.6
 +++++
 -removed fields COMPID SENDER
+
+1.5.7
++++++
+-fixed UnboundLocalError in asynchronous websocket queries (ws is closed only if its socket still exists)
+-requires websocket-client >= 1.9.2 (fixes the "Some WS data not received" error with websocket-client 1.9.1)
+-added type annotations on the whole package and the py.typed marker

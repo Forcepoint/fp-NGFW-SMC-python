@@ -61,7 +61,7 @@ Example rule deletion::
 """
 from __future__ import annotations
 
-from typing import Any, Optional, Union, Iterator
+from typing import TYPE_CHECKING, Any, Optional, Union, Iterator
 
 from smc.base.model import ElementCreator
 from smc.api.exceptions import (
@@ -81,6 +81,10 @@ class Layer2Rule(object):
     entry points. This is referenced by multiple classes such as
     Layer2Policy and Layer2TemplatePolicy.
     """
+
+    if TYPE_CHECKING:
+        def get_relation(self: Layer2Rule, rel: str,
+                         exception: Optional[type[Exception]] = None) -> str: ...
 
     @property
     def layer2_ipv4_access_rules(self) -> Any:
@@ -190,5 +194,5 @@ class Layer2TemplatePolicy(Layer2Policy):
 
     typeof = "layer2_template_policy"
 
-    def upload(self) -> None:
+    def upload(self) -> None:  # type: ignore[override]
         pass  # Not supported on the template

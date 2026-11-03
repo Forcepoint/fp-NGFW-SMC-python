@@ -112,8 +112,13 @@ class ProtocolAgentMixin(object):
     agent.
     """
 
+    #: provided by the concrete element class (ElementBase and its __getattr__)
+    data: Any
+    protocol_agent_ref: Any
+    paValues: Any
+
     @property
-    def protocol_agent(self) -> Optional[Any]:
+    def protocol_agent(self) -> Optional[Any]:  # type: ignore[return]  # implicit None
         """Protocol Agent for this service
 
         :return: Return the protocol agent or None if this service does not
@@ -162,7 +167,7 @@ class ProtocolAgent(Element):
 
     typeof = "protocol"
 
-    def _get_param_values(self, name: str) -> Optional[dict]:
+    def _get_param_values(self, name: str) -> Optional[dict]:  # type: ignore[return]  # implicit None
         """
         Return the parameter by name as stored on the protocol
         agent payload. This loads the data from the local cache
@@ -217,8 +222,12 @@ class ProtocolParameterValue(object):
 
     """
 
+    #: set by the dynamic subclass built in ProtocolAgentValues
+    protocol_agent: Any
+    protocol_agent_values: Any
+
     @cached_property
-    def protocol_parameter(self) -> Optional[Any]:
+    def protocol_parameter(self) -> Optional[Any]:  # type: ignore[return]  # implicit None
         """
         The protocol parameter defined from the base protocol agent. This is a
         read-only element that provides some additional context to the parameter
@@ -307,7 +316,7 @@ class ProxyServiceValue(ProtocolParameterValue):
         return self.protocol_agent_values.get("inspected_service_ref")
 
     @property
-    def proxy_server(self) -> Optional[Any]:
+    def proxy_server(self) -> Optional[Any]:  # type: ignore[return]  # implicit None
         """
         The ProxyServer element referenced in this protocol parameter, if any.
 
@@ -382,7 +391,7 @@ class TlsInspectionPolicyValue(ProtocolParameterValue):
         return self.protocol_agent_values.get("tls_inspection_policy_ref")
 
     @property
-    def tls_policy(self) -> Optional[Any]:
+    def tls_policy(self) -> Optional[Any]:  # type: ignore[return]  # implicit None
         """
         The HTTPSInspectionExceptions element referenced in this protocol
         agent parameter. Will be None if one is not assigned.

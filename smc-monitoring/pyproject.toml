@@ -18,7 +18,7 @@ license = {text = "Apache License (2.0)"}
 dynamic = ["version", "readme"]
 dependencies = [
         "fp_NGFW_SMC_python >= 1.0.21",
-        "websocket-client >=1.5.0",
+        "websocket-client >=1.9.2",
 ]
 classifiers = [
         "Development Status :: 5 - Production/Stable",
@@ -43,3 +43,7 @@ namespaces = true  # true by default
 [tool.setuptools]
 include-package-data = true
 license-files = ["LICENSE"]
+
+
+[tool.setuptools.package-data]
+smc_monitoring = ["py.typed"]

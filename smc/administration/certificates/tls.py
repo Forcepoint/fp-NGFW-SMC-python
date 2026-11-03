@@ -602,6 +602,15 @@ class TLSServerCredential(
         """
         return self.make_request(method="create", resource="self_sign")
 
+    def sign_with_internal_ca(self) -> Any:
+        """
+        Sign the certificate in 'request' state with the SMC's internal CA
+        (the "Stonesoft Root CA" / "SG Root CA" certificate authority).
+
+        :raises ActionCommandFailed: failed to sign with reason
+        """
+        return self.make_request(method="create", resource="sign_with_internal_ca")
+
     @property
     def valid_from(self) -> Any:
         """

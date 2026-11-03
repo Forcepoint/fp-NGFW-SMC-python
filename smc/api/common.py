@@ -56,6 +56,8 @@ class SMCRequest(object):
     """
 
     _session_manager = None
+    #: exception class raised on failure, set dynamically by callers
+    exception: type[Exception]
 
     def __init__(
         self,
@@ -92,6 +94,9 @@ class SMCRequest(object):
 
         for k, v in kwargs.items():
             setattr(self, k, v)
+        # headers=None means no extra header, but the session token must still fit (SMC-69095).
+        if self.headers is None:
+            self.headers = {}
 
     def __call__(self, session: Any) -> None:
         pass

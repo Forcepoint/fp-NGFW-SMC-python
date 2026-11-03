@@ -52,12 +52,15 @@ Delete any blacklist entries with a source IP within a network range of 3.3.3.0/
 .. seealso:: :class:`smc_monitoring.models.filters` for more information on creating filters
 
 """
+from typing import Any, Dict, Iterator, Optional, cast
+
 from smc_monitoring.models.query import Query
 from smc_monitoring.models.formats import TextFormat, CombinedFormat, DetailedFormat
 from smc_monitoring.models.constants import LogField
 from smc_monitoring.monitors.block_list import BlockListQuery
 from smc.base.model import prepared_request
 from smc.api.exceptions import DeleteElementFailed
+from smc.api.web import SMCResult
 from smc.compat import is_api_version_less_than, is_smc_version_less_than
 
 
@@ -89,7 +92,7 @@ class BlacklistQuery(Query):
         LogField.BLACKLISTENTRYID,
     ]
 
-    def __init__(self, target, timezone=None, **kw):
+    def __init__(self, target: str, timezone: Optional[str] = None, **kw: Any) -> None:
 
         if is_smc_version_less_than("7.0"):
             super(BlacklistQuery, self).__init__("BLACKLIST", target, **kw)
@@ -99,7 +102,7 @@ class BlacklistQuery(Query):
         if timezone is not None:
             self.format.set_resolving(timezone=timezone)
 
-    def fetch_as_element(self, **kw):
+    def fetch_as_element(self, **kw: Any) -> Iterator["BlacklistEntry"]:
         """
         Fetch the blacklist and return as an instance of Element.
         :param int query_timeout: length of time to wait on recieving web
@@ -127,8 +130,8 @@ class BlacklistQuery(Query):
 
         for list_of_results in clone.fetch_raw(**kw):
             for entry in list_of_results:
-                data = entry.get("bldata")
-                data.update(**entry.get("blid"))
+                data = cast(Dict[str, Any], entry.get("bldata"))
+                data.update(**cast(Dict[str, Any], entry.get("blid")))
                 first_fetch = entry.get("first_fetch")
                 first_fetch = first_fetch if first_fetch else False
                 data.update({"first_fetch": first_fetch})
@@ -148,11 +151,11 @@ class BlacklistEntry(object):
     as InFilter definitions on the query.
     """
 
-    def __init__(self, **kw):
+    def __init__(self, **kw: Any) -> None:
         self.blacklist = kw
 
     @property
-    def blacklist_id(self):
+    def blacklist_id(self) -> Optional[str]:
         """
         Blacklist entry ID. Useful if you want to locate the entry
         within the Management Client.
@@ -162,7 +165,7 @@ class BlacklistEntry(object):
         return self.blacklist.get("Blacklist Entry ID")
 
     @property
-    def blacklist_entry_key(self):
+    def blacklist_entry_key(self) -> Optional[str]:
         """
         Blacklist entry Key.
         Needed to remove the entry
@@ -172,7 +175,7 @@ class BlacklistEntry(object):
         return self.blacklist.get("BlacklistEntryId")
 
     @property
-    def first_fetch(self):
+    def first_fetch(self) -> Optional[bool]:
         """
         first fetch
         True means entry is part of initial data at first fetch
@@ -182,7 +185,7 @@ class BlacklistEntry(object):
         return self.blacklist.get("first_fetch")
 
     @property
-    def timestamp(self):
+    def timestamp(self) -> Optional[str]:
         """
         Timestamp when this blacklist entry was added.
 
@@ -191,7 +194,7 @@ class BlacklistEntry(object):
         return self.blacklist.get("Timestamp")
 
     @property
-    def engine(self):
+    def engine(self) -> Optional[str]:
         """
         The engine for this blacklist entry.
 
@@ -200,7 +203,7 @@ class BlacklistEntry(object):
         return self.blacklist.get("NodeId")
 
     @property
-    def href(self):
+    def href(self) -> Optional[str]:
         """
         The href for this blacklist entry. This is the reference to the
         entry for deleting the entry.
@@ -213,7 +216,7 @@ class BlacklistEntry(object):
             return self.blacklist.get("block_list_href")
 
     @property
-    def source(self):
+    def source(self) -> str:
         """
         Source address/netmask for this blacklist entry.
 
@@ -225,7 +228,7 @@ class BlacklistEntry(object):
         )
 
     @property
-    def destination(self):
+    def destination(self) -> str:
         """
         Destination network/netmask for this blacklist entry.
 
@@ -237,7 +240,7 @@ class BlacklistEntry(object):
         )
 
     @property
-    def protocol(self):
+    def protocol(self) -> str:
         """
         Specified protocol for the blacklist entry. If none is specified,
         'ANY' is returned.
@@ -250,7 +253,7 @@ class BlacklistEntry(object):
         return proto
 
     @property
-    def source_ports(self):
+    def source_ports(self) -> str:
         """
         Source ports for this blacklist entry. If no ports are specified (i.e. ALL
         ports), 'ANY' is returned.
@@ -264,7 +267,7 @@ class BlacklistEntry(object):
         return "ANY"
 
     @property
-    def dest_ports(self):
+    def dest_ports(self) -> str:
         """
         Destination ports for this blacklist entry. If no ports are specified,
         'ANY' is returned.
@@ -278,15 +281,15 @@ class BlacklistEntry(object):
         return "ANY"
 
     @property
-    def duration(self):
+    def duration(self) -> int:
         """
         Duration for the blacklist entry.
 
         :rtype: int
         """
-        return int(self.blacklist.get("BlacklistEntryDuration"))
+        return int(self.blacklist.get("BlacklistEntryDuration", 0))
 
-    def delete(self):
+    def delete(self) -> SMCResult:
         """
         Delete the entry from the engine where the entry is applied.
 
@@ -295,12 +298,12 @@ class BlacklistEntry(object):
         """
         return prepared_request(DeleteElementFailed, href=self.href).delete()
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "{0}(id={1},src={2},dst={3})".format(
             self.__class__.__name__,
             self.blacklist_id,
             self.source,
             self.destination)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)

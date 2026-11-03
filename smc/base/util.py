@@ -212,7 +212,7 @@ def bytes_to_unicode(s: Any, encoding: str = "utf-8", errors: str = "replace") -
     """
     if compat.PY3:
         return str(s, "utf-8") if isinstance(s, bytes) else s
-    return s if isinstance(s, unicode) else s.decode(encoding, errors)
+    return s if isinstance(s, unicode) else s.decode(encoding, errors)  # type: ignore[name-defined]  # py2 only
 
 
 def import_submodules(package: Any, recursive: bool = True) -> dict[str, Any]:
@@ -240,7 +240,7 @@ def import_submodules(package: Any, recursive: bool = True) -> dict[str, Any]:
     return results
 
 
-def extract_self(link_list: list) -> Optional[str]:
+def extract_self(link_list: list) -> Optional[str]:  # type: ignore[return]  # implicit None
     for keys in link_list:
         if keys.get("rel") == "self":
             return keys.get("href")

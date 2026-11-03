@@ -14,9 +14,12 @@ Functionality related to updating dynamic update packages and
 engine upgrades
 """
 from __future__ import annotations
-from typing import Any, Optional, Union, Iterator
+from typing import Any, Optional, Union, Iterator, TYPE_CHECKING
 from smc.base.model import SubElement
 from smc.administration.tasks import Task
+
+if TYPE_CHECKING:
+    from smc.base.model import ElementCache
 
 
 class PackageMixin(object):
@@ -24,6 +27,9 @@ class PackageMixin(object):
     Manages downloads and activations of update packages and software
     upgrades
     """
+
+    if TYPE_CHECKING:
+        data: ElementCache
 
     def download(self, timeout: int = 5, wait_for_finish: bool = False) -> Any:
         """

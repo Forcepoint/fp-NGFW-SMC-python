@@ -61,7 +61,7 @@ Set an initial password for the Admin User::
 """
 from __future__ import annotations
 
-from typing import Any, Optional, Union, Iterator
+from typing import Any, Callable, Optional, Union, Iterator
 
 from smc.base.model import Element, ElementCreator
 from smc.api.exceptions import ModificationFailed
@@ -76,6 +76,12 @@ class UserMixin(object):
     User Mixin class providing common operations for Admin Users and
     API Clients.
     """
+
+    #: provided by the concrete element class (ElementBase)
+    data: Any
+    update: Callable[..., Any]
+    get_relation: Callable[..., str]
+    make_request: Callable[..., Any]
 
     def enable_disable(self) -> None:
         """
@@ -101,7 +107,7 @@ class UserMixin(object):
             params={"password": password},
         )
 
-    def generate_password(self) -> Optional[str]:
+    def generate_password(self) -> Optional[str]:  # type: ignore[return]  # implicit None
         """
         Generate a random password for this user.
 
@@ -247,7 +253,7 @@ class AdminUser(UserMixin, Element):
         """
         engines = [] if engine_target is None else engine_target
 
-        json = {
+        json: dict[str, Any] = {
             "name": name,
             "enabled": enabled,
             "allow_sudo": allow_sudo,
@@ -356,7 +362,7 @@ class ApiClient(UserMixin, Element):
         :return: instance with meta
         :rtype: ApiClient
         """
-        json = {
+        json: dict[str, Any] = {
             "enabled": enabled,
             "name": name,
             "superuser": superuser,

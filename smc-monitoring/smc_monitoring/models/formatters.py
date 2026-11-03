@@ -59,7 +59,12 @@ extend :class:`._Header` to support custom field_ids within the query.
     Client to verify available fields.
 
 """
+from typing import TYPE_CHECKING, Any, Dict, List, cast
+
 from smc_monitoring.models.constants import LogField
+
+if TYPE_CHECKING:
+    from smc_monitoring.models.query import Query
 
 
 class InvalidFieldFormat(Exception):
@@ -74,7 +79,7 @@ class InvalidFieldFormat(Exception):
 
 
 class _Header(object):
-    def __init__(self, query):
+    def __init__(self, query: 'Query') -> None:
         self.query = query
 
         # Allow custom field_ids to be used
@@ -102,11 +107,11 @@ class _Header(object):
                 "and set valid fields."
             )
 
-        self.headers = []
+        self.headers: List[str] = []
         for ids in field_ids:
             for mapping in fields:
                 if mapping.get("id") == ids:
-                    self.headers.append(mapping.get(field_format))
+                    self.headers.append(cast(str, mapping.get(field_format)))
                     break
 
         self.header_set = False
@@ -119,10 +124,10 @@ class CSVFormat(_Header):
     will return results in batches of 200 (max) per iteration.
     """
 
-    def __init__(self, query):
+    def __init__(self, query: 'Query') -> None:
         super(CSVFormat, self).__init__(query)
 
-    def formatted(self, alist):
+    def formatted(self, alist: List[Dict[str, Any]]) -> str:
         format = "%s\n"  # @ReservedAssignment
         formatted_data = ""
         if not self.header_set:
@@ -154,13 +159,14 @@ class TableFormat(_Header):
         as width is calculated per batch.
     """
 
-    def __init__(self, query):
+    def __init__(self, query: 'Query') -> None:
         super(TableFormat, self).__init__(query)
         # Calculate starting column width
         self.column_width = [(header, len(header)) for header in self.headers]
 
-    def formatted(self, alist):
+    def formatted(self, alist: List[Dict[str, Any]]) -> str:
         column_widths = []
+        header: Any  # column name, then the header row
         for header in self.headers:
             column_widths.append(
                 max(len(str(column.get(header, ""))) for column in alist))
@@ -173,13 +179,13 @@ class TableFormat(_Header):
         for col, width in current_column_width.items():
             if data_longest_item.get(col, 0) > width:
                 self.header_set = False  # Add header again to realign
-                current_column_width[col] = data_longest_item.get(col)
+                current_column_width[col] = cast(int, data_longest_item.get(col))
 
         self.column_width = [(key, current_column_width[key])
                              for key in self.headers]
 
         if not self.header_set:
-            header_divider = []
+            header_divider: Any = []  # dividers, then the divider row
             # for key in key_width_pair:
             for key in self.column_width:
                 header_divider.append("-" * key[1])
@@ -217,10 +223,10 @@ class RawDictFormat(object):
     method to get the same data.
     """
 
-    def __init__(self, query):
+    def __init__(self, query: 'Query') -> None:
         pass
 
-    def formatted(self, alist):
+    def formatted(self, alist: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         return alist
 
 

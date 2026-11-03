@@ -26,6 +26,8 @@ neighbors using IPv6 protocol ::
 
 """
 
+from typing import Any, Iterator, Optional
+
 from smc_monitoring.models.query import Query
 from smc_monitoring.models.constants import LogField
 
@@ -57,10 +59,10 @@ class NeighborQuery(Query):
         LogField.NEIGHBORL2DATA,
     ]
 
-    def __init__(self, target=None):
+    def __init__(self, target: Optional[str] = None) -> None:
         super(NeighborQuery, self).__init__("NEIGHBORS", target)
 
-    def fetch_as_element(self, **kw):
+    def fetch_as_element(self, **kw: Any) -> Iterator["Neighbor"]:
         """
         Fetch the results and return as a Neighbor element. The original
         query is not modified.
@@ -94,11 +96,11 @@ class Neighbor(object):
     :meth:`~NeighborQuery.fetch_as_element`.
     """
 
-    def __init__(self, **data):
+    def __init__(self, **data: Any) -> None:
         self.neighbor = data
 
     @property
-    def first_fetch(self):
+    def first_fetch(self) -> Optional[bool]:
         """
         first fetch
         True means entry is part of initial data at first fetch
@@ -108,7 +110,7 @@ class Neighbor(object):
         return self.neighbor.get("first_fetch")
 
     @property
-    def node_id(self):
+    def node_id(self) -> Optional[str]:
         """
         Firewall or server node that passes this information
 
@@ -117,7 +119,7 @@ class Neighbor(object):
         return self.neighbor.get(str(LogField.NODEID))
 
     @property
-    def reception_time(self):
+    def reception_time(self) -> Optional[str]:
         """
         Reception Time on the log Server
 
@@ -126,7 +128,7 @@ class Neighbor(object):
         return self.neighbor.get(str(LogField.RECEPTIONTIME))
 
     @property
-    def sender_domain(self):
+    def sender_domain(self) -> Optional[str]:
         """
         Administrative Domain of Event Sender
 
@@ -135,7 +137,7 @@ class Neighbor(object):
         return self.neighbor.get(str(LogField.SENDERDOMAIN))
 
     @property
-    def data_type(self):
+    def data_type(self) -> Optional[str]:
         """
         Data type
 
@@ -144,7 +146,7 @@ class Neighbor(object):
         return self.neighbor.get(str(LogField.DATATYPE))
 
     @property
-    def info_msg(self):
+    def info_msg(self) -> Optional[str]:
         """
         Information Message
 
@@ -153,7 +155,7 @@ class Neighbor(object):
         return self.neighbor.get(str(LogField.INFOMSG))
 
     @property
-    def data_tags(self):
+    def data_tags(self) -> Optional[str]:
         """
         Data type tag
 
@@ -162,7 +164,7 @@ class Neighbor(object):
         return self.neighbor.get(str(LogField.DATATAGS))
 
     @property
-    def neighbor_state(self):
+    def neighbor_state(self) -> Optional[str]:
         """
         State
 
@@ -171,7 +173,7 @@ class Neighbor(object):
         return self.neighbor.get(str(LogField.NEIGHBORSTATE))
 
     @property
-    def neighbor_interface(self):
+    def neighbor_interface(self) -> Optional[str]:
         """
         Interface
 
@@ -180,7 +182,7 @@ class Neighbor(object):
         return self.neighbor.get(str(LogField.NEIGHBORINTERFACE))
 
     @property
-    def neighbor_protocol(self):
+    def neighbor_protocol(self) -> Optional[str]:
         """
         Protocol
 
@@ -189,7 +191,7 @@ class Neighbor(object):
         return self.neighbor.get(str(LogField.NEIGHBORPROTOCOL))
 
     @property
-    def neighbor_l3_data(self):
+    def neighbor_l3_data(self) -> Optional[str]:
         """
         IP Address
 
@@ -198,7 +200,7 @@ class Neighbor(object):
         return self.neighbor.get(str(LogField.NEIGHBORL3DATA))
 
     @property
-    def neighbor_l2_data(self):
+    def neighbor_l2_data(self) -> Optional[str]:
         """
         Mac address
 
@@ -206,7 +208,7 @@ class Neighbor(object):
         """
         return self.neighbor.get(str(LogField.NEIGHBORL2DATA))
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "{}(interface={},protocol={},state={},IP Address={},Mac Address={})".format(
             self.__class__.__name__,
             self.neighbor_interface,
@@ -216,5 +218,5 @@ class Neighbor(object):
             self.neighbor_l2_data,
         )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)

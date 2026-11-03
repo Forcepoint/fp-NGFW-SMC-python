@@ -59,13 +59,18 @@ For example, calling add_XX_filter methods multiple times to refine filter resul
         InFilter(FieldValue(LogField.SRC), [IPValue('192.168.4.84')])])
 
 """
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence
+
+if TYPE_CHECKING:
+    from smc.base.model import Element
+    from smc_monitoring.models.values import Value
 
 
 class QueryFilter(object):
-    def __init__(self, filter_type):
-        self.filter = {"type": filter_type}
+    def __init__(self, filter_type: str) -> None:
+        self.filter: Dict[str, Any] = {"type": filter_type}
 
-    def update_filter(self, value):
+    def update_filter(self, value: Any) -> None:
         self.filter.update(value=value)
 
 
@@ -73,11 +78,11 @@ class ExistingFilter(QueryFilter):
     """
     Add reference to an existing filter expression element in a Monitoring API filter.
     """
-    def __init__(self, element):
+    def __init__(self, element: 'Element') -> None:
         super(ExistingFilter, self).__init__("expression")
         self.update_filter(element)
 
-    def update_filter(self, element):
+    def update_filter(self, element: 'Element') -> None:
         self.filter.update(href=element.href)
 
 
@@ -111,12 +116,12 @@ class InFilter(QueryFilter):
     :type right: list(Values): any value type in :py:mod:`smc_monitoring.models.values`
     """
 
-    def __init__(self, left, right):
+    def __init__(self, left: 'Value', right: Sequence['Value']) -> None:
         super(InFilter, self).__init__("in")
         self.update_filter(left, right)
 
-    def update_filter(self, left_filter, right_filter):
-        right_side = []
+    def update_filter(self, left_filter: 'Value', right_filter: Sequence['Value']) -> None:  # type: ignore[override]  # unchanged API
+        right_side: List[Any] = []
         for filters in right_filter:
             right_side.extend(filters.value)
         self.filter.update(left=left_filter.value[0], right=right_side)
@@ -140,12 +145,12 @@ class AndFilter(QueryFilter):
     :type filters: list or tuple
     """
 
-    def __init__(self, *filters):
+    def __init__(self, *filters: Sequence[QueryFilter]) -> None:
         super(AndFilter, self).__init__("and")
         if filters:
             self.update_filter(*filters)
 
-    def update_filter(self, filters):
+    def update_filter(self, filters: Sequence[QueryFilter]) -> None:
         self.filter.update(values=[value.filter for value in filters])
 
 
@@ -167,12 +172,12 @@ class OrFilter(QueryFilter):
     :type filters: list or tuple
     """
 
-    def __init__(self, *filters):
+    def __init__(self, *filters: Sequence[QueryFilter]) -> None:
         super(OrFilter, self).__init__("or")
         if filters:
             self.update_filter(*filters)
 
-    def update_filter(self, filters):
+    def update_filter(self, filters: Sequence[QueryFilter]) -> None:
         self.filter.update(values=[value.filter for value in filters])
 
 
@@ -204,12 +209,12 @@ class NotFilter(QueryFilter):
     :type filters: list or tuple
     """
 
-    def __init__(self, *filters):
+    def __init__(self, *filters: Sequence[QueryFilter]) -> None:
         super(NotFilter, self).__init__("not")
         if filters:
             self.update_filter(*filters)
 
-    def update_filter(self, filters):
+    def update_filter(self, filters: Sequence[QueryFilter]) -> None:
         self.filter.update(value=filters[0].filter)
 
 
@@ -236,12 +241,12 @@ class DefinedFilter(QueryFilter):
     :param Value values: single value type to require on filter
     """
 
-    def __init__(self, value=None):
+    def __init__(self, value: Optional['Value'] = None) -> None:
         super(DefinedFilter, self).__init__("defined")
         if value is not None:
             self.update_filter(value)
 
-    def update_filter(self, value):
+    def update_filter(self, value: 'Value') -> None:
         self.filter.update(value=value.value[0])
 
 
@@ -250,7 +255,7 @@ class CSLikeFilter(QueryFilter):
     A CSLikeFilter is a case sensitive LIKE string match filter.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super(CSLikeFilter, self).__init__("cs_like")
         pass
 
@@ -260,7 +265,7 @@ class CILikeFilter(QueryFilter):
     A CILikeFilter is a case insensitive LIKE string match filter.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super(CILikeFilter, self).__init__("cs_like")
         pass
 
@@ -283,10 +288,10 @@ class TranslatedFilter(QueryFilter):
 
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super(TranslatedFilter, self).__init__("translated")
 
-    def within_ipv4_network(self, field, values):
+    def within_ipv4_network(self, field: str, values: List[str]) -> None:
         """
         This filter adds specified networks to a filter to check
         for inclusion.
@@ -298,7 +303,7 @@ class TranslatedFilter(QueryFilter):
         v = ['ipv4_net("%s")' % net for net in values]
         self.update_filter("{} IN union({})".format(field, ",".join(v)))
 
-    def within_ipv4_range(self, field, values):
+    def within_ipv4_range(self, field: str, values: List[str]) -> None:
         """
         Add an IP range network filter for relevant address fields.
         Range (between) filters allow only one range be provided.
@@ -314,7 +319,7 @@ class TranslatedFilter(QueryFilter):
 
         self.update_filter("{} IN range({})".format(field, ",".join(v)))
 
-    def exact_ipv4_match(self, field, values):
+    def exact_ipv4_match(self, field: str, values: List[str]) -> None:
         """
         An exact IPv4 address match on relevant address fields.
 

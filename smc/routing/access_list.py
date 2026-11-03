@@ -15,11 +15,14 @@ filters based on IPv4 or IPv6 access lists such as OSPF and BGP.
 """
 from __future__ import annotations
 
-from typing import Any, Optional, Union, Iterator
+from typing import Any, Optional, Union, Iterator, TYPE_CHECKING, cast
 
 import collections
 from smc.base.model import Element, ElementCreator
 from smc.api.exceptions import ElementNotFound
+
+if TYPE_CHECKING:
+    from smc.base.model import ElementCache
 
 
 AccessListEntry = collections.namedtuple("AccessListEntry", "subnet action comment")
@@ -45,6 +48,11 @@ class AccessList(object):
 
     :return: namedtuple based on access list type
     """
+
+    if TYPE_CHECKING:
+        typeof: str
+        _view: Any
+        data: ElementCache
 
     @classmethod
     def create(cls, name: str, entries: Optional[list] = None, comment: Optional[str] = None, **kw: Any) -> Any:
@@ -75,7 +83,7 @@ class AccessList(object):
         json = {"name": name, "entries": access_list_entry, "comment": comment}
         json.update(kw)
 
-        return ElementCreator(cls, json)
+        return ElementCreator(cast(Any, cls), json)
 
     def __len__(self) -> int:
         return len(self.data.get("entries", []))
@@ -109,7 +117,7 @@ class AccessList(object):
         field, value = next(iter(field_value.items()))
         self.data["entries"][:] = [
             entry
-            for entry in self.data.get("entries")
+            for entry in cast(list, self.data.get("entries"))
             if entry.get("{}_entry".format(self.typeof)).get(field) != str(value)
         ]
 
@@ -132,7 +140,7 @@ class AccessList(object):
         created = False
         modified = False
         try:
-            element = cls.get(kw.get("name"))
+            element = cast(Any, cls).get(kw.get("name"))
         except ElementNotFound:
             element = cls.create(**kw)
             created = True
@@ -140,7 +148,7 @@ class AccessList(object):
         if not created:
             if overwrite_existing:
                 element.data["entries"] = [
-                    {"{}_entry".format(element.typeof): entry} for entry in kw.get("entries")
+                    {"{}_entry".format(element.typeof): entry} for entry in cast(list, kw.get("entries"))
                 ]
                 modified = True
             else:
@@ -160,7 +168,7 @@ class AccessList(object):
         return element
 
 
-class IPAccessList(AccessList, Element):
+class IPAccessList(AccessList, Element):  # type: ignore[misc]  # update_or_create signature differs by design
     """
     IPAccessList is used by dynamic routing protocols to allow filtering of
     routes.
@@ -194,7 +202,7 @@ class IPAccessList(AccessList, Element):
     _view = AccessListEntry
 
 
-class IPv6AccessList(AccessList, Element):
+class IPv6AccessList(AccessList, Element):  # type: ignore[misc]  # update_or_create signature differs by design
     """
     IPv6AccessList is used by dynamic routing protocols to allow filtering of
     routes. Protocols like OSPF and BGP allow inbound and outbound filters

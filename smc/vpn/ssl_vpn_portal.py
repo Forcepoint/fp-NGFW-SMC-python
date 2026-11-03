@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Optional, Union, Iterator
+from typing import Any, Optional, Union, Iterator, TYPE_CHECKING, cast, Callable
 
 from smc.base.model import Element, ElementCreator, lookup_class
 from smc.base.structs import NestedDict
@@ -721,7 +721,7 @@ class SSLVPNWebService(Element):
         self.data.update({"visible_in_portal": value})
 
 
-class SSLVPNRule(RuleCommon, Rule, SubElement):
+class SSLVPNRule(RuleCommon, Rule, SubElement):  # type: ignore[misc]  # Rule.update signature differs by design
     """
     An SSL VPN Policy Rule
     Deprecated since SMC >= 7.5.0, replaced by ApplicationAccessRule.
@@ -763,7 +763,7 @@ class SSLVPNRule(RuleCommon, Rule, SubElement):
         if name:
             json["name"] = name
         json.update(**kw)
-        return ElementCreator(self.__class__, exception=CreateRuleFailed, href=href, json=json)
+        return ElementCreator(cast(Any, self.__class__), exception=CreateRuleFailed, href=href, json=json)
 
     @property
     def name(self) -> str:
@@ -834,13 +834,14 @@ class SSLVPNRule(RuleCommon, Rule, SubElement):
         self.data["is_disabled"] = False
 
     @cacheable_resource
-    def ssl_vpn_web_service(self) -> SSLVPNWebService:
+    def ssl_vpn_web_service(self) -> list[SSLVPNWebService]:
         """
         Services assigned to this rule
 
-        :rtype: ssl_vpn_portal_service
+        :rtype: list(SSLVPNWebService)
         """
-        return SSLVPNWebService(self)
+        return [cast(SSLVPNWebService, Element.from_href(href))
+                for href in self.data.get("ssl_vpn_web_service", [])]
 
     @property
     def parent_policy(self) -> Any:
@@ -849,7 +850,7 @@ class SSLVPNRule(RuleCommon, Rule, SubElement):
 
         :return: :class:`smc.base.model.Element` of type policy
         """
-        return Element.from_href(self.data.get("parent_policy"))
+        return Element.from_href(cast(str, self.data.get("parent_policy")))
 
     def save(self) -> str:
         """
@@ -900,6 +901,9 @@ class SSLVPNPolicyRule(object):
     An SSL VPN Policy Rule collector.
     Deprecated since SMC >= 7.5.0, replaced by ApplicationAccessPolicyRule.
     """
+    if TYPE_CHECKING:
+        get_relation: Callable[..., str]
+
     @property
     def sslvpn_rules(self) -> Any:
         return rule_collection(self.get_relation("sslvpn_rules"), SSLVPNRule)

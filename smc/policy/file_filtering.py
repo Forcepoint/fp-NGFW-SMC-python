@@ -11,7 +11,7 @@
 #  under the License.
 from __future__ import annotations
 
-from typing import Any, Optional, Union, Iterator
+from typing import Any, Optional, Union, Iterator, cast
 
 from smc.api.exceptions import CreateRuleFailed, MissingRequiredInput, ElementNotFound
 from smc.base.util import element_resolver
@@ -22,7 +22,7 @@ from smc.policy.rule import RuleCommon, Rule
 from smc.policy.rule_elements import LogOptions, SituationMatchPart, FileFilteringRuleAction
 
 
-class FileFilteringRule(RuleCommon, Rule, SubElement):
+class FileFilteringRule(RuleCommon, Rule, SubElement):  # type: ignore[misc]  # update differs
     """
     Represents a file filtering rule.
     """
@@ -127,7 +127,8 @@ class FileFilteringRule(RuleCommon, Rule, SubElement):
             params.update(**self.add_before_after(before, after))
 
         return ElementCreator(
-            self.__class__, exception=CreateRuleFailed, href=href, params=params, json=rule_values
+            cast(Any, self.__class__), exception=CreateRuleFailed, href=href, params=params,
+            json=rule_values
         )
 
     @property

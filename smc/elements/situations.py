@@ -107,7 +107,7 @@ to match within a Text File Stream::
 """
 from __future__ import annotations
 
-from typing import Any, Dict, Iterator, Optional, Union
+from typing import Any, Dict, Iterator, Optional, Union, cast
 
 from smc.api.common import SMCRequest, fetch_entry_point
 from smc.api.exceptions import CreateElementFailed, ElementNotFound
@@ -137,7 +137,7 @@ def _severity_by_name(name: str) -> int:
     return 1
 
 
-def _retrieve_parameter_from_name(situation_context: Any, parameter_name: str) -> Optional[str]:
+def _retrieve_parameter_from_name(situation_context: Any, parameter_name: str) -> Optional[str]:  # type: ignore[return]  # implicit None
     """
     return the uri for the parameter name for given situation context
     """
@@ -347,7 +347,7 @@ class Situation(Element):
         """
         for param in self.data.get("parameter_values", []):
             cache = ElementCache(data=self.make_request(href=param))
-            name = "{}".format(cache.type.title()).replace("_", "")
+            name = "{}".format(cast(str, cache.type).title()).replace("_", "")
             yield type(name, (SituationParameterValue,), {"data": cache})(
                 name=cache.name, type=cache.type, href=param
             )
@@ -555,8 +555,8 @@ class TLSMatchSituation(Situation):
         :rtype: TLSMatchSituation
         """
 
-        SUB_TLS_MATCH_SITUATION_EP: str = fetch_entry_point("sub_tls_match_situation")
-        INSPECTION_SITUATION_EP: str = fetch_entry_point("inspection_situation")
+        SUB_TLS_MATCH_SITUATION_EP: str = cast(str, fetch_entry_point("sub_tls_match_situation"))
+        INSPECTION_SITUATION_EP: str = cast(str, fetch_entry_point("inspection_situation"))
 
         # Define sub situation used
 
@@ -615,7 +615,7 @@ class TLSMatchSituation(Situation):
 
             # create the application expression parameter value
             # create matching domain
-            APPLICATION_EXPRESSION_SITUATION_PARAMETER_VALUE_JSON = {
+            APPLICATION_EXPRESSION_SITUATION_PARAMETER_VALUE_JSON: Dict[str, Any] = {
                 "name": "match",
                 "operator": "and",
                 "parameter_ref": _retrieve_parameter_from_name(
@@ -655,10 +655,10 @@ class TLSMatchSituation(Situation):
             # create sub-situation list
             sub_situations = {MATCH_CERTIFICATE_VALIDATION_PARAM.get(match_certificate_validation)}
             for situation in VALIDATION_FAILED_MATCHES_PARAM.keys():
-                if situation in validation_failed_matches:
+                if situation in (validation_failed_matches or []):
                     sub_situations.add(VALIDATION_FAILED_MATCHES_PARAM.get(situation))
 
-            APPLICATION_EXPRESSION_SITUATION_PARAMETER_VALUE_JSON: Dict[str, str] = {
+            APPLICATION_EXPRESSION_SITUATION_PARAMETER_VALUE_JSON = {
                 "name": "match",
                 "operator": "and",
                 "parameter_ref": _retrieve_parameter_from_name(
@@ -673,7 +673,7 @@ class TLSMatchSituation(Situation):
 
         # deny decrypting parameter
         TLS_DECRYPTING_FORBIDDEN: str = "tls_decrypting_forbidden"
-        BOOLEAN_SITUATION_PARAMETER_VALUE_JSON: Dict[str, str] = {
+        BOOLEAN_SITUATION_PARAMETER_VALUE_JSON: Dict[str, Any] = {
             "name": TLS_DECRYPTING_FORBIDDEN,
             "parameter_ref": _retrieve_parameter_from_name(TLSMatchSituationContext("TLS Match"),
                                                            TLS_DECRYPTING_FORBIDDEN),

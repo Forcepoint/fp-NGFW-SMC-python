@@ -28,6 +28,8 @@ alerts with a severity of CRITICAL::
 
 """
 
+from typing import Any, Iterator, Optional
+
 from smc_monitoring.models.query import Query
 from smc_monitoring.models.constants import LogField
 
@@ -66,12 +68,12 @@ class ActiveAlertQuery(Query):
         LogField.VULNERABILITYREFERENCES,
     ]
 
-    def __init__(self, target="Shared Domain", timezone=None):
+    def __init__(self, target: str = "Shared Domain", timezone: Optional[str] = None) -> None:
         super(ActiveAlertQuery, self).__init__("ACTIVE_ALERTS", target)
         if timezone is not None:
             self.format.set_resolving(timezone=timezone)
 
-    def fetch_as_element(self, **kw):
+    def fetch_as_element(self, **kw: Any) -> Iterator["Alert"]:
         """
         Fetch the results and return as a User element. The original
         query is not modified.
@@ -96,11 +98,11 @@ class Alert(object):
     :meth:`~ActiveAlertQuery.fetch_as_element`.
     """
 
-    def __init__(self, **data):
+    def __init__(self, **data: Any) -> None:
         self.alert = data
 
     @property
-    def timestamp(self):
+    def timestamp(self) -> Optional[str]:
         """
         Timestamp of this connection. It is recommended to set the timezone
         on the query to view this timestamp in the systems local time.
@@ -114,7 +116,7 @@ class Alert(object):
         return self.alert.get(str(LogField.TIMESTAMP))
 
     @property
-    def engine(self):
+    def engine(self) -> Optional[str]:
         """
         The engine/cluster for this state table entry
 
@@ -124,7 +126,7 @@ class Alert(object):
         return self.alert.get(str(LogField.NODEID))
 
     @property
-    def severity(self):
+    def severity(self) -> Optional[str]:
         """
         Severity for this alert
 
@@ -133,7 +135,7 @@ class Alert(object):
         return self.alert.get(str(LogField.ALERTSEVERITY))
 
     @property
-    def action(self):
+    def action(self) -> Optional[str]:
         """
         Action performed for the alert
 
@@ -142,7 +144,7 @@ class Alert(object):
         return self.alert.get(str(LogField.ACTION))
 
     @property
-    def source(self):
+    def source(self) -> Optional[str]:
         """
         Source IP for the alert
 
@@ -151,7 +153,7 @@ class Alert(object):
         return self.alert.get(str(LogField.SRC))
 
     @property
-    def destination(self):
+    def destination(self) -> Optional[str]:
         """
         Destination IP for the alert
 
@@ -160,7 +162,7 @@ class Alert(object):
         return self.alert.get(str(LogField.DST))
 
     @property
-    def service(self):
+    def service(self) -> Optional[str]:
         """
         Service associated with alert
 
@@ -169,7 +171,7 @@ class Alert(object):
         return self.alert.get(str(LogField.SERVICE))
 
     @property
-    def protocol(self):
+    def protocol(self) -> Optional[str]:
         """
         Protocol for alert
 
@@ -178,25 +180,25 @@ class Alert(object):
         return self.alert.get(str(LogField.PROTOCOL))
 
     @property
-    def source_port(self):
+    def source_port(self) -> int:
         """
         Source port for alert
 
         :rtype: int
         """
-        return int(self.alert.get(str(LogField.SPORT)))
+        return int(self.alert.get(str(LogField.SPORT), 0))
 
     @property
-    def destination_port(self):
+    def destination_port(self) -> int:
         """
         Destination port for alert
 
         :rtype: int
         """
-        return int(self.alert.get(str(LogField.DPORT)))
+        return int(self.alert.get(str(LogField.DPORT), 0))
 
     @property
-    def situation(self):
+    def situation(self) -> Optional[str]:
         """
         Situation defined for this alert
 
@@ -205,7 +207,7 @@ class Alert(object):
         return self.alert.get(str(LogField.SITUATION))
 
     @property
-    def vulnerability_refs(self):
+    def vulnerability_refs(self) -> Optional[str]:
         """
         Comma seperated string listing any vulnerability references for
         the alert, if any.
@@ -214,7 +216,7 @@ class Alert(object):
         """
         return self.alert.get(str(LogField.VULNERABILITYREFERENCES))
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "{}(severity={},src={},dst={},action={},situation={})".format(
             self.__class__.__name__,
             self.severity,
@@ -224,5 +226,5 @@ class Alert(object):
             self.situation,
         )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)

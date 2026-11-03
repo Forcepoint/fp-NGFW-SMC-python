@@ -33,6 +33,10 @@ As a list of values::
 The ``value`` attribute of each :class:`~Value` stores the query string as a list
 that is absorbed by the filter.
 """
+from typing import TYPE_CHECKING, Any, Dict, List, Union
+
+if TYPE_CHECKING:
+    from smc.base.model import Element
 
 
 class Value(object):
@@ -42,7 +46,7 @@ class Value(object):
     :ivar value: stores value formatted into dict
     """
 
-    def __init__(self, values):
+    def __init__(self, values: Union[List[Dict[str, Any]], str]) -> None:
         self.value = values
 
 
@@ -62,7 +66,7 @@ class ServiceValue(Value):
     :type services: list or str
     """
 
-    def __init__(self, *services):
+    def __init__(self, *services: str) -> None:
         value = [{"type": "service", "value": service} for service in services]
         super(ServiceValue, self).__init__(value)
 
@@ -84,7 +88,7 @@ class ConstantValue(Value):
     :type constants: list or str
     """
 
-    def __init__(self, *constants):
+    def __init__(self, *constants: int) -> None:
         value = [{"type": "constant", "value": cnst} for cnst in constants]
         super(ConstantValue, self).__init__(value)
 
@@ -110,8 +114,8 @@ class FieldValue(Value):
         :py:mod:`smc.monitoring.constants.LogField` for valid attributes.
     """
 
-    def __init__(self, *fields):
-        value = []
+    def __init__(self, *fields: Union[int, str]) -> None:
+        value: List[Dict[str, Any]] = []
         for field in fields:
             if isinstance(field, int):
                 value.append({"type": "field", "id": field})
@@ -140,7 +144,7 @@ class ElementValue(Value):
         addresses, both ipv4 and ipv6.
     """
 
-    def __init__(self, *elements):
+    def __init__(self, *elements: 'Element') -> None:
         value = [{"type": "element", "href": element.href}
                  for element in elements]
         super(ElementValue, self).__init__(value)
@@ -160,7 +164,7 @@ class IPValue(Value):
     :type addresses: list or str
     """
 
-    def __init__(self, *addresses):
+    def __init__(self, *addresses: str) -> None:
         value = [{"type": "ip", "value": addr} for addr in addresses]
         super(IPValue, self).__init__(value)
 
@@ -181,7 +185,7 @@ class StringValue(Value):
     :type value: list
     """
 
-    def __init__(self, *values):
+    def __init__(self, *values: str) -> None:
         value = [{"type": "string", "value": value} for value in values]
         super(StringValue, self).__init__(value)
 
@@ -199,7 +203,7 @@ class NumberValue(Value):
     :type value: list or int
     """
 
-    def __init__(self, *values):
+    def __init__(self, *values: int) -> None:
         value = [{"type": "number", "value": value} for value in values]
         super(NumberValue, self).__init__(value)
 
@@ -220,5 +224,5 @@ class TranslatedValue(Value):
     :type value: str
     """
 
-    def __init__(self, value):
+    def __init__(self, value: str) -> None:
         super(TranslatedValue, self).__init__(value)

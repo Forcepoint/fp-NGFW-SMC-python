@@ -27,7 +27,7 @@ instances of :class:`~ASPathListEntry`.
 ASPathListEntry.__new__.__defaults__ = (None,) * len(ASPathListEntry._fields)
 
 
-class ASPathAccessList(AccessList, Element):
+class ASPathAccessList(AccessList, Element):  # type: ignore[misc]  # update_or_create signature differs by design
     """
     An AS path is the autonomous systems that routing information passed
     through to get to a specified router. It indicates the origin of this
@@ -74,7 +74,7 @@ access lists.
 CommunityListEntry.__new__.__defaults__ = (None,) * len(CommunityListEntry._fields)
 
 
-class CommunityAccessList(AccessList, Element):
+class CommunityAccessList(AccessList, Element):  # type: ignore[misc]  # update_or_create signature differs by design
     """
     A CommunityAccessList is used to provide specific rules for BGP
     configurations providing and permit/deny capability based on
@@ -137,7 +137,7 @@ access lists.
 ExtCommunityListEntry.__new__.__defaults__ = (None,) * len(ExtCommunityListEntry._fields)
 
 
-class ExtendedCommunityAccessList(AccessList, Element):
+class ExtendedCommunityAccessList(AccessList, Element):  # type: ignore[misc]  # update_or_create signature differs by design
     """
     Extended community access lists with the ability to specify
     route target or start of origin for an entry.

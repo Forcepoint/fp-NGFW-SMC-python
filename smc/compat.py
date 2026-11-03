@@ -13,16 +13,19 @@
 Compatibility for py2 / py3
 """
 from __future__ import annotations
-from typing import Any, Optional, Union, Iterator
+from typing import Any, Optional, Union, Iterator, TYPE_CHECKING, cast
 import sys
 import smc
 import re
+
+if TYPE_CHECKING:
+    import smc.administration.system
 
 try:
     from packaging.version import Version as LooseVersion
 except ImportError:
     try:
-        from distutils.version import LooseVersion
+        from distutils.version import LooseVersion  # type: ignore[assignment]  # fallback without packaging
     except ImportError as e:
         raise ImportError("Neither 'packaging' nor 'distutils' modules are available. "
                           "Please install 'packaging'.") from e
@@ -47,7 +50,7 @@ def min_smc_version(version: str) -> bool:
     Is version at least the minimum provided
     Used for compatibility with selective functions
     """
-    return LooseVersion(smc.session.api_version) >= LooseVersion(version)
+    return LooseVersion(cast(str, smc.session.api_version)) >= LooseVersion(version)
 
 
 def get_best_version(*versions: Any) -> Any:
@@ -59,12 +62,12 @@ def get_best_version(*versions: Any) -> Any:
     Ex.
         ElementList(('6.5', 'ref'),('6.6', 'network_ref'))
     """
-    versions = list(versions)
+    versions = list(versions)  # type: ignore[assignment]  # *args tuple rebound to a list
     sorted_versions = sorted(versions, key=lambda t: LooseVersion(t[0]))
     best_value = sorted_versions[0][1]
 
     for version, value in sorted_versions:
-        if LooseVersion(version) > LooseVersion(smc.session.api_version):
+        if LooseVersion(version) > LooseVersion(cast(str, smc.session.api_version)):
             break
         best_value = value
 
@@ -73,7 +76,7 @@ def get_best_version(*versions: Any) -> Any:
 
 # if check version is minor or major, corresponding smc version will be return (major/minor)
 def get_smc_version(check_version: str) -> str:
-    smc_version = smc.administration.system.System().smc_version
+    smc_version = cast(str, smc.administration.system.System().smc_version)
     if re.match(r"\d.\d+.\d", check_version):
         smc_version = '.'.join(smc_version.split()[0].split('.')[:3])
     else:
@@ -110,15 +113,15 @@ def is_smc_version_equal(check_version: str) -> bool:
 
 
 def is_api_version_less_than_or_equal(check_version: str) -> bool:
-    return LooseVersion(smc.session.api_version) <= LooseVersion(check_version)
+    return LooseVersion(cast(str, smc.session.api_version)) <= LooseVersion(check_version)
 
 
 def is_api_version_more_than_or_equal(check_version: str) -> bool:
-    return LooseVersion(smc.session.api_version) >= LooseVersion(check_version)
+    return LooseVersion(cast(str, smc.session.api_version)) >= LooseVersion(check_version)
 
 
 def is_api_version_less_than(check_version: str) -> bool:
-    return LooseVersion(smc.session.api_version) < LooseVersion(check_version)
+    return LooseVersion(cast(str, smc.session.api_version)) < LooseVersion(check_version)
 
 
 def supported_parameter_check(

@@ -91,7 +91,7 @@ Examples of rule operations::
 .. note:: SMC version >= 6.6.0 requires the use of a list of strings for rule actions
 """
 from __future__ import annotations
-from typing import Any, Optional, Union, Iterator
+from typing import TYPE_CHECKING, Any, Optional, Union, Iterator, cast
 from smc.base.model import Element, SubElement, ElementCreator
 from smc.elements.other import LogicalInterface
 from smc.api.exceptions import (
@@ -112,6 +112,8 @@ from smc.policy.rule_elements import (
 from smc.base.util import element_resolver
 from smc.base.decorators import cacheable_resource
 from smc.core.resource import History
+if TYPE_CHECKING:
+    from smc.base.model import ElementCache, Meta
 from smc.compat import (get_best_version, is_api_version_less_than_or_equal,
                         is_api_version_more_than_or_equal, is_smc_version_more_than_or_equal)
 
@@ -125,6 +127,19 @@ class Rule(object):
         for rule in policy.fw_ipv4_nat_rules.all():
             print(rule.name, rule.comment, rule.is_disabled)
     """
+
+    # Mixin: concrete rules also inherit RuleCommon and SubElement
+    _meta: Meta
+    _cache: Any
+
+    if TYPE_CHECKING:
+        @property
+        def data(self: Rule) -> ElementCache: ...
+        def make_request(self: Rule, *exception: Any, **kwargs: Any) -> Any: ...
+        def delete(self: Rule) -> None: ...
+        def update_targets(self: Rule, sources: Any = None, destinations: Any = None,
+                           services: Any = None, situations: Any = None) -> dict[str, Any]: ...
+        def _get_action(self: Rule, action: Any) -> Any: ...
 
     @property
     def name(self) -> str:
@@ -300,7 +315,7 @@ class Rule(object):
 
         :return: :class:`smc.base.model.Element` of type policy
         """
-        return Element.from_href(self.data.get("parent_policy"))
+        return Element.from_href(cast(str, self.data.get("parent_policy")))
 
     def save(self) -> str:
         """
@@ -364,7 +379,8 @@ class Rule(object):
 
         if not validate:
             rule_values.update(params={"validate": False})
-        result = super(Rule, self).update(PolicyCommandFailed, **rule_values)
+        result = super(Rule, self).update(  # type: ignore[misc]  # mixin, resolved on SubElement
+            PolicyCommandFailed, **rule_values)
         try:
             del self._cache
         except AttributeError:
@@ -386,6 +402,18 @@ class RuleCommon(object):
     """
     Functionality common to all rules
     """
+
+    # Mixin: concrete rules also inherit SubElement and define _actions
+    _actions: tuple[str, ...]
+
+    if TYPE_CHECKING:
+        @property
+        def href(self: RuleCommon) -> str: ...
+        @property
+        def data(self: RuleCommon) -> ElementCache: ...
+        def make_request(self: RuleCommon, *exception: Any, **kwargs: Any) -> Any: ...
+        def get_relation(self: RuleCommon, rel: str,
+                         exception: Optional[type[Exception]] = None) -> str: ...
 
     def create_rule_section(self, name: str, add_pos: Optional[int] = None,
                             insert_point: Optional[str] = None,
@@ -429,6 +457,8 @@ class RuleCommon(object):
             params = self.add_before_after(before, after)
 
         if insert_point:
+            if params is None:
+                params = {}
             params.update(insert_point=insert_point)
 
         json = {"comment": name}
@@ -438,7 +468,7 @@ class RuleCommon(object):
             json.update(background_color=background_color)
 
         return ElementCreator(
-            self.__class__,
+            cast(Any, self.__class__),
             exception=CreateRuleFailed,
             href=href,
             params=params,
@@ -488,6 +518,8 @@ class RuleCommon(object):
             params = self.add_before_after(before, after)
 
         if insert_point:
+            if params is None:
+                params = {}
             params.update(insert_point=insert_point)
 
         json = {"name": name, "type": insert_point_type}
@@ -495,7 +527,7 @@ class RuleCommon(object):
             json.update(background_color=background_color)
 
         return ElementCreator(
-            self.__class__,
+            cast(Any, self.__class__),
             exception=CreateRuleFailed,
             href=href,
             params=params,
@@ -517,7 +549,7 @@ class RuleCommon(object):
         return self.href
 
     def add_before_after(self, before: Optional[str] = None, after: Optional[str] = None) -> dict[str, Any]:
-        params = {}
+        params: dict[str, Any] = {}
 
         if after:
             params.update(after=after)
@@ -540,7 +572,7 @@ class RuleCommon(object):
                 # still allow json as parameter
                 elif isinstance(sources, dict):
                     source.unset_any()
-                    source.add_many(sources.get("src"))
+                    source.add_many(cast(list[Any], sources.get("src")))
                 else:
                     source.unset_any()
                     source.add_many(sources)
@@ -558,7 +590,7 @@ class RuleCommon(object):
                 # still allow json as parameter
                 elif isinstance(destinations, dict):
                     destination.unset_any()
-                    destination.add_many(destinations.get("dst"))
+                    destination.add_many(cast(list[Any], destinations.get("dst")))
                 else:
                     destination.unset_any()
                     destination.add_many(destinations)
@@ -576,7 +608,7 @@ class RuleCommon(object):
                 # still allow json as parameter
                 elif isinstance(services, dict):
                     service.unset_any()
-                    service.add_many(services.get("service"))
+                    service.add_many(cast(list[Any], services.get("service")))
                 else:
                     service.unset_any()
                     service.add_many(services)
@@ -594,14 +626,14 @@ class RuleCommon(object):
                 # still allow json as parameter
                 elif isinstance(situations, dict):
                     situation.unset_any()
-                    situation.add_many(situations.get("situation"))
+                    situation.add_many(cast(list[Any], situations.get("situation")))
                 else:
                     situation.unset_any()
                     situation.add_many(situations)
             else:
                 situation.set_none()
 
-        e = {}
+        e: dict[str, Any] = {}
         if sources is not None:
             e.update(sources=source.data)
         if destinations is not None:
@@ -613,7 +645,7 @@ class RuleCommon(object):
         return e
 
     def update_logical_if(self, logical_interfaces: Any) -> dict[str, Any]:
-        e = {}
+        e: dict[str, Any] = {}
         if logical_interfaces is None:
             e.update(logical_interfaces={"any": True})
         else:
@@ -754,7 +786,7 @@ class RuleCommon(object):
         return self.make_request(method="update", resource="unlock")
 
 
-class IPv4Rule(RuleCommon, Rule, SubElement):
+class IPv4Rule(RuleCommon, Rule, SubElement):  # type: ignore[misc]  # update differs
     """
     Represents an IPv4 Rule for a layer 3 engine.
 
@@ -962,7 +994,7 @@ class IPv4Rule(RuleCommon, Rule, SubElement):
             **kw
         )
 
-        params = {"validate": False} if not validate else {}
+        params: dict[str, Any] = {"validate": False} if not validate else {}
         href = self.href
         if add_pos is not None:
             href = self.add_at_position(add_pos)
@@ -973,11 +1005,12 @@ class IPv4Rule(RuleCommon, Rule, SubElement):
             params.update(insert_point=insert_point)
 
         return ElementCreator(
-            self.__class__, exception=CreateRuleFailed, href=href, params=params, json=rule_values
+            cast(Any, self.__class__), exception=CreateRuleFailed, href=href, params=params,
+            json=rule_values
         )
 
 
-class IPv4Layer2Rule(RuleCommon, Rule, SubElement):
+class IPv4Layer2Rule(RuleCommon, Rule, SubElement):  # type: ignore[misc]  # update differs
     """
     Create IPv4 rules for Layer 2 Firewalls
 
@@ -1068,7 +1101,7 @@ class IPv4Layer2Rule(RuleCommon, Rule, SubElement):
             **kw
         )
 
-        params = {"validate": False} if not validate else {}
+        params: dict[str, Any] = {"validate": False} if not validate else {}
 
         href = self.href
         if add_pos is not None:
@@ -1080,7 +1113,8 @@ class IPv4Layer2Rule(RuleCommon, Rule, SubElement):
             params.update(insert_point=insert_point)
 
         return ElementCreator(
-            self.__class__, exception=CreateRuleFailed, href=href, params=params, json=rule_values
+            cast(Any, self.__class__), exception=CreateRuleFailed, href=href, params=params,
+            json=rule_values
         )
 
 
@@ -1103,7 +1137,7 @@ class IPSRule(IPv4Layer2Rule):
     typeof = "ips_ipv4_access_rules"
 
 
-class EthernetRule(RuleCommon, Rule, SubElement):
+class EthernetRule(RuleCommon, Rule, SubElement):  # type: ignore[misc]  # update differs
     """
     Ethernet Rule represents a policy on a layer 2 or IPS engine.
 
@@ -1185,7 +1219,7 @@ class EthernetRule(RuleCommon, Rule, SubElement):
             **kw
         )
 
-        params = {"validate": False} if not validate else {}
+        params: dict[str, Any] = {"validate": False} if not validate else {}
 
         href = self.href
         if add_pos:
@@ -1197,7 +1231,8 @@ class EthernetRule(RuleCommon, Rule, SubElement):
             params.update(insert_point=insert_point)
 
         return ElementCreator(
-            self.__class__, exception=CreateRuleFailed, href=href, params=params, json=rule_values
+            cast(Any, self.__class__), exception=CreateRuleFailed, href=href, params=params,
+            json=rule_values
         )
 
 
